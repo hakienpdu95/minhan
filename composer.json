@@ -12,7 +12,7 @@
         "predis/predis": "^3.4",
         "rap2hpoutre/fast-excel": "^5.7",
         "ryangjchandler/laravel-cloudflare-turnstile": "^3.0",
-        "spatie/laravel-activitylog": "^4.12",
+        "spatie/laravel-activitylog": "^5.0",
         "spatie/laravel-medialibrary": "^11.22",
         "spatie/laravel-permission": "^7.4"
     },
