@@ -81,11 +81,7 @@
             "dont-discover": []
         }
     },
-    "config": {
-        "platform": {
-            "php": "8.3.16"
-        },
-        "platform-check": false,        
+    "config": {       
         "optimize-autoloader": true,
         "preferred-install": "dist",
         "sort-packages": true,

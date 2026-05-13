@@ -1,11 +1,211 @@
-@import 'tailwindcss';
+/**
+ * resources/css/app.css
+ * ────────────────────────────────────────────────────────────────────
+ * Core stylesheet — tải trên MỌI trang backend.
+ *
+ * Stack:
+ *  · Tailwind CSS v4  — @tailwindcss/vite plugin, không cần postcss/config
+ *  · DaisyUI v5       — @plugin "daisyui" (Tailwind v4 plugin syntax)
+ *
+ * Cú pháp Tailwind v4:
+ *  · @import "tailwindcss"          → inject toàn bộ Tailwind layers
+ *  · @plugin "daisyui"              → load DaisyUI từ node_modules
+ *  · @theme { ... }                 → override/extend design tokens
+ *  · @layer utilities { ... }       → custom utility classes
+ *
+ * KHÔNG dùng: tailwind.config.js, postcss.config.js,
+ *             @tailwind base/components/utilities (Tailwind v3 syntax)
+ * ────────────────────────────────────────────────────────────────────
+ */
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
-@source '../**/*.blade.php';
-@source '../**/*.js';
+/* ── 1. Tailwind CSS v4 ────────────────────────────────────────────── */
+@import "tailwindcss";
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+/* ── 2. DaisyUI v5 (Tailwind v4 plugin syntax) ─────────────────────
+ *
+ * @plugin "daisyui" nhận đường dẫn npm package — Tailwind v4 resolve
+ * tự động từ node_modules. Không dùng @import cho DaisyUI ở đây vì
+ * DaisyUI v5 là Tailwind plugin, không phải plain CSS.
+ *
+ * themes:    chỉ build theme thực sự dùng → CSS nhỏ hơn đáng kể.
+ *            Thêm theme khác: "cupcake", "business", "corporate"...
+ * darkTheme: tên theme kích hoạt khi html[data-theme="dark"]
+ * ─────────────────────────────────────────────────────────────────── */
+@plugin "daisyui" {
+    themes: light --default, dark --prefersdark;
+    darkTheme: dark;
+    base:      true;    /* reset CSS cơ bản */
+    styled:    true;    /* component styles (btn, input, card...) */
+    utils:     true;    /* utility classes (text-primary, bg-base-100...) */
+    logs:      false;   /* tắt DaisyUI console logs khi build */
 }
+
+/* ── 3. Design tokens (override DaisyUI / Tailwind defaults) ────────
+ *
+ * @theme block cho phép định nghĩa/override CSS custom properties.
+ * Tailwind v4 generate utility classes từ các biến này tự động.
+ * VD: --color-primary → class text-primary, bg-primary, border-primary
+ * ─────────────────────────────────────────────────────────────────── */
+@theme {
+    /* Brand colors — ánh xạ sang DaisyUI primary/secondary/accent */
+    --color-primary:   oklch(59.8% 0.2 266);  /* indigo-500 ≈ #6366f1 */
+    --color-secondary: oklch(60.8% 0.2 293);  /* violet-500 ≈ #8b5cf6 */
+    --color-accent:    oklch(68.5% 0.16 212); /* cyan-500   ≈ #06b6d4 */
+
+    /* Font stack */
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+    /* Border radius scale */
+    --radius-sm:  4px;
+    --radius-md:  8px;
+    --radius-lg:  12px;
+    --radius-xl:  16px;
+    --radius-2xl: 24px;
+}
+
+/* ── 4. Alpine.js — cloak helper ───────────────────────────────────
+ *
+ * x-cloak ẩn element cho đến khi Alpine khởi tạo xong.
+ * Phải có rule này trong CSS vì Alpine remove attribute [x-cloak]
+ * sau khi init — nếu thiếu CSS thì element bị flash.
+ * ─────────────────────────────────────────────────────────────────── */
+[x-cloak] { display: none !important; }
+
+/* ── Admin Layout ─────────────────────────────── */
+body { margin: 0; padding: 0; background: #f1f5f9; }
+.admin-shell { display: flex; min-height: 100vh; }
+
+/* ── Sidebar ──────────────────────────────────── */
+.sidebar {
+    width: 256px; min-width: 256px;
+    background: #fff;
+    border-right: 1px solid #e2e8f0;
+    display: flex; flex-direction: column;
+    height: 100vh; position: fixed; top: 0; left: 0;
+    z-index: 200;
+    transition: width .25s ease, min-width .25s ease, transform .25s ease;
+    overflow: hidden;
+}
+.sidebar.collapsed { width: 64px; min-width: 64px; }
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .nav-badge,
+.sidebar.collapsed .nav-arrow,
+.sidebar.collapsed .section-title,
+.sidebar.collapsed .user-info,
+.sidebar.collapsed .user-logout,
+.sidebar.collapsed .brand-name { opacity: 0; width: 0; overflow: hidden; pointer-events: none; }
+.sidebar.collapsed .nav-summary,
+.sidebar.collapsed .nav-link { justify-content: center; padding-left: 0; padding-right: 0; }
+.sidebar.collapsed .sub-menu { display: none; }
+.sidebar.collapsed .brand-logo { margin: 0 auto; }
+
+.sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 150; }
+.sidebar-overlay.active { display: block; }
+
+@media (max-width: 1023px) {
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.mobile-open { transform: translateX(0); }
+}
+
+/* ── Main area ────────────────────────────────── */
+.main-area { flex: 1; display: flex; flex-direction: column; min-width: 0; margin-left: 256px; transition: margin-left .25s ease; }
+.main-area.sidebar-collapsed { margin-left: 64px; }
+@media (max-width: 1023px) { .main-area { margin-left: 0 !important; } }
+
+/* ── Topbar ───────────────────────────────────── */
+.topbar { height: 64px; background: #fff; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; padding: 0 20px; gap: 12px; position: sticky; top: 0; z-index: 100; }
+.topbar-left  { display: flex; align-items: center; gap: 8px; }
+.topbar-center { flex: 1; display: flex; justify-content: center; }
+.topbar-right { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+
+.search-box { display: flex; align-items: center; gap: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 12px; width: 320px; max-width: 100%; }
+.search-box input { border: none; background: transparent; outline: none; font-size: 13px; color: #334155; flex: 1; }
+.search-box kbd { font-size: 10px; background: #e2e8f0; border-radius: 4px; padding: 2px 6px; color: #64748b; }
+@media (max-width: 767px) { .search-box { display: none; } }
+
+.icon-btn { width: 36px; height: 36px; border-radius: 8px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #64748b; position: relative; transition: background .15s; }
+.icon-btn:hover { background: #f1f5f9; }
+.icon-btn svg { width: 20px; height: 20px; }
+.icon-btn .badge-dot { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: #ef4444; border: 2px solid #fff; }
+
+.avatar-btn { display: flex; align-items: center; gap: 8px; border: none; background: transparent; cursor: pointer; padding: 4px 10px 4px 4px; border-radius: 999px; transition: background .15s; }
+.avatar-btn:hover { background: #f1f5f9; }
+.avatar-btn img { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #6366f1; }
+.avatar-btn .av-name { font-size: 13px; font-weight: 500; color: #334155; }
+@media (max-width: 639px) { .av-name { display: none; } }
+
+/* ── Dropdowns ────────────────────────────────── */
+.dd-wrap { position: relative; }
+.dd-panel { display: none; position: absolute; top: calc(100% + 8px); right: 0; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,.1); z-index: 9999; }
+.dd-panel.open { display: block; }
+.notif-panel { width: 316px; padding: 8px; }
+.notif-hdr { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px 10px; border-bottom: 1px solid #f1f5f9; margin-bottom: 4px; }
+.notif-hdr span { font-weight: 600; font-size: 14px; color: #1e293b; }
+.notif-hdr a { font-size: 12px; color: #6366f1; text-decoration: none; }
+.notif-item { display: flex; align-items: flex-start; gap: 10px; padding: 9px 10px; border-radius: 8px; text-decoration: none; transition: background .15s; }
+.notif-item:hover { background: #f8fafc; }
+.notif-icon { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.notif-icon svg { width: 15px; height: 15px; color: #fff; }
+.notif-txt p { margin: 0; font-size: 13px; font-weight: 500; color: #1e293b; }
+.notif-txt small { font-size: 11px; color: #94a3b8; }
+.user-panel { padding: 8px; min-width: 200px; }
+.user-email { font-size: 11px; color: #94a3b8; padding: 4px 10px 10px; border-bottom: 1px solid #f1f5f9; margin-bottom: 4px; }
+.u-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; font-size: 13px; color: #334155; text-decoration: none; transition: background .15s; background: transparent; border: none; width: 100%; text-align: left; cursor: pointer; }
+.u-item:hover { background: #f8fafc; }
+.u-item svg { width: 15px; height: 15px; opacity: .6; flex-shrink: 0; }
+.u-item.danger { color: #ef4444; }
+.u-item.danger svg { opacity: 1; }
+.u-divider { height: 1px; background: #f1f5f9; margin: 4px 0; }
+
+/* ── Sidebar nav ──────────────────────────────── */
+.brand { height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
+.brand-logo { width: 32px; height: 32px; background: #6366f1; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: margin .25s; }
+.brand-logo svg { width: 18px; height: 18px; color: #fff; }
+.brand-name { font-weight: 700; font-size: 17px; color: #1e293b; white-space: nowrap; transition: opacity .2s, width .25s; }
+.nav-wrap { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px 12px; }
+.nav-wrap::-webkit-scrollbar { width: 4px; }
+.nav-wrap::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 99px; }
+.section-title { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #94a3b8; padding: 0 10px; margin: 0 0 6px; white-space: nowrap; overflow: hidden; transition: opacity .2s, width .25s; }
+.nav-group { display: flex; flex-direction: column; gap: 2px; margin-bottom: 4px; }
+.nav-link { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; text-decoration: none; font-size: 13.5px; font-weight: 500; color: #64748b; cursor: pointer; transition: background .15s, color .15s; border: none; background: transparent; width: 100%; text-align: left; }
+.nav-link:hover { background: #f1f5f9; color: #1e293b; }
+.nav-link.active { background: #ede9fe; color: #6366f1; }
+.nav-link .nav-icon { width: 18px; height: 18px; flex-shrink: 0; }
+.nav-summary { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; font-size: 13.5px; font-weight: 500; color: #64748b; cursor: pointer; transition: background .15s, color .15s; list-style: none; user-select: none; }
+.nav-summary::-webkit-details-marker { display: none; }
+.nav-summary:hover { background: #f1f5f9; color: #1e293b; }
+details[open] > .nav-summary { color: #1e293b; }
+.nav-summary .nav-icon { width: 18px; height: 18px; flex-shrink: 0; }
+.nav-label { flex: 1; white-space: nowrap; transition: opacity .2s, width .25s; }
+.nav-badge { font-size: 10px; font-weight: 700; background: #ef4444; color: #fff; border-radius: 999px; padding: 1px 6px; flex-shrink: 0; transition: opacity .2s, width .25s; }
+.nav-arrow { width: 14px; height: 14px; flex-shrink: 0; color: #94a3b8; transition: transform .2s, opacity .2s, width .25s; }
+details[open] > .nav-summary .nav-arrow { transform: rotate(90deg); }
+.sub-menu { margin: 2px 0 2px 28px; padding: 2px 0 2px 12px; border-left: 1.5px solid #e2e8f0; display: flex; flex-direction: column; gap: 1px; }
+.sub-link { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-radius: 7px; font-size: 13px; color: #64748b; text-decoration: none; transition: background .15s, color .15s; }
+.sub-link:hover { background: #f8fafc; color: #334155; }
+.sub-link.active { color: #6366f1; background: #ede9fe; font-weight: 500; }
+.sub-badge { font-size: 10px; background: #fef3c7; color: #92400e; border-radius: 999px; padding: 1px 6px; }
+
+/* ── User card ────────────────────────────────── */
+.user-card { flex-shrink: 0; border-top: 1px solid #e2e8f0; padding: 12px; }
+.user-card-inner { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; transition: background .15s; }
+.user-card-inner:hover { background: #f8fafc; }
+.user-card-inner img { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; }
+.user-info { flex: 1; min-width: 0; transition: opacity .2s, width .25s; overflow: hidden; }
+.user-info p { margin: 0; font-size: 13px; font-weight: 600; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-info small { font-size: 11px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.user-logout { width: 28px; height: 28px; border-radius: 6px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #ef4444; flex-shrink: 0; transition: background .15s, opacity .2s, width .25s; }
+.user-logout:hover { background: #fee2e2; }
+.user-logout svg { width: 15px; height: 15px; }
+
+/* ── Page content + footer ────────────────────── */
+.page-content { flex: 1; padding: 24px; }
+.page-footer { height: 48px; background: #fff; border-top: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; font-size: 12px; color: #94a3b8; }
+.breadcrumb-nav { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #94a3b8; margin-bottom: 20px; flex-wrap: wrap; }
+.breadcrumb-nav a { color: #94a3b8; text-decoration: none; }
+.breadcrumb-nav a:hover { color: #6366f1; }
+.breadcrumb-nav .sep { opacity: .4; }
+.breadcrumb-nav .current { color: #334155; font-weight: 500; }
+
+/* ── Utilities ────────────────────────────────── */
+.toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
