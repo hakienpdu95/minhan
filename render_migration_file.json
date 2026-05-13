@@ -1,7 +1,6 @@
 [
   [
     "regions///__///__///Bảng lưu thông tin vùng",
-    "id///uuid///__///__///__///__///__",
     "name///string///255///NOT_NULL///__///->index()///Tên vùng",
     "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
     "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật",
@@ -9,13 +8,12 @@
   ],
   [
     "provinces///__///__///Bảng lưu thông tin tỉnh/thành phố",
-    "id///uuid///__///__///__///__///__",
     "name///string///255///NOT_NULL///__///->index()///Tên tỉnh/thành phố",
     "short_name///string///255///NOT_NULL///__///__///Tên ngắn gọn của tỉnh/thành phố",
     "logo///string///255///_NULL///NULL///__///Logo tỉnh",
     "province_code///char///2///NOT_NULL///__///->unique()->index()///Mã tỉnh/thành phố",
     "place_type///enum///[thanh-pho,tinh]///NOT_NULL///'tinh'///->index()///Loại: Thành phố Trung Ương hoặc Tỉnh",
-    "region_id///char///36///NOT_NULL///__///->references('id')->constrained('regions')->onDelete('cascade')///Thuộc vùng — FK tới regions.id (uuid char 36)",
+    "region_id///unsignedBigInteger///__///NOT_NULL///__///->constrained('regions')->onDelete('cascade')///Thuộc vùng — FK tới regions.id",
     "country///string///2///NOT_NULL///'VN'///->index()///Mã quốc gia",
     "is_active///boolean///__///NOT_NULL///true///->index()///Trạng thái hoạt động",
     "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
@@ -25,11 +23,10 @@
   ],
   [
     "wards///__///__///Bảng lưu thông tin phường/xã",
-    "id///uuid///__///__///__///__///__",
     "name///string///255///NOT_NULL///__///->index()///Tên phường/xã",
     "ward_code///char///5///NOT_NULL///__///->unique()->index()///Mã phường/xã",
     "place_type///enum///[phuong,xa,dac-khu]///NOT_NULL///'xa'///->index()///Loại: phường, xã, đặc khu",
-    "province_code///char///2///NOT_NULL///__///->references('province_code')->constrained('provinces')->onDelete('cascade')///Tỉnh/thành phố liên kết",
+    "province_code///char///2///NOT_NULL///__///->references('province_code')->constrained('provinces')->onDelete('cascade')///Tỉnh/thành phố liên kết — FK tới provinces.province_code",
     "is_active///boolean///__///NOT_NULL///true///->index()///Trạng thái hoạt động",
     "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
     "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật",

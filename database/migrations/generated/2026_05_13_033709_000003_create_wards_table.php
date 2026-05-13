@@ -12,12 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('wards', function (Blueprint $table) {
-            $table->uuid('id')->primary()->comment('UUID primary key');
-            $table->unsignedBigInteger('sort_order')->default(0)->index()->comment('Thứ tự sắp xếp — set thủ công khi insert');
+            $table->id();
+            $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+            $table->unsignedInteger('order_column')->nullable()->index()->comment('Thứ tự sắp xếp — Spatie Sortable / ORDER BY');
             $table->string('name', 255)->index()->comment('Tên phường/xã');
             $table->char('ward_code', 5)->unique()->index()->comment('Mã phường/xã');
             $table->enum('place_type', ['phuong', 'xa', 'dac-khu'])->default('xa')->index()->comment('Loại: phường, xã, đặc khu');
-            $table->char('province_code', 2)->comment('Tỉnh/thành phố liên kết');
+            $table->char('province_code', 2)->comment('Tỉnh/thành phố liên kết — FK tới provinces.province_code');
             $table->foreign('province_code')->references('province_code')->on('provinces')->cascadeOnDelete();
             $table->boolean('is_active')->default(true)->index()->comment('Trạng thái hoạt động');
             $table->timestamps();

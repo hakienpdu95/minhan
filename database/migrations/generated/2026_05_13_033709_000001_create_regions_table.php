@@ -12,8 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('regions', function (Blueprint $table) {
-            $table->uuid('id')->primary()->comment('UUID primary key');
-            $table->unsignedBigInteger('sort_order')->default(0)->index()->comment('Thứ tự sắp xếp — set thủ công khi insert');
+            $table->id();
+            $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+            $table->unsignedInteger('order_column')->nullable()->index()->comment('Thứ tự sắp xếp — Spatie Sortable / ORDER BY');
             $table->string('name', 255)->index()->comment('Tên vùng');
             $table->timestamps();
             $table->softDeletes();

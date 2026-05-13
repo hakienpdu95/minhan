@@ -258,7 +258,6 @@ class GenerateMigration extends Command
         $fields        = [];
         $indexes       = [];
         $initialData   = [];
-        $hasUuid       = false;
         $hasCreatedAt  = false;
         $hasUpdatedAt  = false;
         $hasSoftDelete = false;
@@ -286,32 +285,24 @@ class GenerateMigration extends Command
             if ($colName === 'updated_at' && $colType === 'timestamp') { $hasUpdatedAt  = true; continue; }
             if ($colName === 'deleted_at' && $colType === 'timestamp') { $hasSoftDelete = true; continue; }
 
-            if (in_array($colType, ['increments', 'bigIncrements'])) {
-                $fields[] = '$table->id();';
-                continue;
-            }
-            if ($colType === 'uuid' && $colName === 'id') {
-                $hasUuid  = true;
-                $fields[] = "\$table->uuid('id')->primary()->comment('UUID primary key');";
-                continue;
-            }
-            if ($colType === 'ulid' && $colName === 'id') {
-                $hasUuid  = true;
-                $fields[] = "\$table->ulid('id')->primary()->comment('ULID primary key');";
+            // Bỏ qua dòng id trong JSON — id/uuid/order_column được thêm tự động bên dưới
+            if ($colName === 'id') {
                 continue;
             }
 
             $fields[] = $this->buildColumn($colName, $colType, $colLen, $colNull, $colDefault, $colMod, $colComment);
         }
 
-        // UUID/ULID table: thêm sort_order để hỗ trợ ORDER BY tăng/giảm dần
-        // Dùng unsignedBigInteger thường (KHÔNG auto_increment) — tránh lỗi MySQL 1075
-        // Giá trị được set lúc insert, ví dụ: DB::table()->max('sort_order') + 1
-        if ($hasUuid) {
-            array_splice($fields, 1, 0, [
-                "\$table->unsignedBigInteger('sort_order')->default(0)->index()->comment('Thứ tự sắp xếp — set thủ công khi insert');",
-            ]);
-        }
+        // Luôn tự động prepend 3 cột đầu chuẩn Laravel 13 — không phụ thuộc JSON:
+        //   1. id()           — bigIncrements + primary key
+        //   2. uuid()         — public UUID để expose ra ngoài (không phải PK)
+        //   3. order_column   — Spatie Sortable / ORDER BY
+        array_unshift(
+            $fields,
+            '$table->id();',
+            "\$table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');",
+            "\$table->unsignedInteger('order_column')->nullable()->index()->comment('Thứ tự sắp xếp — Spatie Sortable / ORDER BY');"
+        );
 
         if ($hasCreatedAt && $hasUpdatedAt) {
             $fields[] = '$table->timestamps();';
