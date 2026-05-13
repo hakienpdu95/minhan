@@ -7,23 +7,6 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
-/**
- * GenerateExtension v2 — Laravel 13
- *
- * Đọc render_extension_file.json → sinh file ALTER TABLE vào migrations/extensions/
- * Xóa + tạo lại toàn bộ extensions/ mỗi lần chạy (an toàn vì dev dùng migrate:fresh)
- *
- * Format render_extension_file.json:
- * Giống hệt render_migration_file.json, chỉ khác row[0]:
- *   "table_name///action///after_column///comment"
- *   action: add | drop | change
- *   after_column: tên cột đặt sau (__ = không dùng after())
- *
- * Chạy:
- *   php artisan extension:generate
- *   php artisan extension:generate --from=custom_ext.json
- *   php artisan migration:generate --fresh  ← chạy cả 2 generate + fresh
- */
 class GenerateExtension extends Command
 {
     protected $signature = 'extension:generate
@@ -67,9 +50,27 @@ class GenerateExtension extends Command
             return self::SUCCESS; // Không phải lỗi — file có thể chưa có
         }
 
-        $json = json_decode(File::get($jsonPath), true);
+        $raw     = File::get($jsonPath);
+
+        // File rỗng (0 byte hoặc chỉ có whitespace) → không có gì để generate
+        if (trim($raw) === '') {
+            $this->warn('render_extension_file.json rỗng — không có gì để generate.');
+            return self::SUCCESS;
+        }
+
+        $cleaned = $this->sanitizeJson($raw);
+        $json    = json_decode($cleaned, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             $this->error('JSON không hợp lệ: ' . json_last_error_msg());
+            // Tìm dòng lỗi gần đúng
+            $lines = explode("\n", $cleaned);
+            foreach ($lines as $i => $line) {
+                $testJson = json_decode($line);
+                if ($line !== '' && json_last_error() !== JSON_ERROR_NONE && str_starts_with(trim($line), '"')) {
+                    $this->line('<fg=red>  → Dòng ' . ($i + 1) . ' có thể lỗi: ' . mb_substr($line, 0, 120) . '</>');
+                }
+            }
+            $this->line('<fg=yellow>Gợi ý: trailing comma hoặc ký tự ẩn trong file JSON</>');
             return self::FAILURE;
         }
 
@@ -405,6 +406,40 @@ class GenerateExtension extends Command
         if (is_numeric($value)) return "->default($value)";
         if (str_starts_with($value, "'") && str_ends_with($value, "'")) return "->default($value)";
         return "->default('$value')";
+    }
+
+    /**
+     * Làm sạch JSON trước khi parse:
+     * - Xóa trailing comma (dấu phẩy thừa sau phần tử cuối)
+     * - Xóa // comment (không hợp lệ trong JSON chuẩn)
+     */
+    private function sanitizeJson(string $raw): string
+    {
+        // 1. Xóa BOM UTF-8 (EF BB BF) nếu có
+        $raw = ltrim($raw, "\xEF\xBB\xBF");
+
+        // 2. Chuẩn hóa line ending
+        $raw = str_replace(["\r\n", "\r"], "\n", $raw);
+
+        // 3. Ép về UTF-8 hợp lệ — thay byte không hợp lệ bằng '?'
+        if (function_exists('mb_convert_encoding')) {
+            $raw = mb_convert_encoding($raw, 'UTF-8', 'UTF-8');
+        }
+
+        // 4. Xóa toàn bộ control characters (0x00–0x1F) trừ \t (0x09) và \n (0x0A)
+        //    Không dùng flag /u để tránh fail khi gặp byte UTF-8 lạ
+        $raw = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $raw);
+
+        // 5. Xóa zero-width space (U+200B) và non-breaking space (U+00A0)
+        $raw = str_replace(["\xE2\x80\x8B", "\xC2\xA0"], ['', ' '], $raw);
+
+        // 6. KHÔNG xóa // comment vì /// là delimiter nội dung trong string JSON
+        //    Regex cũ `//(?!/)` vẫn match `//` đầu của `///` → cắt mất nội dung string
+
+        // 7. Xóa trailing comma trước ] hoặc }
+        $raw = preg_replace('/,\s*([\]\}])/', '$1', $raw);
+
+        return $raw;
     }
 
     private function cleanDir(string $path): int

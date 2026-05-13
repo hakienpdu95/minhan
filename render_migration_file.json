@@ -15,7 +15,7 @@
     "logo///string///255///_NULL///NULL///__///Logo tỉnh",
     "province_code///char///2///NOT_NULL///__///->unique()->index()///Mã tỉnh/thành phố",
     "place_type///enum///[thanh-pho,tinh]///NOT_NULL///'tinh'///->index()///Loại: Thành phố Trung Ương hoặc Tỉnh",
-    "region_id///char///36///NOT_NULL///__///->references('id')->constrained('regions')->onDelete('cascade')///Thuộc vùng (UUID FK)",
+    "region_id///char///36///NOT_NULL///__///->references('id')->constrained('regions')->onDelete('cascade')///Thuộc vùng — FK tới regions.id (uuid char 36)",
     "country///string///2///NOT_NULL///'VN'///->index()///Mã quốc gia",
     "is_active///boolean///__///NOT_NULL///true///->index()///Trạng thái hoạt động",
     "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",

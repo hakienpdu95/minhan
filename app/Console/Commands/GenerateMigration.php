@@ -8,23 +8,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
-/**
- * GenerateMigration v3 — Laravel 13
- *
- * Chiến lược:
- *   DEV  → migration:generate [--fresh] → xóa generated/ → migrate:fresh (xóa DB + chạy lại tất cả)
- *   PROD → migration:generate           → chỉ tạo lại generated/ → developer tự chạy migrate
- *
- * Thư mục:
- *   database/migrations/
- *   ├── vendor/      ← vendor:publish  — KHÔNG xóa bao giờ
- *   ├── generated/   ← lệnh này tạo    — xóa + tạo lại mỗi lần
- *   └── extensions/  ← viết tay        — KHÔNG xóa bao giờ
- *
- * extensions/ chứa 2 loại:
- *   - alter_*  : thêm/bớt cột bảng vendor (Schema::table)
- *   - seed_*   : data bổ sung sau khi bảng đã tạo
- */
 class GenerateMigration extends Command
 {
     protected $signature = 'migration:generate
@@ -87,9 +70,20 @@ class GenerateMigration extends Command
             return self::FAILURE;
         }
 
-        $json = json_decode(File::get($jsonPath), true);
+        $raw      = File::get($jsonPath);
+        $cleaned  = $this->sanitizeJson($raw);
+        $json     = json_decode($cleaned, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             $this->error('JSON không hợp lệ: ' . json_last_error_msg());
+            // Tìm dòng lỗi gần đúng
+            $lines = explode("\n", $cleaned);
+            foreach ($lines as $i => $line) {
+                $testJson = json_decode($line);
+                if ($line !== '' && json_last_error() !== JSON_ERROR_NONE && str_starts_with(trim($line), '"')) {
+                    $this->line('<fg=red>  → Dòng ' . ($i + 1) . ' có thể lỗi: ' . mb_substr($line, 0, 120) . '</>');
+                }
+            }
+            $this->line('<fg=yellow>Gợi ý: trailing comma hoặc ký tự ẩn trong file JSON</>');
             return self::FAILURE;
         }
 
@@ -133,14 +127,7 @@ class GenerateMigration extends Command
             $tableName = trim($tableInfo[0]);
             $className = 'Create' . Str::studly($tableName) . 'Table';
 
-            [$fields, $indexes, $initialData, $hasUuid] = $this->buildTableBody($tableData, $tableName);
-
-            if ($hasUuid) {
-                array_splice($fields, 1, 0, [
-                    '$table->unsignedBigInteger(\'sort_order\')->autoIncrement()->comment(\'Thứ tự tự nhiên — thay thế PK auto-increment khi id là UUID\');',
-                ]);
-                $indexes[] = '$table->index(\'sort_order\');';
-            }
+            [$fields, $indexes, $initialData] = $this->buildTableBody($tableData, $tableName);
 
             $fileName = sprintf(
                 '%s_%06d_create_%s_table.php',
@@ -239,7 +226,7 @@ class GenerateMigration extends Command
         }
 
         if (!File::exists("$root/README.md")) {
-            // File::put("$root/README.md", $this->readmeContent());
+            File::put("$root/README.md", $this->readmeContent());
         }
     }
 
@@ -265,7 +252,7 @@ class GenerateMigration extends Command
     // BUILD TABLE BODY
     // ──────────────────────────────────────────────────────────────
 
-    /** @return array{string[], string[], string[], bool} */
+    /** @return array{string[], string[], string[]} */
     private function buildTableBody(array $rows, string $tableName): array
     {
         $fields        = [];
@@ -317,6 +304,15 @@ class GenerateMigration extends Command
             $fields[] = $this->buildColumn($colName, $colType, $colLen, $colNull, $colDefault, $colMod, $colComment);
         }
 
+        // UUID/ULID table: thêm sort_order để hỗ trợ ORDER BY tăng/giảm dần
+        // Dùng unsignedBigInteger thường (KHÔNG auto_increment) — tránh lỗi MySQL 1075
+        // Giá trị được set lúc insert, ví dụ: DB::table()->max('sort_order') + 1
+        if ($hasUuid) {
+            array_splice($fields, 1, 0, [
+                "\$table->unsignedBigInteger('sort_order')->default(0)->index()->comment('Thứ tự sắp xếp — set thủ công khi insert');",
+            ]);
+        }
+
         if ($hasCreatedAt && $hasUpdatedAt) {
             $fields[] = '$table->timestamps();';
         } elseif ($hasCreatedAt) {
@@ -328,7 +324,7 @@ class GenerateMigration extends Command
             $fields[] = '$table->softDeletes();';
         }
 
-        return [$fields, $indexes, $initialData, $hasUuid];
+        return [$fields, $indexes, $initialData];
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -539,6 +535,36 @@ class GenerateMigration extends Command
     // ──────────────────────────────────────────────────────────────
     // TOPOLOGICAL SORT (Kahn's algorithm)
     // ──────────────────────────────────────────────────────────────
+
+    private function sanitizeJson(string $raw): string
+    {
+        // 1. Xóa BOM UTF-8 (EF BB BF) nếu có
+        $raw = ltrim($raw, "\xEF\xBB\xBF");
+
+        // 2. Chuẩn hóa line ending
+        $raw = str_replace(["\r\n", "\r"], "\n", $raw);
+
+        // 3. Ép về UTF-8 hợp lệ — thay byte không hợp lệ bằng '?'
+        //    mb_convert_encoding với //IGNORE loại bỏ byte không decode được
+        if (function_exists('mb_convert_encoding')) {
+            $raw = mb_convert_encoding($raw, 'UTF-8', 'UTF-8');
+        }
+
+        // 4. Xóa toàn bộ control characters (0x00–0x1F) trừ \t (0x09) và \n (0x0A)
+        //    Dùng regex không có flag /u để tránh fail khi gặp byte UTF-8 lạ
+        $raw = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $raw);
+
+        // 5. Xóa zero-width space (U+200B = E2 80 8B) và non-breaking space (U+00A0 = C2 A0)
+        $raw = str_replace(["\xE2\x80\x8B", "\xC2\xA0"], ['', ' '], $raw);
+
+        // 6. KHÔNG xóa // comment vì /// là delimiter nội dung trong string JSON
+        //    Regex cũ `//(?!/)` vẫn match `//` đầu của `///` → cắt mất nội dung string
+
+        // 7. Xóa trailing comma trước ] hoặc }
+        $raw = preg_replace('/,\s*([\]\}])/', '$1', $raw);
+
+        return $raw;
+    }
 
     private function topologicalSort(array $json): ?array
     {
