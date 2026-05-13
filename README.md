@@ -59,3 +59,5 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 
 # Sửa JSON → chạy lệnh này → DB cập nhật đầy đủ
 php artisan migration:generate --fresh
+
+composer update --ignore-platform-reqs <= chạy cái này ở window nếu php8.3

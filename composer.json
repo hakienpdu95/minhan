@@ -6,8 +6,10 @@
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {
-        "php": "^8.3",
+        "php": "^8.4",
+        "laravel/fortify": "^1.36",
         "laravel/framework": "^13.7",
+        "laravel/sanctum": "^4.3",
         "laravel/tinker": "^3.0",
         "predis/predis": "^3.4",
         "rap2hpoutre/fast-excel": "^5.7",
@@ -79,6 +81,10 @@
         }
     },
     "config": {
+        "platform": {
+            "php": "8.3.16"
+        },
+        "platform-check": false,
         "optimize-autoloader": true,
         "preferred-install": "dist",
         "sort-packages": true,
