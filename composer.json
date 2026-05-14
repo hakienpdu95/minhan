@@ -12,10 +12,13 @@
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^3.0",
         "laravelcm/laravel-subscriptions": "^1.8",
+        "lorisleiva/laravel-actions": "^2.10",
+        "nwidart/laravel-modules": "^13.0",
         "predis/predis": "^3.4",
         "rap2hpoutre/fast-excel": "^5.7",
         "ryangjchandler/laravel-cloudflare-turnstile": "^3.0",
         "spatie/laravel-activitylog": "^5.0",
+        "spatie/laravel-data": "^4.23",
         "spatie/laravel-medialibrary": "^11.22",
         "spatie/laravel-permission": "^7.4"
     },
@@ -87,7 +90,8 @@
         "sort-packages": true,
         "allow-plugins": {
             "pestphp/pest-plugin": true,
-            "php-http/discovery": true
+            "php-http/discovery": true,
+            "wikimedia/composer-merge-plugin": true
         }
     },
     "minimum-stability": "stable",
