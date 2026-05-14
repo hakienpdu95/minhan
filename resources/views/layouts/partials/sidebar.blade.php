@@ -1,4 +1,3 @@
-{{-- resources/views/layouts/partials/sidebar.blade.php --}}
 <aside class="sidebar" id="sidebar">
 
     <div class="brand">

@@ -1,4 +1,3 @@
-{{-- resources/views/layouts/partials/header.blade.php --}}
 <header class="topbar">
     <div class="topbar-left">
         <button class="icon-btn" id="mobileSidebarBtn" title="Menu" style="display:none">
@@ -19,13 +18,11 @@
 
     <div class="topbar-right">
 
-        {{-- Theme toggle --}}
         <button class="icon-btn" id="themeBtn" title="Đổi giao diện">
             <svg id="iconSun" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M18.66 5.34l1.41-1.41"/></svg>
             <svg id="iconMoon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" style="display:none"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
         </button>
 
-        {{-- Notifications --}}
         <div class="dd-wrap">
             <button class="icon-btn" id="notifBtn" title="Thông báo">
                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
@@ -48,7 +45,6 @@
             </div>
         </div>
 
-        {{-- User --}}
         <div class="dd-wrap">
             <button class="avatar-btn" id="userBtn">
                 <img src="https://api.dicebear.com/9.x/initials/svg?seed={{ urlencode(auth()->user()->name ?? 'Admin') }}&backgroundColor=6366f1&fontFamily=Arial&fontSize=40&fontWeight=700" alt="Avatar">

@@ -6,10 +6,6 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard') — {{ config('app.name', 'AdminPanel') }}</title>
 
-    {{-- buildDirectory = 'build/backend'
-         Dev  → public/build/backend/.vite/manifest.json  (laravel-vite-plugin tạo file hot)
-         Prod → public/build/backend/manifest.json
-    --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'], 'build/backend')
 
     @stack('styles')
@@ -32,7 +28,6 @@
     </div>
 </div>
 
-{{-- Flash messages → Toast (cần @vite modules/toastify.js trên trang đó) --}}
 @if(session('success'))
 <script>document.addEventListener('DOMContentLoaded',()=>window.Toast?.success(@js(session('success'))))</script>
 @endif

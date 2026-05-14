@@ -1,7 +1,3 @@
-{{-- resources/views/components/sidebar-arrow.blade.php
-     Chevron arrow for collapsible sidebar menu items.
-     Rotates 90° when details[open].
---}}
 <svg xmlns="http://www.w3.org/2000/svg"
      class="sidebar-label h-3.5 w-3.5 flex-shrink-0 text-base-content/40
             transition-transform duration-200 details-arrow"
