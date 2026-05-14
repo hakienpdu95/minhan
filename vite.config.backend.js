@@ -1,6 +1,27 @@
 /**
  * vite.config.backend.js
  *
+ * Laravel 13 | Vite 8 | Tailwind 4 | DaisyUI 5 | Alpine 3
+ * ─────────────────────────────────────────────────────────────────────
+ *
+ * CHIẾN LƯỢC BUNDLE
+ * ┌────────────────────────────────────────────────────────────────┐
+ * │ CORE  (tải trên MỌI trang backend)                             │
+ * │  · app.css  → Tailwind 4 + DaisyUI 5 + layout admin CSS       │
+ * │  · app.js   → jQuery global, Alpine 3, iconify, admin shell   │
+ * ├────────────────────────────────────────────────────────────────┤
+ * │ MODULES  (tải riêng theo trang — @vite() trong blade)          │
+ * │  · toastify    toast noti          (nhẹ, nhiều trang)          │
+ * │  · datatables  DataTables.net v2   (trang bảng dữ liệu)       │
+ * │  · tabulator   Tabulator v6        (bảng nâng cao)             │
+ * │  · filepond    FilePond + plugins  (trang upload)              │
+ * │  · flatpickr   date/time picker    (form)                      │
+ * │  · jodit       rich-text editor    (~500 KB, lazy)             │
+ * │  · tom-select  select/autocomplete (form)                      │
+ * │  · swiper      carousel/slider                                 │
+ * │  · qrcode      QR code generator                               │
+ * └────────────────────────────────────────────────────────────────┘
+ *
  * LỆNH:
  *   npm run dev    → vite --config vite.config.backend.js
  *   npm run build  → vite build --config vite.config.backend.js
@@ -79,7 +100,7 @@ export default defineConfig(({ mode }) => {
           'resources/js/**/*.js',
           'routes/**/*.php',
         ],
-        buildDirectory: 'backend',
+        buildDirectory: 'build/backend',
         modulePreload:  { polyfill: true },
       }),
 
@@ -191,8 +212,15 @@ export default defineConfig(({ mode }) => {
 
     /* ── Dev server ────────────────────────────────────── */
     server: {
-      hmr:   { host: 'localhost' },
-      watch: { usePolling: false },
+      /*
+       * Dùng port 5174 để tránh conflict với Vite frontend (5173).
+       * laravel-vite-plugin tự detect port này và inject đúng vào blade.
+       * Nếu port bị chiếm: đổi thành 5175, 5176...
+       */
+      port:        5174,
+      strictPort:  true,
+      hmr:  { host: 'localhost' },
+      watch:{ usePolling: false },
     },
 
     /* ── optimizeDeps (pre-bundle trong dev) ───────────── */

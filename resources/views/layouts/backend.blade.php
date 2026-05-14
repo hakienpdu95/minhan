@@ -6,16 +6,15 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard') — {{ config('app.name', 'AdminPanel') }}</title>
 
-    {{-- Core: Tailwind + DaisyUI + layout CSS + app JS --}}
-    @viteBackend(['resources/css/app.css', 'resources/js/app.js'])
-
-    {{-- Module CSS/JS theo trang (khai báo trong child view) --}}
-    {{-- Ví dụ trang create product: --}}
-    {{-- @viteBackend(['resources/css/filepond.css', 'resources/js/modules/filepond.js']) --}}
+    {{-- buildDirectory = 'build/backend'
+         Dev  → public/build/backend/.vite/manifest.json  (laravel-vite-plugin tạo file hot)
+         Prod → public/build/backend/manifest.json
+    --}}
+    @vite(['resources/css/app.css', 'resources/js/app.js'], 'build/backend')
 
     @stack('styles')
 </head>
-<body>
+<body style="background:#f1f5f9;margin:0;">
 
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -33,7 +32,14 @@
     </div>
 </div>
 
-<div id="toast-container" class="toast-container"></div>
+{{-- Flash messages → Toast (cần @vite modules/toastify.js trên trang đó) --}}
+@if(session('success'))
+<script>document.addEventListener('DOMContentLoaded',()=>window.Toast?.success(@js(session('success'))))</script>
+@endif
+@if(session('error'))
+<script>document.addEventListener('DOMContentLoaded',()=>window.Toast?.error(@js(session('error'))))</script>
+@endif
+
 @stack('scripts')
 </body>
 </html>
