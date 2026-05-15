@@ -16,6 +16,7 @@
         "nwidart/laravel-modules": "^13.0",
         "predis/predis": "^3.4",
         "rap2hpoutre/fast-excel": "^5.7",
+        "ringlesoft/laravel-process-approval": "^1.1",
         "ryangjchandler/laravel-cloudflare-turnstile": "^3.0",
         "spatie/laravel-activitylog": "^5.0",
         "spatie/laravel-data": "^4.23",
