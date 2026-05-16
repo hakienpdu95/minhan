@@ -3,13 +3,16 @@
 namespace App\Actions\Fortify;
 
 use App\Models\User;
-use App\Shared\Tenancy\Models\Organization;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
+use Modules\Auth\Actions\RegisterOrganizationAction;
+use Modules\Auth\Data\RegisterOrganizationData;
 
+/**
+ * Fortify entry point: validate input → delegate sang RegisterOrganizationAction.
+ * Logic nghiệp vụ nằm trong module Auth, không viết ở đây.
+ */
 class CreateNewUser implements CreatesNewUsers
 {
     use PasswordValidationRules;
@@ -27,29 +30,8 @@ class CreateNewUser implements CreatesNewUsers
             'email.unique'               => 'Email này đã được sử dụng.',
         ])->validate();
 
-        return DB::transaction(function () use ($input): User {
-            // 1. Tạo Organization — slug tự động từ tên (trong Organization::boot())
-            $organization = Organization::create([
-                'name'     => $input['organization_name'],
-                'status'   => 'active',
-                'settings' => ['timezone' => 'Asia/Ho_Chi_Minh', 'locale' => 'vi'],
-            ]);
-
-            // 2. Tạo User chủ sở hữu
-            $user = User::create([
-                'name'            => $input['name'],
-                'email'           => $input['email'],
-                'password'        => Hash::make($input['password']),
-                'organization_id' => $organization->id,
-            ]);
-
-            // 3. Đặt owner cho Organization
-            $organization->update(['owner_id' => $user->id]);
-
-            // 4. Gán role CEO
-            $user->assignRole('CEO');
-
-            return $user;
-        });
+        return RegisterOrganizationAction::run(
+            RegisterOrganizationData::from($input)
+        );
     }
 }

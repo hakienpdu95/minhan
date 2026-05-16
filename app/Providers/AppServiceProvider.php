@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -12,12 +14,15 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Strict mode: prevent lazy loading, mass assignment, and missing attributes in production safety check
         Model::shouldBeStrict(!app()->isProduction());
 
-        // Disable query log in production to save memory
         if (app()->isProduction()) {
             DB::disableQueryLog();
         }
+
+        // super-admin bypass toàn bộ Gate checks
+        Gate::before(function (User $user, string $ability): ?bool {
+            return $user->hasRole('super-admin') ? true : null;
+        });
     }
 }

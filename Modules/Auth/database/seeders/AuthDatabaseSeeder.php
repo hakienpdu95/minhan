@@ -2,15 +2,81 @@
 
 namespace Modules\Auth\Database\Seeders;
 
+use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
+/**
+ * Seed: tạo role super-admin + 2 tài khoản quản trị hệ thống mặc định.
+ *
+ * super-admin:
+ *  - Không thuộc bất kỳ Organization nào (organization_id = null)
+ *  - Bypass toàn bộ Gate checks (xem AppServiceProvider::Gate::before)
+ *  - Có tất cả permissions hiện tại
+ *
+ * Tài khoản mặc định:
+ *  admin@system.local        / Admin@123!
+ *  superadmin@system.local   / Admin@123!
+ *
+ * ⚠️  Đổi mật khẩu ngay sau khi deploy production.
+ */
 class AuthDatabaseSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // $this->call([]);
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+
+        $superAdminRole = $this->createSuperAdminRole();
+        $this->createSystemAdmins($superAdminRole);
+
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+
+        $this->command->info('  ✓ super-admin role + 2 system accounts seeded.');
+    }
+
+    // ── Tạo role super-admin với toàn bộ permissions ──────────────────
+    private function createSuperAdminRole(): Role
+    {
+        $role = Role::firstOrCreate([
+            'name'       => 'super-admin',
+            'guard_name' => 'web',
+        ]);
+
+        // Sync toàn bộ permissions hiện có vào super-admin
+        $role->syncPermissions(Permission::all());
+
+        return $role;
+    }
+
+    // ── Tạo 2 tài khoản quản trị hệ thống mặc định ───────────────────
+    private function createSystemAdmins(Role $role): void
+    {
+        $admins = [
+            [
+                'name'  => 'System Administrator',
+                'email' => 'admin@system.local',
+            ],
+            [
+                'name'  => 'Super Administrator',
+                'email' => 'superadmin@system.local',
+            ],
+        ];
+
+        foreach ($admins as $data) {
+            // withoutGlobalScopes: tránh OrganizationScope filter khi seed
+            $user = User::withoutGlobalScopes()->firstOrCreate(
+                ['email' => $data['email']],
+                [
+                    'name'            => $data['name'],
+                    'password'        => Hash::make('Admin@123!'),
+                    'organization_id' => null,
+                ]
+            );
+
+            $user->syncRoles($role);
+        }
     }
 }

@@ -62,6 +62,8 @@ npx vite build --config vite.config.backend.js
 # Sửa JSON → chạy lệnh này → DB cập nhật đầy đủ
 php artisan migration:generate --fresh
 
+php artisan db:seed --class="Modules\Auth\Database\Seeders\AuthDatabaseSeeder"
+
 composer update --ignore-platform-reqs <= chạy cái này ở window nếu php8.3
 
 php artisan module:make Auth
