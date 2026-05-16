@@ -12,7 +12,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'tenant' => \App\Http\Middleware\IdentifyOrganization::class,
+            'tenant'        => \App\Http\Middleware\IdentifyOrganization::class,
+            'assert.tenant' => \App\Http\Middleware\AssertTenant::class,
         ]);
         $middleware->web(\App\Http\Middleware\IdentifyOrganization::class);
     })
