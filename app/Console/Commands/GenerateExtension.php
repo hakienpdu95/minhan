@@ -50,27 +50,11 @@ class GenerateExtension extends Command
             return self::SUCCESS; // Không phải lỗi — file có thể chưa có
         }
 
-        $raw     = File::get($jsonPath);
-
-        // File rỗng (0 byte hoặc chỉ có whitespace) → không có gì để generate
-        if (trim($raw) === '') {
-            $this->warn('render_extension_file.json rỗng — không có gì để generate.');
-            return self::SUCCESS;
-        }
-
-        $cleaned = $this->sanitizeJson($raw);
-        $json    = json_decode($cleaned, true);
+        $raw  = File::get($jsonPath);
+        $json = json_decode($this->sanitizeJson($raw), true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             $this->error('JSON không hợp lệ: ' . json_last_error_msg());
-            // Tìm dòng lỗi gần đúng
-            $lines = explode("\n", $cleaned);
-            foreach ($lines as $i => $line) {
-                $testJson = json_decode($line);
-                if ($line !== '' && json_last_error() !== JSON_ERROR_NONE && str_starts_with(trim($line), '"')) {
-                    $this->line('<fg=red>  → Dòng ' . ($i + 1) . ' có thể lỗi: ' . mb_substr($line, 0, 120) . '</>');
-                }
-            }
-            $this->line('<fg=yellow>Gợi ý: trailing comma hoặc ký tự ẩn trong file JSON</>');
+            $this->line('<fg=yellow>Gợi ý: kiểm tra trailing comma (dấu phẩy thừa) sau phần tử cuối array</>');
             return self::FAILURE;
         }
 
@@ -177,9 +161,12 @@ class GenerateExtension extends Command
             while (count($p) < 7) $p[] = '__';
             [$colName, $colType, $colLen, $colNull, $colDefault, $colMod, $colComment] = $p;
 
-            // after() tự động:
-            // - cột đầu tiên: after = firstAfter (từ header)
-            // - cột tiếp theo: after = cột ngay trước
+            // Special directives — xử lý riêng, không tính là cột
+            if (in_array($colName, ['__index', '__primary', '__fk'])) {
+                $this->buildIndexDirective($colMod, $colType, $upLines);
+                continue;
+            }
+
             $afterClause = $prevColName ? "->after('$prevColName')" : '';
             $prevColName = $colName;
 
@@ -205,10 +192,11 @@ class GenerateExtension extends Command
         foreach ($fkCols as $fkCol) {
             $downLines[] = "\$table->dropForeign(['$fkCol']);";
         }
-        $allNames = array_map(
-            fn($r) => "'" . trim(explode('///', $r)[0]) . "'",
-            $rows
+        $allNames = array_filter(
+            array_map(fn($r) => trim(explode('///', $r)[0]), $rows),
+            fn($n) => !in_array($n, ['__index', '__primary', '__fk', '__initial_data'])
         );
+        $allNames = array_map(fn($n) => "'$n'", array_values($allNames));
         if (count($allNames) === 1) {
             $downLines[] = "\$table->dropColumn({$allNames[0]});";
         } else {
@@ -366,6 +354,25 @@ class GenerateExtension extends Command
     // HELPERS
     // ──────────────────────────────────────────────────────────────
 
+    private function buildIndexDirective(string $colMod, string $indexType, array &$lines): void
+    {
+        $method = match (strtolower($indexType)) {
+            'fulltext' => 'fullText',
+            'unique'   => 'unique',
+            'spatial'  => 'spatialIndex',
+            default    => 'index',
+        };
+
+        foreach (explode(';', $colMod) as $entry) {
+            $entry = trim($entry);
+            if ($entry === '' || $entry === '__') continue;
+            $cols    = array_map(fn($c) => "'" . trim($c) . "'", explode(',', $entry));
+            $lines[] = count($cols) > 1
+                ? "\$table->$method([" . implode(', ', $cols) . "]);"
+                : "\$table->$method({$cols[0]});";
+        }
+    }
+
     private function isForeignKey(string $type, string $mod): bool
     {
         return $type === 'unsignedBigInteger' && str_contains($mod, 'constrained')
@@ -413,31 +420,26 @@ class GenerateExtension extends Command
      * - Xóa trailing comma (dấu phẩy thừa sau phần tử cuối)
      * - Xóa // comment (không hợp lệ trong JSON chuẩn)
      */
+    /**
+     * Sanitize JSON: BOM, CRLF, control chars, trailing comma
+     */
     private function sanitizeJson(string $raw): string
     {
-        // 1. Xóa BOM UTF-8 (EF BB BF) nếu có
-        $raw = ltrim($raw, "\xEF\xBB\xBF");
-
-        // 2. Chuẩn hóa line ending
-        $raw = str_replace(["\r\n", "\r"], "\n", $raw);
-
-        // 3. Ép về UTF-8 hợp lệ — thay byte không hợp lệ bằng '?'
-        if (function_exists('mb_convert_encoding')) {
-            $raw = mb_convert_encoding($raw, 'UTF-8', 'UTF-8');
+        // BOM: UTF-8 (EF BB BF) hoặc UTF-16
+        if (str_starts_with($raw, "\xEF\xBB\xBF")) {
+            $raw = substr($raw, 3);
+        } elseif (str_starts_with($raw, "\xFF\xFE") || str_starts_with($raw, "\xFE\xFF")) {
+            $raw = mb_convert_encoding($raw, 'UTF-8', 'UTF-16');
         }
 
-        // 4. Xóa toàn bộ control characters (0x00–0x1F) trừ \t (0x09) và \n (0x0A)
-        //    Không dùng flag /u để tránh fail khi gặp byte UTF-8 lạ
-        $raw = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $raw);
+        // CRLF → LF
+        $raw = str_replace(["\r\n", "\r"], "\n", $raw);
 
-        // 5. Xóa zero-width space (U+200B) và non-breaking space (U+00A0)
-        $raw = str_replace(["\xE2\x80\x8B", "\xC2\xA0"], ['', ' '], $raw);
+        // Control characters 0x00-0x1F trừ tab(0x09) và LF(0x0A)
+        $raw = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $raw);
 
-        // 6. KHÔNG xóa // comment vì /// là delimiter nội dung trong string JSON
-        //    Regex cũ `//(?!/)` vẫn match `//` đầu của `///` → cắt mất nội dung string
-
-        // 7. Xóa trailing comma trước ] hoặc }
-        $raw = preg_replace('/,\s*([\]\}])/', '$1', $raw);
+        // Trailing comma trước ] hoặc }
+        $raw = preg_replace('/,(\s*[\]\}])/', '$1', $raw);
 
         return $raw;
     }
@@ -488,6 +490,10 @@ class GenerateExtension extends Command
                     $this->error("$table[$j]: cần 7 phần, nhận " . count($p) . " → '$field'");
                     return false;
                 }
+
+                // Skip special directives — không validate type
+                if (in_array($p[0], ['__index', '__primary', '__fk', '__initial_data'])) continue;
+
                 // drop action: không cần validate type
                 if ($action === 'drop') continue;
 

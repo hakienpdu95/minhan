@@ -1,6 +1,14 @@
 [
   [
-    "users///__///__///Bảng lưu thông tin vùng",
-    "slug///string///255///NOT_NULL///__///->index()///Tên slug"
+    "organizations///add///__///Thêm owner_id — không FK ở DB, dùng Model relationship",
+    "owner_id///unsignedBigInteger///__///_NULL///NULL///->index()///ID người sở hữu org"
+  ],
+  [
+    "users///add///email///Thêm organization_id vào users",
+    "organization_id///unsignedBigInteger///__///_NULL///NULL///->constrained('organizations')->nullOnDelete()///Thuộc tổ chức nào",
+    "department///string///50///_NULL///NULL///->index()///Phòng ban: hr, sales, ops, marketing",
+    "last_active_at///timestamp///__///_NULL///NULL///__///Lần hoạt động cuối",
+    "is_active///boolean///__///NOT_NULL///true///->index()///Trạng thái tài khoản",
+    "__index///index///__///__///__///organization_id///Index cho FK"
   ]
 ]

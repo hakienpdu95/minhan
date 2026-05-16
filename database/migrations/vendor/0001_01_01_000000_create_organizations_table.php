@@ -15,7 +15,12 @@ return new class extends Migration
             $table->id();
             $table->uuid()->nullable()->unique();
             $table->string('name');
+            $table->string('slug')->unique();
+            $table->string('status')->default('active');
+            $table->json('settings')->nullable();
             $table->timestamps();
+
+            $table->index('status');
         });
     }
 
