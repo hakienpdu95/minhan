@@ -1,0 +1,6 @@
+[
+  [
+    "users///__///__///Bảng lưu thông tin vùng",
+    "slug///string///255///NOT_NULL///__///->index()///Tên slug"
+  ]
+]
