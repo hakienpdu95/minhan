@@ -1,0 +1,239 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Enums\PermissionEnum as P;
+use App\Enums\RoleEnum;
+use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
+
+class RolePermissionSeeder extends Seeder
+{
+    public function run(): void
+    {
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+
+        $this->createAllPermissions();
+        $this->createRolesWithPermissions();
+
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+    }
+
+    // ── Tạo toàn bộ permissions từ PermissionEnum ─────────────────────
+
+    private function createAllPermissions(): void
+    {
+        foreach (P::cases() as $permission) {
+            Permission::firstOrCreate([
+                'name'       => $permission->value,
+                'guard_name' => 'web',
+            ]);
+        }
+    }
+
+    // ── Map role → danh sách permission values ────────────────────────
+
+    private function createRolesWithPermissions(): void
+    {
+        foreach ($this->rolePermissionMap() as $roleName => $permissions) {
+            $role = Role::firstOrCreate([
+                'name'       => $roleName,
+                'guard_name' => 'web',
+            ]);
+
+            $role->syncPermissions($permissions);
+        }
+    }
+
+    // ── Bảng phân quyền đầy đủ theo File 03 User Role Analysis ────────
+
+    private function rolePermissionMap(): array
+    {
+        return [
+
+            // ─────────────────────────────────────────────────────────
+            // CEO / Founder — Full visibility, approve SOP, manage leads
+            // ─────────────────────────────────────────────────────────
+            RoleEnum::CEO->value => [
+                P::CEO_DASH_FULL->value,
+
+                P::LEADS_VIEW_ALL->value,
+                P::LEADS_CREATE->value,
+                P::LEADS_EDIT->value,
+                P::LEADS_DELETE->value,
+                P::LEADS_ASSIGN->value,
+
+                P::SALES_AI_VIEW->value,
+
+                P::TASKS_VIEW_ALL->value,
+                P::TASKS_CREATE->value,
+                P::TASKS_EDIT->value,
+                P::TASKS_ASSIGN->value,
+                P::TASKS_CLOSE->value,
+
+                P::SOP_VIEW->value,
+                P::SOP_APPROVE->value,
+
+                P::WORKFLOW_MONITOR->value,
+
+                P::PROMPT_VIEW->value,
+
+                P::AI_LOGS_VIEW->value,
+
+                P::USERS_VIEW->value,
+
+                P::REPORTS_FULL->value,
+
+                P::AUDIT_VIEW->value,
+            ],
+
+            // ─────────────────────────────────────────────────────────
+            // Sales Team — Assigned leads, own tasks, AI assist
+            // ─────────────────────────────────────────────────────────
+            RoleEnum::SALES->value => [
+                P::LEADS_VIEW_ASSIGNED->value,
+                P::LEADS_CREATE->value,
+                P::LEADS_EDIT->value,
+
+                P::SALES_AI_USE->value,
+
+                P::TASKS_VIEW_ASSIGNED->value,
+                P::TASKS_CREATE->value,
+
+                P::SOP_VIEW_RELATED->value,
+
+                P::WORKFLOW_VIEW_LIMITED->value,
+
+                P::REPORTS_PERSONAL->value,
+                P::REPORTS_TEAM->value,
+            ],
+
+            // ─────────────────────────────────────────────────────────
+            // Operations — Full task control, SOP authoring, workflow monitoring
+            // ─────────────────────────────────────────────────────────
+            RoleEnum::OPS->value => [
+                P::CEO_DASH_VIEW->value,
+
+                P::LEADS_VIEW_ALL->value,
+
+                P::TASKS_VIEW_ALL->value,
+                P::TASKS_CREATE->value,
+                P::TASKS_EDIT->value,
+                P::TASKS_ASSIGN->value,
+                P::TASKS_CLOSE->value,
+
+                P::SOP_VIEW->value,
+                P::SOP_CREATE->value,
+                P::SOP_EDIT->value,
+
+                P::WORKFLOW_MONITOR->value,
+                P::WORKFLOW_EDIT->value,
+
+                P::AI_LOGS_VIEW->value,
+
+                P::REPORTS_OPS->value,
+            ],
+
+            // ─────────────────────────────────────────────────────────
+            // Marketing — Source-view leads, campaign tracking, limited tasks
+            // ─────────────────────────────────────────────────────────
+            RoleEnum::MARKETING->value => [
+                P::LEADS_VIEW_SOURCE->value,
+
+                P::SALES_AI_VIEW->value,
+
+                P::TASKS_VIEW_LIMITED->value,
+                P::TASKS_CREATE->value,
+
+                P::SOP_VIEW_RELATED->value,
+
+                P::WORKFLOW_VIEW_LIMITED->value,
+
+                P::REPORTS_MARKETING->value,
+            ],
+
+            // ─────────────────────────────────────────────────────────
+            // HR / Admin Staff — Onboarding, HR SOP, HR tasks
+            // ─────────────────────────────────────────────────────────
+            RoleEnum::HR->value => [
+                P::TASKS_VIEW_DEPT->value,
+                P::TASKS_CREATE->value,
+
+                P::SOP_VIEW->value,
+                P::SOP_CREATE_HR->value,
+
+                P::WORKFLOW_VIEW_LIMITED->value,
+
+                P::USERS_HR->value,
+
+                P::REPORTS_HR->value,
+            ],
+
+            // ─────────────────────────────────────────────────────────
+            // AI Operator — Prompt management, AI logs, workflow AI config
+            // ─────────────────────────────────────────────────────────
+            RoleEnum::AI_OP->value => [
+                P::CEO_DASH_VIEW->value,
+
+                P::LEADS_VIEW_ALL->value,
+
+                P::TASKS_VIEW_LIMITED->value,
+
+                P::SOP_VIEW->value,
+                P::SOP_AI_CONFIG->value,
+
+                P::WORKFLOW_MONITOR->value,
+                P::WORKFLOW_AI_CONFIG->value,
+
+                P::PROMPT_FULL->value,
+
+                P::AI_LOGS_FULL->value,
+
+                P::REPORTS_AI_USAGE->value,
+            ],
+
+            // ─────────────────────────────────────────────────────────
+            // System Admin — Full config access, no business data access
+            // ─────────────────────────────────────────────────────────
+            RoleEnum::ADMIN->value => [
+                P::CEO_DASH_VIEW->value,
+                P::CEO_DASH_CONFIG->value,
+
+                P::LEADS_CONFIG->value,
+
+                P::SALES_AI_CONFIG->value,
+
+                P::TASKS_CONFIG->value,
+
+                P::SOP_CONFIG->value,
+
+                P::WORKFLOW_FULL_CONFIG->value,
+
+                P::PROMPT_ADMIN_CONFIG->value,
+
+                P::AI_LOGS_FULL->value,
+
+                P::USERS_MANAGE->value,
+                P::ROLES_MANAGE->value,
+
+                P::REPORTS_FULL->value,
+
+                P::INTEGRATION_MANAGE->value,
+                P::AUDIT_VIEW->value,
+                P::SYSTEM_CONFIG->value,
+            ],
+
+            // ─────────────────────────────────────────────────────────
+            // Viewer / Partner — Read-only, shared reports
+            // ─────────────────────────────────────────────────────────
+            RoleEnum::VIEWER->value => [
+                P::CEO_DASH_VIEW->value,
+                P::TASKS_VIEW_LIMITED->value,
+                P::SOP_VIEW->value,
+                P::REPORTS_SHARED->value,
+            ],
+        ];
+    }
+}
