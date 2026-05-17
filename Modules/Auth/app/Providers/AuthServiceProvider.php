@@ -7,10 +7,17 @@ use Laravel\Fortify\Actions\EnsureLoginIsNotThrottled;
 use Laravel\Fortify\Actions\PrepareAuthenticatedSession;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
+use Laravel\Fortify\Contracts\LogoutResponse as LogoutResponseContract;
+use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
+use Modules\Auth\Actions\Auth\RegisterUserAction;
+use Modules\Auth\Actions\Auth\ResetPasswordAction;
+use Modules\Auth\Actions\Auth\UpdateProfileAction;
 use Modules\Auth\Fortify\ValidateTurnstile;
 use Modules\Auth\Http\Responses\LoginResponse;
+use Modules\Auth\Http\Responses\LogoutResponse;
+use Modules\Auth\Http\Responses\RegisterResponse;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class AuthServiceProvider extends ModuleServiceProvider
@@ -25,17 +32,33 @@ class AuthServiceProvider extends ModuleServiceProvider
 
     public function register(): void
     {
-        // Override LoginResponse → redirect về /dashboard sau khi đăng nhập
+        parent::register(); // đăng ký EventServiceProvider + RouteServiceProvider
+
         $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
+        $this->app->singleton(RegisterResponseContract::class, RegisterResponse::class);
+        $this->app->singleton(LogoutResponseContract::class, LogoutResponse::class);
     }
 
     public function boot(): void
     {
-        // ModuleServiceProvider tự load: views, migrations, translations, config
         parent::boot();
 
+        $this->bootFortifyActions();
         $this->bootFortifyViews();
         $this->bootFortifyPipeline();
+    }
+
+    // ── Override Fortify actions với module Actions ────────────────────
+    // Dùng app()->booted() (Application::booted) thay vì $this->booted() (ServiceProvider::booted)
+    // vì ServiceProvider::booted() chỉ chạy ngay sau provider đó, không phải sau TẤT CẢ providers.
+    // App\Providers\FortifyServiceProvider boot sau module này nên phải override bằng Application::booted().
+    private function bootFortifyActions(): void
+    {
+        $this->app->booted(function () {
+            Fortify::createUsersUsing(RegisterUserAction::class);
+            Fortify::resetUserPasswordsUsing(ResetPasswordAction::class);
+            Fortify::updateUserProfileInformationUsing(UpdateProfileAction::class);
+        });
     }
 
     // ── Fortify views → module Auth views ─────────────────────────────

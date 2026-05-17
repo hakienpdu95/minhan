@@ -10,18 +10,24 @@ use App\Shared\Tenancy\TenantContext;
 |--------------------------------------------------------------------------
 | Fortify đã đăng ký sẵn: GET/POST /login, POST /logout,
 | GET/POST /register, GET/POST /forgot-password, POST /reset-password.
+| Fortify cũng đăng ký: PUT /user/profile-information, PUT /user/password.
 |
-| File này chỉ bổ sung /home redirect và /auth/me debug endpoint.
+| File này bổ sung: /home redirect, /auth/me debug, /auth/profile.
 */
 
 Route::get('/home', function () {
     return redirect('/');
 })->middleware('auth')->name('home');
 
-// Debug endpoint: xem user + tenant + RBAC đang hoạt động
-Route::middleware(['auth', 'tenant'])->prefix('auth')->name('auth.')->group(function () {
+Route::middleware(['auth'])->prefix('auth')->name('auth.')->group(function () {
 
-    Route::get('/me', function (Request $request) {
+    // Profile page — xem và cập nhật thông tin cá nhân
+    Route::get('/profile', fn (Request $request) => view('auth::profile', [
+        'user' => $request->user(),
+    ]))->name('profile');
+
+    // Debug endpoint: xem user + tenant + RBAC đang hoạt động
+    Route::middleware('tenant')->get('/me', function (Request $request) {
         $user = $request->user()->load('organization');
 
         return response()->json([

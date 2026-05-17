@@ -4,7 +4,7 @@ namespace App\Shared\Support;
 
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Model;
-use Spatie\Activitylog\ActivityLogger as SpatieLogger;
+use Spatie\Activitylog\Support\ActivityLogger as SpatieLogger;
 
 /**
  * Thin wrapper around spatie/laravel-activitylog.

@@ -67,3 +67,5 @@ php artisan db:seed --class="Modules\Auth\Database\Seeders\AuthDatabaseSeeder"
 composer update --ignore-platform-reqs <= chạy cái này ở window nếu php8.3
 
 php artisan module:make Auth
+
+# > Đọc file spec/payment_module.md và implement theo đúng spec đó

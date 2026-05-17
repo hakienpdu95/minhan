@@ -19,7 +19,7 @@ use Spatie\Permission\PermissionRegistrar;
  *
  * Tài khoản mặc định:
  *  admin@system.local        / Admin@123!
- *  superadmin@system.local   / Admin@123!
+ *  super-admin@system.local  / Admin@123!
  *
  * ⚠️  Đổi mật khẩu ngay sau khi deploy production.
  */
@@ -61,7 +61,7 @@ class AuthDatabaseSeeder extends Seeder
             ],
             [
                 'name'  => 'Super Administrator',
-                'email' => 'superadmin@system.local',
+                'email' => 'super-admin@system.local',
             ],
         ];
 
