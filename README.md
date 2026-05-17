@@ -69,3 +69,18 @@ composer update --ignore-platform-reqs <= chạy cái này ở window nếu php8
 php artisan module:make Auth
 
 # > Đọc file spec/payment_module.md và implement theo đúng spec đó
+
+# 1. Tạo 8 roles + ~40 permissions
+php artisan db:seed --class="Database\Seeders\RolePermissionSeeder"
+
+# 2. Tạo role super-admin + 2 tài khoản hệ thống
+php artisan db:seed --class="Modules\Auth\Database\Seeders\AuthDatabaseSeeder"
+
+# 3. Tạo organization demo
+php artisan db:seed --class="Database\Seeders\OrganizationSeeder"
+
+php artisan db:seed --class="Database\Seeders\RolePermissionSeeder"
+
+# 4. Tạo 8 users test (mỗi role 1 user)
+php artisan db:seed --class="Database\Seeders\UserSeeder"
+
