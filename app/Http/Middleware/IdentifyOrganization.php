@@ -95,19 +95,35 @@ class IdentifyOrganization
 
     private function findBySlug(string $slug): ?Organization
     {
-        return Cache::remember(
+        // Cache ID only (not the model) để tránh __PHP_Incomplete_Class khi deserialize
+        $id = Cache::remember(
             "org.slug.{$slug}",
             now()->addMinutes(5),
-            fn () => Organization::active()->bySlug($slug)->first()
+            fn () => Organization::active()->bySlug($slug)->value('id')
         );
+
+        return $id ? Organization::find($id) : null;
     }
 
     private function findById(int $id): ?Organization
     {
-        return Cache::remember(
-            "org.id.{$id}",
-            now()->addMinutes(5),
-            fn () => Organization::find($id)
-        );
+        // Validate cache entry còn hợp lệ trước khi dùng
+        $cached = Cache::get("org.id.{$id}");
+
+        if ($cached !== null) {
+            if ($cached instanceof Organization) {
+                return $cached;
+            }
+            // Stale / corrupt entry — xóa và query lại
+            Cache::forget("org.id.{$id}");
+        }
+
+        $org = Organization::find($id);
+
+        if ($org) {
+            Cache::put("org.id.{$id}", $org, now()->addMinutes(5));
+        }
+
+        return $org;
     }
 }
