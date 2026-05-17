@@ -41,7 +41,7 @@ class Organization extends Model
                 $org->uuid = (string) Str::uuid();
             }
             if (empty($org->slug)) {
-                $org->slug = static::generateUniqueSlug($org->name);
+                $org->slug = static::generateSlug($org->name);
             }
         });
     }
@@ -89,7 +89,7 @@ class Organization extends Model
         $this->update(['settings' => $settings]);
     }
 
-    private static function generateUniqueSlug(string $name): string
+    public static function generateSlug(string $name): string
     {
         $slug = Str::slug($name);
         $count = static::where('slug', 'like', "{$slug}%")->count();

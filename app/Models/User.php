@@ -9,11 +9,13 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Modules\Organization\Models\OrganizationMember;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'organization_id'])]
+#[Fillable(['name', 'email', 'password', 'organization_id', 'department', 'is_active', 'last_active_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -24,7 +26,9 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_active_at'    => 'datetime',
             'password'          => 'hashed',
+            'is_active'         => 'boolean',
         ];
     }
 
@@ -33,6 +37,11 @@ class User extends Authenticatable
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);
+    }
+
+    public function organizationMembership(): HasOne
+    {
+        return $this->hasOne(OrganizationMember::class);
     }
 
     // ── Tenant Helpers ───────────────────────────────────────────────

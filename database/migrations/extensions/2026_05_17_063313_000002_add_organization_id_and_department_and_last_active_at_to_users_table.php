@@ -11,9 +11,9 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->foreignId('organization_id')->nullable()->constrained('organizations')->nullOnDelete()->after('email')->comment('Thuộc tổ chức nào');
+            $table->foreignId('organization_id')->nullable()->constrained('organizations')->nullOnDelete()->after('email')->comment('Thuộc tổ chức nào — null nếu super-admin');
             $table->string('department', 50)->nullable()->index()->after('organization_id')->comment('Phòng ban: hr, sales, ops, marketing');
-            $table->timestamp('last_active_at')->nullable()->after('department')->comment('Lần hoạt động cuối');
+            $table->timestamp('last_active_at')->nullable()->after('department')->comment('Lần hoạt động cuối cùng');
             $table->boolean('is_active')->default(true)->index()->after('last_active_at')->comment('Trạng thái tài khoản');
             $table->index('organization_id');
         });
