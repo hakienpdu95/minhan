@@ -12,6 +12,7 @@ use Spatie\LaravelData\Data;
 class CreateOrganizationData extends Data
 {
     public function __construct(
+        // ── Thông tin cơ bản ─────────────────────────────────────────
         #[Required, Max(255)]
         public readonly string $name,
 
@@ -30,16 +31,26 @@ class CreateOrganizationData extends Data
         #[Nullable, Max(100)]
         public readonly ?string $industry,
 
-        #[Nullable, Max(500)]
-        public readonly ?string $address,
+        #[Nullable]
+        public readonly ?string $description = null,
 
-        #[Nullable, Max(100)]
-        public readonly ?string $city,
-
+        // ── Địa chỉ ──────────────────────────────────────────────────
         #[Max(2)]
         public readonly string $country = 'VN',
 
+        #[Nullable, Max(500)]
+        public readonly ?string $address = null,
+
+        #[Nullable, Max(100)]
+        public readonly ?string $city = null,
+
+        #[Nullable, Max(2)]
+        public readonly ?string $province_code = null,
+
+        #[Nullable, Max(5)]
+        public readonly ?string $ward_code = null,
+
         #[Nullable]
-        public readonly ?string $description = null,
+        public readonly ?string $full_address = null,
     ) {}
 }

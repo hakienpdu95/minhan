@@ -15,6 +15,7 @@ class GenerateExtension extends Command
 
     protected $signature = 'extension:generate
         {--from=render_extension_file.json : JSON file tại project root}
+        {--start-at=1 : Số thứ tự bắt đầu — truyền (generated_count+1) để tránh sort trước generated}
         {--force : Bỏ qua xác nhận}';
 
     protected $description = 'Generate ALTER TABLE migrations từ JSON vào migrations/extensions/';
@@ -64,6 +65,7 @@ class GenerateExtension extends Command
 
         // 5. Generate
         $timestamp = Carbon::now();
+        $startAt   = max(1, (int) $this->option('start-at'));
         $count     = 0;
 
         foreach ($json as $blockData) {
@@ -85,7 +87,7 @@ class GenerateExtension extends Command
             $fileName = sprintf(
                 '%s_%06d_%s_%s_to_%s_table.php',
                 $timestamp->format('Y_m_d_His'),
-                $count,
+                $startAt + $count - 1,
                 $action,
                 Str::snake(implode('_and_', array_slice($colNames, 0, 3))),
                 $tableName

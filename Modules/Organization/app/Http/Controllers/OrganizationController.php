@@ -12,6 +12,34 @@ use Modules\Organization\Models\Organization;
 
 class OrganizationController extends Controller
 {
+    // ── Validation rules (DRY) ──────────────────────────────────────
+
+    private function rules(bool $isUpdate = false, ?int $currentId = null): array
+    {
+        return [
+            'name'          => 'required|string|max:255',
+            'slug'          => 'nullable|string|max:255|regex:/^[a-z0-9\-]+$/'
+                               . ($isUpdate ? '|unique:organizations,slug,' . $currentId : '|unique:organizations,slug'),
+            'status'        => 'required|in:active,inactive,suspended',
+            'tax_code'      => 'nullable|string|max:20',
+            'phone'         => 'nullable|string|max:20',
+            'email'         => 'nullable|email|max:255',
+            'website'       => 'nullable|url|max:255',
+            'industry'      => 'nullable|string|max:100',
+            'address'       => 'nullable|string|max:500',
+            'city'          => 'nullable|string|max:100',
+            'country'       => 'nullable|string|size:2',
+            'postal_code'   => 'nullable|string|max:20',
+            'description'   => 'nullable|string',
+            'logo_path'     => 'nullable|string|max:500',
+            'province_code' => 'nullable|string|size:2|exists:provinces,province_code',
+            'ward_code'     => 'nullable|string|size:5|exists:wards,ward_code',
+            'full_address'  => 'nullable|string',
+        ];
+    }
+
+    // ── CRUD ────────────────────────────────────────────────────────
+
     public function index()
     {
         $organizations = Organization::withCount('members')
@@ -28,21 +56,7 @@ class OrganizationController extends Controller
 
     public function store(Request $request, StoreOrganizationAction $action): RedirectResponse
     {
-        $validated = $request->validate([
-            'name'        => 'required|string|max:255',
-            'slug'        => 'nullable|string|max:255|unique:organizations,slug|regex:/^[a-z0-9\-]+$/',
-            'status'      => 'required|in:active,inactive,suspended',
-            'tax_code'    => 'nullable|string|max:20',
-            'phone'       => 'nullable|string|max:20',
-            'email'       => 'nullable|email|max:255',
-            'website'     => 'nullable|url|max:255',
-            'industry'    => 'nullable|string|max:100',
-            'address'     => 'nullable|string|max:500',
-            'city'        => 'nullable|string|max:100',
-            'country'     => 'nullable|string|size:2',
-            'postal_code' => 'nullable|string|max:20',
-            'description' => 'nullable|string',
-        ]);
+        $validated = $request->validate($this->rules());
 
         $organization = $action->handle($validated);
 
@@ -52,7 +66,7 @@ class OrganizationController extends Controller
 
     public function show(Organization $organization)
     {
-        $organization->loadCount('members');
+        $organization->loadCount('members')->load(['province', 'ward']);
         $members = $organization->members()->with('user')->latest()->limit(10)->get();
 
         return view('organization::show', compact('organization', 'members'));
@@ -65,21 +79,7 @@ class OrganizationController extends Controller
 
     public function update(Request $request, Organization $organization, UpdateOrganizationAction $action): RedirectResponse
     {
-        $validated = $request->validate([
-            'name'        => 'required|string|max:255',
-            'slug'        => 'nullable|string|max:255|unique:organizations,slug,' . $organization->id . '|regex:/^[a-z0-9\-]+$/',
-            'status'      => 'required|in:active,inactive,suspended',
-            'tax_code'    => 'nullable|string|max:20',
-            'phone'       => 'nullable|string|max:20',
-            'email'       => 'nullable|email|max:255',
-            'website'     => 'nullable|url|max:255',
-            'industry'    => 'nullable|string|max:100',
-            'address'     => 'nullable|string|max:500',
-            'city'        => 'nullable|string|max:100',
-            'country'     => 'nullable|string|size:2',
-            'postal_code' => 'nullable|string|max:20',
-            'description' => 'nullable|string',
-        ]);
+        $validated = $request->validate($this->rules(isUpdate: true, currentId: $organization->id));
 
         $action->handle($organization, $validated);
 

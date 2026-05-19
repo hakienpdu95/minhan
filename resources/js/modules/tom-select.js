@@ -49,5 +49,81 @@ function initTagsInput(selector, options = {}) {
 window.initTomSelect  = initTomSelect;
 window.initTagsInput  = initTagsInput;
 window.TomSelect      = TomSelect;
-export { initTomSelect, initTagsInput, TomSelectInstances };
+
+/**
+ * Province → Ward cascading selects.
+ *
+ * @param {string} provId     - ID of the province <select>
+ * @param {string} wardId     - ID of the ward <select>
+ * @param {string} initProv   - pre-selected province_code (edit form / old())
+ * @param {string} initWard   - pre-selected ward_code (edit form / old())
+ */
+function initOrgAddress(provId, wardId, initProv, initWard) {
+    const provEl = document.getElementById(provId);
+    const wardEl = document.getElementById(wardId);
+    if (!provEl || !wardEl) return;
+
+    let pendingWard = initWard || null;
+
+    // Ward: starts disabled, populated on province change
+    const wardTs = new TomSelect(wardEl, {
+        ...DEFAULTS,
+        placeholder: 'Chọn tỉnh / TP trước',
+        maxOptions: null,
+        plugins: ['clear_button'],
+    });
+    wardTs.disable();
+
+    // Province: full searchable list, triggers ward load on change
+    const provTs = new TomSelect(provEl, {
+        ...DEFAULTS,
+        placeholder: 'Tìm tỉnh / thành phố...',
+        maxOptions: null,
+        plugins: ['clear_button'],
+        onChange: loadWards,
+    });
+
+    function setWardPlaceholder(text) {
+        wardTs.settings.placeholder = text;
+        wardTs.control_input.placeholder = text;
+    }
+
+    async function loadWards(code) {
+        wardTs.clear(true);
+        wardTs.clearOptions();
+        wardTs.disable();
+
+        if (!code) {
+            setWardPlaceholder('Chọn tỉnh / TP trước');
+            return;
+        }
+
+        setWardPlaceholder('Đang tải...');
+
+        try {
+            const res   = await fetch('/api/provinces/' + code + '/wards');
+            const wards = await res.json();
+
+            wards.forEach(w => wardTs.addOption({ value: w.ward_code, text: w.name }));
+            setWardPlaceholder('Tìm phường / xã...');
+            wardTs.enable();
+
+            if (pendingWard) {
+                wardTs.setValue(pendingWard, true);
+                pendingWard = null;
+            }
+        } catch (err) {
+            console.error('[orgAddress] Lỗi tải phường/xã:', err);
+            setWardPlaceholder('Lỗi tải dữ liệu');
+            wardTs.enable();
+        }
+    }
+
+    // Pre-load wards if province already set (edit form)
+    if (initProv) loadWards(initProv);
+}
+
+window.initOrgAddress = initOrgAddress;
+
+export { initTomSelect, initTagsInput, initOrgAddress, TomSelectInstances };
 export default TomSelect;

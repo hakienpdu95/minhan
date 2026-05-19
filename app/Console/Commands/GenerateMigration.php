@@ -141,8 +141,9 @@ class GenerateMigration extends Command
             $this->newLine();
             $this->line('<fg=cyan>Chạy extension:generate...</>');
             $extCode = $this->call('extension:generate', array_filter([
-                '--from'  => 'render_extension_file.json',
-                '--force' => $this->option('force') ?: null,
+                '--from'     => 'render_extension_file.json',
+                '--start-at' => $count + 1, // Đảm bảo extensions sort SAU tất cả generated
+                '--force'    => $this->option('force') ?: null,
             ]));
             if ($extCode !== 0) {
                 $this->error('extension:generate thất bại.');

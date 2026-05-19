@@ -23,13 +23,20 @@ return new class extends Migration {
             $table->string('postal_code', 20)->nullable()->after('country')->comment('Mã bưu chính');
             $table->text('description')->nullable()->after('postal_code')->comment('Mô tả về tổ chức');
             $table->string('logo_path', 500)->nullable()->after('description')->comment('Đường dẫn đến file logo');
+            $table->char('province_code', 2)->nullable()->after('logo_path')->comment('Tỉnh/thành phố — FK tới provinces.province_code');
+            $table->foreign('province_code')->references('province_code')->on('provinces')->nullOnDelete();
+            $table->char('ward_code', 5)->nullable()->after('province_code')->comment('Phường/xã — FK tới wards.ward_code');
+            $table->foreign('ward_code')->references('ward_code')->on('wards')->nullOnDelete();
+            $table->text('full_address')->nullable()->after('ward_code')->comment('Địa chỉ đầy đủ kết hợp (số nhà + phường/xã + tỉnh)');
         });
     }
 
     public function down(): void
     {
         Schema::table('organizations', function (Blueprint $table) {
-            $table->dropColumn(['owner_id', 'tax_code', 'phone', 'email', 'website', 'industry', 'address', 'city', 'country', 'postal_code', 'description', 'logo_path']);
+            $table->dropForeign(['province_code']);
+            $table->dropForeign(['ward_code']);
+            $table->dropColumn(['owner_id', 'tax_code', 'phone', 'email', 'website', 'industry', 'address', 'city', 'country', 'postal_code', 'description', 'logo_path', 'province_code', 'ward_code', 'full_address']);
         });
     }
 };

@@ -75,8 +75,10 @@
                 @if ($organization->website)
                 <div class="sm:col-span-2"><dt class="text-base-content/50 text-xs uppercase tracking-wide mb-0.5">Website</dt><dd><a href="{{ $organization->website }}" target="_blank" class="link link-primary">{{ $organization->website }}</a></dd></div>
                 @endif
-                @if ($organization->address)
-                <div class="sm:col-span-2"><dt class="text-base-content/50 text-xs uppercase tracking-wide mb-0.5">Địa chỉ</dt><dd>{{ $organization->address }}{{ $organization->city ? ', ' . $organization->city : '' }}{{ $organization->country ? ' (' . $organization->country . ')' : '' }}</dd></div>
+                @if ($organization->full_address)
+                <div class="sm:col-span-2"><dt class="text-base-content/50 text-xs uppercase tracking-wide mb-0.5">Địa chỉ</dt><dd>{{ $organization->full_address }}{{ $organization->country ? ' (' . $organization->country . ')' : '' }}</dd></div>
+                @elseif ($organization->address)
+                <div class="sm:col-span-2"><dt class="text-base-content/50 text-xs uppercase tracking-wide mb-0.5">Địa chỉ</dt><dd>{{ implode(', ', array_filter([$organization->address, $organization->ward?->name, $organization->province?->name])) }}{{ $organization->country ? ' (' . $organization->country . ')' : '' }}</dd></div>
                 @endif
                 @if ($organization->description)
                 <div class="sm:col-span-2"><dt class="text-base-content/50 text-xs uppercase tracking-wide mb-0.5">Mô tả</dt><dd class="text-base-content/80">{{ $organization->description }}</dd></div>

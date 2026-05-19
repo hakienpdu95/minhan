@@ -97,25 +97,20 @@
                            class="input input-bordered input-sm @error('website') input-error @enderror">
                     @error('website')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                 </div>
-
-                <div class="form-control md:col-span-2">
-                    <label class="label py-0 pb-1.5"><span class="label-text font-medium">Địa chỉ</span></label>
-                    <input type="text" name="address" value="{{ old('address', $organization->address) }}"
-                           class="input input-bordered input-sm">
-                </div>
-
-                <div class="form-control">
-                    <label class="label py-0 pb-1.5"><span class="label-text font-medium">Thành phố</span></label>
-                    <input type="text" name="city" value="{{ old('city', $organization->city) }}"
-                           class="input input-bordered input-sm">
-                </div>
-
-                <div class="form-control">
-                    <label class="label py-0 pb-1.5"><span class="label-text font-medium">Quốc gia</span></label>
-                    <input type="text" name="country" value="{{ old('country', $organization->country ?? 'VN') }}"
-                           class="input input-bordered input-sm" maxlength="2">
-                </div>
             </div>
+        </div>
+    </div>
+
+    {{-- Address --}}
+    <div class="card bg-base-100 shadow-sm border border-base-200">
+        <div class="card-body">
+            <h2 class="card-title text-base mb-2">Địa chỉ</h2>
+            <x-address-picker
+                :province-value="old('province_code', $organization->province_code)"
+                :ward-value="old('ward_code', $organization->ward_code)"
+                :address-value="old('address', $organization->address)"
+                instance-id="org-e"
+            />
         </div>
     </div>
 

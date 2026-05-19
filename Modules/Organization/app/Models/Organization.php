@@ -2,8 +2,11 @@
 
 namespace Modules\Organization\Models;
 
+use App\Models\Province;
 use App\Models\User;
+use App\Models\Ward;
 use App\Shared\Tenancy\Models\Organization as BaseOrganization;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -15,9 +18,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Organization extends BaseOrganization
 {
-    /**
-     * Additional fillable fields beyond what the base model declares.
-     */
     protected $fillable = [
         'uuid',
         'name',
@@ -31,12 +31,16 @@ class Organization extends BaseOrganization
         'email',
         'website',
         'industry',
+        'description',
+        'logo_path',
+        // Address fields
         'address',
         'city',
         'country',
         'postal_code',
-        'description',
-        'logo_path',
+        'province_code',
+        'ward_code',
+        'full_address',
     ];
 
     // ── Relationships ────────────────────────────────────────────────
@@ -56,9 +60,6 @@ class Organization extends BaseOrganization
         return $this->hasMany(OrganizationSetting::class);
     }
 
-    /**
-     * Users belonging to this organization via the members pivot table.
-     */
     public function memberUsers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'organization_members', 'organization_id', 'user_id')
@@ -66,27 +67,29 @@ class Organization extends BaseOrganization
             ->withTimestamps();
     }
 
+    public function province(): BelongsTo
+    {
+        return $this->belongsTo(Province::class, 'province_code', 'province_code');
+    }
+
+    public function ward(): BelongsTo
+    {
+        return $this->belongsTo(Ward::class, 'ward_code', 'ward_code');
+    }
+
     // ── Settings (table-backed) ──────────────────────────────────────
 
-    /**
-     * Get a setting value from the organization_settings table.
-     * Falls back to JSON settings column, then to $default.
-     */
     public function getSetting(string $key, mixed $default = null): mixed
     {
         $setting = $this->orgSettings()->where('key', $key)->first();
 
         if ($setting === null) {
-            // Backward-compat: fall back to JSON settings column
             return data_get($this->settings, $key, $default);
         }
 
         return $setting->getCastedValue();
     }
 
-    /**
-     * Upsert a setting in the organization_settings table.
-     */
     public function setSetting(string $key, mixed $value, string $type = 'string'): void
     {
         $serialized = match ($type) {

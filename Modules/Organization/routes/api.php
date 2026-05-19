@@ -1,12 +1,14 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\Organization\Actions\GetWardsByProvinceAction;
 
 /*
 |--------------------------------------------------------------------------
-| Organization API Routes
+| Organization Module — API Routes  (prefix: /api)
 |--------------------------------------------------------------------------
-|
-| Placeholder — API endpoints will be added as the module is built out.
-|
 */
+
+// ── Reference data (public — không cần auth) ──────────────────────────
+Route::get('/provinces/{provinceCode}/wards', GetWardsByProvinceAction::class)
+    ->name('provinces.wards');

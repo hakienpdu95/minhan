@@ -25,18 +25,21 @@ class CreateOrganizationAction
         return DB::transaction(function () use ($data, $owner): Organization {
             // 1. Create the organization
             $organization = Organization::create([
-                'name'        => $data->name,
-                'status'      => 'active',
-                'owner_id'    => $owner->id,
-                'tax_code'    => $data->tax_code,
-                'phone'       => $data->phone,
-                'email'       => $data->email,
-                'website'     => $data->website,
-                'industry'    => $data->industry,
-                'address'     => $data->address,
-                'city'        => $data->city,
-                'country'     => $data->country,
-                'description' => $data->description,
+                'name'          => $data->name,
+                'status'        => 'active',
+                'owner_id'      => $owner->id,
+                'tax_code'      => $data->tax_code,
+                'phone'         => $data->phone,
+                'email'         => $data->email,
+                'website'       => $data->website,
+                'industry'      => $data->industry,
+                'address'       => $data->address,
+                'city'          => $data->city,
+                'country'       => $data->country,
+                'province_code' => $data->province_code,
+                'ward_code'     => $data->ward_code,
+                'full_address'  => $data->full_address,
+                'description'   => $data->description,
             ]);
 
             // 2. Create the owner membership record
