@@ -19,7 +19,8 @@
     <a href="{{ route('backend.organizations.show', $organization) }}" class="btn btn-ghost btn-sm">← Quay lại</a>
 </div>
 
-<form method="POST" action="{{ route('backend.organizations.update', $organization) }}" class="max-w-3xl space-y-4">
+<form method="POST" action="{{ route('backend.organizations.update', $organization) }}"
+      class="max-w-3xl space-y-4" novalidate data-org-form>
     @csrf
     @method('PUT')
 
@@ -30,9 +31,12 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="form-control md:col-span-2">
-                    <label class="label py-0 pb-1.5"><span class="label-text font-medium">Tên tổ chức <span class="text-error">*</span></span></label>
-                    <input type="text" name="name" value="{{ old('name', $organization->name) }}"
-                           class="input input-bordered input-sm @error('name') input-error @enderror" required>
+                    <label class="label py-0 pb-1.5">
+                        <span class="label-text font-medium">Tên tổ chức <span class="text-error">*</span></span>
+                    </label>
+                    <input type="text" name="name" value="{{ old('name', $organization->name) }}" required
+                           data-req="Vui lòng nhập tên tổ chức"
+                           class="input input-bordered input-sm @error('name') input-error @enderror">
                     @error('name')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                 </div>
 
@@ -44,10 +48,12 @@
                 </div>
 
                 <div class="form-control">
-                    <label class="label py-0 pb-1.5"><span class="label-text font-medium">Trạng thái <span class="text-error">*</span></span></label>
+                    <label class="label py-0 pb-1.5">
+                        <span class="label-text font-medium">Trạng thái <span class="text-error">*</span></span>
+                    </label>
                     <select name="status" class="select select-bordered select-sm">
-                        <option value="active" {{ old('status', $organization->status->value) === 'active' ? 'selected' : '' }}>Hoạt động</option>
-                        <option value="inactive" {{ old('status', $organization->status->value) === 'inactive' ? 'selected' : '' }}>Không hoạt động</option>
+                        <option value="active"    {{ old('status', $organization->status->value) === 'active'    ? 'selected' : '' }}>Hoạt động</option>
+                        <option value="inactive"  {{ old('status', $organization->status->value) === 'inactive'  ? 'selected' : '' }}>Không hoạt động</option>
                         <option value="suspended" {{ old('status', $organization->status->value) === 'suspended' ? 'selected' : '' }}>Tạm khóa</option>
                     </select>
                 </div>
@@ -67,7 +73,8 @@
 
             <div class="form-control mt-2">
                 <label class="label py-0 pb-1.5"><span class="label-text font-medium">Mô tả</span></label>
-                <textarea name="description" rows="3" class="textarea textarea-bordered textarea-sm">{{ old('description', $organization->description) }}</textarea>
+                <textarea id="jodit-description" name="description"
+                          class="textarea textarea-bordered textarea-sm w-full">{{ old('description', $organization->description) }}</textarea>
             </div>
         </div>
     </div>
@@ -120,3 +127,19 @@
     </div>
 </form>
 @endsection
+
+@push('scripts')
+@vite(['resources/js/modules/jodit.js'], 'build/backend')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    window.initJodit('#jodit-description', {
+        height: 220,
+        toolbarButtonSize: 'small',
+        buttons: ['bold','italic','underline','strikethrough','|','ul','ol','|','paragraph','link','|','undo','redo','|','source'],
+        removeButtons: ['about','classSpan','image'],
+    });
+
+    initOrgFormValidation('[data-org-form]');
+});
+</script>
+@endpush
