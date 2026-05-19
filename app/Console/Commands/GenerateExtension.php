@@ -2,13 +2,17 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\MigrationHelpers;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 class GenerateExtension extends Command
 {
+    use MigrationHelpers;
+
     protected $signature = 'extension:generate
         {--from=render_extension_file.json : JSON file tại project root}
         {--force : Bỏ qua xác nhận}';
@@ -16,27 +20,6 @@ class GenerateExtension extends Command
     protected $description = 'Generate ALTER TABLE migrations từ JSON vào migrations/extensions/';
 
     private const DIR_EXTENSIONS = 'extensions';
-
-    private const VALID_TYPES = [
-        'increments', 'bigIncrements',
-        'tinyInteger', 'smallInteger', 'mediumInteger', 'integer', 'bigInteger',
-        'unsignedTinyInteger', 'unsignedSmallInteger', 'unsignedMediumInteger',
-        'unsignedInteger', 'unsignedBigInteger',
-        'uuid', 'ulid',
-        'float', 'double', 'decimal',
-        'string', 'char', 'binary',
-        'text', 'mediumText', 'longText', 'tinyText',
-        'date', 'dateTime', 'timestamp', 'time', 'year',
-        'boolean', 'enum', 'set', 'json', 'jsonb', 'ip',
-    ];
-
-    private const NO_LENGTH_TYPES = [
-        'boolean', 'text', 'mediumText', 'longText', 'tinyText',
-        'date', 'dateTime', 'timestamp', 'time', 'year',
-        'json', 'jsonb', 'ip', 'uuid', 'ulid',
-        'unsignedBigInteger', 'unsignedInteger', 'unsignedSmallInteger',
-        'unsignedTinyInteger', 'bigInteger', 'integer',
-    ];
 
     // ──────────────────────────────────────────────────────────────
 
@@ -83,7 +66,7 @@ class GenerateExtension extends Command
         $timestamp = Carbon::now();
         $count     = 0;
 
-        foreach ($json as $index => $blockData) {
+        foreach ($json as $blockData) {
             $count++;
             $header      = explode('///', array_shift($blockData));
             $tableName   = trim($header[0]);
@@ -92,7 +75,7 @@ class GenerateExtension extends Command
             $blockDesc   = trim($header[3] ?? '');
 
             // Class name ví dụ: AddDeptAndOrgIdToUsersTable
-            $colNames  = $this->extractColumnNames($blockData, $action);
+            $colNames  = $this->extractColumnNames($blockData);
             $colSlug   = Str::studly(implode('_and_', array_slice($colNames, 0, 3)));
             $className = Str::studly($action) . $colSlug . 'To' . Str::studly($tableName) . 'Table';
 
@@ -122,6 +105,13 @@ class GenerateExtension extends Command
         }
 
         $this->info("\nĐã tạo $count extension migration(s).");
+
+        Log::info('extension:generate', [
+            'actor'   => auth()->user()?->email ?? 'console',
+            'count'   => $count,
+            'deleted' => $deleted,
+        ]);
+
         return self::SUCCESS;
     }
 
@@ -150,10 +140,8 @@ class GenerateExtension extends Command
 
     private function buildAddBody(array $rows, string $firstAfter): array
     {
-        $upLines   = [];
-        $downLines = [];
-        $fkCols    = []; // cột nào là FK → cần dropForeign trước khi drop cột
-
+        $upLines     = [];
+        $fkCols      = [];
         $prevColName = $firstAfter !== '__' ? $firstAfter : null;
 
         foreach ($rows as $row) {
@@ -161,8 +149,7 @@ class GenerateExtension extends Command
             while (count($p) < 7) $p[] = '__';
             [$colName, $colType, $colLen, $colNull, $colDefault, $colMod, $colComment] = $p;
 
-            // Special directives — xử lý riêng, không tính là cột
-            if (in_array($colName, ['__index', '__primary', '__fk'])) {
+            if (in_array($colName, self::SPECIAL_DIRECTIVES)) {
                 $this->buildIndexDirective($colMod, $colType, $upLines);
                 continue;
             }
@@ -170,38 +157,30 @@ class GenerateExtension extends Command
             $afterClause = $prevColName ? "->after('$prevColName')" : '';
             $prevColName = $colName;
 
-            // Build column definition
-            $def = $this->buildColumnDef(
+            $upLines[] = $this->buildColumnDef(
                 $colName, $colType, $colLen,
                 $colNull, $colDefault, $colMod, $colComment,
                 $afterClause
             );
 
-            $upLines[] = $def;
-
-            // Track FK để down() xử lý đúng
             if ($this->isForeignKey($colType, $colMod)) {
                 $fkCols[] = $colName;
             }
-
-            $downLines[] = "// down của '$colName' — xem cuối hàm";
         }
 
-        // Down: xóa FK trước, xóa cột sau
+        // Down: xóa FK trước, rồi xóa cột
         $downLines = [];
         foreach ($fkCols as $fkCol) {
             $downLines[] = "\$table->dropForeign(['$fkCol']);";
         }
-        $allNames = array_filter(
+        $allNames = array_values(array_filter(
             array_map(fn($r) => trim(explode('///', $r)[0]), $rows),
-            fn($n) => !in_array($n, ['__index', '__primary', '__fk', '__initial_data'])
-        );
-        $allNames = array_map(fn($n) => "'$n'", array_values($allNames));
-        if (count($allNames) === 1) {
-            $downLines[] = "\$table->dropColumn({$allNames[0]});";
-        } else {
-            $downLines[] = "\$table->dropColumn([" . implode(', ', $allNames) . "]);";
-        }
+            fn($n) => !in_array($n, self::SPECIAL_DIRECTIVES)
+        ));
+        $quotedNames = array_map(fn($n) => "'$n'", $allNames);
+        $downLines[] = count($quotedNames) === 1
+            ? "\$table->dropColumn({$quotedNames[0]});"
+            : "\$table->dropColumn([" . implode(', ', $quotedNames) . "]);";
 
         return [$upLines, $downLines];
     }
@@ -220,6 +199,9 @@ class GenerateExtension extends Command
             while (count($p) < 7) $p[] = '__';
             [$colName, $colType, , , , $colMod] = $p;
 
+            // Skip special directives — không phải cột thật
+            if (in_array($colName, self::SPECIAL_DIRECTIVES)) continue;
+
             $allNames[] = "'$colName'";
             if ($this->isForeignKey($colType, $colMod)) {
                 $fkCols[] = $colName;
@@ -236,9 +218,10 @@ class GenerateExtension extends Command
 
         // Down: add lại (skeleton — cần điền type)
         foreach ($rows as $row) {
-            $p        = explode('///', $row);
-            $colName  = trim($p[0]);
-            $colType  = trim($p[1] ?? 'string');
+            $p       = explode('///', $row);
+            $colName = trim($p[0]);
+            if (in_array($colName, self::SPECIAL_DIRECTIVES)) continue;
+            $colType    = trim($p[1] ?? 'string');
             $downLines[] = "// TODO: \$table->$colType('$colName')->...; // add lại '$colName'";
         }
 
@@ -257,6 +240,8 @@ class GenerateExtension extends Command
             while (count($p) < 7) $p[] = '__';
             [$colName, $colType, $colLen, $colNull, $colDefault, $colMod, $colComment] = $p;
 
+            if (in_array($colName, self::SPECIAL_DIRECTIVES)) continue;
+
             $def = $this->buildColumnDef(
                 $colName, $colType, $colLen,
                 $colNull, $colDefault, $colMod, $colComment,
@@ -272,7 +257,7 @@ class GenerateExtension extends Command
     }
 
     // ──────────────────────────────────────────────────────────────
-    // BUILD COLUMN DEF (tái sử dụng từ GenerateMigration)
+    // BUILD COLUMN DEF
     // ──────────────────────────────────────────────────────────────
 
     private function buildColumnDef(
@@ -298,7 +283,7 @@ class GenerateExtension extends Command
             return $def . ';';
         }
 
-        // Custom FK: char/string + references()
+        // Custom FK: char/string/uuid + references()
         if (in_array($colType, ['char', 'string', 'uuid'])
             && $colMod !== '__'
             && str_contains($colMod, 'references(')
@@ -307,13 +292,13 @@ class GenerateExtension extends Command
             if (isset($m[1], $m[2])) {
                 $params = (!$noLen && $colLen !== '__') ? ', ' . $this->formatParams($colType, $colLen) : '';
                 $col    = "\$table->$colType('$colName'$params)";
-                if ($nullable)          $col .= '->nullable()';
+                if ($nullable)            $col .= '->nullable()';
                 if ($colDefault !== '__') $col .= $this->formatDefault($colType, $colDefault);
                 $col .= $afterClause;
                 if ($colComment !== '__') $col .= "->comment('" . addslashes($colComment) . "')";
                 $col .= ';';
-                $extra  = $this->normalizeOnDelete(trim($m[3] ?? ''));
-                $fk     = "\$table->foreign('$colName')->references('{$m[1]}')->on('{$m[2]}')$extra;";
+                $extra = $this->normalizeOnDelete(trim($m[3] ?? ''));
+                $fk    = "\$table->foreign('$colName')->references('{$m[1]}')->on('{$m[2]}')$extra;";
                 return $col . "\n            " . $fk;
             }
         }
@@ -333,7 +318,6 @@ class GenerateExtension extends Command
         if ($nullable)            $def .= '->nullable()';
         if ($colDefault !== '__') $def .= $this->formatDefault($colType, $colDefault);
 
-        // Modifiers không liên quan FK
         if ($colMod !== '__'
             && !str_contains($colMod, 'constrained')
             && !str_contains($colMod, 'references(')
@@ -354,110 +338,21 @@ class GenerateExtension extends Command
     // HELPERS
     // ──────────────────────────────────────────────────────────────
 
-    private function buildIndexDirective(string $colMod, string $indexType, array &$lines): void
-    {
-        $method = match (strtolower($indexType)) {
-            'fulltext' => 'fullText',
-            'unique'   => 'unique',
-            'spatial'  => 'spatialIndex',
-            default    => 'index',
-        };
-
-        foreach (explode(';', $colMod) as $entry) {
-            $entry = trim($entry);
-            if ($entry === '' || $entry === '__') continue;
-            $cols    = array_map(fn($c) => "'" . trim($c) . "'", explode(',', $entry));
-            $lines[] = count($cols) > 1
-                ? "\$table->$method([" . implode(', ', $cols) . "]);"
-                : "\$table->$method({$cols[0]});";
-        }
-    }
-
     private function isForeignKey(string $type, string $mod): bool
     {
-        return $type === 'unsignedBigInteger' && str_contains($mod, 'constrained')
-            || in_array($type, ['char', 'string']) && str_contains($mod, 'references(');
-    }
-
-    private function extractColumnNames(array $rows, string $action): array
-    {
-        return array_map(fn($r) => trim(explode('///', $r)[0]), $rows);
-    }
-
-    private function normalizeOnDelete(string $str): string
-    {
-        return str_replace(
-            ["->onDelete('cascade')", "->onDelete('set null')", "->onDelete('restrict')", "->onDelete('no action')"],
-            ['->cascadeOnDelete()',   '->nullOnDelete()',       '->restrictOnDelete()',   '->noActionOnDelete()'],
-            $str
-        );
-    }
-
-    private function formatParams(string $type, string $raw): string
-    {
-        $raw = trim(str_replace(['(', ')'], '', $raw));
-        if (in_array($type, ['enum', 'set']) && preg_match('/^\[(.+)\]$/', $raw, $m)) {
-            return '[' . implode(', ', array_map(fn($v) => "'" . trim($v) . "'", explode(',', $m[1]))) . ']';
-        }
-        if ($type === 'decimal' && str_contains($raw, ',')) {
-            [$p, $s] = explode(',', $raw, 2);
-            return trim($p) . ', ' . trim($s);
-        }
-        return is_numeric($raw) ? $raw : "'$raw'";
-    }
-
-    private function formatDefault(string $type, string $value): string
-    {
-        if (strtolower($value) === 'null') return '';
-        if (in_array(strtolower($value), ['true', 'false'])) return '->default(' . strtolower($value) . ')';
-        if (is_numeric($value)) return "->default($value)";
-        if (str_starts_with($value, "'") && str_ends_with($value, "'")) return "->default($value)";
-        return "->default('$value')";
+        return ($type === 'unsignedBigInteger' && str_contains($mod, 'constrained'))
+            || (in_array($type, ['char', 'string', 'uuid']) && str_contains($mod, 'references('));
     }
 
     /**
-     * Làm sạch JSON trước khi parse:
-     * - Xóa trailing comma (dấu phẩy thừa sau phần tử cuối)
-     * - Xóa // comment (không hợp lệ trong JSON chuẩn)
+     * Lấy danh sách tên cột thật (bỏ qua special directives).
      */
-    /**
-     * Sanitize JSON: BOM, CRLF, control chars, trailing comma
-     */
-    private function sanitizeJson(string $raw): string
+    private function extractColumnNames(array $rows): array
     {
-        // BOM: UTF-8 (EF BB BF) hoặc UTF-16
-        if (str_starts_with($raw, "\xEF\xBB\xBF")) {
-            $raw = substr($raw, 3);
-        } elseif (str_starts_with($raw, "\xFF\xFE") || str_starts_with($raw, "\xFE\xFF")) {
-            $raw = mb_convert_encoding($raw, 'UTF-8', 'UTF-16');
-        }
-
-        // CRLF → LF
-        $raw = str_replace(["\r\n", "\r"], "\n", $raw);
-
-        // Control characters 0x00-0x1F trừ tab(0x09) và LF(0x0A)
-        $raw = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $raw);
-
-        // Trailing comma trước ] hoặc }
-        $raw = preg_replace('/,(\s*[\]\}])/', '$1', $raw);
-
-        return $raw;
-    }
-
-    private function cleanDir(string $path): int
-    {
-        if (!File::exists($path)) {
-            File::makeDirectory($path, 0755, true);
-            File::put("$path/.gitkeep", '');
-            return 0;
-        }
-        $count = 0;
-        foreach (File::files($path) as $file) {
-            if ($file->getFilename() === '.gitkeep') continue;
-            File::delete($file->getPathname());
-            $count++;
-        }
-        return $count;
+        return array_values(array_filter(
+            array_map(fn($r) => trim(explode('///', $r)[0]), $rows),
+            fn($n) => !in_array($n, self::SPECIAL_DIRECTIVES)
+        ));
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -491,8 +386,7 @@ class GenerateExtension extends Command
                     return false;
                 }
 
-                // Skip special directives — không validate type
-                if (in_array($p[0], ['__index', '__primary', '__fk', '__initial_data'])) continue;
+                if (in_array($p[0], self::SPECIAL_DIRECTIVES)) continue;
 
                 // drop action: không cần validate type
                 if ($action === 'drop') continue;

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\MigrationHelpers;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -10,6 +11,8 @@ use Carbon\Carbon;
 
 class GenerateMigration extends Command
 {
+    use MigrationHelpers;
+
     protected $signature = 'migration:generate
         {--from=render_migration_file.json : JSON file tại project root}
         {--fresh : Sau khi generate, chạy migrate:fresh (chỉ dùng ở local/staging)}
@@ -21,28 +24,6 @@ class GenerateMigration extends Command
     private const DIR_VENDOR     = 'vendor';
     private const DIR_GENERATED  = 'generated';
     private const DIR_EXTENSIONS = 'extensions';
-
-    private const VALID_TYPES = [
-        'increments', 'bigIncrements',
-        'tinyInteger', 'smallInteger', 'mediumInteger', 'integer', 'bigInteger',
-        'unsignedTinyInteger', 'unsignedSmallInteger', 'unsignedMediumInteger',
-        'unsignedInteger', 'unsignedBigInteger',
-        'uuid', 'ulid',
-        'float', 'double', 'decimal',
-        'string', 'char', 'binary',
-        'text', 'mediumText', 'longText', 'tinyText',
-        'date', 'dateTime', 'timestamp', 'time', 'year',
-        'boolean', 'enum', 'set', 'json', 'jsonb', 'ip',
-    ];
-
-    private const NO_LENGTH_TYPES = [
-        'boolean', 'text', 'mediumText', 'longText', 'tinyText',
-        'date', 'dateTime', 'timestamp', 'time', 'year',
-        'json', 'jsonb', 'ip', 'uuid', 'ulid',
-        'unsignedBigInteger', 'unsignedInteger', 'unsignedSmallInteger',
-        'unsignedTinyInteger', 'bigInteger', 'integer',
-        'increments', 'bigIncrements',
-    ];
 
     // ──────────────────────────────────────────────────────────────
 
@@ -100,7 +81,7 @@ class GenerateMigration extends Command
         $this->ensureDirectories($root, $vendorPath, $extensionsPath);
 
         // 3. Xóa + tạo lại generated/ (CHỈ generated/)
-        $deleted = $this->cleanGeneratedDir($generatedPath);
+        $deleted = $this->cleanDir($generatedPath);
         $this->line("<fg=yellow>Đã xóa $deleted file cũ trong generated/</>");
 
         // 4. Topo sort
@@ -228,24 +209,6 @@ class GenerateMigration extends Command
         if (!File::exists("$root/README.md")) {
             File::put("$root/README.md", $this->readmeContent());
         }
-    }
-
-    private function cleanGeneratedDir(string $path): int
-    {
-        if (!File::exists($path)) {
-            File::makeDirectory($path, 0755, true);
-            File::put("$path/.gitkeep", '');
-            return 0;
-        }
-
-        $count = 0;
-        foreach (File::files($path) as $file) {
-            if ($file->getFilename() === '.gitkeep') continue;
-            File::delete($file->getPathname());
-            $count++;
-        }
-
-        return $count;
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -408,34 +371,6 @@ class GenerateMigration extends Command
         return $col . "\n            " . $fk;
     }
 
-    private function normalizeOnDelete(string $str): string
-    {
-        return str_replace(
-            ["->onDelete('cascade')", "->onDelete('set null')", "->onDelete('restrict')", "->onDelete('no action')"],
-            ['->cascadeOnDelete()',   '->nullOnDelete()',       '->restrictOnDelete()',   '->noActionOnDelete()'],
-            $str
-        );
-    }
-
-    private function buildIndexDirective(string $colMod, string $indexType, array &$indexes): void
-    {
-        $method = match (strtolower($indexType)) {
-            'fulltext' => 'fullText',
-            'unique'   => 'unique',
-            'spatial'  => 'spatialIndex',
-            default    => 'index',
-        };
-
-        foreach (explode(';', $colMod) as $entry) {
-            $entry = trim($entry);
-            if ($entry === '' || $entry === '__') continue;
-            $cols      = array_map(fn($c) => "'" . trim($c) . "'", explode(',', $entry));
-            $indexes[] = count($cols) > 1
-                ? "\$table->$method([" . implode(', ', $cols) . "]);"
-                : "\$table->$method({$cols[0]});";
-        }
-    }
-
     private function buildInitialData(string $colMod, string $tableName, array &$out): void
     {
         foreach (explode(';', rtrim($colMod, ';')) as $record) {
@@ -470,29 +405,6 @@ class GenerateMigration extends Command
         }
     }
 
-    private function formatParams(string $type, string $raw): string
-    {
-        $raw = trim(str_replace(['(', ')'], '', $raw));
-        if (in_array($type, ['enum', 'set']) && preg_match('/^\[(.+)\]$/', $raw, $m)) {
-            $vals = array_map(fn($v) => "'" . trim($v) . "'", explode(',', $m[1]));
-            return '[' . implode(', ', $vals) . ']';
-        }
-        if ($type === 'decimal' && str_contains($raw, ',')) {
-            [$p, $s] = explode(',', $raw, 2);
-            return trim($p) . ', ' . trim($s);
-        }
-        return is_numeric($raw) ? $raw : "'$raw'";
-    }
-
-    private function formatDefault(string $type, string $value): string
-    {
-        if (strtolower($value) === 'null') return '';
-        if (in_array(strtolower($value), ['true', 'false'])) return '->default(' . strtolower($value) . ')';
-        if (is_numeric($value)) return "->default($value)";
-        if (str_starts_with($value, "'") && str_ends_with($value, "'")) return "->default($value)";
-        return "->default('$value')";
-    }
-
     // ──────────────────────────────────────────────────────────────
     // VALIDATE SCHEMA
     // ──────────────────────────────────────────────────────────────
@@ -513,7 +425,7 @@ class GenerateMigration extends Command
             foreach (array_slice($table, 1) as $j => $field) {
                 $p = explode('///', $field);
                 if (count($p) < 7) { $this->error("$tName[$j]: cần 7 phần, nhận " . count($p)); return false; }
-                if (in_array($p[0], ['__index', '__primary', '__initial_data'])) continue;
+                if (in_array($p[0], self::SPECIAL_DIRECTIVES)) continue;
                 if (!in_array($p[1], self::VALID_TYPES)) { $this->error("$tName.{$p[0]}: type không hợp lệ '{$p[1]}'"); return false; }
                 if (in_array($p[1], ['enum', 'set']) && !preg_match('/^\[.+\]$/', $p[2])) {
                     $this->error("$tName.{$p[0]}: enum/set cần [val1,val2,...]"); return false;
@@ -526,36 +438,6 @@ class GenerateMigration extends Command
     // ──────────────────────────────────────────────────────────────
     // TOPOLOGICAL SORT (Kahn's algorithm)
     // ──────────────────────────────────────────────────────────────
-
-    private function sanitizeJson(string $raw): string
-    {
-        // 1. Xóa BOM UTF-8 (EF BB BF) nếu có
-        $raw = ltrim($raw, "\xEF\xBB\xBF");
-
-        // 2. Chuẩn hóa line ending
-        $raw = str_replace(["\r\n", "\r"], "\n", $raw);
-
-        // 3. Ép về UTF-8 hợp lệ — thay byte không hợp lệ bằng '?'
-        //    mb_convert_encoding với //IGNORE loại bỏ byte không decode được
-        if (function_exists('mb_convert_encoding')) {
-            $raw = mb_convert_encoding($raw, 'UTF-8', 'UTF-8');
-        }
-
-        // 4. Xóa toàn bộ control characters (0x00–0x1F) trừ \t (0x09) và \n (0x0A)
-        //    Dùng regex không có flag /u để tránh fail khi gặp byte UTF-8 lạ
-        $raw = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $raw);
-
-        // 5. Xóa zero-width space (U+200B = E2 80 8B) và non-breaking space (U+00A0 = C2 A0)
-        $raw = str_replace(["\xE2\x80\x8B", "\xC2\xA0"], ['', ' '], $raw);
-
-        // 6. KHÔNG xóa // comment vì /// là delimiter nội dung trong string JSON
-        //    Regex cũ `//(?!/)` vẫn match `//` đầu của `///` → cắt mất nội dung string
-
-        // 7. Xóa trailing comma trước ] hoặc }
-        $raw = preg_replace('/,\s*([\]\}])/', '$1', $raw);
-
-        return $raw;
-    }
 
     private function topologicalSort(array $json): ?array
     {
