@@ -61,7 +61,7 @@ npx vite build --config vite.config.backend.js
 
 # Sửa JSON → chạy lệnh này → DB cập nhật đầy đủ
 php artisan migration:generate --fresh
-
+php artisan import:provinces-wards
 php artisan db:seed
 
 php artisan module:make Auth
