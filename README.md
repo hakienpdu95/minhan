@@ -70,6 +70,7 @@ php artisan module:make Auth
 
 # > Đọc file spec/payment_module.md và implement theo đúng spec đó
 # > Đọc file spec/organization_module.md và implement theo đúng spec đó
+# > Đọc file spec/review_code1.md và implement theo đúng spec đó
 
 # 1. Tạo 8 roles + ~40 permissions
 php artisan db:seed --class="Database\Seeders\RolePermissionSeeder"
