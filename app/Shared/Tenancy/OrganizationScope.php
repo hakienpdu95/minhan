@@ -20,6 +20,12 @@ final class OrganizationScope implements Scope
                 $model->getTable() . '.organization_id',
                 TenantContext::getOrganizationId()
             );
+            return;
         }
+
+        // Failsafe: nếu context chưa được set, trả về tập rỗng thay vì toàn bộ dữ liệu.
+        // Điều này bảo vệ khỏi data leakage nếu middleware bị bỏ qua vì bất kỳ lý do gì.
+        // Admin cần bypass dùng ->withoutGlobalScope(OrganizationScope::class) hoặc scopeWithoutTenant().
+        $builder->whereRaw('0 = 1');
     }
 }

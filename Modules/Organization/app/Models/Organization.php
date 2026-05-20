@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * Extended Organization model for the Organization module.
  *
- * Adds: members, invitations, settings table relations.
+ * Adds: members, settings table relations.
  * Overrides getSetting()/setSetting() to use organization_settings table.
  */
 class Organization extends BaseOrganization
@@ -48,11 +48,6 @@ class Organization extends BaseOrganization
     public function members(): HasMany
     {
         return $this->hasMany(OrganizationMember::class);
-    }
-
-    public function invitations(): HasMany
-    {
-        return $this->hasMany(OrganizationInvitation::class);
     }
 
     public function orgSettings(): HasMany

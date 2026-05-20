@@ -74,8 +74,10 @@ class SetCurrentOrganization
             return Organization::find($user->organization_id);
         }
 
-        // 3. First organization the user is a member of
-        $membership = OrganizationMember::where('user_id', $user->id)->first();
+        // 3. Most recently joined organization the user is a member of
+        $membership = OrganizationMember::where('user_id', $user->id)
+            ->latest('joined_at')
+            ->first();
         if ($membership) {
             return Organization::find($membership->organization_id);
         }

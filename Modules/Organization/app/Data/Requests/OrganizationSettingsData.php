@@ -9,9 +9,6 @@ use Spatie\LaravelData\Data;
 class OrganizationSettingsData extends Data
 {
     public function __construct(
-        #[Required]
-        public readonly int $organization_id,
-
         /** @var array<string, mixed> */
         #[Required, ArrayType]
         public readonly array $settings,

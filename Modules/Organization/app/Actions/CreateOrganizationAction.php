@@ -7,6 +7,7 @@ use App\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Organization\Data\Requests\CreateOrganizationData;
+use Modules\Organization\Events\OrganizationCreated;
 use Modules\Organization\Models\Organization;
 use Modules\Organization\Models\OrganizationMember;
 use Spatie\Permission\PermissionRegistrar;
@@ -59,15 +60,8 @@ class CreateOrganizationAction
             // 5. Update TenantContext
             TenantContext::set($organization);
 
-            // 6. Log the creation
-            activity()
-                ->causedBy($owner)
-                ->performedOn($organization)
-                ->withProperties([
-                    'organization_id' => $organization->id,
-                    'name'            => $organization->name,
-                ])
-                ->log('organization.created');
+            // 6. Fire event (listener handles activity logging)
+            event(new OrganizationCreated($organization));
 
             app(PermissionRegistrar::class)->forgetCachedPermissions();
 

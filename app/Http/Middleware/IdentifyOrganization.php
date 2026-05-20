@@ -64,7 +64,26 @@ class IdentifyOrganization
             return null;
         }
 
-        return $this->findById((int) $orgId);
+        $org = $this->findById((int) $orgId);
+
+        if (!$org) {
+            return null;
+        }
+
+        // Phải xác minh user là thành viên của org được yêu cầu.
+        // Super-admin (organization_id = null) được phép bypass.
+        $user = $request->user();
+        if ($user && $user->organization_id === null && $user->hasRole('super-admin')) {
+            return $org;
+        }
+
+        if ($user && \Modules\Organization\Models\OrganizationMember::where('organization_id', $org->id)
+                ->where('user_id', $user->id)
+                ->exists()) {
+            return $org;
+        }
+
+        return null;
     }
 
     private function resolveFromAuthUser(Request $request): ?Organization
@@ -107,23 +126,15 @@ class IdentifyOrganization
 
     private function findById(int $id): ?Organization
     {
-        // Validate cache entry còn hợp lệ trước khi dùng
-        $cached = Cache::get("org.id.{$id}");
+        // Cache chỉ ID đã xác nhận tồn tại, KHÔNG cache full model.
+        // Luôn load fresh model để isActive() phản ánh đúng trạng thái hiện tại.
+        // TTL ngắn (2 phút) để giảm DB hits mà vẫn phản hồi nhanh khi org bị suspend.
+        $exists = Cache::remember(
+            "org.exists.{$id}",
+            now()->addMinutes(2),
+            fn () => Organization::where('id', $id)->exists()
+        );
 
-        if ($cached !== null) {
-            if ($cached instanceof Organization) {
-                return $cached;
-            }
-            // Stale / corrupt entry — xóa và query lại
-            Cache::forget("org.id.{$id}");
-        }
-
-        $org = Organization::find($id);
-
-        if ($org) {
-            Cache::put("org.id.{$id}", $org, now()->addMinutes(5));
-        }
-
-        return $org;
+        return $exists ? Organization::find($id) : null;
     }
 }

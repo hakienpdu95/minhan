@@ -65,6 +65,16 @@ class Organization extends Model
         return $query->where('status', OrganizationStatus::Active->value);
     }
 
+    /**
+     * Organization là tenant root — không có organization_id trên chính nó,
+     * nhưng OrganizationScope vẫn được apply khi TenantContext set (để tránh
+     * lọc sai). Scope này dùng cho admin queries cần xem tất cả org.
+     */
+    public function scopeWithoutTenant(Builder $query): Builder
+    {
+        return $query->withoutGlobalScope(\App\Shared\Tenancy\OrganizationScope::class);
+    }
+
     public function scopeBySlug(Builder $query, string $slug): Builder
     {
         return $query->where('slug', $slug);
@@ -91,8 +101,26 @@ class Organization extends Model
 
     public static function generateSlug(string $name): string
     {
-        $slug = Str::slug($name);
-        $count = static::where('slug', 'like', "{$slug}%")->count();
-        return $count > 0 ? "{$slug}-{$count}" : $slug;
+        $base = Str::slug($name);
+
+        // Chỉ match exact slug và các biến thể {base}-{n}, không match {base}-extra
+        $existing = static::where('slug', $base)
+            ->orWhere('slug', 'like', "{$base}-%")
+            ->pluck('slug')
+            ->filter(fn (string $s) => $s === $base || preg_match('/^' . preg_quote($base, '/') . '-\d+$/', $s))
+            ->all();
+
+        if (empty($existing)) {
+            return $base;
+        }
+
+        $max = 0;
+        foreach ($existing as $s) {
+            if ($s === $base) { $max = max($max, 1); continue; }
+            $suffix = (int) substr($s, strlen($base) + 1);
+            $max    = max($max, $suffix);
+        }
+
+        return "{$base}-" . ($max + 1);
     }
 }

@@ -5,6 +5,7 @@ namespace Modules\Organization\Models;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Modules\Organization\Enums\MemberRole;
 
 /**
  * Pivot/join model for organization membership.
@@ -26,7 +27,7 @@ class OrganizationMember extends Model
     protected function casts(): array
     {
         return [
-            'role'      => 'string',
+            'role'      => MemberRole::class,
             'joined_at' => 'datetime',
         ];
     }
@@ -43,15 +44,16 @@ class OrganizationMember extends Model
         return $this->belongsTo(User::class);
     }
 
-    // ── Role constants ───────────────────────────────────────────────
+    // ── Role aliases (backward compat) ──────────────────────────────
+    // Dùng MemberRole enum trực tiếp trong code mới.
 
-    public const ROLE_OWNER   = 'owner';
-    public const ROLE_ADMIN   = 'admin';
-    public const ROLE_MANAGER = 'manager';
-    public const ROLE_MEMBER  = 'member';
+    public const ROLE_OWNER   = MemberRole::Owner->value;
+    public const ROLE_ADMIN   = MemberRole::Admin->value;
+    public const ROLE_MANAGER = MemberRole::Manager->value;
+    public const ROLE_MEMBER  = MemberRole::Member->value;
 
     public static function roles(): array
     {
-        return [self::ROLE_OWNER, self::ROLE_ADMIN, self::ROLE_MANAGER, self::ROLE_MEMBER];
+        return MemberRole::values();
     }
 }

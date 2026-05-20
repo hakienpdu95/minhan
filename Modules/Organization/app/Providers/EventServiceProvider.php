@@ -3,25 +3,23 @@
 namespace Modules\Organization\Providers;
 
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
+use Modules\Organization\Events\OrganizationCreated;
+use Modules\Organization\Events\OrganizationUpdated;
+use Modules\Organization\Listeners\LogOrganizationCreated;
+use Modules\Organization\Listeners\LogOrganizationUpdated;
 
 class EventServiceProvider extends ServiceProvider
 {
-    /**
-     * The event handler mappings for the application.
-     *
-     * @var array<string, array<int, string>>
-     */
-    protected $listen = [];
+    protected $listen = [
+        OrganizationCreated::class => [
+            LogOrganizationCreated::class,
+        ],
+        OrganizationUpdated::class => [
+            LogOrganizationUpdated::class,
+        ],
+    ];
 
-    /**
-     * Indicates if events should be discovered.
-     *
-     * @var bool
-     */
-    protected static $shouldDiscoverEvents = true;
+    protected static $shouldDiscoverEvents = false;
 
-    /**
-     * Configure the proper event listeners for email verification.
-     */
     protected function configureEmailVerification(): void {}
 }

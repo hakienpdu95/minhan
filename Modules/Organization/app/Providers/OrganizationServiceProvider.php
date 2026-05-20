@@ -3,7 +3,10 @@
 namespace Modules\Organization\Providers;
 
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Gate;
 use Modules\Organization\Http\Middleware\SetCurrentOrganization;
+use Modules\Organization\Models\Organization;
+use Modules\Organization\Policies\OrganizationPolicy;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -25,6 +28,7 @@ class OrganizationServiceProvider extends ModuleServiceProvider
      * @var string[]
      */
     protected array $providers = [
+        EventServiceProvider::class,
         RouteServiceProvider::class,
     ];
 
@@ -36,6 +40,8 @@ class OrganizationServiceProvider extends ModuleServiceProvider
     public function boot(): void
     {
         parent::boot();
+
+        Gate::policy(Organization::class, OrganizationPolicy::class);
 
         // Enable Spatie Teams feature AFTER all providers have booted.
         // Using $this->app->booted() (Application-level) ensures this runs

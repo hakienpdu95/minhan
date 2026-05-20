@@ -17,6 +17,13 @@ class RouteServiceProvider extends ServiceProvider
     public function boot(): void
     {
         parent::boot();
+
+        // Route model binding cho Organization phải bypass OrganizationScope
+        // vì Organization là tenant root, không có organization_id trên chính nó.
+        \Illuminate\Support\Facades\Route::bind('organization', function (string $value) {
+            return \Modules\Organization\Models\Organization::withoutTenant()
+                ->findOrFail($value);
+        });
     }
 
     /**

@@ -8,43 +8,26 @@ use Illuminate\Http\Request;
 use Modules\Organization\Actions\Backend\DestroyOrganizationAction;
 use Modules\Organization\Actions\Backend\StoreOrganizationAction;
 use Modules\Organization\Actions\Backend\UpdateOrganizationAction;
+use Modules\Organization\Data\Requests\StoreOrganizationData;
+use Modules\Organization\Data\Requests\UpdateOrganizationData;
 use Modules\Organization\Models\Organization;
+use Modules\Organization\Queries\GetOrganizationHandler;
+use Modules\Organization\Queries\GetOrganizationQuery;
+use Modules\Organization\Queries\ListOrganizationsHandler;
+use Modules\Organization\Queries\ListOrganizationsQuery;
 
 class OrganizationController extends Controller
 {
-    // ── Validation rules (DRY) ──────────────────────────────────────
-
-    private function rules(bool $isUpdate = false, ?int $currentId = null): array
+    public function __construct()
     {
-        return [
-            'name'          => 'required|string|max:255',
-            'slug'          => 'nullable|string|max:255|regex:/^[a-z0-9\-]+$/'
-                               . ($isUpdate ? '|unique:organizations,slug,' . $currentId : '|unique:organizations,slug'),
-            'status'        => 'required|in:active,inactive,suspended',
-            'tax_code'      => 'required|string|max:20',
-            'phone'         => 'nullable|string|max:20',
-            'email'         => 'nullable|email|max:255',
-            'website'       => 'nullable|url|max:255',
-            'industry'      => 'nullable|string|max:100',
-            'address'       => 'nullable|string|max:500',
-            'city'          => 'nullable|string|max:100',
-            'country'       => 'nullable|string|size:2',
-            'postal_code'   => 'nullable|string|max:20',
-            'description'   => 'nullable|string',
-            'logo_path'     => 'nullable|string|max:500',
-            'province_code' => 'required|string|size:2|exists:provinces,province_code',
-            'ward_code'     => 'required|string|size:5|exists:wards,ward_code',
-            'full_address'  => 'nullable|string',
-        ];
+        $this->authorizeResource(Organization::class, 'organization');
     }
 
     // ── CRUD ────────────────────────────────────────────────────────
 
-    public function index()
+    public function index(ListOrganizationsHandler $handler)
     {
-        $organizations = Organization::withCount('members')
-            ->latest()
-            ->paginate(20);
+        $organizations = $handler->handle(new ListOrganizationsQuery());
 
         return view('organization::index', compact('organizations'));
     }
@@ -56,18 +39,18 @@ class OrganizationController extends Controller
 
     public function store(Request $request, StoreOrganizationAction $action): RedirectResponse
     {
-        $validated = $request->validate($this->rules());
+        $data = StoreOrganizationData::validateAndCreate($request->all());
 
-        $organization = $action->handle($validated);
+        $organization = $action->handle($data);
 
         return redirect()->route('backend.organizations.show', $organization)
             ->with('success', 'Tổ chức "' . $organization->name . '" đã được tạo thành công.');
     }
 
-    public function show(Organization $organization)
+    public function show(Organization $organization, GetOrganizationHandler $handler)
     {
-        $organization->loadCount('members')->load(['province', 'ward']);
-        $members = $organization->members()->with('user')->latest()->limit(10)->get();
+        $organization = $handler->handle(new GetOrganizationQuery($organization));
+        $members = $organization->latestMembers;
 
         return view('organization::show', compact('organization', 'members'));
     }
@@ -79,9 +62,9 @@ class OrganizationController extends Controller
 
     public function update(Request $request, Organization $organization, UpdateOrganizationAction $action): RedirectResponse
     {
-        $validated = $request->validate($this->rules(isUpdate: true, currentId: $organization->id));
+        $data = UpdateOrganizationData::validateAndCreate($request->all());
 
-        $action->handle($organization, $validated);
+        $action->handle($organization, $data);
 
         return redirect()->route('backend.organizations.show', $organization)
             ->with('success', 'Cập nhật tổ chức thành công.');
