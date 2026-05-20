@@ -124,7 +124,6 @@
             <x-address-picker
                 :province-value="old('province_code', $organization->province_code)"
                 :ward-value="old('ward_code', $organization->ward_code)"
-                :address-value="old('address', $organization->address)"
                 instance-id="org-e"
                 :required="true"
             />

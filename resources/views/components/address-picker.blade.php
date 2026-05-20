@@ -32,17 +32,6 @@
         @error($nameWard)<p class="mt-1 text-xs text-error form-val-msg">{{ $message }}</p>@enderror
     </div>
 
-    {{-- Số nhà / Tên đường --}}
-    @if($showAddress)
-    <div class="form-control md:col-span-2">
-        <label class="label py-0 pb-1.5">
-            <span class="label-text font-medium">Số nhà, tên đường</span>
-        </label>
-        <input type="text" name="{{ $nameAddress }}" value="{{ $addressValue }}"
-               class="input input-bordered input-sm" placeholder="VD: 123 Nguyễn Huệ">
-    </div>
-    @endif
-
 </div>
 
 {{-- Load TomSelect bundle once even if component is used multiple times on the same page --}}

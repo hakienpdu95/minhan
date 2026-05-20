@@ -130,7 +130,6 @@
             <x-address-picker
                 :province-value="old('province_code')"
                 :ward-value="old('ward_code')"
-                :address-value="old('address')"
                 instance-id="org-c"
                 :required="true"
             />
