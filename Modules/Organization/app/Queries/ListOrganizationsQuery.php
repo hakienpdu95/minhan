@@ -22,5 +22,8 @@ class ListOrganizationsQuery implements QueryInterface
         // Date range on created_at (ISO format YYYY-MM-DD)
         public readonly ?string $dateFrom     = null,
         public readonly ?string $dateTo       = null,
+
+        // Exact status filter
+        public readonly ?string $status       = null,
     ) {}
 }

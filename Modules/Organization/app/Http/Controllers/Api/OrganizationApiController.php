@@ -30,6 +30,7 @@ class OrganizationApiController extends Controller
             wardCode:     $request->input('ward_code'),
             dateFrom:     $request->input('date_from'),
             dateTo:       $request->input('date_to'),
+            status:       $request->input('status'),
         );
 
         $paginator = $handler->handle($query);

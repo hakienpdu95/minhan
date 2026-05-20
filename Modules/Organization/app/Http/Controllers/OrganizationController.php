@@ -3,6 +3,7 @@
 namespace Modules\Organization\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\Enums\OrganizationStatus;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use App\Models\Province;
@@ -30,7 +31,11 @@ class OrganizationController extends Controller
             ->orderBy('name')
             ->get(['province_code', 'name']);
 
-        return view('organization::index', compact('provinces'));
+        $statuses = collect(OrganizationStatus::cases())
+            ->map(fn($s) => ['value' => $s->value, 'text' => $s->label()])
+            ->all();
+
+        return view('organization::index', compact('provinces', 'statuses'));
     }
 
     public function create()

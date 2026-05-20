@@ -48,6 +48,10 @@ class ListOrganizationsHandler implements QueryHandlerInterface
             $q->where('organizations.ward_code', $query->wardCode);
         }
 
+        if ($query->status !== null && $query->status !== '') {
+            $q->where('organizations.status', $query->status);
+        }
+
         // ── Date range on created_at ─────────────────────────────────
         if ($query->dateFrom !== null && $query->dateFrom !== '') {
             $q->whereDate('organizations.created_at', '>=', $query->dateFrom);
@@ -60,7 +64,8 @@ class ListOrganizationsHandler implements QueryHandlerInterface
         // ── Sort ─────────────────────────────────────────────────────
         match ($sortField) {
             'members_count' => $q->orderBy('members_count', $sortDir),
-            'province_name' => $q->orderBy('organizations.province_code', $sortDir),
+            'province_name' => $q->leftJoin('provinces as prov_sort', 'organizations.province_code', '=', 'prov_sort.province_code')
+                                  ->orderBy('prov_sort.name', $sortDir),
             default         => $q->orderBy('organizations.' . $sortField, $sortDir),
         };
 
