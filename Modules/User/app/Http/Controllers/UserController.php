@@ -4,9 +4,10 @@ namespace Modules\User\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Shared\Tenancy\Models\Organization;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Modules\Organization\Enums\MemberRole;
+use Modules\Organization\Models\Organization;
 use Modules\User\Actions\DestroyUserAction;
 use Modules\User\Actions\StoreUserAction;
 use Modules\User\Actions\UpdateUserAction;
@@ -15,30 +16,24 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::withoutGlobalScopes()
-            ->with(['organization', 'organizationMembership'])
-            ->whereNotNull('organization_id');
+        $this->authorize('viewAny', User::class);
 
-        if ($request->filled('organization_id')) {
-            $query->where('organization_id', $request->organization_id);
-        }
+        $isAdmin = $request->user()->hasAnyRole(['super-admin', 'System_Admin']);
 
-        if ($request->filled('is_active')) {
-            $query->where('is_active', $request->boolean('is_active'));
-        }
+        $roles = collect(MemberRole::cases())
+            ->map(fn ($r) => ['value' => $r->value, 'text' => $r->label()])
+            ->all();
 
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
+        $statuses = [
+            ['value' => '1', 'text' => 'Hoạt động'],
+            ['value' => '0', 'text' => 'Vô hiệu'],
+        ];
 
-        $users         = $query->latest()->paginate(20)->withQueryString();
-        $organizations = Organization::orderBy('name')->get(['id', 'name']);
+        $organizations = $isAdmin
+            ? Organization::orderBy('name')->get(['id', 'name'])
+            : collect();
 
-        return view('user::index', compact('users', 'organizations'));
+        return view('user::index', compact('isAdmin', 'roles', 'statuses', 'organizations'));
     }
 
     public function create()
