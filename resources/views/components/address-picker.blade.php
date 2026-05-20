@@ -7,14 +7,15 @@
                 Tỉnh / Thành phố@if($required) <span class="text-error">*</span>@endif
             </span>
         </label>
-        <select id="ts-prov-{{ $instanceId }}" name="{{ $nameProvince }}">
+        <select id="ts-prov-{{ $instanceId }}" name="{{ $nameProvince }}"
+                @if($required) data-req="Vui lòng chọn tỉnh / thành phố" @endif>
             <option value=""></option>
             @foreach ($provinces as $p)
             <option value="{{ $p->province_code }}"
                     {{ $provinceValue === $p->province_code ? 'selected' : '' }}>{{ $p->name }}</option>
             @endforeach
         </select>
-        @error($nameProvince)<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+        @error($nameProvince)<p class="mt-1 text-xs text-error form-val-msg">{{ $message }}</p>@enderror
     </div>
 
     {{-- Phường / Xã --}}
@@ -24,10 +25,11 @@
                 Phường / Xã@if($required) <span class="text-error">*</span>@endif
             </span>
         </label>
-        <select id="ts-ward-{{ $instanceId }}" name="{{ $nameWard }}">
+        <select id="ts-ward-{{ $instanceId }}" name="{{ $nameWard }}"
+                @if($required) data-req="Vui lòng chọn phường / xã" @endif>
             <option value=""></option>
         </select>
-        @error($nameWard)<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+        @error($nameWard)<p class="mt-1 text-xs text-error form-val-msg">{{ $message }}</p>@enderror
     </div>
 
     {{-- Số nhà / Tên đường --}}

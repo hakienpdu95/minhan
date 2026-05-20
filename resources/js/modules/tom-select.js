@@ -71,6 +71,10 @@ function initOrgAddress(provId, wardId, initProv, initWard) {
         placeholder: 'Chọn tỉnh / TP trước',
         maxOptions: null,
         plugins: ['clear_button'],
+        onChange() {
+            // Dispatch native change so form-validation.js có thể clear/re-validate
+            wardEl.dispatchEvent(new Event('change', { bubbles: true }));
+        },
     });
     wardTs.disable();
 
@@ -80,7 +84,10 @@ function initOrgAddress(provId, wardId, initProv, initWard) {
         placeholder: 'Tìm tỉnh / thành phố...',
         maxOptions: null,
         plugins: ['clear_button'],
-        onChange: loadWards,
+        onChange(val) {
+            provEl.dispatchEvent(new Event('change', { bubbles: true }));
+            loadWards(val);
+        },
     });
 
     function setWardPlaceholder(text) {

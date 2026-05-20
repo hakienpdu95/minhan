@@ -21,7 +21,7 @@ class OrganizationController extends Controller
             'slug'          => 'nullable|string|max:255|regex:/^[a-z0-9\-]+$/'
                                . ($isUpdate ? '|unique:organizations,slug,' . $currentId : '|unique:organizations,slug'),
             'status'        => 'required|in:active,inactive,suspended',
-            'tax_code'      => 'nullable|string|max:20',
+            'tax_code'      => 'required|string|max:20',
             'phone'         => 'nullable|string|max:20',
             'email'         => 'nullable|email|max:255',
             'website'       => 'nullable|url|max:255',
@@ -32,8 +32,8 @@ class OrganizationController extends Controller
             'postal_code'   => 'nullable|string|max:20',
             'description'   => 'nullable|string',
             'logo_path'     => 'nullable|string|max:500',
-            'province_code' => 'nullable|string|size:2|exists:provinces,province_code',
-            'ward_code'     => 'nullable|string|size:5|exists:wards,ward_code',
+            'province_code' => 'required|string|size:2|exists:provinces,province_code',
+            'ward_code'     => 'required|string|size:5|exists:wards,ward_code',
             'full_address'  => 'nullable|string',
         ];
     }

@@ -67,9 +67,15 @@
                 </div>
 
                 <div class="form-control">
-                    <label class="label py-0 pb-1.5"><span class="label-text font-medium">Mã số thuế</span></label>
+                    <label class="label py-0 pb-1.5">
+                        <span class="label-text font-medium">Mã số thuế <span class="text-error">*</span></span>
+                    </label>
                     <input type="text" name="tax_code" value="{{ old('tax_code') }}"
-                           class="input input-bordered input-sm" placeholder="VD: 0123456789">
+                           data-req="Vui lòng nhập mã số thuế"
+                           data-val-maxlength="20"
+                           class="input input-bordered input-sm @error('tax_code') input-error @enderror"
+                           placeholder="VD: 0123456789">
+                    @error('tax_code')<p class="mt-1 text-xs text-error form-val-msg">{{ $message }}</p>@enderror
                 </div>
             </div>
 
@@ -126,6 +132,7 @@
                 :ward-value="old('ward_code')"
                 :address-value="old('address')"
                 instance-id="org-c"
+                :required="true"
             />
         </div>
     </div>
