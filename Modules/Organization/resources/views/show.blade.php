@@ -81,7 +81,10 @@
                 <div class="sm:col-span-2"><dt class="text-base-content/50 text-xs uppercase tracking-wide mb-0.5">Địa chỉ</dt><dd>{{ implode(', ', array_filter([$organization->address, $organization->ward?->name, $organization->province?->name])) }}{{ $organization->country ? ' (' . $organization->country . ')' : '' }}</dd></div>
                 @endif
                 @if ($organization->description)
-                <div class="sm:col-span-2"><dt class="text-base-content/50 text-xs uppercase tracking-wide mb-0.5">Mô tả</dt><dd class="text-base-content/80">{{ $organization->description }}</dd></div>
+                <div class="sm:col-span-2">
+                    <dt class="text-base-content/50 text-xs uppercase tracking-wide mb-0.5">Mô tả</dt>
+                    <dd class="text-base-content/80 rich-content">{!! sanitize_rich_text($organization->description) !!}</dd>
+                </div>
                 @endif
             </dl>
         </div>

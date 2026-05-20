@@ -118,6 +118,12 @@ import 'iconify-icon';
  */
 import { initAdminShell } from './admin-shell.js';
 
+/* ── 5. Form validation helper ──────────────────────────────────────
+ * Lightweight (~2 KB), không phụ thuộc thư viện. Exposed lên window
+ * để mọi module gọi initFormValidation() mà không cần load thêm bundle.
+ */
+import './modules/form-validation.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     initAdminShell();
 });

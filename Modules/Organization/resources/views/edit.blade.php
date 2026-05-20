@@ -73,8 +73,9 @@
 
             <div class="form-control mt-2">
                 <label class="label py-0 pb-1.5"><span class="label-text font-medium">Mô tả</span></label>
-                <textarea id="jodit-description" name="description"
-                          class="textarea textarea-bordered textarea-sm w-full">{{ old('description', $organization->description) }}</textarea>
+                <textarea name="description"
+                          class="jodit-editor textarea textarea-bordered textarea-sm w-full"
+                          data-jodit-preset="compact">{{ old('description', $organization->description) }}</textarea>
             </div>
         </div>
     </div>
@@ -88,21 +89,24 @@
                 <div class="form-control">
                     <label class="label py-0 pb-1.5"><span class="label-text font-medium">Điện thoại</span></label>
                     <input type="text" name="phone" value="{{ old('phone', $organization->phone) }}"
+                           data-val-maxlength="20"
                            class="input input-bordered input-sm">
                 </div>
 
                 <div class="form-control">
                     <label class="label py-0 pb-1.5"><span class="label-text font-medium">Email liên hệ</span></label>
                     <input type="email" name="email" value="{{ old('email', $organization->email) }}"
+                           data-val-email="Email không đúng định dạng (VD: name@company.com)"
                            class="input input-bordered input-sm @error('email') input-error @enderror">
-                    @error('email')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                    @error('email')<p class="mt-1 text-xs text-error form-val-msg">{{ $message }}</p>@enderror
                 </div>
 
                 <div class="form-control md:col-span-2">
                     <label class="label py-0 pb-1.5"><span class="label-text font-medium">Website</span></label>
                     <input type="url" name="website" value="{{ old('website', $organization->website) }}"
+                           data-val-url="URL không hợp lệ — phải bắt đầu bằng https://"
                            class="input input-bordered input-sm @error('website') input-error @enderror">
-                    @error('website')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                    @error('website')<p class="mt-1 text-xs text-error form-val-msg">{{ $message }}</p>@enderror
                 </div>
             </div>
         </div>
@@ -132,14 +136,8 @@
 @vite(['resources/js/modules/jodit.js'], 'build/backend')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    window.initJodit('#jodit-description', {
-        height: 220,
-        toolbarButtonSize: 'small',
-        buttons: ['bold','italic','underline','strikethrough','|','ul','ol','|','paragraph','link','|','undo','redo','|','source'],
-        removeButtons: ['about','classSpan','image'],
-    });
-
-    initOrgFormValidation('[data-org-form]');
+    initJoditAll('.jodit-editor');
+    initFormValidation('[data-org-form]');
 });
 </script>
 @endpush

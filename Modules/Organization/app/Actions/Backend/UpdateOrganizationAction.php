@@ -11,6 +11,10 @@ class UpdateOrganizationAction
 
     public function handle(Organization $organization, array $validated): Organization
     {
+        if (array_key_exists('description', $validated)) {
+            $validated['description'] = sanitize_rich_text($validated['description']);
+        }
+
         $organization->update($validated);
 
         return $organization;
