@@ -25,9 +25,11 @@ class OrganizationApiController extends Controller
             perPage:      min(100, max(5, $request->integer('size', 25))),
             sortField:    $sortField,
             sortDir:      $sortDir,
-            name:         $request->input('name'),
+            search:       $request->input('search'),
             provinceCode: $request->input('province_code'),
             wardCode:     $request->input('ward_code'),
+            dateFrom:     $request->input('date_from'),
+            dateTo:       $request->input('date_to'),
         );
 
         $paginator = $handler->handle($query);
@@ -41,7 +43,6 @@ class OrganizationApiController extends Controller
 
     private function formatRow(\Modules\Organization\Models\Organization $org): array
     {
-        /** @var OrganizationStatus $status */
         $status = $org->status;
 
         return [
