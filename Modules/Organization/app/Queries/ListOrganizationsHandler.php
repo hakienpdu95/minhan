@@ -25,6 +25,7 @@ class ListOrganizationsHandler implements QueryHandlerInterface
         $sortDir = $query->sortDir === 'asc' ? 'asc' : 'desc';
 
         $q = Organization::withoutTenant()
+            ->select('organizations.*')  // explicit select prevents column collision when leftJoin is applied for sort
             ->withCount('members')
             ->with(['province:province_code,name', 'ward:ward_code,name']);
 

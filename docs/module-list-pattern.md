@@ -113,7 +113,8 @@ class ListXxxHandler implements QueryHandlerInterface
         $sortDir = $query->sortDir === 'asc' ? 'asc' : 'desc';
 
         $q = Xxx::withoutTenant()
-            ->withCount('relatedModel')
+            ->select('table.*')           // explicit select — bắt buộc để tránh column collision khi leftJoin được áp dụng
+            ->withCount('relatedModel')   // withCount dùng addSelect() → append vào select hiện tại, không overwrite
             ->with(['province:province_code,name']); // Chỉ select columns cần thiết
 
         // ── Text search (OR) ────────────────────────────────────────
@@ -160,6 +161,8 @@ class ListXxxHandler implements QueryHandlerInterface
 
 **Lưu ý quan trọng:**
 - `withoutTenant()` — **bắt buộc** cho admin listing để bypass `OrganizationScope`
+- `->select('table.*')` — **bắt buộc ngay sau `withoutTenant()`**: khi sort `province_name` thêm `leftJoin`, nếu không có explicit select thì `paginate(['*'])` sẽ kéo cả columns của bảng join (kể cả `id`), gây model hydration sai
+- `withCount` dùng `addSelect()` → append subquery vào select list hiện tại, không xung đột với `->select('table.*')`
 - Sort whitelist ngăn SQL injection qua sort field
 - `leftJoin` cho sort theo related table name: dùng alias (`prov_sort`) tránh column conflict với `with()` eager load
 - `with(['province:province_code,name'])` — eager load với **column selection** để tránh N+1 và không kéo dư dữ liệu
@@ -169,19 +172,68 @@ class ListXxxHandler implements QueryHandlerInterface
 Khi cần sort theo tên của bảng liên kết (không phải foreign key code):
 
 ```php
-// ❌ Sai: sort theo code, không phải tên
+// ❌ Sai: sort theo code, không phải tên hiển thị
 'province_name' => $q->orderBy('organizations.province_code', $sortDir),
 
-// ✓ Đúng: LEFT JOIN, alias table để tránh conflict với eager load
+// ❌ Sai: thiếu ->select('table.*') ở đầu query → leftJoin làm paginate(['*']) kéo cả
+//         columns của provinces (gồm 'id'), ghi đè organizations.id khi hydrate model
 'province_name' => $q->leftJoin('provinces as prov_sort', 'table.province_code', '=', 'prov_sort.province_code')
                       ->orderBy('prov_sort.name', $sortDir),
+
+// ✓ Đúng: ->select('table.*') đặt ở đầu query (trước withCount), leftJoin chỉ dùng để sort
+'province_name' => $q->leftJoin('provinces as prov_sort', 'table.province_code', '=', 'prov_sort.province_code')
+                      ->orderBy('prov_sort.name', $sortDir),
+// ^ an toàn vì query đã có ->select('table.*') từ bước khởi tạo $q
 ```
 
 `leftJoin` không ảnh hưởng `with()` — eager load chạy query riêng sau khi paginate.
 
 ---
 
-## 3. Backend — API Controller
+## 3. Backend — API Controller + Resource
+
+### 3.1 Resource class
+
+File: `Modules/Xxx/app/Http/Resources/XxxListResource.php`
+
+```php
+<?php
+
+namespace Modules\Xxx\Http\Resources;
+
+use App\Shared\Tenancy\Enums\XxxStatus;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+class XxxListResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        $status = $this->status;
+
+        return [
+            'id'           => $this->id,
+            'name'         => $this->name,
+            // Enum: lấy cả value (cho filter/class) và label (cho display)
+            'status'       => $status instanceof XxxStatus ? $status->value : $status,
+            'status_label' => $status instanceof XxxStatus ? $status->label() : $status,
+            'created_at'   => $this->created_at?->format('d/m/Y'),
+            // Pre-build URLs server-side — không để client tự xây URL
+            'show_url'     => route('backend.xxx.show', $this->resource),
+            'edit_url'     => route('backend.xxx.edit', $this->resource),
+            'delete_url'   => route('backend.xxx.destroy', $this->resource),
+        ];
+    }
+}
+```
+
+**Lý do dùng Resource thay cho `formatRow()` closure:**
+- Reusable: cùng một Resource có thể dùng cho `show`, `store`, `update` response
+- Testable: `XxxListResource::make($model)->toArray($request)` test trực tiếp
+- Convention: Laravel API Resource là standard, dễ onboard developer mới
+- Tách biệt: controller chỉ điều phối, không biết về serialization logic
+
+### 3.2 Controller
 
 File: `Modules/Xxx/app/Http/Controllers/Api/XxxApiController.php`
 
@@ -193,6 +245,7 @@ namespace Modules\Xxx\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\Xxx\Http\Resources\XxxListResource;
 use Modules\Xxx\Queries\ListXxxHandler;
 use Modules\Xxx\Queries\ListXxxQuery;
 
@@ -224,30 +277,10 @@ class XxxApiController extends Controller
         $paginator = $handler->handle($query);
 
         return response()->json([
-            'data'      => collect($paginator->items())->map($this->formatRow(...)),
+            'data'      => XxxListResource::collection($paginator->items()),
             'last_page' => $paginator->lastPage(),
             'total'     => $paginator->total(),
         ]);
-    }
-
-    private function formatRow(\Modules\Xxx\Models\Xxx $item): array
-    {
-        $status = $item->status;
-
-        return [
-            'id'         => $item->id,
-            'name'       => $item->name,
-            // Enum: lấy cả value (cho filter/class) và label (cho display)
-            'status'     => $status instanceof \App\Shared\Tenancy\Enums\XxxStatus
-                              ? $status->value : $status,
-            'status_label' => $status instanceof \App\Shared\Tenancy\Enums\XxxStatus
-                              ? $status->label() : $status,
-            'created_at' => $item->created_at?->format('d/m/Y'),
-            // Pre-build URLs server-side — không để client tự xây URL
-            'show_url'   => route('backend.xxx.show', $item),
-            'edit_url'   => route('backend.xxx.edit', $item),
-            'delete_url' => route('backend.xxx.destroy', $item),
-        ];
     }
 }
 ```
@@ -979,8 +1012,11 @@ setDatePreset: function (preset) {
 
 - [ ] Tạo `ListXxxQuery` (QueryInterface) với đầy đủ filter params
 - [ ] Tạo `ListXxxHandler` (QueryHandlerInterface) với sort whitelist + filter logic
+  - [ ] `->select('table.*')` **ngay sau** `withoutTenant()` — bắt buộc khi có leftJoin sort
+  - [ ] `->withCount(...)` sau `->select(...)` — dùng `addSelect()` nên an toàn
+- [ ] Tạo `XxxListResource` (JsonResource) — serialization tách khỏi controller
 - [ ] Đăng ký API route trong `routes/web.php` với prefix `backend/api`
-- [ ] Tạo `XxxApiController` với `authorize('viewAny')` + `formatRow()`
+- [ ] Tạo `XxxApiController` với `authorize('viewAny')` + `XxxListResource::collection(...)`
 - [ ] Tạo `StoreXxxData` + `UpdateXxxData` (Spatie Laravel Data)
 - [ ] Sửa `UpdateXxxData::rules()` cho unique-ignore khi update
 - [ ] Tạo migration thêm index cho filter/sort columns
@@ -1017,7 +1053,9 @@ setDatePreset: function (preset) {
 |--------|-----------|-------|
 | Sort field validation | Whitelist `const SORTABLE` | SQL injection prevention |
 | Province sort | `leftJoin` + `orderBy('provinces.name')` | Sort theo tên thực, không phải code |
-| `withCount` + `leftJoin` cùng query | An toàn | `withCount` dùng subquery, không conflict với JOIN |
+| `withCount` + `leftJoin` cùng query | An toàn nhờ `->select('table.*')` | `withCount` dùng `addSelect()` — append subquery, không overwrite `select`. Explicit select ngăn `paginate(['*'])` kéo columns của bảng join |
+| `->select('table.*')` vị trí | Ngay sau `withoutTenant()`, trước `withCount` | Đảm bảo select scope được set trước khi `addSelect` chạy; leftJoin có thể được áp dụng bất kỳ lúc nào trong match block |
+| Response serialization | `JsonResource` thay cho `formatRow()` closure | Reusable, testable, idiomatic Laravel; controller chỉ điều phối |
 | Lib instances trong Alpine | Closure scope, không reactive | Tránh Alpine proxy overhead, không cần reactivity |
 | `loadingWards` | Bỏ | Không dùng trong template — dead state |
 | `provinces` reactive | Bỏ, dùng `PROVINCES` closure | Không cần reactivity cho static data |
