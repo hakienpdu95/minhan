@@ -5,6 +5,7 @@ namespace Modules\Organization\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use App\Models\Province;
 use Modules\Organization\Actions\Backend\DestroyOrganizationAction;
 use Modules\Organization\Actions\Backend\StoreOrganizationAction;
 use Modules\Organization\Actions\Backend\UpdateOrganizationAction;
@@ -13,8 +14,6 @@ use Modules\Organization\Data\Requests\UpdateOrganizationData;
 use Modules\Organization\Models\Organization;
 use Modules\Organization\Queries\GetOrganizationHandler;
 use Modules\Organization\Queries\GetOrganizationQuery;
-use Modules\Organization\Queries\ListOrganizationsHandler;
-use Modules\Organization\Queries\ListOrganizationsQuery;
 
 class OrganizationController extends Controller
 {
@@ -25,11 +24,13 @@ class OrganizationController extends Controller
 
     // ── CRUD ────────────────────────────────────────────────────────
 
-    public function index(ListOrganizationsHandler $handler)
+    public function index()
     {
-        $organizations = $handler->handle(new ListOrganizationsQuery());
+        $provinces = Province::where('is_active', true)
+            ->orderBy('name')
+            ->get(['province_code', 'name']);
 
-        return view('organization::index', compact('organizations'));
+        return view('organization::index', compact('provinces'));
     }
 
     public function create()
