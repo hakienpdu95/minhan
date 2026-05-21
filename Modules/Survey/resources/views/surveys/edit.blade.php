@@ -99,21 +99,30 @@
         </div>
 
         {{-- Stats card --}}
-        <div class="card bg-base-100 shadow-sm border border-base-200 mt-4">
+        <div class="card bg-base-100 shadow-sm border border-base-200 mt-4"
+             x-data="{
+                 totalResponses: {{ $survey->responses()->complete()->count() }},
+                 totalSections:  {{ $survey->sections->count() }},
+                 activeFields:   {{ $survey->sections->sum(fn($s) => $s->fields->where('is_active', true)->count()) }}
+             }"
+             @survey-stats-updated.window="
+                 totalSections = $event.detail.sections;
+                 activeFields  = $event.detail.activeFields;
+             ">
             <div class="card-body p-5">
                 <h2 class="font-bold text-base mb-3">Thống kê nhanh</h2>
                 <div class="space-y-2 text-sm">
                     <div class="flex justify-between">
                         <span class="text-base-content/60">Tổng responses</span>
-                        <span class="font-semibold">{{ $survey->responses()->complete()->count() }}</span>
+                        <span class="font-semibold" x-text="totalResponses"></span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-base-content/60">Số sections</span>
-                        <span class="font-semibold">{{ $survey->sections->count() }}</span>
+                        <span class="font-semibold" x-text="totalSections"></span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-base-content/60">Số fields active</span>
-                        <span class="font-semibold">{{ $survey->sections->sum(fn($s) => $s->fields->where('is_active', true)->count()) }}</span>
+                        <span class="font-semibold" x-text="activeFields"></span>
                     </div>
                 </div>
                 @can('survey.view_responses')

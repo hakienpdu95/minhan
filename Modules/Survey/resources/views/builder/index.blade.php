@@ -464,6 +464,7 @@ function surveyBuilder(sectionsData, fieldTypes, surveyId, isLocked, csrfToken) 
                 this.sections.push({ ...res.data, fields: [], _open: true });
             }
             this.sModal.open = false;
+            this.dispatchStats();
             this.ok(res.message);
         },
 
@@ -472,6 +473,7 @@ function surveyBuilder(sectionsData, fieldTypes, surveyId, isLocked, csrfToken) 
             const res = await this.api(`/dashboard/surveys/${this.surveyId}/sections/${section.id}`, 'DELETE');
             if (!res) return;
             this.sections.splice(idx, 1);
+            this.dispatchStats();
             this.ok(res.message);
         },
 
@@ -541,6 +543,7 @@ function surveyBuilder(sectionsData, fieldTypes, surveyId, isLocked, csrfToken) 
                 section.fields.push(res.data);
             }
             this.fModal.open = false;
+            this.dispatchStats();
             this.ok(res.message);
         },
 
@@ -548,6 +551,7 @@ function surveyBuilder(sectionsData, fieldTypes, surveyId, isLocked, csrfToken) 
             const res = await this.api(`/dashboard/surveys/${this.surveyId}/fields/${field.id}/toggle`, 'PATCH');
             if (!res) return;
             field.is_active = res.is_active;
+            this.dispatchStats();
             this.ok(res.message);
         },
 
@@ -556,6 +560,7 @@ function surveyBuilder(sectionsData, fieldTypes, surveyId, isLocked, csrfToken) 
             const res = await this.api(`/dashboard/surveys/${this.surveyId}/fields/${field.id}`, 'DELETE');
             if (!res) return;
             section.fields.splice(idx, 1);
+            this.dispatchStats();
             this.ok(res.message);
         },
 
@@ -674,6 +679,15 @@ function surveyBuilder(sectionsData, fieldTypes, surveyId, isLocked, csrfToken) 
             } catch {
                 this.ok(`Key: ${key}`);
             }
+        },
+
+        dispatchStats() {
+            window.dispatchEvent(new CustomEvent('survey-stats-updated', {
+                detail: {
+                    sections:     this.sections.length,
+                    activeFields: this.sections.reduce((n, s) => n + s.fields.filter(f => f.is_active).length, 0),
+                },
+            }));
         },
 
         ok(msg)  { this.flash = { text: msg, type: 'success' }; setTimeout(() => this.flash.text = '', 3000); },
