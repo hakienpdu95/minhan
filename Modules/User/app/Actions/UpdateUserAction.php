@@ -56,8 +56,10 @@ class UpdateUserAction
             }
 
             // ── Spatie role sync ────────────────────────────────────────
+            $prevTeamId = getPermissionsTeamId();
             setPermissionsTeamId($data->organization_id);
             $user->syncRoles([$data->system_role]);
+            setPermissionsTeamId($prevTeamId);
             app(PermissionRegistrar::class)->forgetCachedPermissions();
 
             // Fire role-assigned event only when role actually changed

@@ -39,8 +39,10 @@ class StoreUserAction
                 'joined_at'       => now(),
             ]);
 
+            $prevTeamId = getPermissionsTeamId();
             setPermissionsTeamId($data->organization_id);
             $user->assignRole($data->system_role);
+            setPermissionsTeamId($prevTeamId);
             app(PermissionRegistrar::class)->forgetCachedPermissions();
 
             event(new UserCreated($user));

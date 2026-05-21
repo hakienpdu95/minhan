@@ -74,7 +74,7 @@ class UserController extends Controller
         $this->authorize('update', $user);
 
         $isAdmin     = $request->user()->hasAnyRole(['super-admin', RoleEnum::ADMIN->value]);
-        $currentRole = $user->getRoleNames()->first() ?? '';
+        $currentRole = $this->resolveUserRole($user);
 
         $user->load(['organization', 'organizationMembership']);
 
@@ -143,6 +143,22 @@ class UserController extends Controller
         if (! $isAdmin && in_array($requestedRole, $restricted, true)) {
             abort(403, 'Bạn không có quyền gán vai trò này.');
         }
+    }
+
+    /**
+     * Get the user's current system role scoped to their own organisation,
+     * regardless of the currently logged-in user's team context.
+     */
+    private function resolveUserRole(User $user): string
+    {
+        $prevTeamId = getPermissionsTeamId();
+        setPermissionsTeamId($user->organization_id);
+        $user->unsetRelation('roles');
+        $role = $user->getRoleNames()->first() ?? '';
+        setPermissionsTeamId($prevTeamId);
+        $user->unsetRelation('roles');
+
+        return $role;
     }
 
     private function permissionMatrix(): array

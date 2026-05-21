@@ -43,11 +43,19 @@ class ListUsersHandler implements QueryHandlerInterface
             });
         }
 
-        // ── Role filter (via organizationMembership) ─────────────────
+        // ── Role filter (via Spatie model_has_roles) ─────────────────
+        // Filter values are system roles (RoleEnum: ceo, sales, hr…),
+        // NOT org-membership roles (owner/admin/member) — use a raw EXISTS
+        // so the query is independent of the current Spatie team context.
         if ($query->role !== null && $query->role !== '') {
             $role = $query->role;
-            $q->whereHas('organizationMembership', function (Builder $sub) use ($role): void {
-                $sub->where('role', $role);
+            $q->whereExists(function ($sub) use ($role): void {
+                $sub->selectRaw('1')
+                    ->from('model_has_roles as mhr_filter')
+                    ->join('roles as r_filter', 'r_filter.id', '=', 'mhr_filter.role_id')
+                    ->whereColumn('mhr_filter.model_id', 'users.id')
+                    ->where('mhr_filter.model_type', User::class)
+                    ->where('r_filter.name', $role);
             });
         }
 

@@ -39,6 +39,9 @@ class UserSeeder extends Seeder
             ['name' => 'Viewer User',    'email' => 'viewer@demo.test',    'role' => RoleEnum::VIEWER],
         ];
 
+        // Scope Spatie role assignments to the demo org's team context
+        setPermissionsTeamId($org->id);
+
         foreach ($definitions as $def) {
             $user = User::firstOrCreate(
                 ['email' => $def['email']],
@@ -50,9 +53,10 @@ class UserSeeder extends Seeder
                 ]
             );
 
-            // syncRoles để tránh duplicate khi seed lại
             $user->syncRoles([$def['role']->value]);
         }
+
+        setPermissionsTeamId(null);
 
         // CEO là owner của demo org
         $ceo = User::where('email', 'ceo@demo.test')->first();
