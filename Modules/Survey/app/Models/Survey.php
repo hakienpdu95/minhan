@@ -48,6 +48,11 @@ class Survey extends Model
         return $this->hasMany(SurveyResponse::class);
     }
 
+    public function tokens(): HasMany
+    {
+        return $this->hasMany(SurveyToken::class);
+    }
+
     // ── Scopes ────────────────────────────────────────────────────────
 
     public function scopeActive(Builder $query): Builder

@@ -133,5 +133,17 @@
     "__index///index///__///__///__///field_id,value_bool///Đếm Có/Không",
     "__index///index///__///__///__///field_id,value_string///Lọc text ngắn",
     "__index///index///__///__///__///response_id,field_id///Dựng lại toàn bộ 1 response"
-  ]
+  ],
+  [
+    "survey_tokens///__///__///Token per survey",
+    "survey_id///unsignedBigInteger///__///NOT_NULL///__///->constrained('surveys')->onDelete('cascade')///FK -> surveys",
+    "name///string///150///NOT_NULL///__///__///Tiêu đề",
+    "token///string///80///NOT_NULL///__///->unique()///Lưu hash, hiển thị plaintext 1 lần",
+    "is_active///boolean///__///NOT_NULL///true///->index()///Trạng thái hoạt động",
+    "last_used_at///timestamp///__///_NULL///NULL///__///Cập nhật mỗi lần token được dùng",
+    "expires_at///timestamp///__///_NULL///NULL///__///Cập nhật null là không hết hạn",
+    "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
+    "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật",
+    "__index///unique///__///__///__///survey_id,is_active///Mỗi survey có active"
+  ],
 ]

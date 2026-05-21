@@ -17,12 +17,12 @@ enum FieldType: int
     public function valueKind(): ValueKind
     {
         return match ($this) {
-            self::Text                              => ValueKind::String,
-            self::Textarea                          => ValueKind::Text,
-            self::Number, self::Rating              => ValueKind::Number,
+            self::Text                                => ValueKind::String,
+            self::Textarea                            => ValueKind::Text,
+            self::Number, self::Rating                => ValueKind::Number,
             self::Select, self::Radio, self::Checkbox => ValueKind::Option,
-            self::Date                              => ValueKind::Date,
-            self::Boolean                           => ValueKind::Bool,
+            self::Date                                => ValueKind::Date,
+            self::Boolean                             => ValueKind::Bool,
         };
     }
 
@@ -34,5 +34,26 @@ enum FieldType: int
     public function allowsMultiple(): bool
     {
         return $this === self::Checkbox;
+    }
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::Text     => 'Văn bản ngắn',
+            self::Textarea => 'Văn bản dài',
+            self::Number   => 'Số',
+            self::Select   => 'Dropdown',
+            self::Radio    => 'Radio (chọn 1)',
+            self::Checkbox => 'Checkbox (chọn nhiều)',
+            self::Rating   => 'Đánh giá sao',
+            self::Date     => 'Ngày tháng',
+            self::Boolean  => 'Có / Không',
+        };
+    }
+
+    /** True nếu field_type có rule_min / rule_max */
+    public function hasRules(): bool
+    {
+        return in_array($this, [self::Text, self::Textarea, self::Number, self::Rating]);
     }
 }

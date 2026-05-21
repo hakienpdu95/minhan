@@ -90,3 +90,29 @@ Tóm tắt Task 7:
   - textarea không có index riêng trên value_text — dùng COUNT(*) WHERE field_id IN (...) thông qua prefix của index (field_id, option_id) — đúng spec "index-backed, không full table
   scan"
   - Service là pure read — không có side effect, không write DB
+
+
+
+Giai đoạn 1 hoàn thành. Tóm tắt những gì đã implement:
+
+  ┌──────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Task │                                                                                  Kết quả                                                                                  │
+  ├──────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ 1.1  │ SurveyToken model — relationship survey(), scopes active()/forSurvey(), helpers isExpired()/isValid(). Quan hệ tokens() thêm vào Survey model.                            │
+  ├──────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ 1.2  │ SurveyPermissionSeeder — tạo 7 permissions survey.* trong DB, gán cho system_admin, ceo, marketing, ops. Chạy thành công.                                                 │
+  ├──────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ 1.3  │ CreateSurveyAction + UpdateSurveyAction (slug lock khi active, unique check) + SurveyFormData DTO + SurveyRequest (validate title/slug/version) + Admin\SurveyController  │
+  │      │ (index/create/store/edit/update/destroy + activity log).                                                                                                                  │
+  ├──────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ 1.4  │ ActivateSurveyAction — validate ≥1 active field, đổi status → Active, lock slug.                                                                                          │
+  ├──────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ 1.5  │ Sidebar thêm menu "Khảo sát" với @can('survey.view') guard, submenu Danh sách + Tạo mới.                                                                                  │
+  ├──────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ 1.6  │ admin/surveys/index.blade.php — table với filter (q + status), status badge, responses count, actions (edit/delete), empty state.                                         │
+  ├──────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ 1.7  │ admin/surveys/create.blade.php — form tạo mới + Alpine.js auto-generate slug từ title. admin/surveys/edit.blade.php — 2 cột: form thông tin + builder placeholder + stats │
+  │      │  card + nút activate.                                                                                                                                                     │
+  └──────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  7 routes backend.surveys.* đã đăng ký. 17/17 unit tests pass.
