@@ -1,6 +1,6 @@
 **Đường dẫn dự án:** `/var/www/html/minhan`
 
-**Module**: `Modules/Organization`
+**Module**: `Modules/User`
 
 ## CHỨC NĂNG THÊM MỚI TÀI KHOẢN & PHÂN QUYỀN (CREATE USER + ASSIGN ROLE/PERMISSION)
 

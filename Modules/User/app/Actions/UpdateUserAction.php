@@ -2,11 +2,13 @@
 
 namespace Modules\User\Actions;
 
+use App\Enums\RoleEnum;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Organization\Models\OrganizationMember;
+use Modules\User\Events\UserRoleAssigned;
 use Spatie\Permission\PermissionRegistrar;
 
 class UpdateUserAction
@@ -30,30 +32,38 @@ class UpdateUserAction
 
             $user->fill($updateData)->save();
 
+            $orgRole    = $this->deriveOrgRole($validated['system_role']);
             $membership = OrganizationMember::where('organization_id', $validated['organization_id'])
                 ->where('user_id', $user->id)
                 ->first();
 
             if ($membership) {
                 if ($membership->role !== OrganizationMember::ROLE_OWNER) {
-                    $membership->update(['role' => $validated['role']]);
-                    setPermissionsTeamId($validated['organization_id']);
-                    $user->syncRoles([$validated['role']]);
+                    $membership->update(['role' => $orgRole]);
                 }
             } else {
                 OrganizationMember::create([
                     'organization_id' => $validated['organization_id'],
                     'user_id'         => $user->id,
-                    'role'            => $validated['role'],
+                    'role'            => $orgRole,
                     'joined_at'       => now(),
                 ]);
-                setPermissionsTeamId($validated['organization_id']);
-                $user->syncRoles([$validated['role']]);
             }
 
+            setPermissionsTeamId($validated['organization_id']);
+            $user->syncRoles([$validated['system_role']]);
             app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+            event(new UserRoleAssigned($user, $validated['system_role']));
 
             return $user;
         });
+    }
+
+    private function deriveOrgRole(string $systemRole): string
+    {
+        return in_array($systemRole, [RoleEnum::CEO->value, RoleEnum::ADMIN->value], true)
+            ? 'admin'
+            : 'member';
     }
 }

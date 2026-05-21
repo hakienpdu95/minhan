@@ -3,25 +3,19 @@
 namespace Modules\User\Providers;
 
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
+use Modules\User\Events\UserCreated;
+use Modules\User\Events\UserRoleAssigned;
+use Modules\User\Listeners\LogUserCreated;
+use Modules\User\Listeners\LogUserRoleAssigned;
 
 class EventServiceProvider extends ServiceProvider
 {
-    /**
-     * The event handler mappings for the application.
-     *
-     * @var array<string, array<int, string>>
-     */
-    protected $listen = [];
+    protected $listen = [
+        UserCreated::class      => [LogUserCreated::class],
+        UserRoleAssigned::class => [LogUserRoleAssigned::class],
+    ];
 
-    /**
-     * Indicates if events should be discovered.
-     *
-     * @var bool
-     */
-    protected static $shouldDiscoverEvents = true;
+    protected static $shouldDiscoverEvents = false;
 
-    /**
-     * Configure the proper event listeners for email verification.
-     */
     protected function configureEmailVerification(): void {}
 }

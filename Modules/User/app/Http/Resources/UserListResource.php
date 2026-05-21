@@ -2,16 +2,16 @@
 
 namespace Modules\User\Http\Resources;
 
+use App\Enums\RoleEnum;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Modules\Organization\Enums\MemberRole;
 
 class UserListResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $membership = $this->organizationMembership;
-        $role       = $membership?->role;
+        $spatiRole = $this->getRoleNames()->first();
+        $roleEnum  = $spatiRole ? RoleEnum::tryFrom($spatiRole) : null;
 
         return [
             'id'                => $this->id,
@@ -24,8 +24,8 @@ class UserListResource extends JsonResource
             'organization_id'   => $this->organization_id,
             'organization_name' => $this->organization?->name,
 
-            'role'              => $role instanceof MemberRole ? $role->value : $role,
-            'role_label'        => $role instanceof MemberRole ? $role->label() : ($role ?? '—'),
+            'role'              => $roleEnum?->value ?? $spatiRole,
+            'role_label'        => $roleEnum?->label() ?? ($spatiRole ?? '—'),
 
             'is_active'         => $this->is_active,
             'status_label'      => $this->is_active ? 'Hoạt động' : 'Vô hiệu',

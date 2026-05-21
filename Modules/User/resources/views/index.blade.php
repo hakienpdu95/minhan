@@ -336,14 +336,19 @@ document.addEventListener('alpine:init', function () {
             },
         },
         {
-            title: 'Vai trò', field: 'role', width: 140, hozAlign: 'center', sorter: 'string',
+            title: 'Vai trò', field: 'role', width: 160, hozAlign: 'center', sorter: 'string',
             formatter: function (cell) {
                 var s = cell.getValue(), label = esc(cell.getRow().getData().role_label);
-                if (s === 'owner')   return '<span class="badge badge-primary badge-sm">'  + label + '</span>';
-                if (s === 'admin')   return '<span class="badge badge-warning badge-sm">'  + label + '</span>';
-                if (s === 'manager') return '<span class="badge badge-info badge-sm">'     + label + '</span>';
-                if (s === 'member')  return '<span class="badge badge-ghost badge-sm">'    + label + '</span>';
-                return '<span class="opacity-30">—</span>';
+                if (!label || label === '—') return '<span class="opacity-30">—</span>';
+                var cls = 'badge-ghost';
+                if (s === 'ceo')          cls = 'badge-primary';
+                else if (s === 'system_admin') cls = 'badge-error';
+                else if (s === 'ops')     cls = 'badge-warning';
+                else if (s === 'sales')   cls = 'badge-success';
+                else if (s === 'hr')      cls = 'badge-info';
+                else if (s === 'ai_operator') cls = 'badge-secondary';
+                else if (s === 'marketing')   cls = 'badge-accent';
+                return '<span class="badge badge-sm ' + cls + '">' + label + '</span>';
             },
         },
         {
