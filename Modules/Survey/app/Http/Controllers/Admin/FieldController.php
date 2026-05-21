@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Modules\Survey\Actions\CreateFieldAction;
 use Modules\Survey\Actions\DeactivateFieldAction;
+use Modules\Survey\Actions\DestroyFieldAction;
 use Modules\Survey\Actions\ReorderAction;
 use Modules\Survey\Actions\UpdateFieldAction;
 use Modules\Survey\Data\FieldFormData;
@@ -64,6 +65,18 @@ class FieldController extends Controller
         ]);
     }
 
+    public function destroy(Survey $survey, SurveyField $field, DestroyFieldAction $action): JsonResponse
+    {
+        $this->authorize('survey.update');
+
+        $action->handle($survey, $field);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Field \"{$field->label}\" đã được xóa.",
+        ]);
+    }
+
     public function reorder(Request $request, Survey $survey, ReorderAction $action): JsonResponse
     {
         $this->authorize('survey.update');
@@ -84,7 +97,6 @@ class FieldController extends Controller
     private function validateField(Request $request, int $surveyId, ?int $exceptId = null): array
     {
         return $request->validate([
-            'field_key'      => ['required', 'string', 'max:100', 'regex:/^[a-z_][a-z0-9_]*$/'],
             'label'          => ['required', 'string', 'max:500'],
             'field_type'     => ['required', 'integer', Rule::in(array_column(FieldType::cases(), 'value'))],
             'section_id'     => ['nullable', 'integer', "exists:survey_sections,id"],
@@ -99,7 +111,6 @@ class FieldController extends Controller
     private function buildData(array $validated): FieldFormData
     {
         return FieldFormData::from([
-            'field_key'       => $validated['field_key'],
             'label'           => $validated['label'],
             'field_type'      => FieldType::from((int) $validated['field_type']),
             'section_id'      => $validated['section_id'] ?? null,

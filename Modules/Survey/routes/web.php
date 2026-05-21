@@ -38,6 +38,7 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
         Route::prefix('/{survey}/fields')->name('fields.')->group(function () {
             Route::post('/',                [FieldController::class, 'store'])->name('store');
             Route::put('/{field}',          [FieldController::class, 'update'])->name('update');
+            Route::delete('/{field}',       [FieldController::class, 'destroy'])->name('destroy');
             Route::patch('/{field}/toggle', [FieldController::class, 'toggleActive'])->name('toggle');
             Route::patch('/reorder',        [FieldController::class, 'reorder'])->name('reorder');
 

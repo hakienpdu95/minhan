@@ -2,9 +2,9 @@
 
 namespace Modules\Survey\Actions;
 
-use Illuminate\Validation\ValidationException;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Survey\Data\FieldFormData;
+use Modules\Survey\Enums\FieldType;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyField;
 
@@ -14,16 +14,7 @@ class CreateFieldAction
 
     public function handle(Survey $survey, FieldFormData $data): SurveyField
     {
-        // field_key phải unique trong cùng survey
-        $exists = SurveyField::forSurvey($survey->id)
-            ->where('field_key', $data->field_key)
-            ->exists();
-
-        if ($exists) {
-            throw ValidationException::withMessages([
-                'field_key' => "field_key '{$data->field_key}' đã tồn tại trong survey này.",
-            ]);
-        }
+        $fieldKey = $this->generateKey($survey, $data->field_type);
 
         $maxOrder = SurveyField::forSurvey($survey->id)
             ->when($data->section_id, fn ($q) => $q->where('section_id', $data->section_id))
@@ -33,7 +24,7 @@ class CreateFieldAction
             'survey_id'       => $survey->id,
             'section_id'      => $data->section_id,
             'parent_field_id' => $data->parent_field_id,
-            'field_key'       => $data->field_key,
+            'field_key'       => $fieldKey,
             'label'           => $data->label,
             'field_type'      => $data->field_type,
             'value_kind'      => $data->field_type->valueKind(),
@@ -51,5 +42,32 @@ class CreateFieldAction
             ->log('field.created');
 
         return $field->load('options');
+    }
+
+    private function generateKey(Survey $survey, FieldType $type): string
+    {
+        $prefix = match ($type) {
+            FieldType::Text     => 'txt',
+            FieldType::Textarea => 'ta',
+            FieldType::Number   => 'num',
+            FieldType::Select   => 'sel',
+            FieldType::Radio    => 'rad',
+            FieldType::Checkbox => 'chk',
+            FieldType::Rating   => 'rat',
+            FieldType::Date     => 'dt',
+            FieldType::Boolean  => 'bool',
+        };
+
+        $chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+
+        do {
+            $rand = '';
+            for ($i = 0; $i < 24; $i++) {
+                $rand .= $chars[random_int(0, strlen($chars) - 1)];
+            }
+            $key = "{$prefix}_{$rand}";
+        } while (SurveyField::forSurvey($survey->id)->where('field_key', $key)->exists());
+
+        return $key;
     }
 }

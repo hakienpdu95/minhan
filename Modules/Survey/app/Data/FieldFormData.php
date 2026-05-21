@@ -8,7 +8,7 @@ use Spatie\LaravelData\Data;
 class FieldFormData extends Data
 {
     public function __construct(
-        public readonly string    $field_key,
+        public readonly ?string   $field_key = null,
         public readonly string    $label,
         public readonly FieldType $field_type,
         public readonly bool      $is_required     = false,
