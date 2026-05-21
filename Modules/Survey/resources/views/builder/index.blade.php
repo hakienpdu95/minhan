@@ -194,26 +194,26 @@
 
                             {{-- Inline options panel (choice types) --}}
                             <div x-show="isChoiceType(field.field_type)"
-                                 class="border-t border-base-200 bg-base-50/50 px-3 py-2">
+                                 class="border-t border-base-200 bg-base-200/30 px-3 py-2">
 
                                 {{-- Options list --}}
                                 <div x-show="field.options.length > 0" class="space-y-0.5 mb-2">
                                     <template x-for="(opt, oIdx) in field.options" :key="opt.id">
-                                        <div class="flex items-center gap-2 group/opt rounded-md px-1 py-0.5 hover:bg-base-200/60 transition-colors">
-                                            {{-- Reorder dots --}}
-                                            <div class="flex flex-col gap-0.5 opacity-0 group-hover/opt:opacity-60 transition-opacity shrink-0">
+                                        <div class="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-base-200/60 transition-colors">
+                                            {{-- Reorder --}}
+                                            <div class="flex flex-col gap-0 shrink-0">
                                                 <button @click="moveOptionUp(field, oIdx)" :disabled="oIdx===0||saving"
-                                                        class="p-0 h-3.5 w-3.5 flex items-center justify-center disabled:opacity-30">
+                                                        class="p-0 h-3.5 w-3.5 flex items-center justify-center text-base-content/30 hover:text-base-content/70 disabled:opacity-20 disabled:cursor-not-allowed">
                                                     <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 15l7-7 7 7"/></svg>
                                                 </button>
                                                 <button @click="moveOptionDown(field, oIdx)" :disabled="oIdx===field.options.length-1||saving"
-                                                        class="p-0 h-3.5 w-3.5 flex items-center justify-center disabled:opacity-30">
+                                                        class="p-0 h-3.5 w-3.5 flex items-center justify-center text-base-content/30 hover:text-base-content/70 disabled:opacity-20 disabled:cursor-not-allowed">
                                                     <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"/></svg>
                                                 </button>
                                             </div>
-                                            {{-- Option number --}}
-                                            <span class="text-xs text-base-content/25 w-4 text-right shrink-0 tabular-nums"
-                                                  x-text="oIdx+1+''"></span>
+                                            {{-- Number --}}
+                                            <span class="text-xs text-base-content/30 w-4 text-right shrink-0 tabular-nums"
+                                                  x-text="oIdx + 1"></span>
                                             {{-- Value chip --}}
                                             <code class="text-xs font-mono bg-base-200 text-base-content/50 px-1.5 py-0.5 rounded shrink-0 max-w-[90px] truncate"
                                                   x-text="opt.option_value"></code>
@@ -221,15 +221,18 @@
                                             <span class="text-sm flex-1 truncate text-base-content" x-text="opt.label"></span>
                                             {{-- Other badge --}}
                                             <span x-show="opt.is_other" class="badge badge-neutral badge-xs shrink-0">other</span>
-                                            {{-- Actions on hover --}}
-                                            <div class="flex gap-0.5 opacity-0 group-hover/opt:opacity-100 transition-opacity shrink-0">
+                                            {{-- Actions — luôn hiển thị --}}
+                                            <div class="flex items-center gap-0.5 shrink-0">
                                                 <button @click="openOptionEdit(field, opt)"
-                                                        class="btn btn-ghost btn-xs btn-circle p-0 h-5 min-h-0 w-5">
-                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                                        title="Sửa lựa chọn"
+                                                        class="btn btn-ghost btn-xs btn-circle text-base-content/40 hover:text-primary">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                                 </button>
-                                                <button @click="deleteOption(field, opt, oIdx)" :disabled="saving||isLocked"
-                                                        class="btn btn-ghost btn-xs btn-circle text-error p-0 h-5 min-h-0 w-5">
-                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                <button @click="deleteOption(field, opt, oIdx)"
+                                                        :disabled="saving || isLocked"
+                                                        title="Xóa lựa chọn"
+                                                        class="btn btn-ghost btn-xs btn-circle text-base-content/40 hover:text-error disabled:opacity-30">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                                 </button>
                                             </div>
                                         </div>
