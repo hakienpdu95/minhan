@@ -15,7 +15,8 @@
     "logo_path///string///500///_NULL///NULL///__///Đường dẫn đến file logo",
     "province_code///char///2///_NULL///NULL///->references('province_code')->constrained('provinces')->nullOnDelete()///Tỉnh/thành phố — FK tới provinces.province_code",
     "ward_code///char///5///_NULL///NULL///->references('ward_code')->constrained('wards')->nullOnDelete()///Phường/xã — FK tới wards.ward_code",
-    "full_address///text///__///_NULL///NULL///__///Địa chỉ đầy đủ kết hợp (số nhà + phường/xã + tỉnh)"
+    "full_address///text///__///_NULL///NULL///__///Địa chỉ đầy đủ kết hợp (số nhà + phường/xã + tỉnh)",
+    "__index///index///__///__///__///province_code,ward_code,status,created_at///Index cho column"
   ],
   [
     "users///add///email///Thêm organization_id và các trường bổ sung vào bảng users",

@@ -46,7 +46,9 @@ class RegisterOrganizationAction
             $organization->update(['owner_id' => $user->id]);
 
             // 4. Gán role CEO (tenant-scoped role)
+            setPermissionsTeamId($organization->id);
             $user->assignRole(RoleEnum::CEO->value);
+            setPermissionsTeamId(null);
 
             // 5. Ghi audit log
             ActivityLogger::logEvent('organization.registered', [

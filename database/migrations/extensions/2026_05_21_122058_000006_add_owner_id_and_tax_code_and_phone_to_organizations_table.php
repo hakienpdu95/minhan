@@ -28,6 +28,7 @@ return new class extends Migration {
             $table->char('ward_code', 5)->nullable()->after('province_code')->comment('Phường/xã — FK tới wards.ward_code');
             $table->foreign('ward_code')->references('ward_code')->on('wards')->nullOnDelete();
             $table->text('full_address')->nullable()->after('ward_code')->comment('Địa chỉ đầy đủ kết hợp (số nhà + phường/xã + tỉnh)');
+            $table->index(['province_code', 'ward_code', 'status', 'created_at']);
         });
     }
 
