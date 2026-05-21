@@ -2,51 +2,66 @@
 
 namespace Modules\User\Policies;
 
+use App\Enums\RoleEnum;
 use App\Models\User;
 
 class UserPolicy
 {
     /** Super-admin bypass handled by Gate::before() in AppServiceProvider. */
 
-    public function viewAny(User $user): bool
+    public function viewAny(User $actor): bool
     {
-        return $user->hasAnyRole(['super-admin', 'System_Admin', 'CEO', 'HR']);
+        return $actor->hasAnyRole([
+            'super-admin',
+            RoleEnum::ADMIN->value,
+            RoleEnum::CEO->value,
+            RoleEnum::HR->value,
+        ]);
     }
 
-    public function view(User $user, User $target): bool
+    public function view(User $actor, User $target): bool
     {
-        if ($user->hasAnyRole(['super-admin', 'System_Admin'])) {
+        if ($actor->hasAnyRole(['super-admin', RoleEnum::ADMIN->value])) {
             return true;
         }
 
-        // Other authorized roles can only view users in their own org
-        if ($user->hasAnyRole(['CEO', 'HR'])) {
-            return $user->organization_id === $target->organization_id;
+        if ($actor->hasAnyRole([RoleEnum::CEO->value, RoleEnum::HR->value])) {
+            return $actor->organization_id === $target->organization_id;
         }
 
         return false;
     }
 
-    public function create(User $user): bool
+    public function create(User $actor): bool
     {
-        return $user->hasAnyRole(['super-admin', 'System_Admin', 'HR']);
+        return $actor->hasAnyRole(['super-admin', RoleEnum::ADMIN->value, RoleEnum::HR->value]);
     }
 
-    public function update(User $user, User $target): bool
+    public function update(User $actor, User $target): bool
     {
-        if ($user->hasAnyRole(['super-admin', 'System_Admin'])) {
+        // Prevent self-editing through admin panel — use profile settings instead.
+        if ($actor->id === $target->id) {
+            return false;
+        }
+
+        if ($actor->hasAnyRole(['super-admin', RoleEnum::ADMIN->value])) {
             return true;
         }
 
-        if ($user->hasRole('HR')) {
-            return $user->organization_id === $target->organization_id;
+        if ($actor->hasRole(RoleEnum::HR->value)) {
+            return $actor->organization_id === $target->organization_id;
         }
 
         return false;
     }
 
-    public function delete(User $user, User $target): bool
+    public function delete(User $actor, User $target): bool
     {
-        return $user->hasAnyRole(['super-admin', 'System_Admin']);
+        // Cannot delete yourself
+        if ($actor->id === $target->id) {
+            return false;
+        }
+
+        return $actor->hasAnyRole(['super-admin', RoleEnum::ADMIN->value]);
     }
 }
