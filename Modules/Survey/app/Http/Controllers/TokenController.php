@@ -1,6 +1,6 @@
 <?php
 
-namespace Modules\Survey\Http\Controllers\Admin;
+namespace Modules\Survey\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;

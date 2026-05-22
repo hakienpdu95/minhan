@@ -1,6 +1,6 @@
 <?php
 
-namespace Modules\Survey\Http\Controllers\Admin;
+namespace Modules\Survey\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
@@ -97,14 +97,14 @@ class FieldController extends Controller
     private function validateField(Request $request, int $surveyId, ?int $exceptId = null): array
     {
         return $request->validate([
-            'label'          => ['required', 'string', 'max:500'],
-            'field_type'     => ['required', 'integer', Rule::in(array_column(FieldType::cases(), 'value'))],
-            'section_id'     => ['nullable', 'integer', "exists:survey_sections,id"],
-            'is_required'    => ['boolean'],
-            'rule_min'       => ['nullable', 'integer'],
-            'rule_max'       => ['nullable', 'integer'],
+            'label'           => ['required', 'string', 'max:500'],
+            'field_type'      => ['required', 'integer', Rule::in(array_column(FieldType::cases(), 'value'))],
+            'section_id'      => ['nullable', 'integer', "exists:survey_sections,id"],
+            'is_required'     => ['boolean'],
+            'rule_min'        => ['nullable', 'integer'],
+            'rule_max'        => ['nullable', 'integer'],
             'rule_max_select' => ['nullable', 'integer', 'min:1'],
-            'placeholder'    => ['nullable', 'string', 'max:255'],
+            'placeholder'     => ['nullable', 'string', 'max:255'],
         ]);
     }
 
@@ -125,21 +125,21 @@ class FieldController extends Controller
     private function fieldPayload(SurveyField $field): array
     {
         return [
-            'id'             => $field->id,
-            'survey_id'      => $field->survey_id,
-            'section_id'     => $field->section_id,
-            'field_key'      => $field->field_key,
-            'label'          => $field->label,
-            'field_type'     => $field->field_type->value,
-            'field_type_label'=> $field->field_type->label(),
-            'is_required'    => $field->is_required,
-            'is_active'      => $field->is_active,
-            'sort_order'     => $field->sort_order,
-            'rule_min'       => $field->rule_min,
-            'rule_max'       => $field->rule_max,
+            'id'              => $field->id,
+            'survey_id'       => $field->survey_id,
+            'section_id'      => $field->section_id,
+            'field_key'       => $field->field_key,
+            'label'           => $field->label,
+            'field_type'      => $field->field_type->value,
+            'field_type_label' => $field->field_type->label(),
+            'is_required'     => $field->is_required,
+            'is_active'       => $field->is_active,
+            'sort_order'      => $field->sort_order,
+            'rule_min'        => $field->rule_min,
+            'rule_max'        => $field->rule_max,
             'rule_max_select' => $field->rule_max_select,
-            'placeholder'    => $field->placeholder ?? '',
-            'options'        => $field->options->map(fn ($o) => [
+            'placeholder'     => $field->placeholder ?? '',
+            'options'         => $field->options->map(fn ($o) => [
                 'id'           => $o->id,
                 'option_value' => $o->option_value,
                 'label'        => $o->label,

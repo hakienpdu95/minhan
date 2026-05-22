@@ -3,68 +3,161 @@
 namespace Modules\Survey\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Modules\Survey\Actions\BuildSurveySchemaAction;
-use Modules\Survey\Actions\ExportSurveyResponsesAction;
-use Modules\Survey\Actions\SubmitSurveyAction;
-use Modules\Survey\Http\Requests\SubmitSurveyRequest;
+use Modules\Survey\Actions\ActivateSurveyAction;
+use Modules\Survey\Actions\CreateSurveyAction;
+use Modules\Survey\Actions\UpdateSurveyAction;
+use Modules\Survey\Data\SurveyFormData;
+use Modules\Survey\Enums\FieldType;
+use Modules\Survey\Enums\SurveyStatus;
+use Modules\Survey\Http\Requests\SurveyRequest;
 use Modules\Survey\Models\Survey;
-use Modules\Survey\Models\SurveyResponse;
 use Modules\Survey\Services\SurveyStatsService;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SurveyController extends Controller
 {
-    public function schema(string $slug, BuildSurveySchemaAction $action): JsonResponse
+    // ── Index ──────────────────────────────────────────────────────────
+
+    public function index(Request $request)
     {
-        return response()->json($action->handle($slug));
+        $this->authorize('survey.view');
+
+        $surveys = Survey::query()
+            ->when($request->input('q'), fn ($q, $search) => $q
+                ->where('title', 'like', "%{$search}%")
+                ->orWhere('slug', 'like', "%{$search}%")
+            )
+            ->when($request->input('status') !== null, fn ($q) => $q
+                ->where('status', $request->input('status'))
+            )
+            ->withCount('responses')
+            ->orderByDesc('created_at')
+            ->paginate(20)
+            ->withQueryString();
+
+        $statuses = SurveyStatus::cases();
+
+        return view('survey::surveys.index', compact('surveys', 'statuses'));
     }
 
-    public function submit(
-        string             $slug,
-        SubmitSurveyRequest $request,
-        SubmitSurveyAction  $action,
-    ): JsonResponse {
-        // Load by slug only — action kiểm tra status (draft/closed → 403)
-        $survey = Survey::bySlug($slug)->firstOrFail();
+    // ── Create / Store ─────────────────────────────────────────────────
 
-        $responseId = $action->handle($survey, $request->toResponseData());
-
-        return response()->json(['response_id' => $responseId], 201);
-    }
-
-    public function stats(string $slug, SurveyStatsService $service): JsonResponse
+    public function create()
     {
-        $survey = Survey::active()->bySlug($slug)->firstOrFail();
+        $this->authorize('survey.create');
 
-        return response()->json($service->forSurvey($survey));
+        return view('survey::surveys.create');
     }
 
-    public function responses(
-        string                      $slug,
-        Request                     $request,
-        ExportSurveyResponsesAction $exportAction,
-    ): JsonResponse|StreamedResponse {
-        $survey = Survey::active()->bySlug($slug)->firstOrFail();
+    public function store(SurveyRequest $request, CreateSurveyAction $action): RedirectResponse
+    {
+        $this->authorize('survey.create');
 
-        if ($request->boolean('export') || $request->query('export') === 'xlsx') {
-            return $exportAction->handle(
-                $survey,
-                $request->query('respondent_ref'),
-                $request->query('from'),
-                $request->query('to'),
-            );
+        $data   = SurveyFormData::from($request->toData());
+        $survey = $action->handle($data);
+
+        return redirect()
+            ->route('backend.surveys.edit', $survey)
+            ->with('success', "Survey \"{$survey->title}\" đã được tạo. Thêm sections và fields để bắt đầu.");
+    }
+
+    // ── Edit / Update ──────────────────────────────────────────────────
+
+    public function edit(Survey $survey)
+    {
+        $this->authorize('survey.update');
+
+        $survey->load([
+            'sections'                => fn ($q) => $q->ordered(),
+            'sections.fields'         => fn ($q) => $q->ordered(),
+            'sections.fields.options' => fn ($q) => $q->ordered(),
+        ]);
+
+        $isLocked = $survey->status === SurveyStatus::Active
+            && $survey->responses()->complete()->exists();
+
+        $sectionsData = $survey->sections->map(fn ($section) => [
+            'id'         => $section->id,
+            'title'      => $section->title,
+            'icon'       => $section->icon,
+            'sort_order' => $section->sort_order,
+            'fields'     => $section->fields->map(fn ($field) => [
+                'id'              => $field->id,
+                'survey_id'       => $field->survey_id,
+                'section_id'      => $field->section_id,
+                'field_key'       => $field->field_key,
+                'label'           => $field->label,
+                'field_type'      => $field->field_type->value,
+                'is_required'     => $field->is_required,
+                'is_active'       => $field->is_active,
+                'sort_order'      => $field->sort_order,
+                'rule_min'        => $field->rule_min,
+                'rule_max'        => $field->rule_max,
+                'rule_max_select' => $field->rule_max_select,
+                'placeholder'     => $field->placeholder ?? '',
+                'options'         => $field->options->map(fn ($o) => [
+                    'id'           => $o->id,
+                    'option_value' => $o->option_value,
+                    'label'        => $o->label,
+                    'sort_order'   => $o->sort_order,
+                    'is_other'     => $o->is_other,
+                ])->all(),
+            ])->all(),
+        ])->all();
+
+        $fieldTypes = collect(FieldType::cases())->map(fn ($ft) => [
+            'value' => $ft->value,
+            'label' => $ft->label(),
+        ])->all();
+
+        return view('survey::surveys.edit', compact('survey', 'sectionsData', 'fieldTypes', 'isLocked'));
+    }
+
+    public function update(SurveyRequest $request, Survey $survey, UpdateSurveyAction $action): RedirectResponse
+    {
+        $this->authorize('survey.update');
+
+        $data = SurveyFormData::from($request->toData());
+        $action->handle($survey, $data);
+
+        return redirect()
+            ->route('backend.surveys.edit', $survey)
+            ->with('success', 'Thông tin survey đã được cập nhật.');
+    }
+
+    // ── Activate ───────────────────────────────────────────────────────
+
+    public function activate(Survey $survey, ActivateSurveyAction $action): RedirectResponse
+    {
+        $this->authorize('survey.update');
+
+        $action->handle($survey);
+
+        return redirect()
+            ->route('backend.surveys.edit', $survey)
+            ->with('success', "Survey \"{$survey->title}\" đã được kích hoạt (Active).");
+    }
+
+    // ── Destroy ────────────────────────────────────────────────────────
+
+    public function destroy(Survey $survey): RedirectResponse
+    {
+        $this->authorize('survey.delete');
+
+        if ($survey->status === SurveyStatus::Active) {
+            return back()->with('error', 'Không thể xóa survey đang Active. Hãy đóng survey trước.');
         }
 
-        $responses = SurveyResponse::forSurvey($survey->id)
-            ->complete()
-            ->when($request->query('respondent_ref'), fn ($q) => $q->where('respondent_ref', $request->query('respondent_ref')))
-            ->when($request->query('from'),           fn ($q) => $q->where('submitted_at', '>=', $request->query('from')))
-            ->when($request->query('to'),             fn ($q) => $q->where('submitted_at', '<=', $request->query('to') . ' 23:59:59'))
-            ->orderBy('submitted_at', 'desc')
-            ->paginate(50);
+        $title = $survey->title;
+        $survey->delete();
 
-        return response()->json($responses);
+        activity()
+            ->withProperties(['title' => $title])
+            ->log('survey.deleted');
+
+        return redirect()
+            ->route('backend.surveys.index')
+            ->with('success', "Survey \"{$title}\" đã bị xóa.");
     }
 }

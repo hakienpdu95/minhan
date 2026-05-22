@@ -1,6 +1,6 @@
 <?php
 
-namespace Modules\Survey\Http\Controllers\Admin;
+namespace Modules\Survey\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -14,7 +14,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ResponseController extends Controller
 {
-    // Task 4.1 — danh sách responses + filter
     public function index(Request $request, Survey $survey)
     {
         $this->authorize('survey.view_responses');
@@ -49,7 +48,6 @@ class ResponseController extends Controller
         ]);
     }
 
-    // Task 4.2 — xem chi tiết 1 response
     public function show(Survey $survey, SurveyResponse $response, ResponseViewerService $viewer)
     {
         $this->authorize('survey.view_responses');
@@ -65,7 +63,6 @@ class ResponseController extends Controller
         ]);
     }
 
-    // Task 4.6 — export Excel (dùng lại ExportSurveyResponsesAction đã có)
     public function export(Request $request, Survey $survey, ExportSurveyResponsesAction $action): StreamedResponse
     {
         $this->authorize('survey.export');
@@ -78,7 +75,6 @@ class ResponseController extends Controller
         );
     }
 
-    // Task 4.3 — soft delete
     public function destroy(Survey $survey, SurveyResponse $response): RedirectResponse
     {
         $this->authorize('survey.view_responses');

@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Modules\Survey\Http\Controllers\SurveyController;
+use Modules\Survey\Http\Controllers\Api\SurveyApiController;
 use Modules\Survey\Http\Middleware\ValidateSurveyToken;
 use Modules\Survey\Http\Middleware\ValidateSurveyTurnstile;
 
@@ -19,15 +19,15 @@ Route::prefix('v1')->name('surveys.')->group(function () {
 
     // ── Token-protected endpoints ──────────────────────────────────────
     Route::middleware(ValidateSurveyToken::class)->group(function () {
-        Route::get('surveys/{slug}/schema', [SurveyController::class, 'schema'])->name('schema');
+        Route::get('surveys/{slug}/schema', [SurveyApiController::class, 'schema'])->name('schema');
 
         Route::middleware(['throttle:survey-submit', ValidateSurveyTurnstile::class])
-            ->post('surveys/{slug}/submit', [SurveyController::class, 'submit'])
+            ->post('surveys/{slug}/submit', [SurveyApiController::class, 'submit'])
             ->name('submit');
 
         // stats + responses chứa data nhạy cảm → yêu cầu token
-        Route::get('surveys/{slug}/stats',     [SurveyController::class, 'stats'])->name('stats');
-        Route::get('surveys/{slug}/responses', [SurveyController::class, 'responses'])->name('responses');
+        Route::get('surveys/{slug}/stats',     [SurveyApiController::class, 'stats'])->name('stats');
+        Route::get('surveys/{slug}/responses', [SurveyApiController::class, 'responses'])->name('responses');
     });
 
 });

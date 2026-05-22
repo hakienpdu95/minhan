@@ -1,6 +1,6 @@
 <?php
 
-namespace Modules\Survey\Http\Controllers\Admin;
+namespace Modules\Survey\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
@@ -65,8 +65,8 @@ class SectionController extends Controller
         $this->authorize('survey.update');
 
         $validated = $request->validate([
-            'items'            => ['required', 'array'],
-            'items.*.id'       => ['required', 'integer'],
+            'items'              => ['required', 'array'],
+            'items.*.id'         => ['required', 'integer'],
             'items.*.sort_order' => ['required', 'integer'],
         ]);
 

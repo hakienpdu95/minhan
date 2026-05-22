@@ -1,13 +1,13 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Modules\Survey\Http\Controllers\Admin\FieldController;
-use Modules\Survey\Http\Controllers\Admin\OptionController;
-use Modules\Survey\Http\Controllers\Admin\ResponseController;
-use Modules\Survey\Http\Controllers\Admin\SectionController;
-use Modules\Survey\Http\Controllers\Admin\StatsController;
-use Modules\Survey\Http\Controllers\Admin\SurveyController;
-use Modules\Survey\Http\Controllers\Admin\TokenController;
+use Modules\Survey\Http\Controllers\FieldController;
+use Modules\Survey\Http\Controllers\OptionController;
+use Modules\Survey\Http\Controllers\ResponseController;
+use Modules\Survey\Http\Controllers\SectionController;
+use Modules\Survey\Http\Controllers\StatsController;
+use Modules\Survey\Http\Controllers\SurveyController;
+use Modules\Survey\Http\Controllers\TokenController;
 
 /*
 |--------------------------------------------------------------------------
