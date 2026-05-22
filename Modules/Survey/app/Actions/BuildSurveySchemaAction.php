@@ -2,32 +2,88 @@
 
 namespace Modules\Survey\Actions;
 
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Survey\Data\SurveySchemaData;
-use Modules\Survey\Enums\SurveyStatus;
+use Modules\Survey\Enums\FieldType;
 use Modules\Survey\Models\Survey;
 
 /**
  * Lấy definition đầy đủ của một khảo sát đang active.
  *
  * Eager load sections → fields (active only) → options trong một query chain
- * để tránh N+1. Không chứa business logic — chỉ đọc và map sang DTO.
+ * để tránh N+1. Kết quả được cache Redis 1 giờ, purge khi admin sửa field/option/section.
  */
 class BuildSurveySchemaAction
 {
     use AsAction;
 
+    public const CACHE_TTL = 3600;
+
+    public static function cacheKey(string $slug): string
+    {
+        return "survey:schema:{$slug}";
+    }
+
+    public static function purgeCache(string $slug): void
+    {
+        Cache::store('redis')->forget(static::cacheKey($slug));
+    }
+
     public function handle(string $slug): SurveySchemaData
     {
-        $survey = Survey::active()
-            ->bySlug($slug)
-            ->with([
-                'sections' => fn ($q) => $q->ordered(),
-                'sections.fields' => fn ($q) => $q->active()->ordered(),
-                'sections.fields.options' => fn ($q) => $q->ordered(),
-            ])
-            ->firstOrFail();
+        return Cache::store('redis')->remember(
+            static::cacheKey($slug),
+            static::CACHE_TTL,
+            function () use ($slug): SurveySchemaData {
+                $survey = Survey::active()
+                    ->bySlug($slug)
+                    ->with([
+                        'sections'                => fn ($q) => $q->ordered(),
+                        'sections.fields'         => fn ($q) => $q->active()->ordered(),
+                        'sections.fields.options' => fn ($q) => $q->ordered(),
+                    ])
+                    ->firstOrFail();
 
-        return SurveySchemaData::fromModel($survey);
+                $this->filterSchema($survey);
+
+                return SurveySchemaData::fromModel($survey);
+            }
+        );
+    }
+
+    /**
+     * Task 5.3: lọc choice field không có option.
+     * Task 5.2: lọc section không còn field nào sau khi lọc.
+     * Thao tác trực tiếp trên relation đã eager-load — không thêm query.
+     */
+    private function filterSchema(Survey $survey): void
+    {
+        $choiceTypes = [FieldType::Select, FieldType::Radio, FieldType::Checkbox];
+
+        foreach ($survey->sections as $section) {
+            $filtered = $section->fields->filter(function ($field) use ($choiceTypes, $survey) {
+                if (in_array($field->field_type, $choiceTypes) && $field->options->isEmpty()) {
+                    Log::warning('survey.schema.choice_field_no_options', [
+                        'survey_id' => $survey->id,
+                        'field_key' => $field->field_key,
+                        'label'     => $field->label,
+                    ]);
+
+                    return false;
+                }
+
+                return true;
+            })->values();
+
+            $section->setRelation('fields', $filtered);
+        }
+
+        // Loại section rỗng sau khi đã lọc field
+        $survey->setRelation(
+            'sections',
+            $survey->sections->filter(fn ($s) => $s->fields->isNotEmpty())->values()
+        );
     }
 }

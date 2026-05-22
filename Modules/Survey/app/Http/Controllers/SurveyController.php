@@ -26,7 +26,8 @@ class SurveyController extends Controller
         SubmitSurveyRequest $request,
         SubmitSurveyAction  $action,
     ): JsonResponse {
-        $survey = Survey::active()->bySlug($slug)->firstOrFail();
+        // Load by slug only — action kiểm tra status (draft/closed → 403)
+        $survey = Survey::bySlug($slug)->firstOrFail();
 
         $responseId = $action->handle($survey, $request->toResponseData());
 

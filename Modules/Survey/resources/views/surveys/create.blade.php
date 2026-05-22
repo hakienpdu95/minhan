@@ -18,8 +18,7 @@
 
     <div class="card bg-base-100 shadow-sm border border-base-200">
         <div class="card-body p-6">
-            <form method="POST" action="{{ route('backend.surveys.store') }}"
-                  x-data="surveyForm()">
+            <form method="POST" action="{{ route('backend.surveys.store') }}">
                 @csrf
 
                 {{-- Title --}}
@@ -31,28 +30,8 @@
                            value="{{ old('title') }}"
                            class="input input-bordered @error('title') input-error @enderror"
                            placeholder="VD: Khảo sát độ hài lòng khách hàng 2024"
-                           x-model="title"
-                           @input="generateSlug()"
                            required>
                     @error('title')
-                    <span class="label-text-alt text-error mt-1">{{ $message }}</span>
-                    @enderror
-                </div>
-
-                {{-- Slug --}}
-                <div class="form-control mb-4">
-                    <label class="label pb-1">
-                        <span class="label-text font-semibold">Slug URL</span>
-                        <span class="label-text-alt text-base-content/40">Tự động tạo từ tiêu đề</span>
-                    </label>
-                    <div class="flex gap-2 items-center">
-                        <span class="text-sm text-base-content/40 shrink-0">/surveys/</span>
-                        <input type="text" name="slug"
-                               class="input input-bordered input-sm flex-1 font-mono @error('slug') input-error @enderror"
-                               placeholder="ten-khao-sat"
-                               x-model="slug">
-                    </div>
-                    @error('slug')
                     <span class="label-text-alt text-error mt-1">{{ $message }}</span>
                     @enderror
                 </div>
@@ -82,27 +61,3 @@
 </div>
 @endsection
 
-@push('scripts')
-<script>
-function surveyForm() {
-    return {
-        title: @js(old('title', '')),
-        slug:  @js(old('slug', '')),
-        userEditedSlug: {{ old('slug') ? 'true' : 'false' }},
-
-        generateSlug() {
-            if (this.userEditedSlug) return;
-            this.slug = this.title
-                .toLowerCase()
-                .normalize('NFD').replace(/[̀-ͯ]/g, '')
-                .replace(/đ/g, 'd').replace(/Đ/g, 'd')
-                .replace(/[^a-z0-9\s-]/g, '')
-                .trim()
-                .replace(/\s+/g, '-')
-                .replace(/-+/g, '-')
-                .substring(0, 160);
-        },
-    }
-}
-</script>
-@endpush

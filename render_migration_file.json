@@ -146,7 +146,7 @@
     "expires_at///timestamp///__///_NULL///NULL///__///Cập nhật null là không hết hạn",
     "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
     "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật",
-    "__index///index///__///__///__///survey_id///Mỗi survey"
+    "__index///index///__///__///__///survey_id///Mỗi survey",
     "__index///index///__///__///__///survey_id,is_active///Mỗi survey có active"
   ],
 ]

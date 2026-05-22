@@ -5,12 +5,15 @@ namespace Modules\Survey\Actions;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Survey\Data\SurveyAnswerData;
 use Modules\Survey\Data\SurveyResponseData;
 use Modules\Survey\Enums\FieldType;
 use Modules\Survey\Enums\ResponseStatus;
+use Modules\Survey\Enums\SurveyStatus;
+use Modules\Survey\Exceptions\SurveyNotActiveException;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyAnswer;
 use Modules\Survey\Models\SurveyField;
@@ -34,11 +37,32 @@ class SubmitSurveyAction
     ) {}
 
     /**
-     * @throws ValidationException  422 với errors keyed by field_key
-     * @return int  response_id của bản ghi vừa tạo
+     * @throws SurveyNotActiveException  403 nếu survey không ở trạng thái active
+     * @throws ValidationException       422 với errors keyed by field_key
+     * @return int                       response_id của bản ghi vừa tạo
      */
     public function handle(Survey $survey, SurveyResponseData $data): int
     {
+        if ($survey->status !== SurveyStatus::Active) {
+            throw new SurveyNotActiveException($survey->status);
+        }
+
+        // Chính sách duplicate: Allow — cùng respondent_ref được submit nhiều lần.
+        // Log warning nếu cùng ref submit trong vòng 5 phút (phát hiện bot/spam).
+        if ($data->respondent_ref !== null) {
+            $recentExists = SurveyResponse::forSurvey($survey->id)
+                ->where('respondent_ref', $data->respondent_ref)
+                ->where('submitted_at', '>=', now()->subMinutes(5))
+                ->exists();
+
+            if ($recentExists) {
+                Log::warning('survey.duplicate_submit', [
+                    'survey_id'      => $survey->id,
+                    'respondent_ref' => $data->respondent_ref,
+                ]);
+            }
+        }
+
         $fieldMap = $this->loadFieldMap($survey);
 
         $errors = $this->runValidation($data->answers, $fieldMap);
@@ -47,13 +71,14 @@ class SubmitSurveyAction
         }
 
         return DB::transaction(function () use ($survey, $data, $fieldMap): int {
-            $response = SurveyResponse::create([
+            $response = new SurveyResponse([
                 'survey_id'      => $survey->id,
                 'respondent_ref' => $data->respondent_ref,
                 'respondent_ip'  => $data->respondent_ip,
-                'status'         => ResponseStatus::Complete,
                 'submitted_at'   => now(),
             ]);
+            $response->status = ResponseStatus::Complete;
+            $response->save();
 
             $rows = [];
             foreach ($data->answers as $answer) {
@@ -221,7 +246,7 @@ class SubmitSurveyAction
         }
     }
 
-    // ── Layer 3 — option_value hợp lệ ────────────────────────────────────
+    // ── Layer 3 — option_value hợp lệ + is_other text ────────────────────
 
     private function layer3(SurveyAnswerData $answer, SurveyField $field, array &$errors): void
     {
@@ -234,6 +259,17 @@ class SubmitSurveyAction
             if (!$optionsByValue->has((string) $optionValue)) {
                 $errors[$answer->field_key][] =
                     "Lựa chọn '$optionValue' không hợp lệ cho trường '{$answer->field_key}'.";
+                continue;
+            }
+
+            // is_other: nếu field required, other_text không được rỗng
+            $opt = $optionsByValue->get((string) $optionValue);
+            if ($opt->is_other && $field->is_required) {
+                $otherText = $answer->other_text ?? '';
+                if (trim($otherText) === '') {
+                    $errors[$answer->field_key][] =
+                        "Trường '{$field->label}' yêu cầu nhập nội dung khi chọn lựa chọn khác.";
+                }
             }
         }
     }

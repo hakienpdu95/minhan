@@ -21,16 +21,26 @@ class ResponseViewerService
 {
     public function build(SurveyResponse $response): array
     {
-        // Q1 + Q2: survey sections → fields (all, kể cả inactive để hiện lịch sử) → options
+        // Q1 + Q2 + Q3: sections → fields (kể cả inactive để hiện lịch sử) → options
         $sections = SurveySection::where('survey_id', $response->survey_id)
             ->ordered()
             ->with(['fields' => fn ($q) => $q->ordered()->with('options')])
             ->get();
 
-        // Q3: tất cả answers của response này, group theo field_id
+        // Build option map từ fields đã load — tránh load options lần 2 cho answers
+        $optionMap = collect();
+        foreach ($sections as $section) {
+            foreach ($section->fields as $field) {
+                foreach ($field->options as $opt) {
+                    $optionMap[$opt->id] = $opt;
+                }
+            }
+        }
+
+        // Q4: answers (không eager load option riêng — dùng optionMap đã có)
         $answers = SurveyAnswer::where('response_id', $response->id)
-            ->with('option')
             ->get()
+            ->each(fn ($a) => $a->setRelation('option', $optionMap->get($a->option_id)))
             ->groupBy('field_id');
 
         $built = $sections->map(fn ($section) => [

@@ -4,6 +4,7 @@ namespace Modules\Survey\Actions;
 
 use Illuminate\Validation\ValidationException;
 use Lorisleiva\Actions\Concerns\AsAction;
+use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Data\OptionFormData;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyField;
@@ -42,6 +43,8 @@ class UpdateOptionAction
         $option->update($payload);
 
         activity()->performedOn($option)->log('option.updated');
+
+        BuildSurveySchemaAction::purgeCache($survey->slug);
 
         return $option->fresh();
     }

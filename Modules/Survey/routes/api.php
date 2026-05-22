@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Modules\Survey\Http\Controllers\SurveyController;
 use Modules\Survey\Http\Middleware\ValidateSurveyToken;
+use Modules\Survey\Http\Middleware\ValidateSurveyTurnstile;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,7 +21,7 @@ Route::prefix('v1')->name('surveys.')->group(function () {
     Route::middleware(ValidateSurveyToken::class)->group(function () {
         Route::get('surveys/{slug}/schema', [SurveyController::class, 'schema'])->name('schema');
 
-        Route::middleware('throttle:survey-submit')
+        Route::middleware(['throttle:survey-submit', ValidateSurveyTurnstile::class])
             ->post('surveys/{slug}/submit', [SurveyController::class, 'submit'])
             ->name('submit');
 

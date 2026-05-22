@@ -21,6 +21,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('status')->default(0)->comment('0=partial 1=complete');
             $table->timestamp('submitted_at')->nullable()->comment('Thời điểm nộp hoàn tất');
             $table->timestamps();
+            $table->softDeletes();
             
 
             // Indexes

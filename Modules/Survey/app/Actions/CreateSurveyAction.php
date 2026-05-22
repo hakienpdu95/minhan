@@ -14,9 +14,7 @@ class CreateSurveyAction
 
     public function handle(SurveyFormData $data): Survey
     {
-        $slug = $data->slug
-            ? Str::slug($data->slug)
-            : $this->uniqueSlug($data->title);
+        $slug = $this->uniqueSlug($data->title);
 
         $survey = Survey::create([
             'title'   => $data->title,
@@ -36,13 +34,12 @@ class CreateSurveyAction
     private function uniqueSlug(string $title): string
     {
         $base = Str::slug($title);
-        $slug = $base;
-        $i    = 2;
 
-        while (Survey::where('slug', $slug)->exists()) {
-            $slug = "{$base}-{$i}";
-            $i++;
-        }
+        // Append 8-char hex từ UUID để đảm bảo unique mà không cần loop số thứ tự
+        do {
+            $hash = substr(str_replace('-', '', Str::uuid()->toString()), 0, 8);
+            $slug = "{$base}-{$hash}";
+        } while (Survey::where('slug', $slug)->exists());
 
         return $slug;
     }

@@ -20,7 +20,7 @@ class CreateFieldAction
             ->when($data->section_id, fn ($q) => $q->where('section_id', $data->section_id))
             ->max('sort_order') ?? 0;
 
-        $field = SurveyField::create([
+        $field = new SurveyField([
             'survey_id'       => $survey->id,
             'section_id'      => $data->section_id,
             'parent_field_id' => $data->parent_field_id,
@@ -29,13 +29,14 @@ class CreateFieldAction
             'field_type'      => $data->field_type,
             'value_kind'      => $data->field_type->valueKind(),
             'is_required'     => $data->is_required,
-            'is_active'       => true,
             'sort_order'      => $maxOrder + 1,
             'rule_min'        => $data->rule_min,
             'rule_max'        => $data->rule_max,
             'rule_max_select' => $data->rule_max_select,
             'placeholder'     => $data->placeholder,
         ]);
+        $field->is_active = true;
+        $field->save();
 
         activity()->performedOn($field)
             ->withProperties(['survey_id' => $survey->id, 'field_key' => $field->field_key])

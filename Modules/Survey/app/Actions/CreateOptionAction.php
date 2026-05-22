@@ -4,6 +4,7 @@ namespace Modules\Survey\Actions;
 
 use Illuminate\Validation\ValidationException;
 use Lorisleiva\Actions\Concerns\AsAction;
+use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Data\OptionFormData;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyField;
@@ -39,6 +40,8 @@ class CreateOptionAction
         activity()->performedOn($option)
             ->withProperties(['field_id' => $field->id, 'option_value' => $option->option_value])
             ->log('option.created');
+
+        BuildSurveySchemaAction::purgeCache($survey->slug);
 
         return $option;
     }

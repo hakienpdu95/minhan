@@ -22,18 +22,18 @@ class GenerateSurveyTokenAction
      */
     public function handle(Survey $survey, TokenFormData $data): array
     {
-        $plain     = Str::random(64);
-        $hashed    = hash('sha256', $plain);
+        [$plain, $hashed] = $this->generateUniqueToken();
         $encrypted = Crypt::encryptString($plain);
 
-        $token = SurveyToken::create([
+        $token = new SurveyToken([
             'survey_id'       => $survey->id,
             'name'            => $data->name,
-            'token'           => $hashed,
             'token_encrypted' => $encrypted,
             'is_active'       => true,
             'expires_at'      => $data->expires_at,
         ]);
+        $token->token = $hashed;
+        $token->save();
 
         activity()
             ->performedOn($token)
@@ -41,5 +41,29 @@ class GenerateSurveyTokenAction
             ->log('token.created');
 
         return ['token' => $token, 'plain' => $plain];
+    }
+
+    /**
+     * Sinh token random 64 ký tự, đảm bảo hash không trùng trong DB.
+     * Xác suất collision cực thấp (SHA-256 trên 64 chars) — retry tối đa 3 lần.
+     *
+     * @return array{0: string, 1: string}  [plain, hashed]
+     * @throws \RuntimeException nếu không tạo được token duy nhất sau 3 lần
+     */
+    private function generateUniqueToken(): array
+    {
+        $attempts = 0;
+
+        do {
+            if ($attempts >= 3) {
+                throw new \RuntimeException('Không thể tạo token duy nhất sau 3 lần thử.');
+            }
+
+            $plain  = Str::random(64);
+            $hashed = hash('sha256', $plain);
+            $attempts++;
+        } while (SurveyToken::where('token', $hashed)->exists());
+
+        return [$plain, $hashed];
     }
 }

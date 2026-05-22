@@ -10,7 +10,6 @@ class SurveyToken extends Model
     protected $fillable = [
         'survey_id',
         'name',
-        'token',
         'token_encrypted',
         'is_active',
         'last_used_at',

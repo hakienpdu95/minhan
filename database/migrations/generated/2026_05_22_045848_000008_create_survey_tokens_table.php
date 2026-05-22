@@ -18,6 +18,7 @@ return new class extends Migration
             $table->foreignId('survey_id')->constrained('surveys')->cascadeOnDelete()->comment('FK -> surveys');
             $table->string('name', 150)->comment('Tiêu đề');
             $table->string('token', 80)->unique()->comment('Lưu hash, hiển thị plaintext 1 lần');
+            $table->text('token_encrypted')->nullable()->comment('Token Encrypted');
             $table->boolean('is_active')->default(true)->index()->comment('Trạng thái hoạt động');
             $table->timestamp('last_used_at')->nullable()->comment('Cập nhật mỗi lần token được dùng');
             $table->timestamp('expires_at')->nullable()->comment('Cập nhật null là không hết hạn');
@@ -25,7 +26,8 @@ return new class extends Migration
             
 
             // Indexes
-            $table->unique(['survey_id', 'is_active']);
+            $table->index('survey_id');
+            $table->index(['survey_id', 'is_active']);
         });
 
         

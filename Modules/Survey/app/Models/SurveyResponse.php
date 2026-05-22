@@ -20,7 +20,6 @@ class SurveyResponse extends Model
         'survey_id',
         'respondent_ref',
         'respondent_ip',
-        'status',
         'submitted_at',
     ];
 

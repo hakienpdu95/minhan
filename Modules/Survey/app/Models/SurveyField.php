@@ -25,7 +25,6 @@ class SurveyField extends Model
         'field_type',
         'value_kind',
         'is_required',
-        'is_active',
         'sort_order',
         'rule_min',
         'rule_max',

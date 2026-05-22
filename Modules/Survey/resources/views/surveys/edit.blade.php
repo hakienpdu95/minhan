@@ -27,7 +27,7 @@
     @can('survey.update')
     @if($survey->status->value === 0)
     <form method="POST" action="{{ route('backend.surveys.activate', $survey) }}"
-          onsubmit="return confirm('Kích hoạt survey? Sau khi active, slug sẽ bị khóa.')">
+          onsubmit="return confirm('Kích hoạt survey? Sau khi active, survey sẽ nhận phản hồi.')">
         @csrf
         <button type="submit" class="btn btn-success btn-sm gap-2">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -63,21 +63,15 @@
                         @enderror
                     </div>
 
-                    {{-- Slug (locked when active) --}}
+                    {{-- Slug (system-generated, read-only) --}}
                     <div class="form-control mb-4">
                         <label class="label pb-1">
                             <span class="label-text font-semibold text-sm">Slug</span>
-                            @if($survey->status->value === 1)
-                            <span class="label-text-alt text-warning text-xs">🔒 Đã khóa</span>
-                            @endif
+                            <span class="label-text-alt text-base-content/40 text-xs">Hệ thống tự sinh</span>
                         </label>
-                        <input type="text" name="slug"
-                               value="{{ old('slug', $survey->slug) }}"
-                               class="input input-bordered input-sm font-mono @error('slug') input-error @enderror"
-                               {{ $survey->status->value === 1 ? 'readonly' : '' }}>
-                        @error('slug')
-                        <span class="label-text-alt text-error mt-1">{{ $message }}</span>
-                        @enderror
+                        <div class="input input-bordered input-sm font-mono bg-base-200 text-base-content/60 flex items-center select-all">
+                            {{ $survey->slug }}
+                        </div>
                     </div>
 
                     {{-- Version --}}
