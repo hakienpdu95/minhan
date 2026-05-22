@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Survey\Enums\ResponseStatus;
 
 class SurveyResponse extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'survey_responses';
 
@@ -28,6 +29,7 @@ class SurveyResponse extends Model
         return [
             'status'       => ResponseStatus::class,
             'submitted_at' => 'datetime',
+            'deleted_at'   => 'datetime',
         ];
     }
 

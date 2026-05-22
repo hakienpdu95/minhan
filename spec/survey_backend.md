@@ -152,7 +152,7 @@ Modules/Survey/
 | 4.2 | `ResponseViewerService` + show: dựng lại 1 response đầy đủ theo field/option | views/responses/show |
 | 4.3 | Soft delete response | nút xóa |
 | 4.4 | Mở rộng `SurveyStatsService`: distribution choice, avg/min/max number, count boolean, total theo ngày | service methods |
-| 4.5 | `StatsController` + UI dashboard per survey (cards + Chart.js) | views/stats |
+| 4.5 | `StatsController` + UI dashboard per survey (cards + Apache ECharts) | views/stats |
 | 4.6 | Gắn `ExportSurveyResponsesAction` (đã có) vào route export?format=xlsx | export Excel |
 
 **→ HOÀN THÀNH module quản lý.**

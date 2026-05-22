@@ -3,7 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use Modules\Survey\Http\Controllers\Admin\FieldController;
 use Modules\Survey\Http\Controllers\Admin\OptionController;
+use Modules\Survey\Http\Controllers\Admin\ResponseController;
 use Modules\Survey\Http\Controllers\Admin\SectionController;
+use Modules\Survey\Http\Controllers\Admin\StatsController;
 use Modules\Survey\Http\Controllers\Admin\SurveyController;
 use Modules\Survey\Http\Controllers\Admin\TokenController;
 
@@ -34,6 +36,17 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
             Route::get('/{token}/reveal',      [TokenController::class, 'reveal'])->name('reveal');
             Route::patch('/{token}/revoke',    [TokenController::class, 'revoke'])->name('revoke');
             Route::delete('/{token}',          [TokenController::class, 'destroy'])->name('destroy');
+        });
+
+        // ── Stats dashboard ────────────────────────────────────────────
+        Route::get('/{survey}/stats', [StatsController::class, 'index'])->name('stats.index');
+
+        // ── Response management + export ───────────────────────────────
+        Route::prefix('/{survey}/responses')->name('responses.')->group(function () {
+            Route::get('/',              [ResponseController::class, 'index'])->name('index');
+            Route::get('/export',        [ResponseController::class, 'export'])->name('export');
+            Route::get('/{response}',    [ResponseController::class, 'show'])->name('show');
+            Route::delete('/{response}', [ResponseController::class, 'destroy'])->name('destroy');
         });
 
         // ── Section builder (JSON) ─────────────────────────────────────

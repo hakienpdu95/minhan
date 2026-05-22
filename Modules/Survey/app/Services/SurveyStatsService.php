@@ -5,6 +5,7 @@ namespace Modules\Survey\Services;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Modules\Survey\Enums\FieldType;
+use Modules\Survey\Enums\ResponseStatus;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyField;
 use Modules\Survey\Models\SurveyResponse;
@@ -270,6 +271,38 @@ class SurveyStatsService
             ->keyBy('field_id');
 
         return $this->buildTextResult($fieldIds, $rows);
+    }
+
+    // ── Task 4.4: Total responses per day ─────────────────────────────────
+    //   INDEX: (survey_id, status, submitted_at) — prefix scan → DATE() → GROUP BY
+
+    /**
+     * Trả mảng {day, count} liên tục $days ngày gần nhất (điền 0 cho ngày trống).
+     *
+     * @return array<int, array{day: string, count: int}>
+     */
+    public function totalByDay(Survey $survey, int $days = 30): array
+    {
+        $from = now()->subDays($days - 1)->startOfDay();
+
+        // Dùng Eloquent để SoftDeletes global scope tự động loại trừ deleted_at IS NOT NULL
+        $rows = SurveyResponse::forSurvey($survey->id)
+            ->complete()
+            ->where('submitted_at', '>=', $from)
+            ->selectRaw('DATE(submitted_at) as day, COUNT(*) as cnt')
+            ->groupByRaw('DATE(submitted_at)')
+            ->orderBy('day')
+            ->get()
+            ->keyBy('day');
+
+        // Điền ngày trống với count = 0 để biểu đồ liên tục
+        $result = [];
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $day      = now()->subDays($i)->format('Y-m-d');
+            $result[] = ['day' => $day, 'count' => (int) ($rows->get($day)?->cnt ?? 0)];
+        }
+
+        return $result;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
