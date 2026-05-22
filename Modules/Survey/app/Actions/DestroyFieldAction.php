@@ -3,6 +3,7 @@
 namespace Modules\Survey\Actions;
 
 use Lorisleiva\Actions\Concerns\AsAction;
+use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyField;
 use Modules\Survey\Support\GuardsSurveyIntegrity;
@@ -24,5 +25,7 @@ class DestroyFieldAction
         activity()
             ->withProperties(['field_key' => $key, 'label' => $label])
             ->log('field.deleted');
+
+        BuildSurveySchemaAction::purgeCache($survey->slug);
     }
 }

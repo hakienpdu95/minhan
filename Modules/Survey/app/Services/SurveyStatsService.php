@@ -3,6 +3,7 @@
 namespace Modules\Survey\Services;
 
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Modules\Survey\Enums\FieldType;
 use Modules\Survey\Enums\ResponseStatus;
@@ -24,10 +25,22 @@ use Modules\Survey\Models\SurveyResponse;
  */
 class SurveyStatsService
 {
+    public const CACHE_TTL = 300; // 5 phút
+
+    public static function cacheKey(int $surveyId): string
+    {
+        return "survey:stats:{$surveyId}";
+    }
+
+    public static function purgeCache(int $surveyId): void
+    {
+        Cache::store('redis')->forget(static::cacheKey($surveyId));
+    }
+
     // ── Public API ────────────────────────────────────────────────────────
 
     /**
-     * Trả toàn bộ thống kê của một survey.
+     * Trả toàn bộ thống kê của một survey — có cache Redis 5 phút.
      *
      * @return array{
      *   total_responses: int,
@@ -35,6 +48,15 @@ class SurveyStatsService
      * }
      */
     public function forSurvey(Survey $survey): array
+    {
+        return Cache::store('redis')->remember(
+            static::cacheKey($survey->id),
+            static::CACHE_TTL,
+            fn () => $this->computeForSurvey($survey)
+        );
+    }
+
+    private function computeForSurvey(Survey $survey): array
     {
         $totalResponses = $this->countCompleteResponses($survey->id);
 

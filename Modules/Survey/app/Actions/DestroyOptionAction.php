@@ -22,5 +22,7 @@ class DestroyOptionAction
         activity()
             ->withProperties(['option_value' => $value])
             ->log('option.deleted');
+
+        BuildSurveySchemaAction::purgeCache($survey->slug);
     }
 }

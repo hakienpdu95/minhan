@@ -18,6 +18,7 @@ use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyAnswer;
 use Modules\Survey\Models\SurveyField;
 use Modules\Survey\Models\SurveyResponse;
+use Modules\Survey\Services\SurveyStatsService;
 use Modules\Survey\Support\AnswerValueResolver;
 use Spatie\LaravelData\DataCollection;
 
@@ -92,6 +93,8 @@ class SubmitSurveyAction
             if (!empty($rows)) {
                 SurveyAnswer::insert($rows);
             }
+
+            SurveyStatsService::purgeCache($survey->id);
 
             return $response->id;
         });

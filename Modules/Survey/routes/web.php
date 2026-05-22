@@ -44,10 +44,11 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
 
         // ── Response management + export ───────────────────────────────
         Route::prefix('/{survey}/responses')->name('responses.')->group(function () {
-            Route::get('/',              [ResponseController::class, 'index'])->name('index');
-            Route::get('/export',        [ResponseController::class, 'export'])->name('export');
-            Route::get('/{response}',    [ResponseController::class, 'show'])->name('show');
-            Route::delete('/{response}', [ResponseController::class, 'destroy'])->name('destroy');
+            Route::get('/',                         [ResponseController::class, 'index'])->name('index');
+            Route::get('/export',                   [ResponseController::class, 'export'])->name('export');
+            Route::get('/export/download/{key}',    [ResponseController::class, 'downloadExport'])->name('export.download');
+            Route::get('/{response}',               [ResponseController::class, 'show'])->name('show');
+            Route::delete('/{response}',            [ResponseController::class, 'destroy'])->name('destroy');
         });
 
         // ── Section builder (JSON) ─────────────────────────────────────

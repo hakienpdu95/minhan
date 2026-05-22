@@ -4,6 +4,7 @@ namespace Modules\Survey\Actions;
 
 use Illuminate\Validation\ValidationException;
 use Lorisleiva\Actions\Concerns\AsAction;
+use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Enums\FieldType;
 use Modules\Survey\Enums\SurveyStatus;
 use Modules\Survey\Models\Survey;
@@ -66,6 +67,7 @@ class ActivateSurveyAction
         }
 
         $survey->update(['status' => SurveyStatus::Active]);
+        BuildSurveySchemaAction::purgeCache($survey->slug);
 
         activity()
             ->performedOn($survey)

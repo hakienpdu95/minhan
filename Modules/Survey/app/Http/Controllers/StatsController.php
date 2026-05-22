@@ -4,6 +4,7 @@ namespace Modules\Survey\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Modules\Survey\Models\Survey;
+use Modules\Survey\Services\QueryAuditService;
 use Modules\Survey\Services\SurveyStatsService;
 
 class StatsController extends Controller
@@ -12,6 +13,7 @@ class StatsController extends Controller
     {
         $this->authorize('survey.view_responses');
 
+        // QueryAuditService::measure('Stats', fn() => $service->forSurvey($survey)) — dùng khi debug
         $stats = $service->forSurvey($survey);
         $byDay = $service->totalByDay($survey, 30);
 

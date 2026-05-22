@@ -3,6 +3,7 @@
 namespace Modules\Survey\Actions;
 
 use Lorisleiva\Actions\Concerns\AsAction;
+use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Data\FieldFormData;
 use Modules\Survey\Enums\FieldType;
 use Modules\Survey\Models\Survey;
@@ -41,6 +42,8 @@ class CreateFieldAction
         activity()->performedOn($field)
             ->withProperties(['survey_id' => $survey->id, 'field_key' => $field->field_key])
             ->log('field.created');
+
+        BuildSurveySchemaAction::purgeCache($survey->slug);
 
         return $field->load('options');
     }

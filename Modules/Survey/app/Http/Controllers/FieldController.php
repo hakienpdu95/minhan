@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Actions\CreateFieldAction;
 use Modules\Survey\Actions\DeactivateFieldAction;
 use Modules\Survey\Actions\DestroyFieldAction;
@@ -88,6 +89,7 @@ class FieldController extends Controller
         ]);
 
         $action->handle('survey_fields', $validated['items']);
+        BuildSurveySchemaAction::purgeCache($survey->slug);
 
         return response()->json(['success' => true]);
     }

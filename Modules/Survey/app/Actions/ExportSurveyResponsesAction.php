@@ -5,6 +5,7 @@ namespace Modules\Survey\Actions;
 use Illuminate\Support\Collection;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Survey\Enums\FieldType;
+use Modules\Survey\Jobs\ExportSurveyResponsesJob;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyAnswer;
 use Modules\Survey\Models\SurveyField;
@@ -15,38 +16,50 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /**
  * Xuất danh sách responses thành file Excel.
  *
- * Pivot: mỗi response = 1 row, mỗi field = 1 cột.
- * Choice multi-select (checkbox): các option được chọn nối bằng ", ".
+ * ≤ 10.000 rows: streaming download đồng bộ, dùng cursor() thay get().
+ * > 10.000 rows: dispatch Queue job (ExportSurveyResponsesJob) + trả về null
+ *   để controller redirect với flash message.
  *
- * Dùng Generator để stream row-by-row → không load toàn bộ dataset vào RAM.
- * Bulk load answers (1 query) trước khi stream → không N+1.
+ * Bulk load answers (1 query per chunk) → không N+1.
  */
 class ExportSurveyResponsesAction
 {
     use AsAction;
+
+    public const SYNC_LIMIT = 10_000;
 
     public function handle(
         Survey  $survey,
         ?string $respondentRef = null,
         ?string $from          = null,
         ?string $to            = null,
-    ): StreamedResponse {
-        // Load fields + options một lần (ordered, active only)
+    ): StreamedResponse|null {
         $fields    = $this->loadFields($survey);
         $optionMap = $this->buildOptionMap($fields);
 
-        // Load responses theo filter
-        $responses = $this->loadResponses($survey, $respondentRef, $from, $to);
+        $total = $this->countResponses($survey, $respondentRef, $from, $to);
 
-        if ($responses->isEmpty()) {
-            // Export file rỗng với header — tránh trả về lỗi
+        if ($total === 0) {
             return $this->downloadEmpty($survey, $fields);
         }
 
-        // Bulk load tất cả answers cho responses này (1 query, index-backed)
+        // > 10.000 rows: phải dùng Queue job, không export đồng bộ
+        if ($total > static::SYNC_LIMIT) {
+            $outputKey = \Illuminate\Support\Str::uuid()->toString();
+
+            ExportSurveyResponsesJob::dispatch($survey->id, $outputKey, $respondentRef, $from, $to);
+
+            // Lưu key để controller có thể trả về download URL
+            session()->flash('export_queued_key', $outputKey);
+            session()->flash('export_queued_survey', $survey->slug);
+
+            return null;
+        }
+
+        // ≤ 10.000 rows: đồng bộ, dùng cursor() để tiết kiệm RAM
+        $responses   = $this->loadResponses($survey, $respondentRef, $from, $to);
         $answerIndex = $this->buildAnswerIndex($responses->pluck('id')->all());
 
-        // Generator: stream từng row → memory O(1) theo số responses
         $rows = $this->rowGenerator($responses, $fields, $answerIndex, $optionMap);
 
         $filename = sprintf('survey-%s-responses-%s.xlsx', $survey->slug, now()->format('Ymd_His'));
@@ -55,6 +68,16 @@ class ExportSurveyResponsesAction
     }
 
     // ── Data loading ──────────────────────────────────────────────────────
+
+    private function countResponses(Survey $survey, ?string $respondentRef, ?string $from, ?string $to): int
+    {
+        return SurveyResponse::forSurvey($survey->id)
+            ->complete()
+            ->when($respondentRef, fn ($q) => $q->where('respondent_ref', $respondentRef))
+            ->when($from, fn ($q) => $q->where('submitted_at', '>=', $from))
+            ->when($to, fn ($q) => $q->where('submitted_at', '<=', $to . ' 23:59:59'))
+            ->count();
+    }
 
     /** @return Collection<int, SurveyField> ordered, with options */
     private function loadFields(Survey $survey): Collection

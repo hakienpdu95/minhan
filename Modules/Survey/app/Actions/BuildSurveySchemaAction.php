@@ -19,7 +19,7 @@ class BuildSurveySchemaAction
 {
     use AsAction;
 
-    public const CACHE_TTL = 3600;
+    public const CACHE_TTL = 1800; // 30 phút theo spec Task 4.4
 
     public static function cacheKey(string $slug): string
     {

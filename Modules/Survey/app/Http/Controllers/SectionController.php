@@ -5,6 +5,7 @@ namespace Modules\Survey\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Actions\CreateSectionAction;
 use Modules\Survey\Actions\DestroySectionAction;
 use Modules\Survey\Actions\ReorderAction;
@@ -42,7 +43,7 @@ class SectionController extends Controller
             'icon'  => ['nullable', 'string', 'max:50'],
         ]);
 
-        $section = $action->handle($section, SectionFormData::from($validated));
+        $section = $action->handle($survey, $section, SectionFormData::from($validated));
 
         return response()->json([
             'success' => true,
@@ -71,6 +72,7 @@ class SectionController extends Controller
         ]);
 
         $action->handle('survey_sections', $validated['items']);
+        BuildSurveySchemaAction::purgeCache($survey->slug);
 
         return response()->json(['success' => true]);
     }

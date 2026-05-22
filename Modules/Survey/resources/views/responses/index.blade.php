@@ -192,17 +192,21 @@
                 </table>
             </div>
 
-            {{-- Pagination --}}
+            {{-- Cursor Pagination --}}
             @if($responses->hasPages())
-            <div class="px-5 py-3 border-t border-base-200">
-                {{ $responses->links() }}
+            <div class="px-5 py-3 border-t border-base-200 flex items-center justify-between gap-4">
+                <div>
+                    @if($responses->previousPageUrl())
+                    <a href="{{ $responses->previousPageUrl() }}" class="btn btn-ghost btn-sm">‹ Trước</a>
+                    @endif
+                </div>
+                <div>
+                    @if($responses->nextPageUrl())
+                    <a href="{{ $responses->nextPageUrl() }}" class="btn btn-ghost btn-sm">Sau ›</a>
+                    @endif
+                </div>
             </div>
             @endif
-
-            {{-- Row count --}}
-            <div class="px-5 py-2 text-xs text-base-content/40 border-t border-base-200">
-                Hiển thị {{ $responses->firstItem() }}–{{ $responses->lastItem() }} / {{ $responses->total() }} responses
-            </div>
             @endif
         </div>
     </div>

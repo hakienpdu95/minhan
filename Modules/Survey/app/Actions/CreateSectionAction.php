@@ -3,6 +3,7 @@
 namespace Modules\Survey\Actions;
 
 use Lorisleiva\Actions\Concerns\AsAction;
+use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Data\SectionFormData;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveySection;
@@ -25,6 +26,8 @@ class CreateSectionAction
         activity()->performedOn($section)
             ->withProperties(['survey_id' => $survey->id, 'title' => $data->title])
             ->log('section.created');
+
+        BuildSurveySchemaAction::purgeCache($survey->slug);
 
         return $section;
     }
