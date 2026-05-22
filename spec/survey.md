@@ -116,3 +116,81 @@ Giai đoạn 1 hoàn thành. Tóm tắt những gì đã implement:
   └──────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
   7 routes backend.surveys.* đã đăng ký. 17/17 unit tests pass.
+
+Tổng kết GIAI ĐOẠN 3 đã implement:
+
+  ---
+  Task 3.1 — GenerateSurveyTokenAction
+  
+  - Sinh Str::random(64) plaintext → lưu hash('sha256', $plain) vào DB
+  - Trả ['token' => $model, 'plain' => $plain] — plaintext chỉ xuất hiện 1 lần duy nhất
+  - Ghi activity log token.created
+
+  Task 3.2 — RevokeSurveyTokenAction + TokenController
+
+  - 3 routes: GET /tokens (list), POST /tokens (generate JSON), DELETE /tokens/{token} (revoke JSON)
+  - TokenController check quyền survey.manage_tokens, validate input
+
+  Task 3.3 — ValidateSurveyToken middleware
+
+  - Đọc Authorization: Bearer <plain> → hash SHA-256 → lookup DB
+  - Kiểm tra is_active, expires_at, đúng survey (theo slug)
+  - updateQuietly(['last_used_at' => now()]) — không trigger events
+  - Gắn vào /schema và /submit routes
+
+  Task 3.4 — Rate limit
+
+  - Named limiter survey-submit: 60 req/min per token hash (fallback IP)
+  - Đăng ký trong RouteServiceProvider::boot(), áp dụng qua throttle:survey-submit trên /submit
+
+  Task 3.5 — UI views/tokens/index.blade.php
+
+  - List tất cả tokens: name, status badge (Active/Revoked/Hết hạn), last_used_at, expires_at
+  - Modal tạo token: name + optional expires_at
+  - Modal reveal plaintext: hiển thị token 1 lần với copy button, cảnh báo "lưu ngay"
+  - Thu hồi token với confirm dialog
+  - Fix migration: unique(['survey_id', 'is_active']) → index (MySQL-safe, tạo index thay thế trước khi drop)
+
+  Index migration fix đúng
+  Migration trước set UNIQUE(survey_id, is_active) — sai spec và giới hạn 1 active/1 inactive per survey. Migration fix đổi về non-unique composite index. Comment giải thích rõ lý do.
+
+┌───────────┬
+  ❯ làm thế nào để file job có thể chạy được nhỉ. bạn hướng dẫn nhanh giúp tôi nhé                                                                                                        
+Bảng jobs đã tồn tại sẵn. Mọi thứ đã sẵn sàng, chỉ cần chạy worker.
+
+  ---
+  Hướng dẫn nhanh
+  
+  .env đang dùng QUEUE_CONNECTION=database — job sẽ lưu vào bảng jobs trong MySQL. Bảng jobs, failed_jobs, job_batches đều đã có.
+
+  Chạy worker (trong terminal riêng, song song với php artisan serve):
+
+  php artisan queue:work
+
+  Hoặc nếu muốn auto-detect file mới khi dev:
+
+  php artisan queue:listen
+
+  ┌───────────┬───────────────────────┬─────────────────────────────┐
+  │           │      queue:work       │        queue:listen         │
+  ├───────────┼───────────────────────┼─────────────────────────────┤
+  │ Hiệu suất │ Cao hơn (giữ process) │ Thấp hơn (restart mỗi job)  │
+  ├───────────┼───────────────────────┼─────────────────────────────┤
+  │ Dùng khi  │ Production            │ Dev (pick up code thay đổi) │
+  └───────────┴───────────────────────┴─────────────────────────────┘
+
+  Test nhanh: Gọi một API có Bearer token hợp lệ → xem last_used_at trong DB được cập nhật sau vài giây.
+
+  Nếu job lỗi, xem trong bảng failed_jobs:
+  php artisan queue:failed
+
+  Retry:
+  php artisan queue:retry all
+
+  ---
+  Tóm lại: chỉ cần chạy php artisan queue:listen là job UpdateTokenLastUsedJob sẽ tự xử lý. Không cần config thêm gì.
+
+  ┌───────────┬
+
+  Phân quyền tương lai: Hiện tại cả 3 dùng survey.manage_tokens. Sau này chỉ cần thêm permission mới (VD: survey.view_token_secret) và thay vào $this->authorize(...) trong reveal() —
+  không cần đụng vào logic nào khác.

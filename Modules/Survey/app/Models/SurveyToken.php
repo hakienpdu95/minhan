@@ -11,10 +11,14 @@ class SurveyToken extends Model
         'survey_id',
         'name',
         'token',
+        'token_encrypted',
         'is_active',
         'last_used_at',
         'expires_at',
     ];
+
+    // Không serialize token_encrypted ra ngoài API response
+    protected $hidden = ['token', 'token_encrypted'];
 
     protected $casts = [
         'is_active'    => 'boolean',

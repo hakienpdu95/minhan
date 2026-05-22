@@ -2,20 +2,26 @@
 
 namespace Modules\Survey\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 
 class RouteServiceProvider extends ServiceProvider
 {
     protected string $name = 'Survey';
 
-    /**
-     * Called before routes are registered.
-     *
-     * Register any model bindings or pattern based filters.
-     */
     public function boot(): void
     {
+        // Rate limit submit theo token (60 req/min per token, fallback to IP)
+        RateLimiter::for('survey-submit', function (Request $request) {
+            $plain = $request->bearerToken();
+            $key   = $plain ? hash('sha256', $plain) : $request->ip();
+
+            return Limit::perMinute(60)->by('survey_submit_' . $key);
+        });
+
         parent::boot();
     }
 

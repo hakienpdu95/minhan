@@ -5,6 +5,7 @@ use Modules\Survey\Http\Controllers\Admin\FieldController;
 use Modules\Survey\Http\Controllers\Admin\OptionController;
 use Modules\Survey\Http\Controllers\Admin\SectionController;
 use Modules\Survey\Http\Controllers\Admin\SurveyController;
+use Modules\Survey\Http\Controllers\Admin\TokenController;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,6 +26,15 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
         Route::put('/{survey}',           [SurveyController::class, 'update'])->name('update');
         Route::delete('/{survey}',        [SurveyController::class, 'destroy'])->name('destroy');
         Route::post('/{survey}/activate', [SurveyController::class, 'activate'])->name('activate');
+
+        // ── Token management ───────────────────────────────────────────
+        Route::prefix('/{survey}/tokens')->name('tokens.')->group(function () {
+            Route::get('/',                    [TokenController::class, 'index'])->name('index');
+            Route::post('/',                   [TokenController::class, 'store'])->name('store');
+            Route::get('/{token}/reveal',      [TokenController::class, 'reveal'])->name('reveal');
+            Route::patch('/{token}/revoke',    [TokenController::class, 'revoke'])->name('revoke');
+            Route::delete('/{token}',          [TokenController::class, 'destroy'])->name('destroy');
+        });
 
         // ── Section builder (JSON) ─────────────────────────────────────
         Route::prefix('/{survey}/sections')->name('sections.')->group(function () {
