@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\Survey\Http\Controllers\Api\SurveyBackendApiController;
 use Modules\Survey\Http\Controllers\FieldController;
 use Modules\Survey\Http\Controllers\OptionController;
 use Modules\Survey\Http\Controllers\ResponseController;
@@ -75,4 +76,9 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
         });
     });
 
+});
+
+// ── Backend JSON API for Tabulator (session-based auth) ───────────────────
+Route::middleware(['auth'])->prefix('backend/api')->name('backend.api.')->group(function () {
+    Route::get('surveys', [SurveyBackendApiController::class, 'index'])->name('surveys');
 });

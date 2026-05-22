@@ -13,32 +13,21 @@ use Modules\Survey\Enums\FieldType;
 use Modules\Survey\Enums\SurveyStatus;
 use Modules\Survey\Http\Requests\SurveyRequest;
 use Modules\Survey\Models\Survey;
-use Modules\Survey\Services\SurveyStatsService;
 
 class SurveyController extends Controller
 {
     // ── Index ──────────────────────────────────────────────────────────
 
-    public function index(Request $request)
+    public function index()
     {
         $this->authorize('survey.view');
 
-        $surveys = Survey::query()
-            ->when($request->input('q'), fn ($q, $search) => $q
-                ->where('title', 'like', "%{$search}%")
-                ->orWhere('slug', 'like', "%{$search}%")
-            )
-            ->when($request->input('status') !== null, fn ($q) => $q
-                ->where('status', $request->input('status'))
-            )
-            ->withCount('responses')
-            ->orderByDesc('created_at')
-            ->paginate(20)
-            ->withQueryString();
+        $statuses = collect(SurveyStatus::cases())->map(fn ($s) => [
+            'value' => $s->value,
+            'text'  => $s->label(),
+        ])->all();
 
-        $statuses = SurveyStatus::cases();
-
-        return view('survey::surveys.index', compact('surveys', 'statuses'));
+        return view('survey::surveys.index', compact('statuses'));
     }
 
     // ── Create / Store ─────────────────────────────────────────────────
