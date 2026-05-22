@@ -39,12 +39,14 @@ class ListSurveysHandler implements QueryHandlerInterface
         }
 
         // ── Date range on created_at ──────────────────────────────────
+        // Use explicit datetime bounds — whereDate() wraps the column in DATE() which
+        // prevents MySQL from using the created_at index for range scans.
         if ($query->dateFrom !== null && $query->dateFrom !== '') {
-            $q->whereDate('created_at', '>=', $query->dateFrom);
+            $q->where('created_at', '>=', $query->dateFrom . ' 00:00:00');
         }
 
         if ($query->dateTo !== null && $query->dateTo !== '') {
-            $q->whereDate('created_at', '<=', $query->dateTo);
+            $q->where('created_at', '<=', $query->dateTo . ' 23:59:59');
         }
 
         // ── Sort ──────────────────────────────────────────────────────

@@ -32,9 +32,19 @@ class SurveyStatsService
         return "survey:stats:{$surveyId}";
     }
 
+    public static function daysCacheKey(int $surveyId, int $days): string
+    {
+        return "survey:stats:days:{$surveyId}:{$days}";
+    }
+
     public static function purgeCache(int $surveyId): void
     {
-        Cache::store('redis')->forget(static::cacheKey($surveyId));
+        try {
+            Cache::store('redis')->forget(static::cacheKey($surveyId));
+            Cache::store('redis')->forget(static::daysCacheKey($surveyId, 30));
+        } catch (\Throwable) {
+            // Redis unavailable; cache will expire naturally.
+        }
     }
 
     // ── Public API ────────────────────────────────────────────────────────
@@ -49,11 +59,15 @@ class SurveyStatsService
      */
     public function forSurvey(Survey $survey): array
     {
-        return Cache::store('redis')->remember(
-            static::cacheKey($survey->id),
-            static::CACHE_TTL,
-            fn () => $this->computeForSurvey($survey)
-        );
+        try {
+            return Cache::store('redis')->remember(
+                static::cacheKey($survey->id),
+                static::CACHE_TTL,
+                fn () => $this->computeForSurvey($survey)
+            );
+        } catch (\Throwable) {
+            return $this->computeForSurvey($survey);
+        }
     }
 
     private function computeForSurvey(Survey $survey): array
@@ -74,8 +88,13 @@ class SurveyStatsService
         $textIds     = $fields->filter(fn ($f) => $f->field_type === FieldType::Text)->pluck('id')->all();
         $textareaIds = $fields->filter(fn ($f) => $f->field_type === FieldType::Textarea)->pluck('id')->all();
 
+        // Checkbox fields need per-field respondent count as denominator (not total_responses),
+        // because one respondent can tick multiple options, making percentages > 100% otherwise.
+        $checkboxIds = $fields->filter(fn ($f) => $f->field_type === FieldType::Checkbox)->pluck('id')->all();
+        $checkboxRespondentCounts = $this->batchCheckboxRespondentCounts($checkboxIds);
+
         // 5 batch queries — một lần mỗi loại, tất cả index-backed
-        $choiceStats   = $this->batchChoiceStats($choiceIds, $fields, $totalResponses);
+        $choiceStats   = $this->batchChoiceStats($choiceIds, $fields, $totalResponses, $checkboxRespondentCounts);
         $numberStats   = $this->batchNumberStats($numberIds);
         $booleanStats  = $this->batchBooleanStats($booleanIds);
         $textStats     = $this->batchTextStats($textIds);
@@ -112,11 +131,32 @@ class SurveyStatsService
     //   INDEX: (field_id, option_id)
 
     /**
+     * @param  int[]  $fieldIds  checkbox field IDs
+     * @return array<int, int>  field_id => distinct respondent count
+     */
+    private function batchCheckboxRespondentCounts(array $fieldIds): array
+    {
+        if (empty($fieldIds)) {
+            return [];
+        }
+
+        return DB::table('survey_answers')
+            ->selectRaw('field_id, COUNT(DISTINCT response_id) as respondent_count')
+            ->whereIn('field_id', $fieldIds)
+            ->groupBy('field_id')
+            ->get()
+            ->keyBy('field_id')
+            ->map(fn ($r) => (int) $r->respondent_count)
+            ->all();
+    }
+
+    /**
      * @param  int[]     $fieldIds
      * @param  Collection<int, SurveyField> $allFields  — options đã eager load
+     * @param  array<int, int>  $checkboxRespondentCounts  field_id => distinct respondent count
      * @return array<int, array>  keyed by field_id
      */
-    private function batchChoiceStats(array $fieldIds, Collection $allFields, int $totalResponses): array
+    private function batchChoiceStats(array $fieldIds, Collection $allFields, int $totalResponses, array $checkboxRespondentCounts = []): array
     {
         if (empty($fieldIds)) {
             return [];
@@ -136,18 +176,24 @@ class SurveyStatsService
         $result = [];
 
         foreach ($fieldIds as $fieldId) {
-            $field        = $choiceFields[$fieldId];
-            $fieldCounts  = $counts->get($fieldId, collect())->keyBy('option_id');
+            $field       = $choiceFields[$fieldId];
+            $fieldCounts = $counts->get($fieldId, collect())->keyBy('option_id');
 
-            $distribution = $field->options->map(function ($option) use ($fieldCounts, $totalResponses) {
+            // Checkbox: use distinct respondents who answered THIS field (sum of percents can exceed 100%).
+            // Select/Radio: use total survey responses (each respondent picks exactly one option).
+            $denominator = $field->field_type === FieldType::Checkbox
+                ? ($checkboxRespondentCounts[$fieldId] ?? $totalResponses)
+                : $totalResponses;
+
+            $distribution = $field->options->map(function ($option) use ($fieldCounts, $denominator) {
                 $count = (int) ($fieldCounts->get($option->id)?->cnt ?? 0);
 
                 return [
                     'option_value' => $option->option_value,
                     'label'        => $option->label,
                     'count'        => $count,
-                    'percent'      => $totalResponses > 0
-                        ? round($count / $totalResponses * 100, 1)
+                    'percent'      => $denominator > 0
+                        ? round($count / $denominator * 100, 1)
                         : 0.0,
                 ];
             })->values()->all();
@@ -304,6 +350,19 @@ class SurveyStatsService
      * @return array<int, array{day: string, count: int}>
      */
     public function totalByDay(Survey $survey, int $days = 30): array
+    {
+        try {
+            return Cache::store('redis')->remember(
+                static::daysCacheKey($survey->id, $days),
+                static::CACHE_TTL,
+                fn () => $this->computeTotalByDay($survey, $days)
+            );
+        } catch (\Throwable) {
+            return $this->computeTotalByDay($survey, $days);
+        }
+    }
+
+    private function computeTotalByDay(Survey $survey, int $days): array
     {
         $from = now()->subDays($days - 1)->startOfDay();
 

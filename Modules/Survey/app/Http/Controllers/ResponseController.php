@@ -20,39 +20,51 @@ class ResponseController extends Controller
     {
         $this->authorize('survey.view_responses');
 
-        // Cursor pagination: select chỉ cột cần thiết, tránh select *
-        // QueryAuditService::measure('ResponseList', fn() => ...) có thể dùng để audit khi debug
+        $filters = $request->validate([
+            'respondent_ref' => ['nullable', 'string', 'max:190'],
+            'status'         => ['nullable', 'integer', 'in:0,1'],
+            'from'           => ['nullable', 'date_format:Y-m-d'],
+            'to'             => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
+        ]);
+
+        // Single query for both totals — saves one DB roundtrip on every page load.
+        // SoftDeletes global scope is applied by the Eloquent model automatically.
+        $counts = SurveyResponse::forSurvey($survey->id)
+            ->selectRaw(
+                'COUNT(*) as total_all, SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as total_complete',
+                [ResponseStatus::Complete->value]
+            )
+            ->first();
+
+        $totalAll      = (int) ($counts->total_all      ?? 0);
+        $totalComplete = (int) ($counts->total_complete ?? 0);
+
         $responses = SurveyResponse::forSurvey($survey->id)
             ->select(['id', 'respondent_ref', 'respondent_ip', 'status', 'submitted_at'])
-            ->when($request->filled('respondent_ref'), fn ($q) =>
-                $q->where('respondent_ref', 'like', '%' . $request->respondent_ref . '%')
+            ->when(isset($filters['respondent_ref']), fn ($q) =>
+                // Prefix LIKE only — a leading wildcard disables the respondent_ref index at 500k rows.
+                $q->where('respondent_ref', 'like', $filters['respondent_ref'] . '%')
             )
-            ->when($request->filled('status'), fn ($q) =>
-                $q->where('status', (int) $request->status)
+            ->when(isset($filters['status']), fn ($q) =>
+                $q->where('status', $filters['status'])
             )
-            ->when($request->filled('completed_at'), fn ($q) =>
-                $q->whereDate('submitted_at', $request->completed_at)
+            ->when(isset($filters['from']), fn ($q) =>
+                $q->where('submitted_at', '>=', $filters['from'] . ' 00:00:00')
             )
-            ->when($request->filled('from'), fn ($q) =>
-                $q->where('submitted_at', '>=', $request->from . ' 00:00:00')
-            )
-            ->when($request->filled('to'), fn ($q) =>
-                $q->where('submitted_at', '<=', $request->to . ' 23:59:59')
+            ->when(isset($filters['to']), fn ($q) =>
+                $q->where('submitted_at', '<=', $filters['to'] . ' 23:59:59')
             )
             ->orderByDesc('submitted_at')
-            ->orderByDesc('id') // tiebreaker để cursor pagination ổn định
+            ->orderByDesc('id') // tiebreaker — InnoDB PK is implicit in all secondary indexes
             ->cursorPaginate(50)
             ->withQueryString();
-
-        $totalAll      = SurveyResponse::forSurvey($survey->id)->count();
-        $totalComplete = SurveyResponse::forSurvey($survey->id)->complete()->count();
 
         return view('survey::responses.index', [
             'survey'        => $survey,
             'responses'     => $responses,
             'totalAll'      => $totalAll,
             'totalComplete' => $totalComplete,
-            'filters'       => $request->only('respondent_ref', 'status', 'completed_at', 'from', 'to'),
+            'filters'       => array_filter($filters, fn ($v) => $v !== null),
             'statuses'      => ResponseStatus::cases(),
         ]);
     }
@@ -83,9 +95,9 @@ class ResponseController extends Controller
             $request->query('to'),
         );
 
-        if ($result === null) {
+        if (is_array($result)) {
             // Job đã được dispatch (> 10.000 rows)
-            $key = session('export_queued_key');
+            $key = $result['queued_key'];
             return redirect()
                 ->route('backend.surveys.responses.index', $survey)
                 ->with('info', "Export đang được xử lý trong nền ({$survey->responses()->complete()->count()} responses). Tải về tại: "
@@ -98,6 +110,11 @@ class ResponseController extends Controller
     public function downloadExport(Survey $survey, string $key): StreamedResponse|RedirectResponse
     {
         $this->authorize('survey.export');
+
+        // Reject non-UUID keys before constructing the Redis lookup key.
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/', $key)) {
+            abort(404);
+        }
 
         $info = Cache::store('redis')->get("survey:export:{$key}");
 

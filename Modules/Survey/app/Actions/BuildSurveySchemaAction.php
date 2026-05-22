@@ -23,7 +23,8 @@ class BuildSurveySchemaAction
 
     public static function cacheKey(string $slug): string
     {
-        return "survey:schema:{$slug}";
+        // v2: cache plain array, not PHP object — bump version to force invalidation of old corrupt cache
+        return "survey:v2:schema:{$slug}";
     }
 
     public static function purgeCache(string $slug): void
@@ -33,10 +34,12 @@ class BuildSurveySchemaAction
 
     public function handle(string $slug): SurveySchemaData
     {
-        return Cache::store('redis')->remember(
+        // Cache as plain array to avoid __PHP_Incomplete_Class on Redis deserialization.
+        // Spatie Data objects are not safely serializable across process boundaries.
+        $cached = Cache::store('redis')->remember(
             static::cacheKey($slug),
             static::CACHE_TTL,
-            function () use ($slug): SurveySchemaData {
+            function () use ($slug): array {
                 $survey = Survey::active()
                     ->bySlug($slug)
                     ->with([
@@ -48,9 +51,11 @@ class BuildSurveySchemaAction
 
                 $this->filterSchema($survey);
 
-                return SurveySchemaData::fromModel($survey);
+                return SurveySchemaData::fromModel($survey)->toArray();
             }
         );
+
+        return SurveySchemaData::from($cached);
     }
 
     /**

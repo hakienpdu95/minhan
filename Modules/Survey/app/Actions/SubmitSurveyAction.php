@@ -44,6 +44,7 @@ class SubmitSurveyAction
      */
     public function handle(Survey $survey, SurveyResponseData $data): int
     {
+        // Fast-fail before loading fields (non-binding; re-checked with lock inside transaction).
         if ($survey->status !== SurveyStatus::Active) {
             throw new SurveyNotActiveException($survey->status);
         }
@@ -71,7 +72,14 @@ class SubmitSurveyAction
             throw ValidationException::withMessages($errors);
         }
 
-        return DB::transaction(function () use ($survey, $data, $fieldMap): int {
+        $surveyId   = $survey->id;
+        $responseId = DB::transaction(function () use ($survey, $data, $fieldMap): int {
+            // Authoritative status check with row lock — prevents TOCTOU race.
+            $locked = Survey::lockForUpdate()->find($survey->id);
+            if ($locked === null || $locked->status !== SurveyStatus::Active) {
+                throw new SurveyNotActiveException($locked?->status ?? $survey->status);
+            }
+
             $response = new SurveyResponse([
                 'survey_id'      => $survey->id,
                 'respondent_ref' => $data->respondent_ref,
@@ -94,10 +102,13 @@ class SubmitSurveyAction
                 SurveyAnswer::insert($rows);
             }
 
-            SurveyStatsService::purgeCache($survey->id);
-
             return $response->id;
         });
+
+        // Purge cache after a committed transaction — never inside the transaction boundary.
+        SurveyStatsService::purgeCache($surveyId);
+
+        return $responseId;
     }
 
     // ── Field map ─────────────────────────────────────────────────────────
@@ -224,11 +235,11 @@ class SubmitSurveyAction
 
     private function assertDate(string $key, mixed $value, array &$errors): void
     {
-        $valid = is_string($value)
-            && preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)
-            && Carbon::createFromFormat('Y-m-d', $value) !== false;
-
-        if (!$valid) {
+        // checkdate() rejects overflow dates (e.g. 2024-02-30) that Carbon 3.x silently wraps.
+        if (!is_string($value)
+            || !preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $m)
+            || !checkdate((int) $m[2], (int) $m[3], (int) $m[1])
+        ) {
             $errors[$key][] = 'Trường này phải là ngày hợp lệ theo định dạng YYYY-MM-DD.';
         }
     }

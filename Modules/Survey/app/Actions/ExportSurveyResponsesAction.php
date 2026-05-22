@@ -33,7 +33,7 @@ class ExportSurveyResponsesAction
         ?string $respondentRef = null,
         ?string $from          = null,
         ?string $to            = null,
-    ): StreamedResponse|null {
+    ): StreamedResponse|array {
         $fields    = $this->loadFields($survey);
         $optionMap = $this->buildOptionMap($fields);
 
@@ -49,11 +49,7 @@ class ExportSurveyResponsesAction
 
             ExportSurveyResponsesJob::dispatch($survey->id, $outputKey, $respondentRef, $from, $to);
 
-            // Lưu key để controller có thể trả về download URL
-            session()->flash('export_queued_key', $outputKey);
-            session()->flash('export_queued_survey', $survey->slug);
-
-            return null;
+            return ['queued_key' => $outputKey, 'slug' => $survey->slug];
         }
 
         // ≤ 10.000 rows: đồng bộ, dùng cursor() để tiết kiệm RAM
@@ -62,7 +58,8 @@ class ExportSurveyResponsesAction
 
         $rows = $this->rowGenerator($responses, $fields, $answerIndex, $optionMap);
 
-        $filename = sprintf('survey-%s-responses-%s.xlsx', $survey->slug, now()->format('Ymd_His'));
+        $safeSlug = preg_replace('/[^a-z0-9\-]/', '', strtolower($survey->slug));
+        $filename = sprintf('survey-%s-responses-%s.xlsx', $safeSlug, now()->format('Ymd_His'));
 
         return (new FastExcel($rows))->download($filename);
     }
@@ -232,7 +229,8 @@ class ExportSurveyResponsesAction
             $fields->mapWithKeys(fn ($f) => [$f->label => ''])->all()
         );
 
-        $filename = sprintf('survey-%s-responses-%s.xlsx', $survey->slug, now()->format('Ymd_His'));
+        $safeSlug = preg_replace('/[^a-z0-9\-]/', '', strtolower($survey->slug));
+        $filename = sprintf('survey-%s-responses-%s.xlsx', $safeSlug, now()->format('Ymd_His'));
 
         return (new FastExcel(collect([$header])))->download($filename);
     }

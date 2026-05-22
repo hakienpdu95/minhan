@@ -23,7 +23,7 @@ class SubmitSurveyRequest extends FormRequest
         return [
             'respondent_ref'       => ['nullable', 'string', 'max:190'],
 
-            'answers'              => ['required', 'array', 'min:1'],
+            'answers'              => ['required', 'array', 'min:1', 'max:200'],
             'answers.*.field_key'  => ['required', 'string', 'max:100'],
             'answers.*.value'      => ['present'],
             'answers.*.other_text' => ['nullable', 'string', 'max:500'],

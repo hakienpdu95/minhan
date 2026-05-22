@@ -20,6 +20,11 @@ class SurveyNotActiveException extends Exception
         parent::__construct($message, 403);
     }
 
+    public function report(): bool
+    {
+        return false;
+    }
+
     public function render(Request $request): JsonResponse
     {
         return response()->json(['message' => $this->getMessage()], 403);

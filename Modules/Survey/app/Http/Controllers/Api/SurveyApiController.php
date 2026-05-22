@@ -49,12 +49,21 @@ class SurveyApiController extends Controller
         $survey = Survey::active()->bySlug($slug)->firstOrFail();
 
         if ($request->boolean('export') || $request->query('export') === 'xlsx') {
-            return $exportAction->handle(
+            $result = $exportAction->handle(
                 $survey,
                 $request->query('respondent_ref'),
                 $request->query('from'),
                 $request->query('to'),
             );
+
+            if (is_array($result)) {
+                return response()->json([
+                    'queued'       => true,
+                    'queued_key'   => $result['queued_key'],
+                ], 202);
+            }
+
+            return $result;
         }
 
         $responses = SurveyResponse::forSurvey($survey->id)

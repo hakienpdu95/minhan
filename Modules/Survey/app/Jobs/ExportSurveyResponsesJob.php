@@ -48,7 +48,8 @@ class ExportSurveyResponsesJob implements ShouldQueue
             mkdir($exportDir, 0755, true);
         }
 
-        $filename = "survey-{$survey->slug}-export-{$this->outputKey}.xlsx";
+        $safeSlug = preg_replace('/[^a-z0-9\-]/', '', strtolower($survey->slug));
+        $filename = "survey-{$safeSlug}-export-{$this->outputKey}.xlsx";
         $path     = "{$exportDir}/{$filename}";
 
         (new FastExcel($this->generateRows($survey, $fields, $optionMap)))->export($path);

@@ -61,7 +61,8 @@
     "version///unsignedSmallInteger///__///NOT_NULL///1///__///Phiên bản khảo sát",
     "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
     "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật",
-    "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
+    "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm",
+    "__index///index///__///__///__///created_at///Index"
   ],
   [
     "survey_sections///__///__///Các phần (section) trong một khảo sát",
@@ -116,7 +117,8 @@
     "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
     "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật",
     "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm",
-    "__index///index///__///__///__///survey_id,status,submitted_at///Thống kê responses theo trạng thái"
+    "__index///index///__///__///__///survey_id,status,submitted_at///Thống kê responses theo trạng thái",
+    "__index///index///__///__///__///survey_id,deleted_at,submitted_at///Thống kê responses theo trạng thái xóa"
   ],
   [
     "survey_answers///__///__///Câu trả lời từng field — typed columns",

@@ -2,6 +2,7 @@
 
 namespace Modules\Survey\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -42,6 +43,28 @@ class SurveyResponse extends Model
     public function answers(): HasMany
     {
         return $this->hasMany(SurveyAnswer::class, 'response_id');
+    }
+
+    // ── Accessors ─────────────────────────────────────────────────────
+
+    /**
+     * Decode BINARY(16) → human-readable IP string (strips ::ffff: IPv4-mapped prefix).
+     * Storage uses inet_pton(); this accessor reverses it for display without a DB function call.
+     */
+    protected function respondentIp(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value) {
+                if ($value === null) {
+                    return null;
+                }
+                $ip = inet_ntop($value);
+                if ($ip === false) {
+                    return null;
+                }
+                return str_starts_with($ip, '::ffff:') ? substr($ip, 7) : $ip;
+            },
+        );
     }
 
     // ── Scopes ────────────────────────────────────────────────────────

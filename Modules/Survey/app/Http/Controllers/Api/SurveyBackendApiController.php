@@ -15,21 +15,31 @@ class SurveyBackendApiController extends Controller
     {
         $this->authorize('survey.view');
 
-        $sort      = $request->input('sort', []);
-        $sortField = $sort[0]['field'] ?? 'created_at';
-        $sortDir   = $sort[0]['dir']   ?? 'desc';
+        $validated = $request->validate([
+            'page'      => ['nullable', 'integer', 'min:1'],
+            'size'      => ['nullable', 'integer', 'min:5', 'max:100'],
+            'search'    => ['nullable', 'string', 'max:200'],
+            'status'    => ['nullable', 'integer'],
+            'date_from' => ['nullable', 'date_format:Y-m-d'],
+            'date_to'   => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+        ]);
 
-        $status = $request->input('status');
+        // sort[0] is sent by Tabulator as an array element — guard against non-array payloads.
+        $sortRaw   = $request->input('sort.0');
+        $sortField = is_array($sortRaw) ? (string) ($sortRaw['field'] ?? 'created_at') : 'created_at';
+        $sortDir   = is_array($sortRaw) ? (string) ($sortRaw['dir']   ?? 'desc')       : 'desc';
+
+        $status = isset($validated['status']) ? (int) $validated['status'] : null;
 
         $query = new ListSurveysQuery(
-            page:      max(1, $request->integer('page', 1)),
-            perPage:   min(100, max(5, $request->integer('size', 25))),
+            page:      max(1, (int) ($validated['page'] ?? 1)),
+            perPage:   min(100, max(5, (int) ($validated['size'] ?? 25))),
             sortField: $sortField,
             sortDir:   $sortDir,
-            search:    $request->input('search'),
-            status:    ($status !== null && $status !== '') ? (int) $status : null,
-            dateFrom:  $request->input('date_from'),
-            dateTo:    $request->input('date_to'),
+            search:    $validated['search'] ?? null,
+            status:    $status,
+            dateFrom:  $validated['date_from'] ?? null,
+            dateTo:    $validated['date_to']   ?? null,
         );
 
         $paginator = $handler->handle($query);

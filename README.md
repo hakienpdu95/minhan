@@ -67,5 +67,5 @@ php artisan db:seed
 php artisan module:make Auth
 
 # > Đọc file spec/organization_module.md và implement theo đúng spec đó
-# > Đọc file spec/survey_table.md và implement theo đúng spec đó
+# > Đọc file spec/survey_bug.md và implement theo đúng spec đó
 
