@@ -115,6 +115,7 @@
     "submitted_at///timestamp///__///_NULL///NULL///__///Thời điểm nộp hoàn tất",
     "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
     "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật",
+    "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm",
     "__index///index///__///__///__///survey_id,status,submitted_at///Thống kê responses theo trạng thái"
   ],
   [
@@ -139,11 +140,13 @@
     "survey_id///unsignedBigInteger///__///NOT_NULL///__///->constrained('surveys')->onDelete('cascade')///FK -> surveys",
     "name///string///150///NOT_NULL///__///__///Tiêu đề",
     "token///string///80///NOT_NULL///__///->unique()///Lưu hash, hiển thị plaintext 1 lần",
+    "token_encrypted///text///__///_NULL///NULL///__///Token Encrypted",
     "is_active///boolean///__///NOT_NULL///true///->index()///Trạng thái hoạt động",
     "last_used_at///timestamp///__///_NULL///NULL///__///Cập nhật mỗi lần token được dùng",
     "expires_at///timestamp///__///_NULL///NULL///__///Cập nhật null là không hết hạn",
     "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
     "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật",
-    "__index///unique///__///__///__///survey_id,is_active///Mỗi survey có active"
+    "__index///index///__///__///__///survey_id///Mỗi survey"
+    "__index///index///__///__///__///survey_id,is_active///Mỗi survey có active"
   ],
 ]
