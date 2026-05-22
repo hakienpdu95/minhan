@@ -194,3 +194,135 @@ Bảng jobs đã tồn tại sẵn. Mọi thứ đã sẵn sàng, chỉ cần ch
 
   Phân quyền tương lai: Hiện tại cả 3 dùng survey.manage_tokens. Sau này chỉ cần thêm permission mới (VD: survey.view_token_secret) và thay vào $this->authorize(...) trong reveal() —
   không cần đụng vào logic nào khác.
+
+
+---
+GIAI ĐOẠN 3 — Review & Fixes (Bổ sung sau review kỹ thuật)
+
+  Các issues được phát hiện và fix:
+
+  1. UpdateTokenLastUsedJob (NEW)
+     - Trước: updateQuietly() đồng bộ trong middleware — block hot path mỗi request
+     - Sau: dispatch async UpdateTokenLastUsedJob (ShouldQueue, $tries=3) → queue:work xử lý nền
+     - whereKey($id)->update(['last_used_at' => now()]) — bypass Eloquent events, O(1) index write
+
+  2. ValidateSurveyToken middleware — eager load + slug check
+     - Trước: 2 queries (load token, load survey riêng)
+     - Sau: eager load survey qua with('survey') trong 1 query; check slug qua $token->survey->slug
+     - Bảo vệ thêm /stats và /responses routes (move vào middleware group)
+
+  3. TokenFormData — validation responsibility
+     - Thêm rules() static method vào Data class
+     - Controller dùng TokenFormData::from(request()) thay vì $request->validate() thủ công
+
+  4. Token redesign — "xem lại được" + hard delete
+     - Thêm column token_encrypted (TEXT NULLABLE) — lưu Crypt::encryptString($plain) AES-256
+     - GenerateSurveyTokenAction lưu cả 2: token (SHA-256 hash, dùng để lookup) + token_encrypted
+     - TokenController::reveal() — Crypt::decryptString($token->token_encrypted), trả plaintext
+     - DeleteSurveyTokenAction — log trước khi hard delete (giữ audit trail)
+     - Routes mới: GET /{survey}/tokens/{token}/reveal, PATCH /{survey}/tokens/{token}/revoke
+     - UI redesign: 3 actions/token (Xem, Thu hồi, Xóa) với Alpine.js reveal modal + delete confirm modal
+
+  ┌──────────────────────┬──────────────────────────────────────────────────────────────────┐
+  │       Pattern        │                            Mục đích                              │
+  ├──────────────────────┼──────────────────────────────────────────────────────────────────┤
+  │ token (SHA-256)      │ Index lookup, không thể reverse — dùng trong middleware           │
+  │ token_encrypted      │ AES-256 via Crypt — admin có thể xem lại qua reveal endpoint     │
+  │ is_active flag       │ Revoke mà không mất audit history                                │
+  │ Hard delete          │ GDPR / cleanup — log trước khi xóa để giữ trail                 │
+  └──────────────────────┴──────────────────────────────────────────────────────────────────┘
+
+
+---
+GIAI ĐOẠN 4 — Responses & Statistics
+
+  Task 4.1 — ResponseController::index() + filter
+  - Paginate(30) với 4 filters: respondent_ref (LIKE), status (enum cast), from/to date
+  - Summary counts: totalAll + totalComplete (2 queries cache-friendly, trên index)
+  - Export giữ nguyên filters hiện tại qua array_merge(['survey' => $survey], array_filter($filters))
+  - Permission guard: survey.view_responses
+
+  Task 4.2 — ResponseViewerService + show()
+  - 3 queries cố định, không N+1 dù survey có bao nhiêu sections/fields:
+    1. sections ordered()
+    2. fields+options eager load per section (with(['fields' => fn => ordered()->with('options')]))
+    3. answers+option eager load (with('option')->get()->groupBy('field_id'))
+  - Format per FieldType: Checkbox → array of labels, Rating → star count (string), Boolean → "Có"/"Không", Text/Textarea → raw string
+  - Output: array of sections → fields → {label, type, answer}
+
+  Task 4.3 — Soft delete SurveyResponse
+  - Migration thêm deleted_at column vào survey_responses
+  - SurveyResponse::use SoftDeletes — global scope auto-exclude deleted records
+  - ResponseController::destroy() soft delete + redirect flash "Đã xóa response"
+  - Mọi query (index, stats, export) tự động bỏ qua deleted records
+
+  Task 4.4 — SurveyStatsService::totalByDay()
+  - Dùng Eloquent (SoftDeletes scope auto) + selectRaw DATE(submitted_at) as day, COUNT(*) as count
+  - Fill missing days với count=0 để chart continuous (không có khoảng trống)
+  - Output: array<{day: string, count: int}> — 30 phần tử dù không có data
+
+  Task 4.5 — StatsController + Apache ECharts dashboard
+  - StatsController::index() — permission survey.view_responses, inject SurveyStatsService
+  - View stats/index.blade.php:
+    • 4 summary cards: total responses, active fields, 30d count, avg/day
+    • ECharts v5 line chart (CDN) — smooth area, ResizeObserver responsive, dark theme auto-detect
+    • Per-field cards per type:
+      - choice → progress bars (percent label)
+      - number/rating → 2×2 grid (avg, count, min, max)
+      - boolean → split bar (Có/Không với %)
+      - text/textarea → count badge
+
+  Task 4.6 — Export Excel wired đúng
+  - ExportSurveyResponsesAction dùng rap2hpoutre/fast-excel + Generator — O(1) memory streaming
+  - Permission guard: survey.export
+  - Route /export đặt TRƯỚC /{response} wildcard để tránh route conflict
+  - Export giữ filters (respondent_ref, status, from, to) qua query string
+
+  Navigation bổ sung:
+  - surveys/index: cột Responses count → clickable link + 2 icon buttons (Responses, Thống kê)
+  - surveys/edit sidebar: fix href="#" → real routes (Responses, Thống kê, Export Excel)
+
+  ┌──────┬──────────────────────────────────────────────────────────────────────────────┐
+  │ Task │ File chính                                                                   │
+  ├──────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ 4.1  │ Http/Controllers/Admin/ResponseController.php (index, export, destroy)       │
+  │ 4.2  │ Services/ResponseViewerService.php + ResponseController::show()             │
+  │ 4.3  │ Models/SurveyResponse.php (SoftDeletes) + migration deleted_at             │
+  │ 4.4  │ Services/SurveyStatsService::totalByDay()                                  │
+  │ 4.5  │ Http/Controllers/Admin/StatsController.php + views/stats/index.blade.php   │
+  │ 4.6  │ Actions/ExportSurveyResponsesAction.php + route /export (trước /{response})│
+  └──────┴──────────────────────────────────────────────────────────────────────────────┘
+
+  Blade quirk gặp phải và fix:
+  - ParseError "expecting elseif or else or endif" — Blade regex dùng \B (non-word boundary)
+  - @else/@endif phải đứng sau ký tự non-ASCII-word (space, newline), không được dính sát text
+  - Rule: luôn đặt @else/@endif trên dòng riêng biệt
+
+
+---
+NGUYÊN TẮC KỸ THUẬT ÁP DỤNG XUYÊN SUỐT MODULE SURVEY
+
+  Kiến trúc:
+  - AVSA + CQRS-lite: Actions (write), Services (read), Controllers (điều phối)
+  - lorisleiva/laravel-actions: AsAction trait — mỗi business operation là 1 class
+  - spatie/laravel-data: DTO với rules() — validation là trách nhiệm của Data class, không phải Controller
+  - spatie/laravel-permission: $this->authorize() trong Controller, @can trong Blade
+
+  Hiệu suất:
+  - Mọi aggregate query dùng composite index — không full table scan
+  - Batch queries: SurveyStatsService chạy ≤5 queries cho toàn bộ stats, không N+1
+  - Eager loading: with() trong mọi query có relation để tránh lazy load
+  - Async jobs: ShouldQueue cho side effects không cần blocking (last_used_at update)
+  - fast-excel + Generator: O(1) memory khi export bất kể số rows
+
+  Bảo mật:
+  - SHA-256 hash để lookup token (không reversible, safe khi DB bị dump)
+  - AES-256 (Crypt::encryptString) để admin xem lại plaintext — key trong APP_KEY
+  - SoftDeletes: không xóa vật lý response, giữ audit trail
+  - Activity log: mọi create/update/delete đều ghi log với context
+  - Permission guard: mọi route đều có authorize() check
+
+  Code conventions:
+  - Route literal (/export) phải đăng ký TRƯỚC wildcard (/{response})
+  - Blade @else/@endif luôn trên dòng riêng (tránh \B regex bug)
+  - $hidden = ['token', 'token_encrypted'] trên Model — không serialize secret ra API
