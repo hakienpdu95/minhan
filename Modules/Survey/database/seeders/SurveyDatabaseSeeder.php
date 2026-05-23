@@ -10,6 +10,7 @@ class SurveyDatabaseSeeder extends Seeder
     {
         $this->call([
             SurveyPermissionSeeder::class,
+            AiReadinessSurveySeeder::class,
         ]);
     }
 }
