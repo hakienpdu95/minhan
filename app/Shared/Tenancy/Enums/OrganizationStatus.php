@@ -17,6 +17,15 @@ enum OrganizationStatus: string
         };
     }
 
+    public function badgeClass(): string
+    {
+        return match ($this) {
+            self::Active    => 'badge-success',
+            self::Suspended => 'badge-error',
+            self::Inactive  => 'badge-ghost',
+        };
+    }
+
     public function isActive(): bool
     {
         return $this === self::Active;

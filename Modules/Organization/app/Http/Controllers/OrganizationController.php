@@ -4,6 +4,7 @@ namespace Modules\Organization\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Shared\Tenancy\Enums\OrganizationStatus;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use App\Models\Province;
@@ -23,19 +24,34 @@ class OrganizationController extends Controller
         $this->authorizeResource(Organization::class, 'organization');
     }
 
-    // ── CRUD ────────────────────────────────────────────────────────
-
     public function index()
     {
+        // Single query merges all stat counts
+        $counts = Organization::withoutTenant()
+            ->selectRaw(
+                'COUNT(*) as total_all,
+                 SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as total_active,
+                 SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as total_suspended',
+                [OrganizationStatus::Active->value, OrganizationStatus::Suspended->value]
+            )
+            ->first();
+
+        $totalAll       = (int) ($counts->total_all       ?? 0);
+        $totalActive    = (int) ($counts->total_active    ?? 0);
+        $totalSuspended = (int) ($counts->total_suspended ?? 0);
+
         $provinces = Province::where('is_active', true)
             ->orderBy('name')
             ->get(['province_code', 'name']);
 
         $statuses = collect(OrganizationStatus::cases())
-            ->map(fn($s) => ['value' => $s->value, 'text' => $s->label()])
+            ->map(fn ($s) => ['value' => $s->value, 'text' => $s->label()])
             ->all();
 
-        return view('organization::index', compact('provinces', 'statuses'));
+        return view('organization::index', compact(
+            'totalAll', 'totalActive', 'totalSuspended',
+            'provinces', 'statuses'
+        ));
     }
 
     public function create()
@@ -76,9 +92,13 @@ class OrganizationController extends Controller
             ->with('success', 'Cập nhật tổ chức thành công.');
     }
 
-    public function destroy(Organization $organization, DestroyOrganizationAction $action): RedirectResponse
+    public function destroy(Request $request, Organization $organization, DestroyOrganizationAction $action): RedirectResponse|JsonResponse
     {
         $name = $action->handle($organization);
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Đã xóa tổ chức "' . $name . '".' ]);
+        }
 
         return redirect()->route('backend.organizations.index')
             ->with('success', 'Đã xóa tổ chức "' . $name . '".');

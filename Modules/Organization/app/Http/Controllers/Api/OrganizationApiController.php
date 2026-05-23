@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Organization\Http\Resources\OrganizationListResource;
+use Modules\Organization\Models\Organization;
 use Modules\Organization\Queries\ListOrganizationsHandler;
 use Modules\Organization\Queries\ListOrganizationsQuery;
 
@@ -13,23 +14,35 @@ class OrganizationApiController extends Controller
 {
     public function index(Request $request, ListOrganizationsHandler $handler): JsonResponse
     {
-        $this->authorize('viewAny', \Modules\Organization\Models\Organization::class);
+        $this->authorize('viewAny', Organization::class);
 
-        $sort      = $request->input('sort', []);
-        $sortField = $sort[0]['field'] ?? 'created_at';
-        $sortDir   = $sort[0]['dir']   ?? 'desc';
+        $validated = $request->validate([
+            'page'          => ['nullable', 'integer', 'min:1'],
+            'size'          => ['nullable', 'integer', 'min:5', 'max:100'],
+            'search'        => ['nullable', 'string', 'max:200'],
+            'province_code' => ['nullable', 'string', 'max:10'],
+            'ward_code'     => ['nullable', 'string', 'max:10'],
+            'status'        => ['nullable', 'string', 'in:active,suspended,inactive'],
+            'date_from'     => ['nullable', 'date_format:Y-m-d'],
+            'date_to'       => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+        ]);
+
+        // Guard against non-array sort[0] payload
+        $sortRaw   = $request->input('sort.0');
+        $sortField = is_array($sortRaw) ? (string) ($sortRaw['field'] ?? 'created_at') : 'created_at';
+        $sortDir   = is_array($sortRaw) && ($sortRaw['dir'] ?? '') === 'asc' ? 'asc' : 'desc';
 
         $query = new ListOrganizationsQuery(
-            page:         max(1, $request->integer('page', 1)),
-            perPage:      min(100, max(5, $request->integer('size', 25))),
+            page:         max(1, (int) ($validated['page'] ?? 1)),
+            perPage:      min(100, max(5, (int) ($validated['size'] ?? 25))),
             sortField:    $sortField,
             sortDir:      $sortDir,
-            search:       $request->input('search'),
-            provinceCode: $request->input('province_code'),
-            wardCode:     $request->input('ward_code'),
-            dateFrom:     $request->input('date_from'),
-            dateTo:       $request->input('date_to'),
-            status:       $request->input('status'),
+            search:       $validated['search'] ?? null,
+            provinceCode: $validated['province_code'] ?? null,
+            wardCode:     $validated['ward_code'] ?? null,
+            dateFrom:     $validated['date_from'] ?? null,
+            dateTo:       $validated['date_to'] ?? null,
+            status:       $validated['status'] ?? null,
         );
 
         $paginator = $handler->handle($query);

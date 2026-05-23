@@ -25,22 +25,22 @@ class ListOrganizationsHandler implements QueryHandlerInterface
         $sortDir = $query->sortDir === 'asc' ? 'asc' : 'desc';
 
         $q = Organization::withoutTenant()
-            ->select('organizations.*')  // explicit select prevents column collision when leftJoin is applied for sort
+            ->select('organizations.*')
             ->withCount('members')
             ->with(['province:province_code,name', 'ward:ward_code,name']);
 
-        // ── Text search across multiple fields (OR) ──────────────────
+        // ── Text search (OR across multiple fields) ──────────────────
         if ($query->search !== null && $query->search !== '') {
             $term = '%' . $query->search . '%';
             $q->where(function (Builder $sub) use ($term): void {
-                $sub->where('organizations.name',     'like', $term)
+                $sub->where('organizations.name',      'like', $term)
                     ->orWhere('organizations.tax_code', 'like', $term)
                     ->orWhere('organizations.email',    'like', $term)
                     ->orWhere('organizations.phone',    'like', $term);
             });
         }
 
-        // ── Exact filters ────────────────────────────────────────────
+        // ── Exact filters ─────────────────────────────────────────────
         if ($query->provinceCode !== null && $query->provinceCode !== '') {
             $q->where('organizations.province_code', $query->provinceCode);
         }
@@ -53,22 +53,28 @@ class ListOrganizationsHandler implements QueryHandlerInterface
             $q->where('organizations.status', $query->status);
         }
 
-        // ── Date range on created_at ─────────────────────────────────
+        // ── Date range ────────────────────────────────────────────────
+        // Explicit bounds — whereDate() wraps DATE() which prevents index use
         if ($query->dateFrom !== null && $query->dateFrom !== '') {
-            $q->whereDate('organizations.created_at', '>=', $query->dateFrom);
+            $q->where('organizations.created_at', '>=', $query->dateFrom . ' 00:00:00');
         }
 
         if ($query->dateTo !== null && $query->dateTo !== '') {
-            $q->whereDate('organizations.created_at', '<=', $query->dateTo);
+            $q->where('organizations.created_at', '<=', $query->dateTo . ' 23:59:59');
         }
 
-        // ── Sort ─────────────────────────────────────────────────────
+        // ── Sort ──────────────────────────────────────────────────────
         match ($sortField) {
             'members_count' => $q->orderBy('members_count', $sortDir),
             'province_name' => $q->leftJoin('provinces as prov_sort', 'organizations.province_code', '=', 'prov_sort.province_code')
                                   ->orderBy('prov_sort.name', $sortDir),
             default         => $q->orderBy('organizations.' . $sortField, $sortDir),
         };
+
+        // Secondary sort by id for stable pagination
+        if ($sortField !== 'id') {
+            $q->orderBy('organizations.id', $sortDir);
+        }
 
         return $q->paginate($query->perPage, ['*'], 'page', $query->page);
     }
