@@ -168,7 +168,7 @@
 
     {{-- ── Tabulator table ──────────────────────────────────────────────── --}}
     <div class="card bg-base-100 shadow-sm border border-base-200">
-        <div class="card-body p-0 overflow-hidden rounded-2xl">
+        <div class="card-body p-0 overflow-hidden rounded-2xl tabulator-daisy">
             <div id="survey-table"></div>
         </div>
     </div>
@@ -196,43 +196,7 @@
 @endsection
 
 @push('styles')
-<style>
-/* ── Tabulator — DaisyUI theme ──────────────────────────────────────────── */
-#survey-table .tabulator { border:none; border-radius:0; background:transparent; font-size:.8125rem; }
-#survey-table .tabulator-header { background:oklch(var(--b2)); border-bottom:1px solid oklch(var(--b3)); color:oklch(var(--bc)/.65); font-weight:600; font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; }
-#survey-table .tabulator-col { background:transparent; border-right:1px solid oklch(var(--b3)); }
-#survey-table .tabulator-col:last-child { border-right:none; }
-#survey-table .tabulator-col.tabulator-sortable:hover { background:oklch(var(--b3)); }
-#survey-table .tabulator-row { background:oklch(var(--b1)); border-bottom:1px solid oklch(var(--b2)); }
-#survey-table .tabulator-row:hover { background:oklch(var(--b2)/.6); }
-#survey-table .tabulator-row .tabulator-cell { border-right:1px solid oklch(var(--b2)); color:oklch(var(--bc)); padding:.5rem .75rem; }
-#survey-table .tabulator-row .tabulator-cell:last-child { border-right:none; }
-#survey-table .tabulator-footer { background:oklch(var(--b2)/.5); border-top:1px solid oklch(var(--b3)); }
-#survey-table .tabulator-paginator { color:oklch(var(--bc)/.7); }
-#survey-table .tabulator-page { background:transparent; border:1px solid oklch(var(--b3)); color:oklch(var(--bc)); border-radius:.375rem; padding:.2rem .5rem; margin:0 1px; }
-#survey-table .tabulator-page:hover:not([disabled]) { background:oklch(var(--b3)); }
-#survey-table .tabulator-page.active { background:oklch(var(--p)); color:oklch(var(--pc)); border-color:oklch(var(--p)); }
-#survey-table .tabulator-page[disabled] { opacity:.35; }
-#survey-table .tabulator-page-size { background:oklch(var(--b1)); border:1px solid oklch(var(--b3)); color:oklch(var(--bc)); border-radius:.375rem; padding:.2rem .4rem; }
-#survey-table .tabulator-frozen.tabulator-frozen-right { box-shadow:-2px 0 4px oklch(var(--b3)/.5); }
-#survey-table .tabulator-frozen.tabulator-frozen-left  { box-shadow: 2px 0 4px oklch(var(--b3)/.5); }
-#survey-table .tabulator-tableholder::-webkit-scrollbar { width:6px; height:6px; }
-#survey-table .tabulator-tableholder::-webkit-scrollbar-track { background:oklch(var(--b2)); }
-#survey-table .tabulator-tableholder::-webkit-scrollbar-thumb { background:oklch(var(--b3)); border-radius:3px; }
-#survey-table .tabulator-loader { background:oklch(var(--b1)/.7) !important; }
-#survey-table .tabulator-loader-msg { background:oklch(var(--b2)) !important; border:1px solid oklch(var(--b3)) !important; border-radius:.5rem !important; color:oklch(var(--bc)) !important; }
-
-/* ── TomSelect — DaisyUI theme ──────────────────────────────────────────── */
-.ts-wrapper.single .ts-control { background:oklch(var(--b1)); border-color:oklch(var(--b3)); color:oklch(var(--bc)); border-radius:.375rem; min-height:2rem; padding:.25rem .5rem; font-size:.875rem; }
-.ts-wrapper.single.focus .ts-control { border-color:oklch(var(--p)); outline:none; box-shadow:0 0 0 2px oklch(var(--p)/.2); }
-.ts-dropdown { background:oklch(var(--b1)); border:1px solid oklch(var(--b3)); border-radius:.5rem; box-shadow:0 4px 16px rgba(0,0,0,.15); z-index:9999; }
-.ts-dropdown .ts-option { color:oklch(var(--bc)); padding:.4rem .75rem; font-size:.875rem; }
-.ts-dropdown .ts-option:hover, .ts-dropdown .ts-option.active { background:oklch(var(--b2)); color:oklch(var(--bc)); }
-.ts-dropdown .ts-option.selected { background:oklch(var(--p)/.15); color:oklch(var(--p)); }
-.ts-wrapper .clear-button { color:oklch(var(--bc)/.4); }
-.ts-wrapper .clear-button:hover { color:oklch(var(--bc)); }
-.ts-control input { color:oklch(var(--bc)) !important; }
-</style>
+<x-tabulator-theme />
 @endpush
 
 @push('scripts')

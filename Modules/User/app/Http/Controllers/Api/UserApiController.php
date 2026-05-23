@@ -2,11 +2,13 @@
 
 namespace Modules\User\Http\Controllers\Api;
 
+use App\Enums\RoleEnum;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Modules\User\Http\Resources\UserListResource;
 use Modules\User\Queries\ListUsersHandler;
 use Modules\User\Queries\ListUsersQuery;
@@ -17,9 +19,20 @@ class UserApiController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
-        $sort      = $request->input('sort', []);
-        $sortField = $sort[0]['field'] ?? 'created_at';
-        $sortDir   = $sort[0]['dir']   ?? 'desc';
+        $request->validate([
+            'page'            => ['nullable', 'integer', 'min:1'],
+            'size'            => ['nullable', 'integer', 'min:5', 'max:100'],
+            'search'          => ['nullable', 'string', 'max:200'],
+            'organization_id' => ['nullable', 'integer', 'min:1'],
+            'role'            => ['nullable', 'string', Rule::in(collect(RoleEnum::cases())->map(fn ($r) => $r->value)->all())],
+            'status'          => ['nullable', 'string', 'in:0,1'],
+            'date_from'       => ['nullable', 'date_format:Y-m-d'],
+            'date_to'         => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+        ]);
+
+        $sortRaw   = $request->input('sort.0');
+        $sortField = is_array($sortRaw) ? (string) ($sortRaw['field'] ?? 'created_at') : 'created_at';
+        $sortDir   = is_array($sortRaw) && ($sortRaw['dir'] ?? '') === 'asc' ? 'asc' : 'desc';
 
         // Admin sees all (or filters by chosen org); non-admin is locked to their org
         $isAdmin = $request->user()->hasAnyRole(['super-admin', 'System_Admin']);

@@ -26,6 +26,20 @@ enum RoleEnum: string
         };
     }
 
+    public function badgeClass(): string
+    {
+        return match($this) {
+            self::CEO       => 'badge-primary',
+            self::ADMIN     => 'badge-error',
+            self::OPS       => 'badge-warning',
+            self::SALES     => 'badge-success',
+            self::HR        => 'badge-info',
+            self::AI_OP     => 'badge-secondary',
+            self::MARKETING => 'badge-accent',
+            self::VIEWER    => 'badge-ghost',
+        };
+    }
+
     public function visibleModules(): array
     {
         return match($this) {

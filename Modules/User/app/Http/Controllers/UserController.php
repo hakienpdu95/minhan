@@ -5,6 +5,7 @@ namespace Modules\User\Http\Controllers;
 use App\Enums\RoleEnum;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Modules\Organization\Models\Organization;
@@ -20,7 +21,20 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
-        $isAdmin = $request->user()->hasAnyRole(['super-admin', RoleEnum::ADMIN->value]);
+        $isAdmin   = $request->user()->hasAnyRole(['super-admin', RoleEnum::ADMIN->value]);
+        $canEdit   = $request->user()->can('create', User::class);
+        $canDelete = $isAdmin;
+
+        $countQuery = User::whereNotNull('organization_id');
+        if (! $isAdmin) {
+            $countQuery->where('organization_id', $request->user()->organization_id);
+        }
+
+        $counts = $countQuery->selectRaw(
+            'COUNT(*) as total_all,
+             SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as total_active,
+             SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as total_inactive'
+        )->first();
 
         $roles = collect(RoleEnum::cases())
             ->map(fn ($r) => ['value' => $r->value, 'text' => $r->label()])
@@ -35,7 +49,7 @@ class UserController extends Controller
             ? Organization::orderBy('name')->get(['id', 'name'])
             : collect();
 
-        return view('user::index', compact('isAdmin', 'roles', 'statuses', 'organizations'));
+        return view('user::index', compact('isAdmin', 'canEdit', 'canDelete', 'roles', 'statuses', 'organizations', 'counts'));
     }
 
     public function create(Request $request)
@@ -98,11 +112,15 @@ class UserController extends Controller
             ->with('success', 'Cập nhật tài khoản thành công.');
     }
 
-    public function destroy(User $user, DestroyUserAction $action): RedirectResponse
+    public function destroy(Request $request, User $user, DestroyUserAction $action): RedirectResponse|JsonResponse
     {
         $this->authorize('delete', $user);
 
         $name = $action->handle($user);
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Đã xóa tài khoản "' . $name . '".' ]);
+        }
 
         return redirect()->route('backend.users.index')
             ->with('success', 'Đã xóa tài khoản "' . $name . '".');

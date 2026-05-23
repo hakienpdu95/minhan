@@ -31,9 +31,13 @@ class UserListResource extends JsonResource
 
             'role'              => $roleEnum?->value ?? $spatiRole,
             'role_label'        => $roleEnum?->label() ?? ($spatiRole ?? '—'),
+            'role_badge'        => $roleEnum?->badgeClass() ?? 'badge-ghost',
 
             'is_active'         => $this->is_active,
             'status_label'      => $this->is_active ? 'Hoạt động' : 'Vô hiệu',
+            'status_badge'      => $this->is_active ? 'badge-success' : 'badge-ghost',
+
+            'can_delete'        => $request->user()?->id !== $this->id,
 
             'created_at'        => $this->created_at?->format('d/m/Y'),
 

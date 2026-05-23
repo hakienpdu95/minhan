@@ -66,11 +66,11 @@ class ListUsersHandler implements QueryHandlerInterface
 
         // ── Date range ────────────────────────────────────────────────
         if ($query->dateFrom !== null && $query->dateFrom !== '') {
-            $q->whereDate('users.created_at', '>=', $query->dateFrom);
+            $q->where('users.created_at', '>=', $query->dateFrom . ' 00:00:00');
         }
 
         if ($query->dateTo !== null && $query->dateTo !== '') {
-            $q->whereDate('users.created_at', '<=', $query->dateTo);
+            $q->where('users.created_at', '<=', $query->dateTo . ' 23:59:59');
         }
 
         // ── Sort ──────────────────────────────────────────────────────
@@ -79,6 +79,10 @@ class ListUsersHandler implements QueryHandlerInterface
                                       ->orderBy('org_sort.name', $sortDir),
             default             => $q->orderBy('users.' . $sortField, $sortDir),
         };
+
+        if ($sortField !== 'id') {
+            $q->orderBy('users.id', $sortDir);
+        }
 
         return $q->paginate($query->perPage, ['*'], 'page', $query->page);
     }
