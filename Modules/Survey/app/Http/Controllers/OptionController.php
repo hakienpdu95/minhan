@@ -5,6 +5,7 @@ namespace Modules\Survey\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Actions\CreateOptionAction;
 use Modules\Survey\Actions\DestroyOptionAction;
 use Modules\Survey\Actions\ReorderAction;
@@ -66,6 +67,7 @@ class OptionController extends Controller
         ]);
 
         $action->handle('survey_field_options', $validated['items']);
+        BuildSurveySchemaAction::purgeCache($survey->slug);
 
         return response()->json(['success' => true]);
     }

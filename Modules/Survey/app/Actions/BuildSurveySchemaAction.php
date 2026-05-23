@@ -36,26 +36,44 @@ class BuildSurveySchemaAction
     {
         // Cache as plain array to avoid __PHP_Incomplete_Class on Redis deserialization.
         // Spatie Data objects are not safely serializable across process boundaries.
-        $cached = Cache::store('redis')->remember(
-            static::cacheKey($slug),
-            static::CACHE_TTL,
-            function () use ($slug): array {
-                $survey = Survey::active()
-                    ->bySlug($slug)
-                    ->with([
-                        'sections'                => fn ($q) => $q->ordered(),
-                        'sections.fields'         => fn ($q) => $q->active()->ordered(),
-                        'sections.fields.options' => fn ($q) => $q->ordered(),
-                    ])
-                    ->firstOrFail();
+        // Wrapped in try/catch so Redis unavailability degrades gracefully to a direct DB query.
+        try {
+            $cached = Cache::store('redis')->remember(
+                static::cacheKey($slug),
+                static::CACHE_TTL,
+                fn (): array => $this->buildArray($slug)
+            );
 
-                $this->filterSchema($survey);
+            return SurveySchemaData::from($cached);
+        } catch (\Throwable $e) {
+            Log::warning('survey.schema.cache_miss', [
+                'slug'  => $slug,
+                'error' => $e->getMessage(),
+            ]);
 
-                return SurveySchemaData::fromModel($survey)->toArray();
-            }
-        );
+            return $this->buildFromDb($slug);
+        }
+    }
 
-        return SurveySchemaData::from($cached);
+    private function buildArray(string $slug): array
+    {
+        return $this->buildFromDb($slug)->toArray();
+    }
+
+    private function buildFromDb(string $slug): SurveySchemaData
+    {
+        $survey = Survey::active()
+            ->bySlug($slug)
+            ->with([
+                'sections'                => fn ($q) => $q->ordered(),
+                'sections.fields'         => fn ($q) => $q->active()->ordered(),
+                'sections.fields.options' => fn ($q) => $q->ordered(),
+            ])
+            ->firstOrFail();
+
+        $this->filterSchema($survey);
+
+        return SurveySchemaData::fromModel($survey);
     }
 
     /**
