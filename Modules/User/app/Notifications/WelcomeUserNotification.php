@@ -34,7 +34,7 @@ class WelcomeUserNotification extends Notification implements ShouldQueue
             ->line('• Email: **' . $notifiable->email . '**')
             ->line('• Mật khẩu tạm: **' . $this->temporaryPassword . '**')
             ->line('• Vai trò: **' . $roleLabel . '**')
-            ->action('Đăng nhập ngay', url('/login'))
+            ->action('Đăng nhập ngay', rtrim(config('app.url'), '/') . '/login')
             ->line('⚠️ Vui lòng đổi mật khẩu ngay sau khi đăng nhập lần đầu.')
             ->salutation('Trân trọng, Đội ngũ hỗ trợ');
     }
