@@ -81,5 +81,6 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
 
 // ── Backend JSON API for Tabulator (session-based auth) ───────────────────
 Route::middleware(['auth'])->prefix('backend/api')->name('backend.api.')->group(function () {
-    Route::get('surveys', [SurveyBackendApiController::class, 'index'])->name('surveys');
+    Route::get('surveys',                          [SurveyBackendApiController::class, 'index'])->name('surveys');
+    Route::get('surveys/{survey}/responses',       [SurveyBackendApiController::class, 'responses'])->name('surveys.responses');
 });

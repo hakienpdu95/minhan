@@ -3,6 +3,7 @@
 namespace Modules\Survey\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -10,25 +11,16 @@ use Modules\Survey\Actions\ExportSurveyResponsesAction;
 use Modules\Survey\Enums\ResponseStatus;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyResponse;
-use Modules\Survey\Services\QueryAuditService;
 use Modules\Survey\Services\ResponseViewerService;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ResponseController extends Controller
 {
-    public function index(Request $request, Survey $survey)
+    public function index(Survey $survey)
     {
         $this->authorize('survey.view_responses');
 
-        $filters = $request->validate([
-            'respondent_ref' => ['nullable', 'string', 'max:190'],
-            'status'         => ['nullable', 'integer', 'in:0,1'],
-            'from'           => ['nullable', 'date_format:Y-m-d'],
-            'to'             => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
-        ]);
-
-        // Single query for both totals — saves one DB roundtrip on every page load.
-        // SoftDeletes global scope is applied by the Eloquent model automatically.
+        // Stat cards are server-side rendered (one query); table data is loaded by Tabulator via API.
         $counts = SurveyResponse::forSurvey($survey->id)
             ->selectRaw(
                 'COUNT(*) as total_all, SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as total_complete',
@@ -39,34 +31,11 @@ class ResponseController extends Controller
         $totalAll      = (int) ($counts->total_all      ?? 0);
         $totalComplete = (int) ($counts->total_complete ?? 0);
 
-        $responses = SurveyResponse::forSurvey($survey->id)
-            ->select(['id', 'respondent_ref', 'respondent_ip', 'status', 'submitted_at'])
-            ->when(isset($filters['respondent_ref']), fn ($q) =>
-                // Prefix LIKE only — a leading wildcard disables the respondent_ref index at 500k rows.
-                $q->where('respondent_ref', 'like', $filters['respondent_ref'] . '%')
-            )
-            ->when(isset($filters['status']), fn ($q) =>
-                $q->where('status', $filters['status'])
-            )
-            ->when(isset($filters['from']), fn ($q) =>
-                $q->where('submitted_at', '>=', $filters['from'] . ' 00:00:00')
-            )
-            ->when(isset($filters['to']), fn ($q) =>
-                $q->where('submitted_at', '<=', $filters['to'] . ' 23:59:59')
-            )
-            ->orderByDesc('submitted_at')
-            ->orderByDesc('id') // tiebreaker — InnoDB PK is implicit in all secondary indexes
-            ->cursorPaginate(50)
-            ->withQueryString();
+        $statuses = collect(ResponseStatus::cases())
+            ->map(fn ($s) => ['value' => $s->value, 'text' => $s->label()])
+            ->all();
 
-        return view('survey::responses.index', [
-            'survey'        => $survey,
-            'responses'     => $responses,
-            'totalAll'      => $totalAll,
-            'totalComplete' => $totalComplete,
-            'filters'       => array_filter($filters, fn ($v) => $v !== null),
-            'statuses'      => ResponseStatus::cases(),
-        ]);
+        return view('survey::responses.index', compact('survey', 'totalAll', 'totalComplete', 'statuses'));
     }
 
     public function show(Survey $survey, SurveyResponse $response, ResponseViewerService $viewer)
@@ -127,13 +96,17 @@ class ResponseController extends Controller
         return response()->download($info['path'], $info['filename'])->deleteFileAfterSend(true);
     }
 
-    public function destroy(Survey $survey, SurveyResponse $response): RedirectResponse
+    public function destroy(Request $request, Survey $survey, SurveyResponse $response): RedirectResponse|JsonResponse
     {
         $this->authorize('survey.view_responses');
 
         $this->checkOwnership($response, $survey);
 
         $response->delete();
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Response đã được xóa.']);
+        }
 
         return redirect()
             ->route('backend.surveys.responses.index', $survey)
