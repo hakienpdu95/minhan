@@ -77,13 +77,14 @@ class SurveyStatsService
         // Load tất cả active fields + options (choice fields cần options để map label)
         $fields = SurveyField::forSurvey($survey->id)
             ->active()
-            ->with(['options' => fn ($q) => $q->ordered()])
+            ->with(['options' => fn ($q) => $q->ordered(), 'section'])
             ->ordered()
             ->get();
 
         // Nhóm field_id theo stat type để batch query
         $choiceIds   = $fields->filter(fn ($f) => $f->field_type->isChoice())->pluck('id')->all();
-        $numberIds   = $fields->filter(fn ($f) => $this->isNumberType($f))->pluck('id')->all();
+        $ratingIds   = $fields->filter(fn ($f) => $f->field_type === FieldType::Rating)->pluck('id')->all();
+        $numberIds   = $fields->filter(fn ($f) => $f->field_type === FieldType::Number)->pluck('id')->all();
         $booleanIds  = $fields->filter(fn ($f) => $f->field_type === FieldType::Boolean)->pluck('id')->all();
         $textIds     = $fields->filter(fn ($f) => $f->field_type === FieldType::Text)->pluck('id')->all();
         $textareaIds = $fields->filter(fn ($f) => $f->field_type === FieldType::Textarea)->pluck('id')->all();
@@ -93,23 +94,27 @@ class SurveyStatsService
         $checkboxIds = $fields->filter(fn ($f) => $f->field_type === FieldType::Checkbox)->pluck('id')->all();
         $checkboxRespondentCounts = $this->batchCheckboxRespondentCounts($checkboxIds);
 
-        // 5 batch queries — một lần mỗi loại, tất cả index-backed
+        // 6 batch queries — một lần mỗi loại, tất cả index-backed
         $choiceStats   = $this->batchChoiceStats($choiceIds, $fields, $totalResponses, $checkboxRespondentCounts);
+        $ratingStats   = $this->batchRatingStats($ratingIds);
         $numberStats   = $this->batchNumberStats($numberIds);
         $booleanStats  = $this->batchBooleanStats($booleanIds);
         $textStats     = $this->batchTextStats($textIds);
         $textareaStats = $this->batchTextareaStats($textareaIds);
 
-        $allStats = $choiceStats + $numberStats + $booleanStats + $textStats + $textareaStats;
+        $allStats = $choiceStats + $ratingStats + $numberStats + $booleanStats + $textStats + $textareaStats;
 
         return [
             'total_responses' => $totalResponses,
             'fields'          => $fields
                 ->map(fn ($f) => [
-                    'field_key'  => $f->field_key,
-                    'label'      => $f->label,
-                    'field_type' => $f->field_type->name,
-                    'stats'      => $allStats[$f->id] ?? null,
+                    'field_key'     => $f->field_key,
+                    'label'         => $f->label,
+                    'field_type'    => $f->field_type->name,
+                    'section_id'    => $f->section_id,
+                    'section_title' => $f->section?->title ?? 'Chung',
+                    'section_order' => $f->section?->sort_order ?? 0,
+                    'stats'         => $allStats[$f->id] ?? null,
                 ])
                 ->values()
                 ->all(),
@@ -243,6 +248,62 @@ class SurveyStatsService
                 'avg'   => $row?->avg_val !== null ? round((float) $row->avg_val, 2) : null,
                 'min'   => $row?->min_val !== null ? (float) $row->min_val          : null,
                 'max'   => $row?->max_val !== null ? (float) $row->max_val          : null,
+            ];
+        }
+
+        return $result;
+    }
+
+    // ── Batch: rating ─────────────────────────────────────────────────────
+    //   INDEX: (field_id, value_number)
+
+    /**
+     * @param  int[]  $fieldIds
+     * @return array<int, array>  keyed by field_id
+     */
+    private function batchRatingStats(array $fieldIds): array
+    {
+        if (empty($fieldIds)) {
+            return [];
+        }
+
+        $aggregates = DB::table('survey_answers')
+            ->selectRaw('field_id, COUNT(*) AS cnt, AVG(value_number) AS avg_val, MIN(value_number) AS min_val, MAX(value_number) AS max_val')
+            ->whereIn('field_id', $fieldIds)
+            ->whereNotNull('value_number')
+            ->groupBy('field_id')
+            ->get()
+            ->keyBy('field_id');
+
+        // ROUND(value_number, 0) works in both SQLite and MySQL
+        $distributionRows = DB::table('survey_answers')
+            ->selectRaw('field_id, ROUND(value_number, 0) AS score, COUNT(*) AS cnt')
+            ->whereIn('field_id', $fieldIds)
+            ->whereNotNull('value_number')
+            ->groupBy('field_id', DB::raw('ROUND(value_number, 0)'))
+            ->orderByDesc('score')
+            ->get()
+            ->groupBy('field_id');
+
+        $result = [];
+        foreach ($fieldIds as $fieldId) {
+            $agg   = $aggregates->get($fieldId);
+            $total = (int) ($agg?->cnt ?? 0);
+            $dist  = $distributionRows->get($fieldId, collect());
+
+            $scoreList = $dist->map(fn ($r) => [
+                'score'   => (int) round((float) $r->score),
+                'count'   => (int) $r->cnt,
+                'percent' => $total > 0 ? round((int) $r->cnt / $total * 100, 1) : 0.0,
+            ])->values()->all();
+
+            $result[$fieldId] = [
+                'type'         => 'rating',
+                'count'        => $total,
+                'avg'          => $agg?->avg_val !== null ? round((float) $agg->avg_val, 2) : null,
+                'min'          => $agg?->min_val !== null ? (float) $agg->min_val : null,
+                'max'          => $agg?->max_val !== null ? (float) $agg->max_val : null,
+                'distribution' => $scoreList,
             ];
         }
 
@@ -402,9 +463,4 @@ class SurveyStatsService
         return $result;
     }
 
-    private function isNumberType(SurveyField $field): bool
-    {
-        return $field->field_type === FieldType::Number
-            || $field->field_type === FieldType::Rating;
-    }
 }
