@@ -5,9 +5,11 @@ use Modules\Survey\Http\Controllers\Api\SurveyBackendApiController;
 use Modules\Survey\Http\Controllers\FieldController;
 use Modules\Survey\Http\Controllers\OptionController;
 use Modules\Survey\Http\Controllers\ResponseController;
+use Modules\Survey\Http\Controllers\ScoringAdminController;
 use Modules\Survey\Http\Controllers\SectionController;
 use Modules\Survey\Http\Controllers\StatsController;
 use Modules\Survey\Http\Controllers\SurveyController;
+use Modules\Survey\Http\Controllers\SurveyResultController;
 use Modules\Survey\Http\Controllers\TokenController;
 
 /*
@@ -42,6 +44,26 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
         // ── Stats dashboard ────────────────────────────────────────────
         Route::get('/{survey}/stats', [StatsController::class, 'index'])->name('stats.index');
 
+        // ── Scoring config wizard ──────────────────────────────────────
+        Route::prefix('/{survey}/scoring')->name('scoring.')->group(function () {
+            Route::get('/',          [ScoringAdminController::class, 'index'])->name('index');
+            Route::get('/config',    [ScoringAdminController::class, 'getConfig'])->name('config');
+            Route::put('/config',    [ScoringAdminController::class, 'saveConfig'])->name('config.save');
+            Route::get('/fields',    [ScoringAdminController::class, 'getFields'])->name('fields');
+            Route::get('/flags',     [ScoringAdminController::class, 'getFlags'])->name('flags');
+            Route::post('/validate', [ScoringAdminController::class, 'validateConfig'])->name('validate');
+            Route::post('/dry-run',  [ScoringAdminController::class, 'dryRun'])->name('dry-run');
+        });
+
+        // ── Scoring results ────────────────────────────────────────────
+        Route::prefix('/{survey}/results')->name('results.')->group(function () {
+            // T6.3 — Tổng hợp scoring toàn survey
+            Route::get('/summary', [SurveyResultController::class, 'summary'])->name('summary');
+        });
+
+        // ── Response management + export ───────────────────────────────
+        // (responses routes đã có bên dưới, thêm result routes vào đây)
+
         // ── Response management + export ───────────────────────────────
         Route::prefix('/{survey}/responses')->name('responses.')->group(function () {
             Route::get('/',                         [ResponseController::class, 'index'])->name('index');
@@ -49,6 +71,11 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
             Route::get('/export/download/{key}',    [ResponseController::class, 'downloadExport'])->name('export.download');
             Route::get('/{response}',               [ResponseController::class, 'show'])->name('show');
             Route::delete('/{response}',            [ResponseController::class, 'destroy'])->name('destroy');
+
+            // T6.2 — Admin xem chi tiết result một response
+            Route::get('/{response}/result',        [SurveyResultController::class, 'show'])->name('result.show');
+            // T6.4 — Admin force recalculate
+            Route::post('/{response}/recalculate',  [SurveyResultController::class, 'recalculate'])->name('result.recalculate');
         });
 
         // ── Section builder (JSON) ─────────────────────────────────────

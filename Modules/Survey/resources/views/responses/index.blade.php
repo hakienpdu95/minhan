@@ -37,6 +37,15 @@
                 Export Excel
             </a>
             @endcan
+            @if($survey->hasScoring())
+            <a href="{{ route('backend.surveys.results.summary', $survey) }}" class="btn btn-info btn-soft btn-sm gap-1.5">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 4h16v16H4z"/>
+                </svg>
+                Kết quả scoring
+            </a>
+            @endif
             <a href="{{ route('backend.surveys.stats.index', $survey) }}" class="btn btn-ghost btn-sm gap-1.5">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

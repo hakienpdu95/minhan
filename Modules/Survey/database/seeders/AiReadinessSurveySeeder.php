@@ -22,10 +22,11 @@ class AiReadinessSurveySeeder extends Seeder
         }
 
         $this->survey = Survey::create([
-            'title'   => 'Bộ Khảo Sát AI Readiness & Workflow',
-            'slug'    => 'ai-readiness-workflow',
-            'status'  => SurveyStatus::Active,
-            'version' => 1,
+            'title'           => 'Bộ Khảo Sát AI Readiness & Workflow',
+            'slug'            => 'ai-readiness-workflow',
+            'assessment_code' => 'ai_workflow_v1',
+            'status'          => SurveyStatus::Active,
+            'version'         => 1,
         ]);
 
         $this->seedSection1ThongTinDoanhNghiep();

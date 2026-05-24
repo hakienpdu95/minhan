@@ -453,6 +453,77 @@
         @endif
     </div>
 
+    {{-- ── Scoring section (chỉ hiện khi survey có assessment_code) ────── --}}
+    @if($scoringData)
+    <div class="space-y-4 pt-2">
+        <div class="flex items-center justify-between">
+            <h2 class="text-lg font-bold text-base-content">Kết quả chấm điểm</h2>
+            <a href="{{ route('backend.surveys.results.summary', $survey) }}"
+               class="btn btn-ghost btn-xs gap-1 text-base-content/50">
+                Xem chi tiết
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </a>
+        </div>
+
+        {{-- KPI cards --}}
+        <div class="grid grid-cols-2 gap-3">
+            <div class="bg-base-100 border border-base-200 rounded-2xl p-4 shadow-sm text-center">
+                <p class="text-3xl font-bold text-primary">{{ number_format($scoringData['total_scored']) }}</p>
+                <p class="text-xs text-base-content/50 mt-1">Đã chấm điểm</p>
+            </div>
+            <div class="bg-base-100 border border-base-200 rounded-2xl p-4 shadow-sm text-center">
+                <p class="text-3xl font-bold text-secondary">
+                    {{ $scoringData['avg_overall'] !== null ? round($scoringData['avg_overall'], 1) : '—' }}
+                </p>
+                <p class="text-xs text-base-content/50 mt-1">Điểm TB</p>
+            </div>
+        </div>
+
+        @if($scoringData['total_scored'] > 0)
+        {{-- Maturity distribution --}}
+        @if($scoringData['maturity_levels']->isNotEmpty())
+        <div class="card bg-base-100 border border-base-200 shadow-sm">
+            <div class="px-5 py-3 border-b border-base-200 text-sm font-semibold">Phân bố mức độ trưởng thành</div>
+            <div class="p-5 space-y-3">
+                @php $maxCount = $scoringData['maturity_distribution']->max() ?: 1; @endphp
+                @foreach($scoringData['maturity_levels'] as $level)
+                @php
+                    $cnt  = $scoringData['maturity_distribution'][$level->level_code] ?? 0;
+                    $pct  = $scoringData['total_scored'] > 0
+                        ? round($cnt / $scoringData['total_scored'] * 100, 1) : 0;
+                    $barW = round($cnt / $maxCount * 100);
+                @endphp
+                <div class="flex items-center gap-3">
+                    <p class="text-xs font-medium text-base-content w-32 truncate" title="{{ $level->label }}">{{ $level->label }}</p>
+                    <div class="flex-1 flex items-center gap-2">
+                        <div class="flex-1 bg-base-200 rounded-full h-2.5 overflow-hidden">
+                            <div class="h-2.5 rounded-full bg-info" style="width: {{ $barW }}%"></div>
+                        </div>
+                        <span class="text-xs font-semibold w-6 text-right">{{ $cnt }}</span>
+                        <span class="text-xs text-base-content/40 w-10 text-right">{{ $pct }}%</span>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
+        {{-- Domain avg bar chart --}}
+        @if($scoringData['domains']->isNotEmpty())
+        <div class="card bg-base-100 border border-base-200 shadow-sm">
+            <div class="px-5 py-3 border-b border-base-200 text-sm font-semibold">Điểm trung bình theo domain</div>
+            <div class="p-5">
+                <div id="domainAvgChart" class="h-48"></div>
+            </div>
+        </div>
+        @endif
+
+        @endif {{-- total_scored > 0 --}}
+    </div>
+    @endif
+
 </div>
 @endsection
 
@@ -553,6 +624,47 @@
     });
 
     new ResizeObserver(() => chart.resize()).observe(dom);
+})();
+
+// Domain avg chart
+(function () {
+    @if($scoringData && $scoringData['domains']->isNotEmpty() && $scoringData['total_scored'] > 0)
+    const domainDom = document.getElementById('domainAvgChart');
+    if (!domainDom) return;
+
+    const isDark2 = document.documentElement.getAttribute('data-theme') !== 'light';
+    const domainChart = echarts.init(domainDom, isDark2 ? 'dark' : null, { renderer: 'canvas' });
+
+    const domains   = @json($scoringData['domains']->pluck('label', 'domain_code'));
+    const avgScores = @json($scoringData['avg_domain_scores']);
+
+    const labels = Object.keys(domains).map(code => domains[code]);
+    const values = Object.keys(domains).map(code => parseFloat(avgScores[code] ?? 0));
+
+    domainChart.setOption({
+        tooltip: { trigger: 'axis', formatter: p => `${p[0].name}<br/><strong>${p[0].value}</strong> / 100` },
+        grid: { left: 130, right: 20, top: 8, bottom: 8 },
+        xAxis: { type: 'value', min: 0, max: 100, splitLine: { lineStyle: { type: 'dashed' } }, axisLabel: { fontSize: 11 } },
+        yAxis: { type: 'category', data: labels, axisLabel: { fontSize: 11 } },
+        series: [{
+            type: 'bar',
+            data: values,
+            barMaxWidth: 20,
+            label: { show: true, position: 'right', fontSize: 11, formatter: p => p.value.toFixed(1) },
+            itemStyle: {
+                color: { type: 'linear', x: 0, y: 0, x2: 1, y2: 0,
+                    colorStops: [
+                        { offset: 0, color: 'rgba(236,72,153,0.6)' },
+                        { offset: 1, color: 'rgba(236,72,153,1)' },
+                    ]
+                },
+                borderRadius: [0, 4, 4, 0],
+            },
+        }],
+    });
+
+    new ResizeObserver(() => domainChart.resize()).observe(domainDom);
+    @endif
 })();
 </script>
 @endpush

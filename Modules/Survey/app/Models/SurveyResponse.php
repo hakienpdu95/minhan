@@ -21,6 +21,7 @@ class SurveyResponse extends Model
         'survey_id',
         'respondent_ref',
         'respondent_ip',
+        'status',
         'submitted_at',
     ];
 
@@ -43,6 +44,11 @@ class SurveyResponse extends Model
     public function answers(): HasMany
     {
         return $this->hasMany(SurveyAnswer::class, 'response_id');
+    }
+
+    public function result(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(SurveyResult::class, 'response_id');
     }
 
     // ── Accessors ─────────────────────────────────────────────────────

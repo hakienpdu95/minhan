@@ -66,5 +66,4 @@ php artisan db:seed
 
 php artisan module:make Auth
 
-# > Đọc file spec/organization_module.md và implement theo đúng spec đó
-# > Đọc file spec/scoring-ai-survey.md và dựa trên thực tế đã có Module Survey rồi, hãy phân tích, matching core để bổ sung phù hợp cho tính năng chấm điểm khảo sát nhé. Hãy tập trung làm rõ và hoàn thiện nội dung tài liệu, không được code nhé
+# > Đọc file spec/scoring-ui.md và hiệu chỉnh, cập nhật nội dung cho đúng và phù hợp với UI admin để cấu hình scoring trực tiếp trên browser module Survey nhé. Không cung cấp code.

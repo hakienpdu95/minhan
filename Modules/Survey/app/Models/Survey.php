@@ -19,6 +19,7 @@ class Survey extends Model
     protected $fillable = [
         'title',
         'slug',
+        'assessment_code',
         'status',
         'version',
     ];
@@ -63,5 +64,15 @@ class Survey extends Model
     public function scopeBySlug(Builder $query, string $slug): Builder
     {
         return $query->where('slug', $slug);
+    }
+
+    public function scopeByAssessmentCode(Builder $query, string $code): Builder
+    {
+        return $query->where('assessment_code', $code);
+    }
+
+    public function hasScoring(): bool
+    {
+        return $this->assessment_code !== null;
     }
 }

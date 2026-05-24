@@ -144,6 +144,18 @@
                 </div>
                 @endcan
 
+                @can('survey.update')
+                <div class="divider my-3"></div>
+                <a href="{{ route('backend.surveys.scoring.index', $survey) }}"
+                   class="btn btn-outline btn-sm w-full gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    Cấu hình Scoring
+                    @if($survey->assessment_code)
+                        <span class="badge badge-sm badge-success">✓</span>
+                    @endif
+                </a>
+                @endcan
+
                 @can('survey.manage_tokens')
                 <div class="divider my-3"></div>
                 <a href="{{ route('backend.surveys.tokens.index', $survey) }}"

@@ -18,6 +18,7 @@ use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyAnswer;
 use Modules\Survey\Models\SurveyField;
 use Modules\Survey\Models\SurveyResponse;
+use Modules\Survey\Jobs\CalculateSurveyScoreJob;
 use Modules\Survey\Services\SurveyStatsService;
 use Modules\Survey\Support\AnswerValueResolver;
 use Spatie\LaravelData\DataCollection;
@@ -107,6 +108,11 @@ class SubmitSurveyAction
 
         // Purge cache after a committed transaction — never inside the transaction boundary.
         SurveyStatsService::purgeCache($surveyId);
+
+        // Dispatch scoring job nếu survey có assessment_code
+        if ($survey->assessment_code !== null) {
+            CalculateSurveyScoreJob::dispatch($responseId);
+        }
 
         return $responseId;
     }

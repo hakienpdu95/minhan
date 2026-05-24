@@ -25,9 +25,12 @@ Route::prefix('v1')->name('surveys.')->group(function () {
             ->post('surveys/{slug}/submit', [SurveyApiController::class, 'submit'])
             ->name('submit');
 
-        // stats + responses chứa data nhạy cảm → yêu cầu token
+        // stats + responses + result chứa data nhạy cảm → yêu cầu token
         Route::get('surveys/{slug}/stats',     [SurveyApiController::class, 'stats'])->name('stats');
         Route::get('surveys/{slug}/responses', [SurveyApiController::class, 'responses'])->name('responses');
+
+        // T6.1 — Respondent xem kết quả qua Bearer token + ?ref=email
+        Route::get('surveys/{slug}/result', [SurveyApiController::class, 'result'])->name('result');
     });
 
 });

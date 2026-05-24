@@ -9,8 +9,10 @@ use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Actions\ExportSurveyResponsesAction;
 use Modules\Survey\Actions\SubmitSurveyAction;
 use Modules\Survey\Http\Requests\SubmitSurveyRequest;
+use Modules\Survey\Models\RecommendationRule;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyResponse;
+use Modules\Survey\Models\SurveyResult;
 use Modules\Survey\Services\SurveyStatsService;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -75,5 +77,74 @@ class SurveyApiController extends Controller
             ->paginate(50);
 
         return response()->json($responses);
+    }
+
+    /**
+     * T6.1 — Respondent xem kết quả của mình qua Bearer token + respondent_ref.
+     *
+     * GET /v1/surveys/{slug}/result?ref={email_or_phone}
+     *
+     * Middleware ValidateSurveyToken đã xác thực token thuộc đúng survey này.
+     * Dùng respondent_ref (email/phone submitted khi nộp bài) để tìm response.
+     * Trả về result mới nhất nếu có nhiều lần submit.
+     */
+    public function result(string $slug, Request $request): JsonResponse
+    {
+        $survey = Survey::active()->bySlug($slug)->firstOrFail();
+
+        if (!$survey->hasScoring()) {
+            return response()->json(['error' => 'Survey này không có chấm điểm.'], 422);
+        }
+
+        $ref = $request->query('ref');
+        if (empty($ref)) {
+            return response()->json(['error' => 'Tham số ?ref= (email/phone) là bắt buộc.'], 422);
+        }
+
+        $response = SurveyResponse::forSurvey($survey->id)
+            ->complete()
+            ->where('respondent_ref', $ref)
+            ->latest('submitted_at')
+            ->first();
+
+        if (!$response) {
+            return response()->json(['error' => 'Không tìm thấy phản hồi cho thông tin này.'], 404);
+        }
+
+        $result = SurveyResult::forResponse($response->id)
+            ->with(['domainScores', 'signalFlags', 'painPoints', 'recommendations', 'roadmapPhases.phase.milestones'])
+            ->first();
+
+        if (!$result) {
+            return response()->json(['message' => 'Kết quả chưa sẵn sàng, vui lòng thử lại sau.'], 202);
+        }
+
+        // Enrich recommendations với label từ config
+        $recLabels = RecommendationRule::where('assessment_code', $result->assessment_code)
+            ->pluck('label', 'recommendation_code');
+
+        return response()->json([
+            'overall_score'  => round($result->overall_score, 2),
+            'maturity_level' => $result->maturity_level,
+            'calculated_at'  => $result->calculated_at,
+            'domain_scores'  => $result->domainScores->map(fn ($ds) => [
+                'domain_code'      => $ds->domain_code,
+                'raw'              => $ds->raw_score,
+                'normalized'       => round($ds->normalized_score, 2),
+            ])->values(),
+            'signal_flags'   => $result->signalFlags->pluck('flag_value', 'flag_code'),
+            'pain_points'    => $result->painPoints->pluck('pain_point_code')->values(),
+            'recommendations' => $result->recommendations->map(fn ($r) => [
+                'code'     => $r->recommendation_code,
+                'label'    => $recLabels[$r->recommendation_code] ?? $r->recommendation_code,
+                'priority' => $r->priority,
+            ])->values(),
+            'roadmap' => $result->roadmapPhases->map(fn ($rp) => [
+                'phase_code'     => $rp->phase?->phase_code,
+                'title'          => $rp->phase?->title,
+                'duration_weeks' => $rp->phase?->duration_weeks,
+                'milestones'     => $rp->phase?->milestones->pluck('title')->values() ?? [],
+            ])->values(),
+        ]);
     }
 }
