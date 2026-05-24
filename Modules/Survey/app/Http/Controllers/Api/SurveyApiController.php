@@ -5,11 +5,13 @@ namespace Modules\Survey\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Actions\ExportSurveyResponsesAction;
 use Modules\Survey\Actions\SubmitSurveyAction;
 use Modules\Survey\Http\Requests\SubmitSurveyRequest;
 use Modules\Survey\Models\RecommendationRule;
+use Modules\Survey\Models\SubmissionBehaviorLog;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyResponse;
 use Modules\Survey\Models\SurveyResult;
@@ -77,6 +79,59 @@ class SurveyApiController extends Controller
             ->paginate(50);
 
         return response()->json($responses);
+    }
+
+    /**
+     * T3 (Module 110) — Nhận batch behavior events từ frontend sau khi submit.
+     *
+     * POST /v1/surveys/{slug}/behavior
+     * Body: { response_id, events: [{question_code?, event_type, event_value?, occurred_at}] }
+     */
+    public function behavior(string $slug, Request $request): JsonResponse
+    {
+        $survey = Survey::active()->bySlug($slug)->firstOrFail();
+
+        $data = $request->validate([
+            'response_id'            => 'required|integer|min:1',
+            'events'                 => 'required|array|min:1|max:500',
+            'events.*.question_code' => 'nullable|string|max:100',
+            'events.*.event_type'    => 'required|string|max:30|in:question_focus,question_blur,answer_changed,answer_cleared,section_entered,time_spent',
+            'events.*.event_value'   => 'nullable|string|max:255',
+            'events.*.occurred_at'   => 'required|date',
+        ]);
+
+        $responseId = (int) $data['response_id'];
+
+        // Security: response must belong to this survey
+        $responseExists = SurveyResponse::where('id', $responseId)
+            ->where('survey_id', $survey->id)
+            ->exists();
+
+        if (! $responseExists) {
+            return response()->json(['error' => 'Response không thuộc survey này.'], 403);
+        }
+
+        // Sequence numbers continue from the last stored event
+        $maxSeq = SubmissionBehaviorLog::where('response_id', $responseId)
+            ->max('sequence_no') ?? 0;
+
+        $rows = [];
+        foreach ($data['events'] as $i => $event) {
+            $rows[] = [
+                'response_id'   => $responseId,
+                'question_code' => $event['question_code'] ?? null,
+                'event_type'    => $event['event_type'],
+                'event_value'   => $event['event_value'] ?? null,
+                'sequence_no'   => $maxSeq + $i + 1,
+                'occurred_at'   => Carbon::parse($event['occurred_at'])->format('Y-m-d H:i:s'),
+            ];
+        }
+
+        if (! empty($rows)) {
+            SubmissionBehaviorLog::insert($rows);
+        }
+
+        return response()->json(['stored' => count($rows)], 201);
     }
 
     /**

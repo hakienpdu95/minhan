@@ -11,6 +11,8 @@ use Modules\Survey\Models\ResultRecommendation;
 use Modules\Survey\Models\ResultRoadmapPhase;
 use Modules\Survey\Models\ResultSignalFlag;
 use Modules\Survey\Models\RoadmapPhase;
+use Modules\Survey\Models\ResultJobPosition;
+use Modules\Survey\Models\ScoringFeedback;
 use Modules\Survey\Models\SurveyResult;
 
 class ResultPersister
@@ -136,6 +138,33 @@ class ResultPersister
                     ]);
                 }
             }
+
+            // Job positions (Module 150C)
+            $jpRows = [];
+            foreach ($result->jobPositions as $jp) {
+                $jpRows[] = [
+                    'result_id'     => $resultId,
+                    'position_code' => $jp->positionCode,
+                    'match_score'   => round($jp->matchScore, 2),
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                ];
+            }
+            if (!empty($jpRows)) {
+                ResultJobPosition::insert($jpRows);
+            }
+
+            // Module 170A — seed scoring_feedback so tuning loop has data to learn from
+            ScoringFeedback::create([
+                'result_id'       => $resultId,
+                'assessment_code' => $result->assessmentCode,
+                'predicted_band'  => $classification->bandCode ?? $classification->personaCode,
+                'predicted_score' => $result->overallScore,
+                'actual_band'     => null,
+                'actual_score'    => null,
+                'feedback_source' => 'system',
+                'is_processed'    => false,
+            ]);
 
             return $surveyResult;
         });

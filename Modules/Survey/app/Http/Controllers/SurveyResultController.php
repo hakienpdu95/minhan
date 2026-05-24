@@ -5,16 +5,119 @@ namespace Modules\Survey\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 use Modules\Survey\Actions\CalculateSurveyScoreAction;
 use Modules\Survey\Models\AssessmentDomain;
 use Modules\Survey\Models\MaturityLevel;
+use Modules\Survey\Models\PainPointRule;
 use Modules\Survey\Models\RecommendationRule;
+use Modules\Survey\Models\ScoreBand;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyResponse;
 use Modules\Survey\Models\SurveyResult;
 
 class SurveyResultController extends Controller
 {
+    // ── T1 (150A): Trang kết quả HTML public cho respondent ──────────────────
+
+    public function publicResult(Request $request, string $slug): View
+    {
+        /** @var Survey $survey */
+        $survey = $request->attributes->get('survey');
+
+        abort_if(! $survey->hasScoring(), 404, 'Khảo sát này không có kết quả chấm điểm.');
+
+        $ref   = trim((string) $request->query('ref', ''));
+        $token = (string) $request->query('token', '');
+
+        if ($ref === '') {
+            return view('survey::results.public', [
+                'survey'      => $survey,
+                'response'    => null,
+                'result'      => null,
+                'processing'  => false,
+                'notFound'    => true,
+                'ref'         => '',
+                'token'       => $token,
+                'recLabels'   => collect(),
+                'painLabels'  => collect(),
+                'domainLabels'=> collect(),
+                'maturityInfo'=> null,
+            ]);
+        }
+
+        $response = SurveyResponse::where('survey_id', $survey->id)
+            ->where('respondent_ref', $ref)
+            ->latest()
+            ->first();
+
+        if (! $response) {
+            return view('survey::results.public', [
+                'survey'      => $survey,
+                'response'    => null,
+                'result'      => null,
+                'processing'  => false,
+                'notFound'    => true,
+                'ref'         => $ref,
+                'token'       => $token,
+                'recLabels'   => collect(),
+                'painLabels'  => collect(),
+                'domainLabels'=> collect(),
+                'maturityInfo'=> null,
+            ]);
+        }
+
+        $result = SurveyResult::forResponse($response->id)
+            ->with([
+                'domainScores',
+                'signalFlags',
+                'painPoints',
+                'recommendations',
+                'roadmapPhases.phase.milestones',
+                'classification',
+            ])
+            ->first();
+
+        $assessmentCode = $survey->assessment_code;
+
+        $recLabels  = collect();
+        $painLabels = collect();
+        $maturityInfo = null;
+
+        if ($result) {
+            $recLabels = RecommendationRule::where('assessment_code', $assessmentCode)
+                ->get(['recommendation_code', 'label', 'description'])
+                ->keyBy('recommendation_code');
+
+            $painLabels = PainPointRule::where('assessment_code', $assessmentCode)
+                ->pluck('label', 'pain_point_code');
+
+            $maturityInfo = ScoreBand::forAssessment($assessmentCode)
+                ->where('band_code', $result->maturity_level)
+                ->first()
+                ?? MaturityLevel::where('assessment_code', $assessmentCode)
+                    ->where('level_code', $result->maturity_level)
+                    ->first();
+        }
+
+        $domainLabels = AssessmentDomain::forAssessment($assessmentCode)
+            ->pluck('label', 'domain_code');
+
+        return view('survey::results.public', [
+            'survey'       => $survey,
+            'response'     => $response,
+            'result'       => $result,
+            'processing'   => $result === null,
+            'notFound'     => false,
+            'ref'          => $ref,
+            'token'        => $token,
+            'recLabels'    => $recLabels,
+            'painLabels'   => $painLabels,
+            'domainLabels' => $domainLabels,
+            'maturityInfo' => $maturityInfo,
+        ]);
+    }
+
     // ── T6.2: Admin xem chi tiết một result ──────────────────────────────────
 
     public function show(Survey $survey, SurveyResponse $response): \Illuminate\View\View
@@ -29,6 +132,7 @@ class SurveyResultController extends Controller
                 'painPoints',
                 'recommendations',
                 'roadmapPhases.phase.milestones',
+                'jobPositions',
             ])
             ->first();
 

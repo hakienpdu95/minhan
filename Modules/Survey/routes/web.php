@@ -106,6 +106,11 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
 
 });
 
+// ── Public result page for respondents ───────────────────────────────────
+Route::get('/surveys/{slug}/result', [\Modules\Survey\Http\Controllers\SurveyResultController::class, 'publicResult'])
+    ->name('surveys.result.public')
+    ->middleware(\Modules\Survey\Http\Middleware\ValidateSurveyWebToken::class);
+
 // ── Backend JSON API for Tabulator (session-based auth) ───────────────────
 Route::middleware(['auth'])->prefix('backend/api')->name('backend.api.')->group(function () {
     Route::get('surveys',                          [SurveyBackendApiController::class, 'index'])->name('surveys');

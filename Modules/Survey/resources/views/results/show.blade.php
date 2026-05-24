@@ -215,6 +215,40 @@
     </div>
     @endif
 
+    {{-- ── Job Positions ─────────────────────────────────────────────────── --}}
+    @php $jobPositions = $result->jobPositions ?? collect(); @endphp
+    @if($jobPositions->isNotEmpty())
+    <div class="card bg-base-100 border border-base-200 shadow-sm">
+        <div class="px-5 py-3 border-b border-base-200 font-semibold text-sm flex items-center gap-2">
+            <svg class="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+            Vị trí công việc phù hợp
+        </div>
+        <div class="divide-y divide-base-200">
+            @foreach($jobPositions as $jp)
+            <div class="px-5 py-3 flex items-center justify-between gap-4">
+                <div class="min-w-0">
+                    <p class="font-medium text-sm text-base-content">
+                        {{ \Modules\Survey\Models\JobPosition::where('position_code', $jp->position_code)
+                            ->where('assessment_code', $result->assessment_code)
+                            ->value('title') ?? $jp->position_code }}
+                    </p>
+                    <p class="text-xs text-base-content/50 font-mono">{{ $jp->position_code }}</p>
+                </div>
+                <div class="shrink-0 text-right">
+                    <span class="text-lg font-bold {{ $jp->match_score >= 80 ? 'text-success' : ($jp->match_score >= 60 ? 'text-primary' : 'text-warning') }}">
+                        {{ round($jp->match_score) }}%
+                    </span>
+                    <p class="text-xs text-base-content/40">khớp</p>
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
     @endif {{-- end $result --}}
 </div>
 

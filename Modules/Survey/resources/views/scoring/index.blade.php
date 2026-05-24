@@ -22,6 +22,7 @@
 <div
     x-data="scoringConfig(@js($survey->id), @js(csrf_token()))"
     x-init="init()"
+    :class="dirty && cfg.hasScoring ? 'pb-20' : ''"
     class="space-y-4"
 >
     {{-- Flash ──────────────────────────────────────────────────────────────── --}}
@@ -211,6 +212,35 @@
                          :style="'width: ' + Math.min(weightSum * 100, 100) + '%'"></div>
                 </div>
             </div>
+
+            {{-- Min/Max formula callout --}}
+            <div class="rounded-xl border border-info/30 bg-info/5 text-xs p-4 space-y-2 leading-relaxed">
+                <p class="font-semibold text-info flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Công thức normalize (Min/Max dùng để làm gì?)
+                </p>
+                <p>Sau khi tích lũy raw scores từ các score rules, hệ thống normalize từng domain về thang 0–100:</p>
+                <p class="font-mono bg-base-100 border border-base-200 px-3 py-1.5 rounded-lg inline-block">
+                    normalized = (raw − min_score) / (max_score − min_score) × 100
+                </p>
+                <ul class="space-y-0.5 text-base-content/70 list-disc list-inside">
+                    <li>Ví dụ: domain có <b>max_score = 10</b>, raw tích lũy = 7 → normalized = <b>70%</b></li>
+                    <li><b>Min score</b> thường để 0. Chỉ đặt khác 0 khi domain có điểm âm (rules trừ điểm)</li>
+                    <li><b>Max score</b> = tổng điểm tối đa có thể đạt nếu trả lời đúng tất cả câu trong domain</li>
+                    <li x-show="cfg.aggregationModel === 'weighted_domain'"><b>Overall score</b> = Σ (normalized_domain × weight), kết quả cũng là 0–100</li>
+                    <li x-show="cfg.aggregationModel === 'flat_sum'"><b>Flat sum</b>: cộng thẳng raw scores rồi normalize theo tổng max của tất cả domains</li>
+                </ul>
+            </div>
+
+            {{-- Inline domain errors --}}
+            <div x-show="domainErrors.length > 0" class="alert alert-error alert-soft text-sm py-2.5">
+                <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <ul class="list-disc list-inside space-y-0.5">
+                    <template x-for="e in domainErrors" :key="e">
+                        <li x-text="e"></li>
+                    </template>
+                </ul>
+            </div>
         </div>
     </div>
 
@@ -227,6 +257,17 @@
                          :style="'width: ' + (fields.length ? configuredRulesCount / fields.length * 100 : 0) + '%'"></div>
                 </div>
                 <span class="text-xs text-base-content/40" x-text="fields.length ? Math.round(configuredRulesCount / fields.length * 100) + '%' : '0%'"></span>
+            </div>
+
+            {{-- Unconfigured hint --}}
+            <div x-show="fields.length > 0 && (fields.length - configuredRulesCount) > 0"
+                 class="alert alert-soft text-xs py-2.5 bg-base-200/60 border-base-300">
+                <svg class="w-4 h-4 shrink-0 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>
+                    <b x-text="fields.length - configuredRulesCount"></b> câu hỏi chưa cấu hình
+                    <span class="text-base-content/50">(hiển thị <b>○</b>) — mặc định bị bỏ qua, không tính vào điểm.</span>
+                    Không bắt buộc phải cấu hình tất cả.
+                </span>
             </div>
 
             {{-- Empty state --}}
@@ -293,10 +334,17 @@
                                        class="input input-sm font-mono w-full">
                             </fieldset>
                             <fieldset class="fieldset" x-show="getOrCreateRule(f.field_key).question_scoring_type === 'boolean'">
-                                <legend class="fieldset-legend text-xs">Signal flag</legend>
+                                <legend class="fieldset-legend text-xs flex items-center gap-1">
+                                    Signal flag
+                                    <span class="tooltip tooltip-right text-base-content/40 cursor-help"
+                                          data-tip="Label boolean gắn vào kết quả câu hỏi này. Ví dụ: has_crm=true khi câu trả lời là Có. Dùng trong Pain Points và Persona Match để kích hoạt điều kiện phức hợp.">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    </span>
+                                </legend>
                                 <input type="text" x-model="getOrCreateRule(f.field_key).signal_flag"
                                        placeholder="vd: has_crm"
                                        class="input input-sm font-mono w-full">
+                                <p class="text-xs text-base-content/40 mt-0.5">Để trống nếu không cần flag</p>
                             </fieldset>
                         </div>
 
@@ -483,29 +531,71 @@
 
             {{-- pass_fail --}}
             <template x-if="cfg.classificationType === 'pass_fail'">
-                <div class="space-y-4 max-w-sm">
-                    <fieldset class="fieldset">
-                        <legend class="fieldset-legend">Ngưỡng đạt (passing_score)</legend>
-                        <div class="join">
-                            <input type="number" x-model.number="cfg.passFailConfig.passing_score" class="input join-item w-32" min="0" max="100">
-                            <span class="join-item btn btn-ghost no-animation text-sm">điểm</span>
+                <div class="space-y-4">
+                    {{-- Explanation --}}
+                    <div class="rounded-xl border border-base-200 bg-base-50 p-4 text-xs space-y-2 leading-relaxed">
+                        <p class="font-semibold text-sm">✅ Cơ chế Pass / Fail</p>
+                        <p>Sau khi tính <b>overall_score</b> (0–100), hệ thống so sánh với <b>passing_score</b>:</p>
+                        <div class="grid grid-cols-2 gap-2 my-1">
+                            <div class="bg-success/10 border border-success/30 rounded-lg p-2 text-center">
+                                <p class="font-mono text-success font-bold">overall ≥ passing_score</p>
+                                <p class="text-success">→ <b>Đạt</b> (label_pass)</p>
+                            </div>
+                            <div class="bg-error/10 border border-error/30 rounded-lg p-2 text-center">
+                                <p class="font-mono text-error font-bold">overall &lt; passing_score</p>
+                                <p class="text-error">→ <b>Không đạt</b> (label_fail)</p>
+                            </div>
                         </div>
-                        <p class="text-xs text-base-content/40 mt-1">Score &gt;= giá trị này → Đạt</p>
-                    </fieldset>
-                    <fieldset class="fieldset">
-                        <legend class="fieldset-legend">Nhãn Đạt (label_pass)</legend>
-                        <input type="text" x-model="cfg.passFailConfig.label_pass" class="input w-full" placeholder="Đạt yêu cầu">
-                    </fieldset>
-                    <fieldset class="fieldset">
-                        <legend class="fieldset-legend">Nhãn Không đạt (label_fail)</legend>
-                        <input type="text" x-model="cfg.passFailConfig.label_fail" class="input w-full" placeholder="Chưa đạt yêu cầu">
-                    </fieldset>
+                        <p class="text-base-content/50"><b>Dùng khi:</b> tuyển dụng sàng lọc, kiểm tra đầu vào, chứng chỉ đạt/không đạt. Không phân mức độ chi tiết.</p>
+                    </div>
+
+                    <div class="max-w-sm space-y-4">
+                        <fieldset class="fieldset">
+                            <legend class="fieldset-legend">Ngưỡng đạt (passing_score)</legend>
+                            <div class="join">
+                                <input type="number" x-model.number="cfg.passFailConfig.passing_score" class="input join-item w-32"
+                                       min="0" max="100"
+                                       :class="cfg.passFailConfig.passing_score < 0 || cfg.passFailConfig.passing_score > 100 ? 'input-error' : ''">
+                                <span class="join-item btn btn-ghost no-animation text-sm">/ 100</span>
+                            </div>
+                            <p class="text-xs text-base-content/40 mt-1">Overall score ≥ giá trị này → Đạt</p>
+                        </fieldset>
+                        <div class="grid grid-cols-2 gap-3">
+                            <fieldset class="fieldset">
+                                <legend class="fieldset-legend">Nhãn khi Đạt</legend>
+                                <input type="text" x-model="cfg.passFailConfig.label_pass" class="input w-full" placeholder="Đạt yêu cầu">
+                            </fieldset>
+                            <fieldset class="fieldset">
+                                <legend class="fieldset-legend">Nhãn khi Không đạt</legend>
+                                <input type="text" x-model="cfg.passFailConfig.label_fail" class="input w-full" placeholder="Chưa đạt yêu cầu">
+                            </fieldset>
+                        </div>
+                    </div>
                 </div>
             </template>
 
             {{-- persona_match --}}
             <template x-if="cfg.classificationType === 'persona_match'">
                 <div class="space-y-3">
+                    {{-- Explanation --}}
+                    <div class="rounded-xl border border-base-200 bg-base-50 p-4 text-xs space-y-2 leading-relaxed">
+                        <p class="font-semibold text-sm">👤 Cơ chế Persona Match</p>
+                        <p>Hệ thống kiểm tra từng persona <b>theo thứ tự</b> — persona đầu tiên thỏa <b>tất cả</b> điều kiện (AND logic) sẽ được gán cho respondent.</p>
+                        <div class="bg-base-100 border border-base-200 rounded-lg p-3 space-y-1 font-mono text-xs">
+                            <p class="text-base-content/50 font-sans">Ví dụ: Persona "Nhà quản lý AI"</p>
+                            <p><span class="badge badge-xs badge-primary">domain</span> leadership <span class="text-warning">≥</span> 70</p>
+                            <p><span class="badge badge-xs badge-secondary">signal_flag</span> has_ai_tool <span class="text-warning">=</span> true</p>
+                            <p><span class="badge badge-xs badge-ghost">overall</span> score <span class="text-warning">≥</span> 60</p>
+                        </div>
+                        <ul class="space-y-0.5 text-base-content/60 list-disc list-inside">
+                            <li><b>target_type = domain</b>: so sánh normalized_score của domain (0–100)</li>
+                            <li><b>target_type = signal_flag</b>: kiểm tra boolean flag từ câu trả lời (true/false)</li>
+                            <li><b>target_type = overall</b>: so sánh overall_score tổng (0–100)</li>
+                            <li>Persona <b>không khớp nào</b> → respondent không được phân loại persona</li>
+                            <li><b>Dùng khi:</b> phân nhóm người dùng phức hợp (không phải đơn giản đạt/không đạt)</li>
+                        </ul>
+                    </div>
+
                     <template x-for="(p, pIdx) in cfg.personas" :key="pIdx">
                         <div class="rounded-xl border border-base-200 overflow-hidden">
                             <div @click="p._open = !p._open" class="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-base-50">
@@ -848,6 +938,139 @@
         </div>
     </div>
 
+    {{-- ══════════════════════════ TAB 8 — Vị trí công việc ══════════════════════ --}}
+    <div x-show="activeTab === 8" class="space-y-4">
+        <div class="card bg-base-100 shadow-sm border border-base-200">
+            <div class="card-body p-6 space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="font-bold text-base">Vị trí công việc phù hợp</h2>
+                        <p class="text-xs text-base-content/50 mt-0.5">Hệ thống sẽ tự động khớp kết quả với các vị trí phù hợp (Module 150C)</p>
+                    </div>
+                    <button @click="addJobPosition()" class="btn btn-primary btn-sm gap-1.5">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Thêm vị trí
+                    </button>
+                </div>
+
+                <table class="table table-sm">
+                    <thead>
+                        <tr class="text-xs">
+                            <th>Mã vị trí</th>
+                            <th>Tên vị trí</th>
+                            <th>Điểm tối thiểu</th>
+                            <th>Yêu cầu domain</th>
+                            <th class="w-24 text-center">Kích hoạt</th>
+                            <th class="w-8"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="(jp, idx) in cfg.jobPositions" :key="idx">
+                            <tr>
+                                <td class="align-top pt-3">
+                                    <input x-model="jp.position_code"
+                                           class="input input-xs input-bordered font-mono w-28"
+                                           placeholder="vd: senior_dev" />
+                                </td>
+                                <td class="align-top pt-3">
+                                    <input x-model="jp.title"
+                                           class="input input-xs input-bordered w-44"
+                                           placeholder="Tên vị trí" />
+                                    <textarea x-model="jp.description"
+                                              class="textarea textarea-bordered textarea-xs w-44 mt-1"
+                                              rows="2"
+                                              placeholder="Mô tả (tùy chọn)"></textarea>
+                                </td>
+                                <td class="align-top pt-3">
+                                    <input x-model.number="jp.min_overall_score"
+                                           type="number" min="0" max="100" step="1"
+                                           class="input input-xs input-bordered w-20"
+                                           placeholder="0-100" />
+                                    <span class="text-xs text-base-content/40 block mt-0.5">điểm tổng</span>
+                                </td>
+                                <td class="align-top pt-3">
+                                    <div class="space-y-1">
+                                        <template x-for="(minScore, domainCode) in (jp.requirements || {})" :key="domainCode">
+                                            <div class="flex items-center gap-1">
+                                                <span class="font-mono text-xs bg-base-200 px-1 rounded" x-text="domainCode"></span>
+                                                <span class="text-xs text-base-content/50">≥</span>
+                                                <span class="text-xs font-semibold" x-text="minScore + '%'"></span>
+                                                <button @click="removeRequirement(jp, domainCode)"
+                                                        class="btn btn-ghost btn-xs btn-circle h-3 min-h-3 w-3 text-error opacity-60 hover:opacity-100">×</button>
+                                            </div>
+                                        </template>
+                                        <button @click="addRequirement(jp)"
+                                                class="flex items-center gap-1 text-xs text-primary hover:underline mt-1">
+                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                            Thêm domain
+                                        </button>
+                                    </div>
+                                </td>
+                                <td class="align-top pt-3 text-center">
+                                    <input type="checkbox" class="toggle toggle-sm toggle-primary" x-model="jp.is_active" />
+                                </td>
+                                <td class="align-top pt-3">
+                                    <button @click="removeJobPosition(idx)"
+                                            class="btn btn-ghost btn-xs btn-circle text-error opacity-60 hover:opacity-100">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                        <tr x-show="cfg.jobPositions.length === 0">
+                            <td colspan="6" class="text-center text-sm text-base-content/30 py-8">
+                                Chưa có vị trí công việc nào. Nhấn "Thêm vị trí" để bắt đầu.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p class="text-xs text-base-content/40">
+                    <b>Cách hoạt động:</b> Sau khi tính điểm, hệ thống sẽ tự khớp với các vị trí có <code>match_score ≥ 50%</code>.
+                    Yêu cầu domain: domain_code → điểm normalized tối thiểu (0-100).
+                </p>
+            </div>
+        </div>
+
+        <div class="flex justify-end">
+            <button @click="activeTab = 7" class="btn btn-ghost btn-sm gap-1.5 text-xs">
+                Sang Tab ⑦ Review để lưu
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════ Sticky save bar ══════════════════════════════ --}}
+    <div x-show="dirty && cfg.hasScoring" x-cloak
+         class="fixed bottom-0 left-0 right-0 z-40 bg-base-100/95 backdrop-blur border-t border-base-200 shadow-lg"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="translate-y-full opacity-0"
+         x-transition:enter-end="translate-y-0 opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="translate-y-0 opacity-100"
+         x-transition:leave-end="translate-y-full opacity-0">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-2 text-sm text-base-content/60">
+                <svg class="w-4 h-4 text-warning shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Có thay đổi chưa lưu
+                <span x-show="hasErrors" class="badge badge-error badge-xs ml-1">Có lỗi — kiểm tra Tab ②</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button @click="activeTab = 7" x-show="activeTab !== 7"
+                        class="btn btn-ghost btn-sm text-xs">
+                    Xem checklist ⑦
+                </button>
+                <button @click="saveConfig()"
+                        :disabled="saving || hasErrors"
+                        class="btn btn-success btn-sm gap-2">
+                    <span x-show="saving" class="loading loading-spinner loading-sm"></span>
+                    <svg x-show="!saving" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    Lưu &amp; Kích hoạt
+                </button>
+            </div>
+        </div>
+    </div>
+
     {{-- ══════════════════════════ Dry-run panel ═════════════════════════════════ --}}
     <div x-show="dryRunOpen" x-cloak
          class="fixed inset-0 z-50 flex justify-end"
@@ -970,6 +1193,7 @@ function scoringConfig(surveyId, csrfToken) {
             painPoints:         [],
             recommendations:    [],
             roadmap:            {},
+            jobPositions:       [],
         },
 
         // ── Options statiques ───────────────────────────────────────────────────
@@ -1013,6 +1237,7 @@ function scoringConfig(surveyId, csrfToken) {
                 { id: 5, label: '⑤ Outputs',    disabled: noScoring,      hasError: false,                            valid: this.cfg.painPoints.length > 0 || this.cfg.recommendations.length > 0 },
                 { id: 6, label: '⑥ Roadmap',    disabled: noScoring,      hasError: false,                            valid: Object.keys(this.cfg.roadmap).length > 0 },
                 { id: 7, label: '⑦ Review',     disabled: false,          hasError: this.hasErrors,                  valid: false },
+                { id: 8, label: '⑧ Vị trí',    disabled: noScoring,      hasError: false,                            valid: this.cfg.jobPositions.length > 0 },
             ];
         },
 
@@ -1080,6 +1305,7 @@ function scoringConfig(surveyId, csrfToken) {
             this.cfg.painPoints      = res.pain_points || [];
             this.cfg.recommendations = res.recommendations || [];
             this.cfg.roadmap         = res.roadmap || {};
+            this.cfg.jobPositions    = (res.job_positions || []).map(jp => ({ ...jp, _open: false, _reqStr: JSON.stringify(jp.requirements || {}) }));
             // Phases cần _open flag
             Object.keys(this.cfg.roadmap).forEach(band => {
                 this.cfg.roadmap[band] = this.cfg.roadmap[band].map(p => ({ ...p, _open: false }));
@@ -1124,6 +1350,10 @@ function scoringConfig(surveyId, csrfToken) {
                         phases.map(({ _open, ...p }) => p),
                     ])
                 ),
+                job_positions:   this.cfg.jobPositions.map(({ _open, _reqStr, ...jp }) => ({
+                    ...jp,
+                    requirements: jp.requirements || {},
+                })),
             };
             const res = await this.api(`/dashboard/surveys/${this.surveyId}/scoring/config`, 'PUT', payload);
             if (res?.success) {
@@ -1145,7 +1375,10 @@ function scoringConfig(surveyId, csrfToken) {
         moveDomainDown(idx) { if (idx < this.cfg.domains.length-1) [this.cfg.domains[idx+1], this.cfg.domains[idx]] = [this.cfg.domains[idx], this.cfg.domains[idx+1]]; },
 
         // ── Rule helpers ────────────────────────────────────────────────────────
-        getRuleForField(fieldKey) { return this.cfg.rules[fieldKey] || null; },
+        getRuleForField(fieldKey) {
+            const r = this.cfg.rules[fieldKey];
+            return (r && r.question_scoring_type && r.question_scoring_type !== 'none') ? r : null;
+        },
 
         getOrCreateRule(fieldKey) {
             if (!this.cfg.rules[fieldKey]) {
@@ -1215,6 +1448,31 @@ function scoringConfig(surveyId, csrfToken) {
         removeRecommendation(idx) { this.cfg.recommendations.splice(idx, 1); },
         moveRecUp(idx)        { if (idx > 0) [this.cfg.recommendations[idx-1], this.cfg.recommendations[idx]] = [this.cfg.recommendations[idx], this.cfg.recommendations[idx-1]]; },
         moveRecDown(idx)      { if (idx < this.cfg.recommendations.length-1) [this.cfg.recommendations[idx+1], this.cfg.recommendations[idx]] = [this.cfg.recommendations[idx], this.cfg.recommendations[idx+1]]; },
+
+        // ── Job Position CRUD ────────────────────────────────────────────────────
+        addJobPosition() {
+            this.cfg.jobPositions.push({
+                position_code: '', title: '', description: '',
+                min_overall_score: null, requirements: {}, sort_order: this.cfg.jobPositions.length,
+                is_active: true, _open: false, _reqStr: '{}',
+            });
+        },
+        removeJobPosition(idx) { this.cfg.jobPositions.splice(idx, 1); },
+        addRequirement(jp) {
+            const dc = prompt('Domain code (vd: leadership):');
+            if (!dc || !dc.trim()) return;
+            const ms = parseFloat(prompt('Điểm normalized tối thiểu (0-100):', '60'));
+            if (isNaN(ms)) return;
+            if (!jp.requirements) jp.requirements = {};
+            jp.requirements[dc.trim()] = ms;
+        },
+        removeRequirement(jp, domainCode) {
+            if (jp.requirements) {
+                const reqs = { ...jp.requirements };
+                delete reqs[domainCode];
+                jp.requirements = reqs;
+            }
+        },
 
         // ── Roadmap CRUD ────────────────────────────────────────────────────────
         getRoadmapPhases(band) {

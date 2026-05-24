@@ -66,4 +66,5 @@ php artisan db:seed
 
 php artisan module:make Auth
 
-# > Đọc file spec/scoring-ui.md và hiệu chỉnh, cập nhật nội dung cho đúng và phù hợp với UI admin để cấu hình scoring trực tiếp trên browser module Survey nhé. Không cung cấp code.
+# > Đọc file docs/scoring/IMPLEMENTATION_TASKS.md và implement theo đúng spec đó, làm chắc chắn và tối ưu từng task một, hỏi để xác nhận trước khi làm tiếp
+

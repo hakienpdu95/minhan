@@ -31,6 +31,9 @@ Route::prefix('v1')->name('surveys.')->group(function () {
 
         // T6.1 — Respondent xem kết quả qua Bearer token + ?ref=email
         Route::get('surveys/{slug}/result', [SurveyApiController::class, 'result'])->name('result');
+
+        // T3 (Module 110) — Nhận behavior events sau submit
+        Route::post('surveys/{slug}/behavior', [SurveyApiController::class, 'behavior'])->name('behavior');
     });
 
 });

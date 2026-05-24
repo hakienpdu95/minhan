@@ -57,4 +57,49 @@ class AnswerReader
 
         return $result;
     }
+
+    /**
+     * Compute per-question behavior metrics from submission_behavior_log.
+     *
+     * Returns: ['field_key' => ['time_spent_seconds' => float, 'change_count' => int, 'hesitation_index' => int]]
+     *   time_spent_seconds — sum of all time_spent event values
+     *   change_count       — number of answer_changed events
+     *   hesitation_index   — number of answer_changed + answer_cleared events combined
+     *
+     * @return array<string, array{time_spent_seconds: float, change_count: int, hesitation_index: int}>
+     */
+    public function readBehavior(int $responseId): array
+    {
+        $rows = DB::table('submission_behavior_log')
+            ->where('response_id', $responseId)
+            ->whereNotNull('question_code')
+            ->whereIn('event_type', ['time_spent', 'answer_changed', 'answer_cleared'])
+            ->select(['question_code', 'event_type', 'event_value'])
+            ->get();
+
+        $metrics = [];
+
+        foreach ($rows as $row) {
+            $code = $row->question_code;
+
+            if (!isset($metrics[$code])) {
+                $metrics[$code] = [
+                    'time_spent_seconds' => 0.0,
+                    'change_count'       => 0,
+                    'hesitation_index'   => 0,
+                ];
+            }
+
+            if ($row->event_type === 'time_spent') {
+                $metrics[$code]['time_spent_seconds'] += (float) ($row->event_value ?? 0);
+            } elseif ($row->event_type === 'answer_changed') {
+                $metrics[$code]['change_count']++;
+                $metrics[$code]['hesitation_index']++;
+            } elseif ($row->event_type === 'answer_cleared') {
+                $metrics[$code]['hesitation_index']++;
+            }
+        }
+
+        return $metrics;
+    }
 }

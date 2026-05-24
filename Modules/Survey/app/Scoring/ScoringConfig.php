@@ -40,6 +40,6 @@ readonly class ScoringConfig
 
     public function hasScoring(): bool
     {
-        return $this->assessment === null || $this->assessment->has_scoring;
+        return $this->assessment !== null && $this->assessment->has_scoring;
     }
 }

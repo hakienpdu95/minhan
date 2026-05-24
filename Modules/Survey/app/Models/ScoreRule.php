@@ -24,17 +24,23 @@ class ScoreRule extends Model
         'min_score_cap',
         'max_score_cap',
         'section_id',
+        'behavior_metric',
+        'threshold_value',
+        'operator',
+        'score_adjustment',
         'is_active',
     ];
 
     protected function casts(): array
     {
         return [
-            'score_if_true'  => 'integer',
-            'score_if_false' => 'integer',
-            'min_score_cap'  => 'integer',
-            'max_score_cap'  => 'integer',
-            'is_active'      => 'boolean',
+            'score_if_true'   => 'integer',
+            'score_if_false'  => 'integer',
+            'min_score_cap'   => 'integer',
+            'max_score_cap'   => 'integer',
+            'threshold_value' => 'float',
+            'score_adjustment' => 'integer',
+            'is_active'       => 'boolean',
         ];
     }
 

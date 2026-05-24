@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Modules\Survey\Models\Assessment;
 use Modules\Survey\Models\AssessmentDomain;
+use Modules\Survey\Models\JobPosition;
 use Modules\Survey\Models\PassFailConfig;
 use Modules\Survey\Models\Persona;
 use Modules\Survey\Models\PersonaCondition;
@@ -75,6 +76,7 @@ class ScoringAdminController extends Controller
         $personas       = Persona::forAssessment($code)->with('conditions')->get();
         $painPoints     = PainPointRule::where('assessment_code', $code)->get();
         $recommendations = RecommendationRule::where('assessment_code', $code)->orderBy('priority')->get();
+        $jobPositions   = JobPosition::forAssessment($code)->ordered()->get();
 
         $roadmapRaw = RoadmapPhase::where('assessment_code', $code)
             ->with('milestones')
@@ -122,6 +124,16 @@ class ScoringAdminController extends Controller
             'pain_points'     => $painPoints->values(),
             'recommendations' => $recommendations->values(),
             'roadmap'         => $roadmap,
+            'job_positions'   => $jobPositions->map(fn ($jp) => [
+                'id'                => $jp->id,
+                'position_code'     => $jp->position_code,
+                'title'             => $jp->title,
+                'description'       => $jp->description,
+                'min_overall_score' => $jp->min_overall_score,
+                'requirements'      => $jp->requirements ?? [],
+                'sort_order'        => $jp->sort_order,
+                'is_active'         => $jp->is_active,
+            ])->values(),
         ]);
     }
 
@@ -157,6 +169,14 @@ class ScoringAdminController extends Controller
             'pain_points.*.required_flags'   => 'required|string|max:500',
             'recommendations'                => 'array|max:50',
             'roadmap'                        => 'array|max:20',
+            'job_positions'                  => 'array|max:50',
+            'job_positions.*.position_code'  => 'required|string|max:50|regex:/^[a-z0-9_]+$/',
+            'job_positions.*.title'          => 'required|string|max:200',
+            'job_positions.*.description'    => 'nullable|string|max:1000',
+            'job_positions.*.min_overall_score' => 'nullable|numeric|min:0|max:100',
+            'job_positions.*.requirements'   => 'nullable|array',
+            'job_positions.*.sort_order'     => 'nullable|integer|min:0',
+            'job_positions.*.is_active'      => 'nullable|boolean',
         ]);
 
         // Domain uniqueness check
@@ -368,6 +388,21 @@ class ScoringAdminController extends Controller
                         ]);
                     }
                 }
+            }
+
+            // 10 — Job positions (Module 150C)
+            JobPosition::where('assessment_code', $code)->delete();
+            foreach ($data['job_positions'] ?? [] as $idx => $jp) {
+                JobPosition::create([
+                    'assessment_code'   => $code,
+                    'position_code'     => $jp['position_code'],
+                    'title'             => $jp['title'],
+                    'description'       => $jp['description'] ?? null,
+                    'min_overall_score' => isset($jp['min_overall_score']) && $jp['min_overall_score'] !== '' ? (float) $jp['min_overall_score'] : null,
+                    'requirements'      => $jp['requirements'] ?? null,
+                    'sort_order'        => $jp['sort_order'] ?? $idx,
+                    'is_active'         => $jp['is_active'] ?? true,
+                ]);
             }
         });
 

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class SurveyResult extends Model
 {
@@ -67,6 +68,11 @@ class SurveyResult extends Model
     public function classification(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(ResultClassification::class, 'result_id');
+    }
+
+    public function jobPositions(): HasMany
+    {
+        return $this->hasMany(ResultJobPosition::class, 'result_id')->orderByDesc('match_score');
     }
 
     public function scopeForResponse(Builder $query, int $responseId): Builder
