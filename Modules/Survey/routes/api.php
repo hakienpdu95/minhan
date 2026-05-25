@@ -34,6 +34,13 @@ Route::prefix('v1')->name('surveys.')->group(function () {
 
         // T3 (Module 110) — Nhận behavior events sau submit
         Route::post('surveys/{slug}/behavior', [SurveyApiController::class, 'behavior'])->name('behavior');
+
+        // Draft auto-save (cross-device backup)
+        Route::post('surveys/{slug}/draft', [SurveyApiController::class, 'saveDraft'])->name('draft.save');
+        Route::get('surveys/{slug}/draft',  [SurveyApiController::class, 'getDraft'])->name('draft.get');
+
+        // GDPR self-service erasure
+        Route::delete('surveys/{slug}/my-data', [SurveyApiController::class, 'eraseMyData'])->name('my-data.erase');
     });
 
 });

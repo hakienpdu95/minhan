@@ -28,7 +28,6 @@ class ScoringEngineService
         private readonly PainPointDetector    $painPointDetector,
         private readonly RecommendationEngine $recommendationEngine,
         private readonly RoadmapLoader        $roadmapLoader,
-        private readonly JobPositionMatcher   $jobPositionMatcher,
         private readonly ResultPersister      $persister,
     ) {}
 
@@ -58,15 +57,14 @@ class ScoringEngineService
         }
 
         // 2. Load answers từ survey_answers (Module 110)
-        $answers      = $this->answerReader->read($responseId, $response->survey_id);
-        $behaviorData = $this->answerReader->readBehavior($responseId);
+        $answers = $this->answerReader->read($responseId, $response->survey_id);
 
         // 3. Tầng 1 — Feature Extraction (Module 120)
         [
             'rawScores'      => $rawScores,
             'signalFlags'    => $signalFlags,
             'questionScores' => $questionScores,
-        ] = $this->featureExtractor->extract($config, $answers, $behaviorData);
+        ] = $this->featureExtractor->extract($config, $answers);
 
         // 4. Load weights (Module 130)
         ['weights' => $weights, 'version' => $weightVersion] =
@@ -91,9 +89,6 @@ class ScoringEngineService
         // 9. Roadmap (Module 150)
         $roadmap = $this->roadmapLoader->load($assessmentCode, $classification);
 
-        // 9.5 — Job Position Matching (Module 150C)
-        $jobPositions = $this->jobPositionMatcher->match($config, $aggregated->domainScores, $aggregated->overallScore);
-
         $result = new ScoringResult(
             overallScore:    $aggregated->overallScore,
             assessmentCode:  $assessmentCode,
@@ -106,7 +101,6 @@ class ScoringEngineService
             roadmap:         $roadmap,
             weightVersion:   $weightVersion,
             questionScores:  $questionScores,
-            jobPositions:    $jobPositions,
         );
 
         // 10. Persist (Module 160) — toàn bộ trong một transaction

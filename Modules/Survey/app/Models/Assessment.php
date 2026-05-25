@@ -4,9 +4,12 @@ namespace Modules\Survey\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
 class Assessment extends Model
 {
+    use LogsActivity;
     protected $table = 'assessments';
 
     protected $fillable = [
@@ -18,6 +21,14 @@ class Assessment extends Model
         'aggregation_model',
         'classification_type',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->useLogName('scoring');
+    }
 
     protected function casts(): array
     {

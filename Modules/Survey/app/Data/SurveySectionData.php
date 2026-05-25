@@ -16,7 +16,10 @@ class SurveySectionData extends Data
         public readonly array   $fields,
     ) {}
 
-    public static function fromModel(SurveySection $section): self
+    /**
+     * @param  array<int, string>  $fieldKeyMap  [field_id => field_key] for resolving condition references
+     */
+    public static function fromModel(SurveySection $section, array $fieldKeyMap = []): self
     {
         return new self(
             id:         $section->id,
@@ -24,7 +27,7 @@ class SurveySectionData extends Data
             icon:       $section->icon,
             sort_order: $section->sort_order,
             fields:     $section->fields
-                ->map(fn($f) => SurveyFieldData::fromModel($f))
+                ->map(fn($f) => SurveyFieldData::fromModel($f, $fieldKeyMap))
                 ->all(),
         );
     }

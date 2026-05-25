@@ -4,9 +4,12 @@ namespace Modules\Survey\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
 class RecommendationRule extends Model
 {
+    use LogsActivity;
     protected $table = 'recommendation_rules';
 
     protected $fillable = [
@@ -19,6 +22,14 @@ class RecommendationRule extends Model
         'priority',
         'is_active',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->useLogName('scoring');
+    }
 
     protected function casts(): array
     {

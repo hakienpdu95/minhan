@@ -16,7 +16,7 @@ class PersonaMatchClassification implements ClassificationStrategy
      */
     public function classify(ScoringConfig $config, AggregatedResult $aggregated, array $signalFlags): ClassificationResult
     {
-        $personas = Persona::forAssessment($config->assessmentCode)->with('conditions')->get();
+        $personas = Persona::forAssessment($config->assessmentCode)->with('conditions')->orderBy('sort_order')->get();
 
         if ($personas->isEmpty()) {
             return ClassificationResult::none();
@@ -48,7 +48,9 @@ class PersonaMatchClassification implements ClassificationStrategy
             }
         }
 
-        if ($bestPersona === null || $bestMatchScore <= 0) {
+        // Soft match: pick the best-fit persona even if not all conditions pass.
+        // Return none() only when no personas are defined (or none have conditions).
+        if ($bestPersona === null) {
             return ClassificationResult::none();
         }
 

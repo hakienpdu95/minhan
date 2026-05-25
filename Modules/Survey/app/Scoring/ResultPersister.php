@@ -11,7 +11,6 @@ use Modules\Survey\Models\ResultRecommendation;
 use Modules\Survey\Models\ResultRoadmapPhase;
 use Modules\Survey\Models\ResultSignalFlag;
 use Modules\Survey\Models\RoadmapPhase;
-use Modules\Survey\Models\ResultJobPosition;
 use Modules\Survey\Models\ScoringFeedback;
 use Modules\Survey\Models\SurveyResult;
 
@@ -124,34 +123,30 @@ class ResultPersister
                 'match_score'         => $classification->matchScore,
             ]);
 
-            // Roadmap phases (lookup phase_id từ phase_code + assessment_code)
-            foreach ($result->roadmap as $i => $phaseResult) {
-                $phase = RoadmapPhase::where('assessment_code', $result->assessmentCode)
-                    ->where('phase_code', $phaseResult->phaseCode)
-                    ->first();
+            // Roadmap phases — batch lookup, single query instead of N queries
+            if (!empty($result->roadmap)) {
+                $phaseCodes = collect($result->roadmap)->pluck('phaseCode')->filter()->all();
+                $phaseMap   = RoadmapPhase::where('assessment_code', $result->assessmentCode)
+                    ->whereIn('phase_code', $phaseCodes)
+                    ->get()
+                    ->keyBy('phase_code');
 
-                if ($phase) {
-                    ResultRoadmapPhase::create([
-                        'result_id'  => $resultId,
-                        'phase_id'   => $phase->id,
-                        'sort_order' => $i,
-                    ]);
+                $roadmapRows = [];
+                foreach ($result->roadmap as $i => $phaseResult) {
+                    $phase = $phaseMap->get($phaseResult->phaseCode);
+                    if ($phase) {
+                        $roadmapRows[] = [
+                            'result_id'  => $resultId,
+                            'phase_id'   => $phase->id,
+                            'sort_order' => $i,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
                 }
-            }
-
-            // Job positions (Module 150C)
-            $jpRows = [];
-            foreach ($result->jobPositions as $jp) {
-                $jpRows[] = [
-                    'result_id'     => $resultId,
-                    'position_code' => $jp->positionCode,
-                    'match_score'   => round($jp->matchScore, 2),
-                    'created_at'    => now(),
-                    'updated_at'    => now(),
-                ];
-            }
-            if (!empty($jpRows)) {
-                ResultJobPosition::insert($jpRows);
+                if (!empty($roadmapRows)) {
+                    ResultRoadmapPhase::insert($roadmapRows);
+                }
             }
 
             // Module 170A — seed scoring_feedback so tuning loop has data to learn from

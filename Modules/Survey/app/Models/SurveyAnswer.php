@@ -18,6 +18,7 @@ class SurveyAnswer extends Model
     protected $fillable = [
         'response_id',
         'field_id',
+        'row_key',
         'option_id',
         'value_string',
         'value_text',

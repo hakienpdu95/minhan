@@ -18,13 +18,21 @@ class SurveySchemaData extends Data
 
     public static function fromModel(Survey $survey): self
     {
+        // Build id→key map for all fields across all sections (needed to resolve condition references)
+        $fieldKeyMap = [];
+        foreach ($survey->sections as $section) {
+            foreach ($section->fields as $field) {
+                $fieldKeyMap[$field->id] = $field->field_key;
+            }
+        }
+
         return new self(
             id:       $survey->id,
             title:    $survey->title,
             slug:     $survey->slug,
             version:  $survey->version,
             sections: $survey->sections
-                ->map(fn($s) => SurveySectionData::fromModel($s))
+                ->map(fn($s) => SurveySectionData::fromModel($s, $fieldKeyMap))
                 ->all(),
         );
     }

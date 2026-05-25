@@ -17,15 +17,14 @@ use Modules\Survey\Models\ScoreRule;
 class FeatureExtractor
 {
     /**
-     * @param  array<string, array>  $answers       output của AnswerReader::read()
-     * @param  array<string, array>  $behaviorData  output của AnswerReader::readBehavior()
+     * @param  array<string, array>  $answers  output của AnswerReader::read()
      * @return array{
      *   rawScores: array<string,int>,
      *   signalFlags: array<string,bool>,
      *   questionScores: array<string, array{question_code:string,feature_code:string,raw:int,final:int,selected:string}>
      * }
      */
-    public function extract(ScoringConfig $config, array $answers, array $behaviorData = []): array
+    public function extract(ScoringConfig $config, array $answers): array
     {
         [$cleanedAnswers, $missingCount, $totalRuled] = $this->cleanAnswers($answers, $config);
 
@@ -49,7 +48,7 @@ class FeatureExtractor
             $answer   = $cleanedAnswers[$fieldKey] ?? null;
             $type     = $rule->getScoringType();
 
-            if ($type === 'none' || $type === 'behavior') {
+            if ($type === 'none') {
                 continue;
             }
 
@@ -90,12 +89,6 @@ class FeatureExtractor
 
         if ($totalRuled > 0 && ($missingCount / $totalRuled) > 0.5) {
             $signalFlags['high_missing_rate'] = true;
-        }
-
-        // Module 120 — Behavior Fi integration
-        if (!empty($behaviorData)) {
-            $this->applyBehaviorRules($config, $behaviorData, $rawScores);
-            $this->applyBehaviorSignalFlags($behaviorData, $signalFlags);
         }
 
         return [
@@ -195,91 +188,14 @@ class FeatureExtractor
         return [0, 0, [], (string) $value];
     }
 
-    // ── Behavior Fi (Module 120) ─────────────────────────────────────────────
-
-    /**
-     * Apply behavior score rules — add/subtract score_adjustment to domain bucket
-     * when the behavior metric satisfies the threshold condition.
-     */
-    private function applyBehaviorRules(ScoringConfig $config, array $behaviorData, array &$rawScores): void
-    {
-        foreach ($config->scoreRules as $rule) {
-            if ($rule->getScoringType() !== 'behavior') {
-                continue;
-            }
-            if ($rule->behavior_metric === null || $rule->operator === null || $rule->score_adjustment === null) {
-                continue;
-            }
-
-            $metrics = $behaviorData[$rule->field_key] ?? null;
-            if ($metrics === null) {
-                continue;
-            }
-
-            $metricValue = match ($rule->behavior_metric) {
-                'time_spent'       => $metrics['time_spent_seconds'],
-                'change_count'     => $metrics['change_count'],
-                'hesitation_index' => $metrics['hesitation_index'],
-                default            => null,
-            };
-
-            if ($metricValue === null) {
-                continue;
-            }
-
-            $threshold = (float) $rule->threshold_value;
-            $conditionMet = match ($rule->operator) {
-                '<'  => $metricValue < $threshold,
-                '>'  => $metricValue > $threshold,
-                '<=' => $metricValue <= $threshold,
-                '>=' => $metricValue >= $threshold,
-                default => false,
-            };
-
-            if ($conditionMet) {
-                $bucket = $this->resolveBucket($rule, $config);
-                if ($bucket !== null) {
-                    $rawScores[$bucket] = ($rawScores[$bucket] ?? 0) + $rule->score_adjustment;
-                }
-            }
-        }
-    }
-
-    /**
-     * Emit global behavioral signal flags from aggregated behavior metrics.
-     *
-     * high_hesitation_rate    — avg hesitation_index across answered questions > 2
-     * fast_confident_answerer — avg time_spent < 10s AND avg changes < 1 per question
-     */
-    private function applyBehaviorSignalFlags(array $behaviorData, array &$signalFlags): void
-    {
-        $count = count($behaviorData);
-        if ($count === 0) {
-            return;
-        }
-
-        $totalHesitation = array_sum(array_column($behaviorData, 'hesitation_index'));
-        $totalTimeSpent  = array_sum(array_column($behaviorData, 'time_spent_seconds'));
-        $totalChanges    = array_sum(array_column($behaviorData, 'change_count'));
-
-        if (($totalHesitation / $count) > 2) {
-            $signalFlags['high_hesitation_rate'] = true;
-        }
-
-        if (($totalTimeSpent / $count) < 10 && ($totalChanges / $count) < 1) {
-            $signalFlags['fast_confident_answerer'] = true;
-        }
-    }
-
     /**
      * Remove noise answers (no matching rule) and count missing fields.
-     * Behavior-type rules are excluded from the totalRuled count (they have no survey_answers).
      * Returns [$filteredAnswers, $missingCount, $totalRuledFields].
      */
     private function cleanAnswers(array $answers, ScoringConfig $config): array
     {
         $ruleKeys = $config->scoreRules
-            ->filter(fn (ScoreRule $r) => !in_array($r->getScoringType(), ['none', 'behavior'], true))
+            ->filter(fn (ScoreRule $r) => $r->getScoringType() !== 'none')
             ->pluck('field_key')
             ->flip()
             ->all();

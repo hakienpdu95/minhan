@@ -12,7 +12,6 @@ readonly class ScoringResult
      * @param  RecommendationResult[]            $recommendations ordered by priority
      * @param  RoadmapPhaseResult[]              $roadmap        ordered by sort_order
      * @param  array<string, array>              $questionScores keyed by question_code
-     * @param  JobPositionResult[]               $jobPositions   sorted by match_score desc
      */
     public function __construct(
         public readonly ?float             $overallScore,
@@ -26,7 +25,6 @@ readonly class ScoringResult
         public readonly array              $roadmap,
         public readonly int                $weightVersion,
         public readonly array              $questionScores = [],
-        public readonly array              $jobPositions   = [],
     ) {}
 
     /** @deprecated Dùng classification->bandCode thay thế */
@@ -55,7 +53,6 @@ readonly class ScoringResult
             'pain_points'     => $this->painPoints,
             'recommendations' => array_map(fn (RecommendationResult $r) => $r->toArray(), $this->recommendations),
             'roadmap'         => array_map(fn (RoadmapPhaseResult $p) => $p->toArray(), $this->roadmap),
-            'job_positions'   => array_map(fn (JobPositionResult $jp) => $jp->toArray(), $this->jobPositions),
         ];
     }
 }

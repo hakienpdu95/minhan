@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Actions\ExportSurveyResponsesAction;
 use Modules\Survey\Actions\SubmitSurveyAction;
@@ -13,6 +14,7 @@ use Modules\Survey\Http\Requests\SubmitSurveyRequest;
 use Modules\Survey\Models\RecommendationRule;
 use Modules\Survey\Models\SubmissionBehaviorLog;
 use Modules\Survey\Models\Survey;
+use Modules\Survey\Models\SurveyDraft;
 use Modules\Survey\Models\SurveyResponse;
 use Modules\Survey\Models\SurveyResult;
 use Modules\Survey\Services\SurveyStatsService;
@@ -34,6 +36,12 @@ class SurveyApiController extends Controller
         $survey = Survey::bySlug($slug)->firstOrFail();
 
         $responseId = $action->handle($survey, $request->toResponseData());
+
+        // Increment token usage_count atomically after successful submit
+        $token = $request->attributes->get('surveyToken');
+        if ($token) {
+            $token->increment('usage_count');
+        }
 
         return response()->json(['response_id' => $responseId], 201);
     }
@@ -200,6 +208,99 @@ class SurveyApiController extends Controller
                 'duration_weeks' => $rp->phase?->duration_weeks,
                 'milestones'     => $rp->phase?->milestones->pluck('title')->values() ?? [],
             ])->values(),
+        ]);
+    }
+
+    /**
+     * DELETE /v1/surveys/{slug}/my-data?ref=xxx — GDPR self-service erasure.
+     *
+     * Anonymizes PII (respondent_ref, respondent_ip) and soft-deletes all responses
+     * for the given ref. Answers and results are deleted immediately.
+     * Soft-deleted response rows are hard-purged after 30 days by PurgeDeletedResponsesJob.
+     */
+    public function eraseMyData(string $slug, Request $request): JsonResponse
+    {
+        $survey = Survey::bySlug($slug)->firstOrFail();
+
+        $ref = $request->query('ref');
+        if (empty($ref)) {
+            return response()->json(['error' => 'Tham số ?ref= là bắt buộc.'], 422);
+        }
+
+        $responses = SurveyResponse::forSurvey($survey->id)
+            ->where('respondent_ref', $ref)
+            ->get(['id']);
+
+        if ($responses->isEmpty()) {
+            return response()->json(['erased' => 0]);
+        }
+
+        $ids = $responses->pluck('id')->all();
+
+        DB::transaction(function () use ($ids) {
+            // Delete linked rows immediately
+            DB::table('survey_answers')->whereIn('response_id', $ids)->delete();
+            DB::table('survey_results')->whereIn('response_id', $ids)->delete();
+
+            // Anonymize PII then soft-delete
+            SurveyResponse::whereIn('id', $ids)->update([
+                'respondent_ref' => null,
+                'respondent_ip'  => null,
+            ]);
+            SurveyResponse::whereIn('id', $ids)->delete();
+        });
+
+        return response()->json(['erased' => count($ids)]);
+    }
+
+    /**
+     * POST /v1/surveys/{slug}/draft — lưu nháp server-side (cross-device backup).
+     * Body: { answers, current_section, respondent_ref? }
+     */
+    public function saveDraft(string $slug, Request $request): JsonResponse
+    {
+        $survey = Survey::active()->bySlug($slug)->firstOrFail();
+
+        $data = $request->validate([
+            'answers'         => 'required|array',
+            'current_section' => 'integer|min:0',
+            'respondent_ref'  => 'nullable|string|max:255',
+        ]);
+
+        SurveyDraft::updateOrCreate(
+            [
+                'survey_id'      => $survey->id,
+                'respondent_ref' => $data['respondent_ref'] ?? null,
+            ],
+            [
+                'answers'         => $data['answers'],
+                'current_section' => $data['current_section'] ?? 0,
+                'expires_at'      => now()->addDays(7),
+            ]
+        );
+
+        return response()->json(['saved' => true]);
+    }
+
+    /**
+     * GET /v1/surveys/{slug}/draft?ref=xxx — lấy nháp đã lưu.
+     */
+    public function getDraft(string $slug, Request $request): JsonResponse
+    {
+        $survey = Survey::active()->bySlug($slug)->firstOrFail();
+
+        $draft = SurveyDraft::where('survey_id', $survey->id)
+            ->where('respondent_ref', $request->query('ref'))
+            ->first();
+
+        if (! $draft || $draft->isExpired()) {
+            return response()->json(null);
+        }
+
+        return response()->json([
+            'answers'         => $draft->answers,
+            'current_section' => $draft->current_section,
+            'saved_at'        => $draft->updated_at?->toISOString(),
         ]);
     }
 }

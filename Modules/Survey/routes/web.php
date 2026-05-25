@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Modules\Survey\Http\Controllers\Api\SurveyBackendApiController;
 use Modules\Survey\Http\Controllers\FieldController;
+use Modules\Survey\Http\Controllers\WebhookController;
 use Modules\Survey\Http\Controllers\OptionController;
 use Modules\Survey\Http\Controllers\ResponseController;
 use Modules\Survey\Http\Controllers\ScoringAdminController;
@@ -43,16 +44,20 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
 
         // ── Stats dashboard ────────────────────────────────────────────
         Route::get('/{survey}/stats', [StatsController::class, 'index'])->name('stats.index');
+        Route::get('/{survey}/stats/fields/{field}', [StatsController::class, 'fieldStats'])->name('stats.field');
 
         // ── Scoring config wizard ──────────────────────────────────────
         Route::prefix('/{survey}/scoring')->name('scoring.')->group(function () {
-            Route::get('/',          [ScoringAdminController::class, 'index'])->name('index');
-            Route::get('/config',    [ScoringAdminController::class, 'getConfig'])->name('config');
-            Route::put('/config',    [ScoringAdminController::class, 'saveConfig'])->name('config.save');
-            Route::get('/fields',    [ScoringAdminController::class, 'getFields'])->name('fields');
-            Route::get('/flags',     [ScoringAdminController::class, 'getFlags'])->name('flags');
-            Route::post('/validate', [ScoringAdminController::class, 'validateConfig'])->name('validate');
-            Route::post('/dry-run',  [ScoringAdminController::class, 'dryRun'])->name('dry-run');
+            Route::get('/',                           [ScoringAdminController::class, 'index'])->name('index');
+            Route::get('/config',                     [ScoringAdminController::class, 'getConfig'])->name('config');
+            Route::put('/config',                     [ScoringAdminController::class, 'saveConfig'])->name('config.save');
+            Route::get('/fields',                     [ScoringAdminController::class, 'getFields'])->name('fields');
+            Route::get('/flags',                      [ScoringAdminController::class, 'getFlags'])->name('flags');
+            Route::post('/validate',                  [ScoringAdminController::class, 'validateConfig'])->name('validate');
+            Route::get('/snapshots',                  [ScoringAdminController::class, 'getSnapshots'])->name('snapshots');
+            Route::post('/rollback/{version}',        [ScoringAdminController::class, 'rollbackConfig'])->name('rollback');
+            Route::post('/reprocess-all',             [ScoringAdminController::class, 'reprocessAll'])->name('reprocess-all');
+            Route::get('/batch/{batchId}',            [ScoringAdminController::class, 'getBatchStatus'])->name('batch-status');
         });
 
         // ── Scoring results ────────────────────────────────────────────
@@ -76,6 +81,16 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
             Route::get('/{response}/result',        [SurveyResultController::class, 'show'])->name('result.show');
             // T6.4 — Admin force recalculate
             Route::post('/{response}/recalculate',  [SurveyResultController::class, 'recalculate'])->name('result.recalculate');
+            // T6 — Admin xác nhận actual_band cho scoring_feedback
+            Route::patch('/{response}/feedback',    [SurveyResultController::class, 'submitFeedback'])->name('result.feedback');
+        });
+
+        // ── Webhook management ─────────────────────────────────────────
+        Route::prefix('/{survey}/webhooks')->name('webhooks.')->group(function () {
+            Route::get('/',          [WebhookController::class, 'index'])->name('index');
+            Route::post('/',         [WebhookController::class, 'store'])->name('store');
+            Route::patch('/{webhook}', [WebhookController::class, 'update'])->name('update');
+            Route::delete('/{webhook}', [WebhookController::class, 'destroy'])->name('destroy');
         });
 
         // ── Section builder (JSON) ─────────────────────────────────────

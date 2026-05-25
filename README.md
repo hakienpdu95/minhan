@@ -66,5 +66,5 @@ php artisan db:seed
 
 php artisan module:make Auth
 
-# > Đọc file docs/scoring/IMPLEMENTATION_TASKS.md và implement theo đúng spec đó, làm chắc chắn và tối ưu từng task một, hỏi để xác nhận trước khi làm tiếp
+# > Đọc file spec/survey_enhancement.md và implement theo đúng spec đó, làm chắc chắn và tối ưu từng task một, hỏi để xác nhận trước khi làm tiếp
 

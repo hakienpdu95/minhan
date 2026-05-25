@@ -31,6 +31,10 @@ class ValidateSurveyToken
             return response()->json(['error' => 'Token is inactive or has expired.'], 401);
         }
 
+        if ($token->hasReachedUsageLimit()) {
+            return response()->json(['error' => 'Token đã đạt giới hạn sử dụng.'], 429);
+        }
+
         // Verify token belongs to the survey being accessed — dùng relation đã eager-load
         $slug = $request->route('slug');
 

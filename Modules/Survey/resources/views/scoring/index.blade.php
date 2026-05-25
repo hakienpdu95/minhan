@@ -49,12 +49,6 @@
         <div class="flex gap-2 items-center">
             <span x-show="loading" class="loading loading-spinner loading-sm text-base-content/40" title="Đang tải..."></span>
             <span x-show="saving" class="loading loading-spinner loading-sm text-primary" title="Đang lưu..."></span>
-            <button @click="dryRunOpen = !dryRunOpen"
-                    x-show="cfg.hasScoring"
-                    class="btn btn-ghost btn-sm gap-1.5">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2"/></svg>
-                Chạy thử
-            </button>
             <a href="{{ route('backend.surveys.edit', $survey) }}" class="btn btn-ghost btn-sm">
                 ← Quay lại survey
             </a>
@@ -938,108 +932,6 @@
         </div>
     </div>
 
-    {{-- ══════════════════════════ TAB 8 — Vị trí công việc ══════════════════════ --}}
-    <div x-show="activeTab === 8" class="space-y-4">
-        <div class="card bg-base-100 shadow-sm border border-base-200">
-            <div class="card-body p-6 space-y-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h2 class="font-bold text-base">Vị trí công việc phù hợp</h2>
-                        <p class="text-xs text-base-content/50 mt-0.5">Hệ thống sẽ tự động khớp kết quả với các vị trí phù hợp (Module 150C)</p>
-                    </div>
-                    <button @click="addJobPosition()" class="btn btn-primary btn-sm gap-1.5">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                        Thêm vị trí
-                    </button>
-                </div>
-
-                <table class="table table-sm">
-                    <thead>
-                        <tr class="text-xs">
-                            <th>Mã vị trí</th>
-                            <th>Tên vị trí</th>
-                            <th>Điểm tối thiểu</th>
-                            <th>Yêu cầu domain</th>
-                            <th class="w-24 text-center">Kích hoạt</th>
-                            <th class="w-8"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <template x-for="(jp, idx) in cfg.jobPositions" :key="idx">
-                            <tr>
-                                <td class="align-top pt-3">
-                                    <input x-model="jp.position_code"
-                                           class="input input-xs input-bordered font-mono w-28"
-                                           placeholder="vd: senior_dev" />
-                                </td>
-                                <td class="align-top pt-3">
-                                    <input x-model="jp.title"
-                                           class="input input-xs input-bordered w-44"
-                                           placeholder="Tên vị trí" />
-                                    <textarea x-model="jp.description"
-                                              class="textarea textarea-bordered textarea-xs w-44 mt-1"
-                                              rows="2"
-                                              placeholder="Mô tả (tùy chọn)"></textarea>
-                                </td>
-                                <td class="align-top pt-3">
-                                    <input x-model.number="jp.min_overall_score"
-                                           type="number" min="0" max="100" step="1"
-                                           class="input input-xs input-bordered w-20"
-                                           placeholder="0-100" />
-                                    <span class="text-xs text-base-content/40 block mt-0.5">điểm tổng</span>
-                                </td>
-                                <td class="align-top pt-3">
-                                    <div class="space-y-1">
-                                        <template x-for="(minScore, domainCode) in (jp.requirements || {})" :key="domainCode">
-                                            <div class="flex items-center gap-1">
-                                                <span class="font-mono text-xs bg-base-200 px-1 rounded" x-text="domainCode"></span>
-                                                <span class="text-xs text-base-content/50">≥</span>
-                                                <span class="text-xs font-semibold" x-text="minScore + '%'"></span>
-                                                <button @click="removeRequirement(jp, domainCode)"
-                                                        class="btn btn-ghost btn-xs btn-circle h-3 min-h-3 w-3 text-error opacity-60 hover:opacity-100">×</button>
-                                            </div>
-                                        </template>
-                                        <button @click="addRequirement(jp)"
-                                                class="flex items-center gap-1 text-xs text-primary hover:underline mt-1">
-                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                            Thêm domain
-                                        </button>
-                                    </div>
-                                </td>
-                                <td class="align-top pt-3 text-center">
-                                    <input type="checkbox" class="toggle toggle-sm toggle-primary" x-model="jp.is_active" />
-                                </td>
-                                <td class="align-top pt-3">
-                                    <button @click="removeJobPosition(idx)"
-                                            class="btn btn-ghost btn-xs btn-circle text-error opacity-60 hover:opacity-100">
-                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                    </button>
-                                </td>
-                            </tr>
-                        </template>
-                        <tr x-show="cfg.jobPositions.length === 0">
-                            <td colspan="6" class="text-center text-sm text-base-content/30 py-8">
-                                Chưa có vị trí công việc nào. Nhấn "Thêm vị trí" để bắt đầu.
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <p class="text-xs text-base-content/40">
-                    <b>Cách hoạt động:</b> Sau khi tính điểm, hệ thống sẽ tự khớp với các vị trí có <code>match_score ≥ 50%</code>.
-                    Yêu cầu domain: domain_code → điểm normalized tối thiểu (0-100).
-                </p>
-            </div>
-        </div>
-
-        <div class="flex justify-end">
-            <button @click="activeTab = 7" class="btn btn-ghost btn-sm gap-1.5 text-xs">
-                Sang Tab ⑦ Review để lưu
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            </button>
-        </div>
-    </div>
-
     {{-- ══════════════════════════ Sticky save bar ══════════════════════════════ --}}
     <div x-show="dirty && cfg.hasScoring" x-cloak
          class="fixed bottom-0 left-0 right-0 z-40 bg-base-100/95 backdrop-blur border-t border-base-200 shadow-lg"
@@ -1049,16 +941,69 @@
          x-transition:leave="transition ease-in duration-150"
          x-transition:leave-start="translate-y-0 opacity-100"
          x-transition:leave-end="translate-y-full opacity-0">
+
+        {{-- ── Detail panel (mở rộng phía trên) ──────────────────────────── --}}
+        <div x-show="showChangeDetail"
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0 translate-y-1"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-100"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 translate-y-1"
+             class="border-b border-base-200 max-h-72 overflow-y-auto">
+            <div class="max-w-6xl mx-auto px-4 py-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3">
+                <template x-for="sec in diffSections" :key="sec.section">
+                    <div>
+                        <p class="text-xs font-semibold text-base-content/70 mb-1.5 uppercase tracking-wide" x-text="sec.section"></p>
+                        <div class="space-y-1">
+                            <template x-for="item in sec.added" :key="'a_'+item">
+                                <div class="flex items-start gap-1.5 text-xs text-success">
+                                    <span class="font-mono font-bold leading-4 shrink-0">+</span>
+                                    <span class="leading-4" x-text="item"></span>
+                                </div>
+                            </template>
+                            <template x-for="item in sec.modified" :key="'m_'+item">
+                                <div class="flex items-start gap-1.5 text-xs text-warning">
+                                    <span class="font-mono font-bold leading-4 shrink-0">~</span>
+                                    <span class="leading-4" x-text="item"></span>
+                                </div>
+                            </template>
+                            <template x-for="item in sec.removed" :key="'r_'+item">
+                                <div class="flex items-start gap-1.5 text-xs text-error">
+                                    <span class="font-mono font-bold leading-4 shrink-0">−</span>
+                                    <span class="leading-4" x-text="item"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        {{-- ── Main bar ─────────────────────────────────────────────────────── --}}
         <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-            <div class="flex items-center gap-2 text-sm text-base-content/60">
+            <div class="flex items-center gap-2 text-sm text-base-content/60 min-w-0">
                 <svg class="w-4 h-4 text-warning shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                Có thay đổi chưa lưu
-                <span x-show="hasErrors" class="badge badge-error badge-xs ml-1">Có lỗi — kiểm tra Tab ②</span>
+                <span class="shrink-0">Có thay đổi chưa lưu</span>
+                <button @click="showChangeDetail = !showChangeDetail"
+                        class="flex items-center gap-1 text-xs px-2 py-0.5 rounded hover:bg-base-200 transition-colors shrink-0">
+                    <span x-text="totalChanges + ' mục'"></span>
+                    <svg class="w-3 h-3 transition-transform duration-150" :class="showChangeDetail ? 'rotate-180' : ''"
+                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"/>
+                    </svg>
+                </button>
+                <span x-show="hasErrors" class="badge badge-error badge-xs shrink-0">Có lỗi — kiểm tra Tab ②</span>
             </div>
             <div class="flex items-center gap-2">
                 <button @click="activeTab = 7" x-show="activeTab !== 7"
-                        class="btn btn-ghost btn-sm text-xs">
-                    Xem checklist ⑦
+                        class="btn btn-ghost btn-sm text-xs hidden sm:inline-flex">
+                    Checklist ⑦
+                </button>
+                <button @click="discardChanges()"
+                        :disabled="saving"
+                        class="btn btn-ghost btn-sm text-xs text-base-content/50 hover:text-error">
+                    Hủy thay đổi
                 </button>
                 <button @click="saveConfig()"
                         :disabled="saving || hasErrors"
@@ -1067,93 +1012,6 @@
                     <svg x-show="!saving" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                     Lưu &amp; Kích hoạt
                 </button>
-            </div>
-        </div>
-    </div>
-
-    {{-- ══════════════════════════ Dry-run panel ═════════════════════════════════ --}}
-    <div x-show="dryRunOpen" x-cloak
-         class="fixed inset-0 z-50 flex justify-end"
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100">
-        <div class="absolute inset-0 bg-black/30" @click="dryRunOpen = false"></div>
-        <div class="relative w-full max-w-md bg-base-100 shadow-2xl flex flex-col h-full overflow-y-auto">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-base-200 shrink-0">
-                <h3 class="font-bold text-base">🧪 Dry-run — Kiểm tra config</h3>
-                <button @click="dryRunOpen = false" class="btn btn-ghost btn-sm btn-circle">✕</button>
-            </div>
-            <div class="flex-1 overflow-y-auto p-5 space-y-3">
-                <p class="text-xs text-base-content/50">Nhập câu trả lời mẫu để kiểm tra pipeline scoring.</p>
-                <template x-for="f in fields" :key="f.field_key">
-                    <div x-show="dryRunRule(f) && dryRunRule(f).question_scoring_type !== 'none'" class="space-y-1">
-                        <label class="text-xs font-medium" x-text="f.label + ' (' + f.field_key + ')'"></label>
-                        {{-- boolean --}}
-                        <div x-show="dryRunRule(f)?.question_scoring_type === 'boolean'" class="flex gap-2">
-                            <label class="flex items-center gap-1.5 cursor-pointer">
-                                <input type="radio" x-model="dryRunAnswers[f.field_key]" :value="true" class="radio radio-sm radio-primary">
-                                <span class="text-sm">Có</span>
-                            </label>
-                            <label class="flex items-center gap-1.5 cursor-pointer">
-                                <input type="radio" x-model="dryRunAnswers[f.field_key]" :value="false" class="radio radio-sm">
-                                <span class="text-sm">Không</span>
-                            </label>
-                        </div>
-                        {{-- choice --}}
-                        <div x-show="['single_choice','multi_choice'].includes(dryRunRule(f)?.question_scoring_type)" class="flex flex-wrap gap-2">
-                            <template x-for="o in (dryRunRule(f)?.options || [])" :key="o.option_value">
-                                <label class="flex items-center gap-1.5 cursor-pointer">
-                                    <input x-show="dryRunRule(f)?.question_scoring_type === 'single_choice'"
-                                           type="radio" :name="'dr_' + f.field_key"
-                                           :value="o.option_value"
-                                           @change="dryRunAnswers[f.field_key] = $event.target.value"
-                                           class="radio radio-xs radio-primary">
-                                    <input x-show="dryRunRule(f)?.question_scoring_type === 'multi_choice'"
-                                           type="checkbox" :value="o.option_value"
-                                           @change="toggleDryRunMulti(f.field_key, o.option_value)"
-                                           class="checkbox checkbox-xs checkbox-primary">
-                                    <span class="text-sm" x-text="o.option_value"></span>
-                                </label>
-                            </template>
-                        </div>
-                        {{-- numeric --}}
-                        <input x-show="dryRunRule(f)?.question_scoring_type === 'numeric_range'"
-                               type="number"
-                               x-model.number="dryRunAnswers[f.field_key]"
-                               class="input input-sm w-full"
-                               :placeholder="'Nhập giá trị số cho ' + f.field_key">
-                    </div>
-                </template>
-            </div>
-            <div class="shrink-0 border-t border-base-200 p-5 space-y-3">
-                <button @click="runDryRun()" :disabled="dryRunLoading" class="btn btn-primary w-full gap-2">
-                    <span x-show="dryRunLoading" class="loading loading-spinner loading-sm"></span>
-                    Chạy thử
-                </button>
-                <div x-show="dryRunResult" class="rounded-xl border border-base-200 bg-base-50 p-3 text-xs space-y-1">
-                    <p class="font-bold text-sm mb-2">Kết quả</p>
-                    <template x-for="[code, ds] in Object.entries(dryRunResult?.domain_scores || {})" :key="code">
-                        <div class="flex justify-between">
-                            <span class="font-mono" x-text="code"></span>
-                            <span x-text="'raw: ' + ds.raw + ' → ' + ds.normalized + '%'"></span>
-                        </div>
-                    </template>
-                    <div class="divider my-1"></div>
-                    <div class="flex justify-between font-semibold">
-                        <span>Overall</span>
-                        <span x-text="dryRunResult?.overall_score + ' / 100'"></span>
-                    </div>
-                    <div x-show="dryRunResult?.classification?.band_code">
-                        Band: <span class="badge badge-sm badge-primary" x-text="dryRunResult?.classification?.band_code"></span>
-                    </div>
-                    <div x-show="dryRunResult?.pain_points?.length">
-                        Pain points: <span class="font-mono" x-text="dryRunResult?.pain_points?.join(', ')"></span>
-                    </div>
-                    <div x-show="dryRunResult?.recommendations?.length">
-                        Recs: <span class="font-mono" x-text="dryRunResult?.recommendations?.join(', ')"></span>
-                    </div>
-                </div>
-                <div x-show="dryRunError" class="alert alert-error text-xs py-2" x-text="dryRunError"></div>
             </div>
         </div>
     </div>
@@ -1167,18 +1025,14 @@ function scoringConfig(surveyId, csrfToken) {
     return {
         surveyId,
         csrfToken,
-        loading:    false,
-        saving:     false,
-        dirty:      false,
-        activeTab:  1,
+        loading:          false,
+        saving:           false,
+        savedCfg:         null,
+        showChangeDetail: false,
+        activeTab:        1,
         flash:      { text: '', type: 'success' },
         fields:     [],
         flags:      [],
-        dryRunOpen:    false,
-        dryRunLoading: false,
-        dryRunAnswers: {},
-        dryRunResult:  null,
-        dryRunError:   null,
         activeRoadmapBand: null,
 
         cfg: {
@@ -1193,7 +1047,6 @@ function scoringConfig(surveyId, csrfToken) {
             painPoints:         [],
             recommendations:    [],
             roadmap:            {},
-            jobPositions:       [],
         },
 
         // ── Options statiques ───────────────────────────────────────────────────
@@ -1237,7 +1090,6 @@ function scoringConfig(surveyId, csrfToken) {
                 { id: 5, label: '⑤ Outputs',    disabled: noScoring,      hasError: false,                            valid: this.cfg.painPoints.length > 0 || this.cfg.recommendations.length > 0 },
                 { id: 6, label: '⑥ Roadmap',    disabled: noScoring,      hasError: false,                            valid: Object.keys(this.cfg.roadmap).length > 0 },
                 { id: 7, label: '⑦ Review',     disabled: false,          hasError: this.hasErrors,                  valid: false },
-                { id: 8, label: '⑧ Vị trí',    disabled: noScoring,      hasError: false,                            valid: this.cfg.jobPositions.length > 0 },
             ];
         },
 
@@ -1276,7 +1128,7 @@ function scoringConfig(surveyId, csrfToken) {
             }
             items.push({ label: 'Pain points', status: 'ok', detail: this.cfg.painPoints.length + ' rules' });
             items.push({ label: 'Recommendations', status: 'ok', detail: this.cfg.recommendations.length + ' rules' });
-            items.push({ label: 'Dynamic weights (Phase 2)', status: 'warn', detail: 'Chưa kích hoạt' });
+
             this.domainErrors.forEach(e => items.push({ label: 'Lỗi', status: 'error', detail: e }));
             return items;
         },
@@ -1284,10 +1136,18 @@ function scoringConfig(surveyId, csrfToken) {
         // ── Init ────────────────────────────────────────────────────────────────
         async init() {
             await Promise.all([this.loadConfig(), this.loadFields(), this.loadFlags()]);
-            this.$watch('cfg', () => { this.dirty = true; }, { deep: true });
+            // Defer snapshot until Alpine has finished its first render pass — any
+            // template-driven mutations (e.g. getOrCreateRule placeholders) will
+            // already have settled, so the baseline truly reflects "no user edits".
+            await this.$nextTick();
+            this.snapshotCfg();
             window.addEventListener('beforeunload', (e) => {
                 if (this.dirty) { e.preventDefault(); e.returnValue = ''; }
             });
+        },
+
+        snapshotCfg() {
+            this.savedCfg = JSON.parse(JSON.stringify(this.cfg));
         },
 
         async loadConfig() {
@@ -1305,7 +1165,6 @@ function scoringConfig(surveyId, csrfToken) {
             this.cfg.painPoints      = res.pain_points || [];
             this.cfg.recommendations = res.recommendations || [];
             this.cfg.roadmap         = res.roadmap || {};
-            this.cfg.jobPositions    = (res.job_positions || []).map(jp => ({ ...jp, _open: false, _reqStr: JSON.stringify(jp.requirements || {}) }));
             // Phases cần _open flag
             Object.keys(this.cfg.roadmap).forEach(band => {
                 this.cfg.roadmap[band] = this.cfg.roadmap[band].map(p => ({ ...p, _open: false }));
@@ -1350,16 +1209,131 @@ function scoringConfig(surveyId, csrfToken) {
                         phases.map(({ _open, ...p }) => p),
                     ])
                 ),
-                job_positions:   this.cfg.jobPositions.map(({ _open, _reqStr, ...jp }) => ({
-                    ...jp,
-                    requirements: jp.requirements || {},
-                })),
             };
             const res = await this.api(`/dashboard/surveys/${this.surveyId}/scoring/config`, 'PUT', payload);
             if (res?.success) {
-                this.dirty = false;
+                await this.$nextTick();
+                this.snapshotCfg();
                 this.ok(res.message || 'Đã lưu thành công.');
             }
+        },
+
+        discardChanges() {
+            if (!this.savedCfg) return;
+            this.cfg = JSON.parse(JSON.stringify(this.savedCfg));
+            this.showChangeDetail = false;
+            if (this.roadmapBands.length > 0) this.activeRoadmapBand = this.roadmapBands[0];
+        },
+
+        stripUiState(obj) {
+            const cloned = JSON.parse(JSON.stringify(obj, (k, v) => k === '_open' ? undefined : v));
+            // Drop inactive rule placeholders that getOrCreateRule() injects during template render.
+            if (cloned && cloned.rules && typeof cloned.rules === 'object') {
+                for (const key of Object.keys(cloned.rules)) {
+                    const r = cloned.rules[key];
+                    if (!r || !r.question_scoring_type || r.question_scoring_type === 'none') {
+                        delete cloned.rules[key];
+                    }
+                }
+            }
+            return cloned;
+        },
+
+        get dirty() {
+            if (!this.savedCfg) return false;
+            return JSON.stringify(this.stripUiState(this.cfg)) !== JSON.stringify(this.stripUiState(this.savedCfg));
+        },
+
+        get diffSections() {
+            if (!this.savedCfg) return [];
+            const c = this.cfg, s = this.savedCfg;
+            const strip = obj => this.stripUiState(obj);
+            const eq    = (a, b) => JSON.stringify(strip(a)) === JSON.stringify(strip(b));
+
+            const diffList = (curr, saved, keyFn, labelFn) => {
+                const currMap  = new Map((curr  || []).map(x => [keyFn(x), x]));
+                const savedMap = new Map((saved || []).map(x => [keyFn(x), x]));
+                return {
+                    added:    (curr  || []).filter(x => !savedMap.has(keyFn(x))).map(labelFn),
+                    removed:  (saved || []).filter(x => !currMap.has(keyFn(x))).map(labelFn),
+                    modified: (curr  || []).filter(x => savedMap.has(keyFn(x)) && !eq(x, savedMap.get(keyFn(x)))).map(labelFn),
+                };
+            };
+            const push = (results, section, diff) => {
+                if (diff.added.length || diff.modified.length || diff.removed.length)
+                    results.push({ section, ...diff });
+            };
+
+            const results = [];
+
+            // Cài đặt chung
+            const generalMod = [];
+            const mdl = { weighted_domain: 'Weighted domain', simple_sum: 'Simple sum', average: 'Trung bình' };
+            const cls = { score_band: 'Score band', pass_fail: 'Pass/Fail', persona_match: 'Persona match' };
+            if (c.hasScoring !== s.hasScoring)
+                generalMod.push(`Kích hoạt: ${s.hasScoring ? 'Bật' : 'Tắt'} → ${c.hasScoring ? 'Bật' : 'Tắt'}`);
+            if (c.aggregationModel !== s.aggregationModel)
+                generalMod.push(`Mô hình: ${mdl[s.aggregationModel] || s.aggregationModel} → ${mdl[c.aggregationModel] || c.aggregationModel}`);
+            if (c.classificationType !== s.classificationType)
+                generalMod.push(`Phân loại: ${cls[s.classificationType] || s.classificationType} → ${cls[c.classificationType] || c.classificationType}`);
+            if (generalMod.length) results.push({ section: 'Cài đặt chung', added: [], modified: generalMod, removed: [] });
+
+            // Domain
+            push(results, 'Domain', diffList(c.domains, s.domains, d => d.domain_code, d => d.label || d.domain_code));
+
+            // Câu hỏi (rules là object keyed by field_key)
+            const cRules = c.rules || {}, sRules = s.rules || {};
+            const isActive = r => r && r.question_scoring_type && r.question_scoring_type !== 'none';
+            const fieldLabel = key => (this.fields.find(f => f.field_key === key) || {}).label || key;
+            const rAdded = [], rMod = [], rRemoved = [];
+            for (const key of new Set([...Object.keys(cRules), ...Object.keys(sRules)])) {
+                const was = sRules[key], now = cRules[key];
+                if (!isActive(was) && isActive(now))       rAdded.push(fieldLabel(key));
+                else if (isActive(was) && !isActive(now))  rRemoved.push(fieldLabel(key));
+                else if (isActive(was) && isActive(now) && !eq(now, was)) rMod.push(fieldLabel(key));
+            }
+            if (rAdded.length || rMod.length || rRemoved.length)
+                results.push({ section: 'Câu hỏi', added: rAdded, modified: rMod, removed: rRemoved });
+
+            // Band
+            push(results, 'Band', diffList(c.bands, s.bands, b => b.band_code, b => b.label || b.band_code));
+
+            // Pass/Fail
+            const pfKeys = { passing_score: 'Điểm đạt', label_pass: 'Nhãn đạt', label_fail: 'Nhãn không đạt' };
+            const pfMod = [];
+            for (const [k, lbl] of Object.entries(pfKeys))
+                if ((c.passFailConfig || {})[k] !== (s.passFailConfig || {})[k])
+                    pfMod.push(`${lbl}: ${s.passFailConfig[k]} → ${c.passFailConfig[k]}`);
+            if (pfMod.length) results.push({ section: 'Pass/Fail', added: [], modified: pfMod, removed: [] });
+
+            // Persona
+            push(results, 'Persona', diffList(c.personas, s.personas, p => p.persona_code, p => p.label || p.persona_code));
+
+            // Pain Point
+            push(results, 'Pain Point', diffList(c.painPoints, s.painPoints, p => p.pain_point_code, p => p.label || p.pain_point_code));
+
+            // Đề xuất
+            push(results, 'Đề xuất', diffList(c.recommendations, s.recommendations, r => r.recommendation_code, r => r.label || r.recommendation_code));
+
+            // Roadmap (nested: band → phases)
+            const rAdded2 = [], rMod2 = [], rRem2 = [];
+            for (const band of new Set([...Object.keys(c.roadmap || {}), ...Object.keys(s.roadmap || {})])) {
+                const d = diffList(
+                    (c.roadmap || {})[band] || [],
+                    (s.roadmap || {})[band] || [],
+                    p => p.phase_code,
+                    p => `[${band}] ${p.title || p.phase_code}`
+                );
+                rAdded2.push(...d.added); rMod2.push(...d.modified); rRem2.push(...d.removed);
+            }
+            if (rAdded2.length || rMod2.length || rRem2.length)
+                results.push({ section: 'Roadmap', added: rAdded2, modified: rMod2, removed: rRem2 });
+
+            return results;
+        },
+
+        get totalChanges() {
+            return this.diffSections.reduce((n, s) => n + s.added.length + s.modified.length + s.removed.length, 0);
         },
 
         // ── Domain CRUD ─────────────────────────────────────────────────────────
@@ -1449,31 +1423,6 @@ function scoringConfig(surveyId, csrfToken) {
         moveRecUp(idx)        { if (idx > 0) [this.cfg.recommendations[idx-1], this.cfg.recommendations[idx]] = [this.cfg.recommendations[idx], this.cfg.recommendations[idx-1]]; },
         moveRecDown(idx)      { if (idx < this.cfg.recommendations.length-1) [this.cfg.recommendations[idx+1], this.cfg.recommendations[idx]] = [this.cfg.recommendations[idx], this.cfg.recommendations[idx+1]]; },
 
-        // ── Job Position CRUD ────────────────────────────────────────────────────
-        addJobPosition() {
-            this.cfg.jobPositions.push({
-                position_code: '', title: '', description: '',
-                min_overall_score: null, requirements: {}, sort_order: this.cfg.jobPositions.length,
-                is_active: true, _open: false, _reqStr: '{}',
-            });
-        },
-        removeJobPosition(idx) { this.cfg.jobPositions.splice(idx, 1); },
-        addRequirement(jp) {
-            const dc = prompt('Domain code (vd: leadership):');
-            if (!dc || !dc.trim()) return;
-            const ms = parseFloat(prompt('Điểm normalized tối thiểu (0-100):', '60'));
-            if (isNaN(ms)) return;
-            if (!jp.requirements) jp.requirements = {};
-            jp.requirements[dc.trim()] = ms;
-        },
-        removeRequirement(jp, domainCode) {
-            if (jp.requirements) {
-                const reqs = { ...jp.requirements };
-                delete reqs[domainCode];
-                jp.requirements = reqs;
-            }
-        },
-
         // ── Roadmap CRUD ────────────────────────────────────────────────────────
         getRoadmapPhases(band) {
             if (!this.cfg.roadmap[band]) this.cfg.roadmap[band] = [];
@@ -1500,49 +1449,6 @@ function scoringConfig(surveyId, csrfToken) {
         moveMilestoneDown(band, pIdx, mIdx)     {
             const ms = this.cfg.roadmap[band][pIdx].milestones;
             if (ms && mIdx < ms.length-1) [ms[mIdx+1], ms[mIdx]] = [ms[mIdx], ms[mIdx+1]];
-        },
-
-        // ── Dry-run ─────────────────────────────────────────────────────────────
-        dryRunRule(field) { return this.cfg.rules[field.field_key] || null; },
-
-        toggleDryRunMulti(fieldKey, value) {
-            if (!Array.isArray(this.dryRunAnswers[fieldKey])) this.dryRunAnswers[fieldKey] = [];
-            const arr = this.dryRunAnswers[fieldKey];
-            const idx = arr.indexOf(value);
-            if (idx >= 0) arr.splice(idx, 1); else arr.push(value);
-        },
-
-        async runDryRun() {
-            this.dryRunLoading = true;
-            this.dryRunResult  = null;
-            this.dryRunError   = null;
-
-            // Build answer payload in AnswerReader format
-            const answers = {};
-            for (const f of this.fields) {
-                const rule = this.dryRunRule(f);
-                if (!rule || rule.question_scoring_type === 'none') continue;
-                const raw = this.dryRunAnswers[f.field_key];
-                if (raw === undefined || raw === null) continue;
-                const type = rule.question_scoring_type;
-                if (type === 'boolean') {
-                    answers[f.field_key] = { type: 'boolean', value: !!raw };
-                } else if (type === 'single_choice') {
-                    answers[f.field_key] = { type: 'choice', values: [raw] };
-                } else if (type === 'multi_choice') {
-                    answers[f.field_key] = { type: 'choice', values: Array.isArray(raw) ? raw : [raw] };
-                } else if (type === 'numeric_range') {
-                    answers[f.field_key] = { type: 'number', value: parseFloat(raw) };
-                }
-            }
-
-            const res = await this.api(`/dashboard/surveys/${this.surveyId}/scoring/dry-run`, 'POST', { answers });
-            if (res?.error) {
-                this.dryRunError = res.error;
-            } else {
-                this.dryRunResult = res;
-            }
-            this.dryRunLoading = false;
         },
 
         // ── Export ──────────────────────────────────────────────────────────────

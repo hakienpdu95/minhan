@@ -5,6 +5,7 @@ namespace Modules\Survey\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Modules\Survey\Actions\CalculateSurveyScoreAction;
 use Modules\Survey\Models\AssessmentDomain;
@@ -12,6 +13,7 @@ use Modules\Survey\Models\MaturityLevel;
 use Modules\Survey\Models\PainPointRule;
 use Modules\Survey\Models\RecommendationRule;
 use Modules\Survey\Models\ScoreBand;
+use Modules\Survey\Models\ScoringFeedback;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyResponse;
 use Modules\Survey\Models\SurveyResult;
@@ -132,7 +134,6 @@ class SurveyResultController extends Controller
                 'painPoints',
                 'recommendations',
                 'roadmapPhases.phase.milestones',
-                'jobPositions',
             ])
             ->first();
 
@@ -148,8 +149,14 @@ class SurveyResultController extends Controller
                 ->pluck('label', 'domain_code')
             : collect();
 
+        $feedback = $result
+            ? ScoringFeedback::where('result_id', $result->id)->first()
+            : null;
+
+        $bands = $this->loadBands($survey->assessment_code);
+
         return view('survey::results.show', compact(
-            'survey', 'response', 'result', 'recLabels', 'domainLabels'
+            'survey', 'response', 'result', 'recLabels', 'domainLabels', 'feedback', 'bands'
         ));
     }
 
@@ -227,7 +234,58 @@ class SurveyResultController extends Controller
         return response()->json(['success' => true, 'message' => 'Đã tính lại điểm thành công.']);
     }
 
+    // ── T6: Admin xác nhận actual_band ───────────────────────────────────────
+
+    public function submitFeedback(
+        Survey         $survey,
+        SurveyResponse $response,
+        Request        $request,
+    ): JsonResponse {
+        $this->authorize('survey.update');
+        $this->checkOwnership($response, $survey);
+
+        $result = SurveyResult::forResponse($response->id)->first();
+        if (!$result) {
+            return response()->json(['success' => false, 'message' => 'Chưa có kết quả chấm điểm.'], 422);
+        }
+
+        $validCodes = $this->loadBands($result->assessment_code)
+            ->pluck('code')
+            ->all();
+
+        $data = $request->validate([
+            'actual_band' => ['required', 'string', 'max:60', Rule::in($validCodes)],
+        ]);
+
+        ScoringFeedback::where('result_id', $result->id)->update([
+            'actual_band'  => $data['actual_band'],
+            'is_processed' => false,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Đã xác nhận band thực tế.']);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /** @return \Illuminate\Support\Collection<int, array{code:string,label:string}> */
+    private function loadBands(?string $assessmentCode): \Illuminate\Support\Collection
+    {
+        if (!$assessmentCode) {
+            return collect();
+        }
+
+        $bands = ScoreBand::forAssessment($assessmentCode)->ordered()
+            ->get(['band_code', 'label'])
+            ->map(fn ($b) => ['code' => $b->band_code, 'label' => $b->label]);
+
+        if ($bands->isEmpty()) {
+            $bands = MaturityLevel::where('assessment_code', $assessmentCode)->ordered()
+                ->get(['level_code', 'label'])
+                ->map(fn ($b) => ['code' => $b->level_code, 'label' => $b->label]);
+        }
+
+        return $bands;
+    }
 
     private function checkOwnership(SurveyResponse $response, Survey $survey): void
     {

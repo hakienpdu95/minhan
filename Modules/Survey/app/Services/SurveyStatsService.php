@@ -74,10 +74,10 @@ class SurveyStatsService
     {
         $totalResponses = $this->countCompleteResponses($survey->id);
 
-        // Load tất cả active fields + options (choice fields cần options để map label)
+        // Load tất cả active fields + options + rows (choice/matrix cần options, matrix cần rows)
         $fields = SurveyField::forSurvey($survey->id)
             ->active()
-            ->with(['options' => fn ($q) => $q->ordered(), 'section'])
+            ->with(['options' => fn ($q) => $q->ordered(), 'rows' => fn ($q) => $q->orderBy('sort_order'), 'section'])
             ->ordered()
             ->get();
 
@@ -88,13 +88,16 @@ class SurveyStatsService
         $booleanIds  = $fields->filter(fn ($f) => $f->field_type === FieldType::Boolean)->pluck('id')->all();
         $textIds     = $fields->filter(fn ($f) => $f->field_type === FieldType::Text)->pluck('id')->all();
         $textareaIds = $fields->filter(fn ($f) => $f->field_type === FieldType::Textarea)->pluck('id')->all();
+        $npsIds      = $fields->filter(fn ($f) => $f->field_type === FieldType::Nps)->pluck('id')->all();
+        $matrixIds   = $fields->filter(fn ($f) => $f->field_type === FieldType::Matrix)->pluck('id')->all();
+        $rankingIds  = $fields->filter(fn ($f) => $f->field_type === FieldType::Ranking)->pluck('id')->all();
 
         // Checkbox fields need per-field respondent count as denominator (not total_responses),
         // because one respondent can tick multiple options, making percentages > 100% otherwise.
         $checkboxIds = $fields->filter(fn ($f) => $f->field_type === FieldType::Checkbox)->pluck('id')->all();
         $checkboxRespondentCounts = $this->batchCheckboxRespondentCounts($checkboxIds);
 
-        // 6 batch queries — một lần mỗi loại, tất cả index-backed
+        // Batch queries — một lần mỗi loại, tất cả index-backed
         $choiceStats   = $this->batchChoiceStats($choiceIds, $fields, $totalResponses, $checkboxRespondentCounts);
         $ratingStats   = $this->batchRatingStats($ratingIds);
         $numberStats   = $this->batchNumberStats($numberIds);
@@ -102,7 +105,26 @@ class SurveyStatsService
         $textStats     = $this->batchTextStats($textIds);
         $textareaStats = $this->batchTextareaStats($textareaIds);
 
-        $allStats = $choiceStats + $ratingStats + $numberStats + $booleanStats + $textStats + $textareaStats;
+        // NPS: individual queries (one per field) — typically few NPS fields per survey
+        $npsStats    = [];
+        foreach ($npsIds as $id) {
+            $npsStats[$id] = $this->npsScore($survey->id, $id);
+        }
+
+        // Matrix/Ranking: individual queries — typically few per survey
+        $matrixStats  = [];
+        foreach ($matrixIds as $id) {
+            $f = $fields->firstWhere('id', $id);
+            $matrixStats[$id] = $this->computeMatrixBreakdown($f, $totalResponses);
+        }
+        $rankingStats = [];
+        foreach ($rankingIds as $id) {
+            $f = $fields->firstWhere('id', $id);
+            $rankingStats[$id] = $this->computeRankingBreakdown($f);
+        }
+
+        $allStats = $choiceStats + $ratingStats + $numberStats + $booleanStats
+            + $textStats + $textareaStats + $npsStats + $matrixStats + $rankingStats;
 
         return [
             'total_responses' => $totalResponses,
@@ -400,6 +422,195 @@ class SurveyStatsService
             ->keyBy('field_id');
 
         return $this->buildTextResult($fieldIds, $rows);
+    }
+
+    // ── Task 14: Per-field breakdown ──────────────────────────────────────
+
+    /**
+     * Return detailed stats for a single field.
+     * For NPS fields, delegates to npsScore(). For Matrix/Ranking, uses dedicated queries.
+     *
+     * @return array{type: string, ...}
+     */
+    public function fieldBreakdown(int $surveyId, int $fieldId): array
+    {
+        $field = SurveyField::where('survey_id', $surveyId)
+            ->where('id', $fieldId)
+            ->with(['options' => fn ($q) => $q->ordered(), 'rows' => fn ($q) => $q->orderBy('sort_order')])
+            ->firstOrFail();
+
+        $totalResponses = $this->countCompleteResponses($surveyId);
+
+        return match ($field->field_type) {
+            FieldType::Nps => $this->npsScore($surveyId, $fieldId),
+
+            FieldType::Matrix => $this->computeMatrixBreakdown($field, $totalResponses),
+
+            FieldType::Ranking => $this->computeRankingBreakdown($field),
+
+            FieldType::Select,
+            FieldType::Radio,
+            FieldType::Checkbox => ($this->batchChoiceStats(
+                [$fieldId],
+                collect([$field->id => $field])->keyBy('id'),
+                $totalResponses,
+                $field->field_type === FieldType::Checkbox
+                    ? $this->batchCheckboxRespondentCounts([$fieldId])
+                    : []
+            ))[$fieldId] ?? ['type' => 'choice', 'distribution' => []],
+
+            FieldType::Rating => ($this->batchRatingStats([$fieldId]))[$fieldId]
+                ?? ['type' => 'rating', 'count' => 0, 'avg' => null, 'min' => null, 'max' => null, 'distribution' => []],
+
+            FieldType::Number => ($this->batchNumberStats([$fieldId]))[$fieldId]
+                ?? ['type' => 'number', 'count' => 0, 'avg' => null, 'min' => null, 'max' => null],
+
+            FieldType::Boolean => ($this->batchBooleanStats([$fieldId]))[$fieldId]
+                ?? ['type' => 'boolean', 'yes_count' => 0, 'no_count' => 0, 'total' => 0],
+
+            FieldType::Text => ($this->batchTextStats([$fieldId]))[$fieldId]
+                ?? ['type' => 'text', 'count' => 0],
+
+            FieldType::Textarea => ($this->batchTextareaStats([$fieldId]))[$fieldId]
+                ?? ['type' => 'text', 'count' => 0],
+
+            FieldType::Date => ['type' => 'date', 'count' => DB::table('survey_answers')
+                ->where('field_id', $fieldId)->whereNotNull('value_date')->count()],
+        };
+    }
+
+    /**
+     * NPS score for a single NPS field.
+     *
+     * @return array{type: string, total: int, promoters: int, passives: int, detractors: int, nps_score: float, distribution: array}
+     */
+    public function npsScore(int $surveyId, int $fieldId): array
+    {
+        $rows = DB::table('survey_answers')
+            ->selectRaw('CAST(value_number AS UNSIGNED) AS score, COUNT(*) AS cnt')
+            ->where('field_id', $fieldId)
+            ->whereNotNull('value_number')
+            ->groupByRaw('CAST(value_number AS UNSIGNED)')
+            ->orderByRaw('CAST(value_number AS UNSIGNED)')
+            ->get()
+            ->keyBy('score');
+
+        $distribution = [];
+        $promoters = 0;
+        $passives  = 0;
+        $detractors = 0;
+        $total = 0;
+
+        for ($s = 0; $s <= 10; $s++) {
+            $count = (int) ($rows->get($s)?->cnt ?? 0);
+            $distribution[] = ['score' => $s, 'count' => $count];
+            $total += $count;
+
+            if ($s >= 9) {
+                $promoters += $count;
+            } elseif ($s >= 7) {
+                $passives += $count;
+            } else {
+                $detractors += $count;
+            }
+        }
+
+        $npsScore = $total > 0
+            ? round(($promoters - $detractors) / $total * 100, 1)
+            : 0.0;
+
+        return [
+            'type'         => 'nps',
+            'total'        => $total,
+            'promoters'    => $promoters,
+            'passives'     => $passives,
+            'detractors'   => $detractors,
+            'nps_score'    => $npsScore,
+            'distribution' => $distribution,
+        ];
+    }
+
+    private function computeMatrixBreakdown(SurveyField $field, int $totalResponses): array
+    {
+        $rows = $field->rows;
+        $cols = $field->options;
+
+        if ($rows->isEmpty() || $cols->isEmpty()) {
+            return ['type' => 'matrix', 'rows' => [], 'columns' => []];
+        }
+
+        // One query: GROUP BY (row_key, option_id) for all rows of this field
+        $counts = DB::table('survey_answers')
+            ->selectRaw('row_key, option_id, COUNT(*) AS cnt')
+            ->where('field_id', $field->id)
+            ->whereNotNull('row_key')
+            ->whereNotNull('option_id')
+            ->groupBy('row_key', 'option_id')
+            ->get()
+            ->groupBy('row_key')
+            ->map(fn ($g) => $g->keyBy('option_id'));
+
+        $colDefs = $cols->map(fn ($c) => ['option_id' => $c->id, 'label' => $c->label, 'option_value' => $c->option_value])->values()->all();
+
+        $rowData = $rows->map(function ($row) use ($counts, $cols, $totalResponses) {
+            $rowCounts = $counts->get($row->row_key, collect());
+            $colCounts = $cols->map(function ($col) use ($rowCounts, $totalResponses) {
+                $count = (int) ($rowCounts->get($col->id)?->cnt ?? 0);
+                return [
+                    'option_id'    => $col->id,
+                    'option_value' => $col->option_value,
+                    'count'        => $count,
+                    'percent'      => $totalResponses > 0 ? round($count / $totalResponses * 100, 1) : 0.0,
+                ];
+            })->values()->all();
+
+            return [
+                'row_key'  => $row->row_key,
+                'label'    => $row->label,
+                'col_counts' => $colCounts,
+            ];
+        })->values()->all();
+
+        return [
+            'type'    => 'matrix',
+            'columns' => $colDefs,
+            'rows'    => $rowData,
+        ];
+    }
+
+    private function computeRankingBreakdown(SurveyField $field): array
+    {
+        $options = $field->options;
+
+        if ($options->isEmpty()) {
+            return ['type' => 'ranking', 'options' => []];
+        }
+
+        // Average rank per option (lower = ranked higher/earlier)
+        $rows = DB::table('survey_answers')
+            ->selectRaw('option_id, COUNT(*) AS cnt, AVG(value_number) AS avg_rank')
+            ->where('field_id', $field->id)
+            ->whereNotNull('option_id')
+            ->whereNotNull('value_number')
+            ->groupBy('option_id')
+            ->get()
+            ->keyBy('option_id');
+
+        $optionData = $options->map(function ($opt) use ($rows) {
+            $row = $rows->get($opt->id);
+            return [
+                'option_id'    => $opt->id,
+                'option_value' => $opt->option_value,
+                'label'        => $opt->label,
+                'count'        => (int) ($row?->cnt ?? 0),
+                'avg_rank'     => $row?->avg_rank !== null ? round((float) $row->avg_rank, 2) : null,
+            ];
+        })->sortBy('avg_rank')->values()->all();
+
+        return [
+            'type'    => 'ranking',
+            'options' => $optionData,
+        ];
     }
 
     // ── Task 4.4: Total responses per day ─────────────────────────────────

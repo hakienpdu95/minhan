@@ -3,10 +3,12 @@
 namespace Modules\Survey\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
 use Modules\Survey\Models\AssessmentDomain;
 use Modules\Survey\Models\MaturityLevel;
 use Modules\Survey\Models\ResultDomainScore;
 use Modules\Survey\Models\Survey;
+use Modules\Survey\Models\SurveyField;
 use Modules\Survey\Models\SurveyResult;
 use Modules\Survey\Services\SurveyStatsService;
 
@@ -44,5 +46,27 @@ class StatsController extends Controller
         }
 
         return view('survey::stats.index', compact('survey', 'stats', 'byDay', 'scoringData'));
+    }
+
+    /**
+     * GET /{survey}/stats/fields/{field} — per-field breakdown for chart rendering.
+     * Returns JSON; consumed by Alpine.js on the stats page.
+     */
+    public function fieldStats(Survey $survey, SurveyField $field, SurveyStatsService $service): JsonResponse
+    {
+        $this->authorize('survey.view_responses');
+
+        if ($field->survey_id !== $survey->id) {
+            abort(404);
+        }
+
+        $breakdown = $service->fieldBreakdown($survey->id, $field->id);
+
+        return response()->json([
+            'field_key'  => $field->field_key,
+            'label'      => $field->label,
+            'field_type' => $field->field_type->name,
+            'stats'      => $breakdown,
+        ]);
     }
 }

@@ -16,8 +16,11 @@ use Modules\Survey\Enums\SurveyStatus;
 use Modules\Survey\Exceptions\SurveyNotActiveException;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyAnswer;
+use Modules\Survey\Models\SurveyDraft;
 use Modules\Survey\Models\SurveyField;
+use Modules\Survey\Models\SurveyFieldCondition;
 use Modules\Survey\Models\SurveyResponse;
+use Modules\Survey\Services\WebhookDispatcher;
 use Modules\Survey\Jobs\CalculateSurveyScoreJob;
 use Modules\Survey\Services\SurveyStatsService;
 use Modules\Survey\Support\AnswerValueResolver;
@@ -36,6 +39,7 @@ class SubmitSurveyAction
 
     public function __construct(
         private readonly AnswerValueResolver $resolver,
+        private readonly WebhookDispatcher  $webhooks,
     ) {}
 
     /**
@@ -50,7 +54,20 @@ class SubmitSurveyAction
             throw new SurveyNotActiveException($survey->status);
         }
 
-        // Chính sách duplicate: Allow — cùng respondent_ref được submit nhiều lần.
+        // Dedup: nếu survey không cho phép nhiều lần submit
+        if (! $survey->allow_multiple_responses && $data->respondent_ref !== null) {
+            $exists = SurveyResponse::forSurvey($survey->id)
+                ->where('respondent_ref', $data->respondent_ref)
+                ->where('status', ResponseStatus::Complete->value)
+                ->exists();
+
+            if ($exists) {
+                throw ValidationException::withMessages([
+                    'respondent_ref' => 'Bạn đã hoàn thành khảo sát này rồi.',
+                ]);
+            }
+        }
+
         // Log warning nếu cùng ref submit trong vòng 5 phút (phát hiện bot/spam).
         if ($data->respondent_ref !== null) {
             $recentExists = SurveyResponse::forSurvey($survey->id)
@@ -114,6 +131,22 @@ class SubmitSurveyAction
             CalculateSurveyScoreJob::dispatch($responseId);
         }
 
+        // Dispatch webhook for response.created event
+        $this->webhooks->dispatch($survey->id, 'response.created', [
+            'survey_id'      => $survey->id,
+            'survey_slug'    => $survey->slug,
+            'response_id'    => $responseId,
+            'respondent_ref' => $data->respondent_ref,
+            'submitted_at'   => now()->toISOString(),
+        ]);
+
+        // Clear server-side draft if one exists for this respondent
+        if ($data->respondent_ref !== null) {
+            SurveyDraft::where('survey_id', $survey->id)
+                ->where('respondent_ref', $data->respondent_ref)
+                ->delete();
+        }
+
         return $responseId;
     }
 
@@ -124,7 +157,11 @@ class SubmitSurveyAction
     {
         return SurveyField::forSurvey($survey->id)
             ->active()
-            ->with(['options' => fn ($q) => $q->ordered()])
+            ->with([
+                'options'    => fn ($q) => $q->ordered(),
+                'conditions' => fn ($q) => $q->orderBy('sort_order'),
+                'rows'       => fn ($q) => $q->orderBy('sort_order'),
+            ])
             ->get()
             ->keyBy('field_key');
     }
@@ -141,6 +178,15 @@ class SubmitSurveyAction
     {
         $errors          = [];
         $submittedFields = []; // field_key => SurveyAnswerData (để layer 4 dùng)
+
+        // Build answer value map for conditional visibility evaluation
+        $answerValues = [];
+        foreach ($answers as $answer) {
+            $answerValues[$answer->field_key] = $answer->value;
+        }
+
+        // Compute which fields are hidden by conditions
+        $hiddenFields = $this->computeHiddenFields($fieldMap, $answerValues);
 
         foreach ($answers as $answer) {
             /** @var SurveyAnswerData $answer */
@@ -174,9 +220,64 @@ class SubmitSurveyAction
         }
 
         // Layer 4 — required fields (chạy sau khi có đủ danh sách đã submit)
-        $this->layer4($submittedFields, $fieldMap, $errors);
+        $this->layer4($submittedFields, $fieldMap, $errors, $hiddenFields);
 
         return $errors;
+    }
+
+    // ── Conditional visibility ────────────────────────────────────────────
+
+    /**
+     * Compute which field_keys are hidden based on conditions.
+     * Mirrors the client-side evalCondition logic for consistency.
+     *
+     * @param  Collection<string, SurveyField>  $fieldMap
+     * @param  array<string, mixed>             $answerValues  [field_key => raw value from submission]
+     * @return array<string, bool>              [field_key => true if hidden]
+     */
+    private function computeHiddenFields(Collection $fieldMap, array $answerValues): array
+    {
+        $hidden = [];
+
+        foreach ($fieldMap as $fieldKey => $field) {
+            if (! $field->relationLoaded('conditions') || $field->conditions->isEmpty()) {
+                continue;
+            }
+
+            foreach ($field->conditions as $condition) {
+                // Resolve the depends_on field_key
+                $depField = $fieldMap->first(fn ($f) => $f->id === $condition->depends_on_field_id);
+                if (! $depField) {
+                    continue;
+                }
+
+                $depVal    = $answerValues[$depField->field_key] ?? null;
+                $condMet   = $this->evalCondition($depVal, $condition->operator, $condition->trigger_value);
+                $isVisible = $condition->action === 'show' ? $condMet : !$condMet;
+
+                if (! $isVisible) {
+                    $hidden[$fieldKey] = true;
+                    break; // any single condition making it hidden is enough
+                }
+            }
+        }
+
+        return $hidden;
+    }
+
+    private function evalCondition(mixed $val, string $op, mixed $target): bool
+    {
+        return match ($op) {
+            '='        => $val == $target,
+            '!='       => $val != $target,
+            'in'       => is_array($target) && in_array($val, $target, false),
+            'not_in'   => is_array($target) && ! in_array($val, $target, false),
+            'answered' => $val !== null && $val !== '' && $val !== [],
+            '>'        => is_numeric($val) && is_numeric($target) && (float) $val > (float) $target,
+            '<'        => is_numeric($val) && is_numeric($target) && (float) $val < (float) $target,
+            'contains' => is_array($val) && in_array($target, $val, false),
+            default    => true,
+        };
     }
 
     // ── Layer 1 — field_key tồn tại + is_active ──────────────────────────
@@ -209,12 +310,17 @@ class SubmitSurveyAction
             FieldType::Number,
             FieldType::Rating   => $this->assertNumeric($key, $value, $errors),
 
+            FieldType::Nps      => $this->assertNps($key, $value, $errors),
+
             FieldType::Date     => $this->assertDate($key, $value, $errors),
 
             FieldType::Boolean  => $this->assertBoolean($key, $value, $errors),
 
             FieldType::Text,
             FieldType::Textarea => $this->assertString($key, $value, $errors),
+
+            FieldType::Matrix   => $this->assertMatrix($key, $value, $field, $errors),
+            FieldType::Ranking  => $this->assertRanking($key, $value, $field, $errors),
         };
     }
 
@@ -266,6 +372,53 @@ class SubmitSurveyAction
         }
     }
 
+    private function assertNps(string $key, mixed $value, array &$errors): void
+    {
+        if (!is_numeric($value) || (int) $value < 0 || (int) $value > 10) {
+            $errors[$key][] = 'NPS phải là số nguyên từ 0 đến 10.';
+        }
+    }
+
+    private function assertMatrix(string $key, mixed $value, SurveyField $field, array &$errors): void
+    {
+        if (!is_array($value) || empty($value)) {
+            $errors[$key][] = 'Trường ma trận phải là một object có dạng {row_key: option_value}.';
+            return;
+        }
+
+        $validRowKeys    = $field->rows->pluck('row_key')->all();
+        $validOptionVals = $field->options->pluck('option_value')->all();
+
+        foreach ($value as $rowKey => $optionValue) {
+            if (!in_array($rowKey, $validRowKeys, true)) {
+                $errors[$key][] = "Row key '$rowKey' không hợp lệ cho trường '{$key}'.";
+            }
+            if (!in_array((string) $optionValue, $validOptionVals, true)) {
+                $errors[$key][] = "Lựa chọn '$optionValue' không hợp lệ cho trường '{$key}' row '$rowKey'.";
+            }
+        }
+    }
+
+    private function assertRanking(string $key, mixed $value, SurveyField $field, array &$errors): void
+    {
+        if (!is_array($value) || empty($value)) {
+            $errors[$key][] = 'Trường xếp hạng phải là một mảng các giá trị lựa chọn.';
+            return;
+        }
+
+        $validOptionVals = $field->options->pluck('option_value')->all();
+
+        foreach ($value as $optionValue) {
+            if (!in_array((string) $optionValue, $validOptionVals, true)) {
+                $errors[$key][] = "Lựa chọn '$optionValue' không hợp lệ cho trường '{$key}'.";
+            }
+        }
+
+        if (count(array_unique(array_map('strval', $value))) !== count($value)) {
+            $errors[$key][] = 'Xếp hạng không được có giá trị trùng lặp.';
+        }
+    }
+
     // ── Layer 3 — option_value hợp lệ + is_other text ────────────────────
 
     private function layer3(SurveyAnswerData $answer, SurveyField $field, array &$errors): void
@@ -297,12 +450,13 @@ class SubmitSurveyAction
     // ── Layer 4 — required fields ─────────────────────────────────────────
 
     /**
-     * @param array<string, SurveyAnswerData> $submittedFields
+     * @param array<string, SurveyAnswerData>  $submittedFields
+     * @param array<string, bool>              $hiddenFields  [field_key => true] for hidden fields
      */
-    private function layer4(array $submittedFields, Collection $fieldMap, array &$errors): void
+    private function layer4(array $submittedFields, Collection $fieldMap, array &$errors, array $hiddenFields = []): void
     {
         $fieldMap
-            ->filter(fn (SurveyField $f) => $f->is_required)
+            ->filter(fn (SurveyField $f) => $f->is_required && ! isset($hiddenFields[$f->field_key]))
             ->each(function (SurveyField $field) use ($submittedFields, &$errors): void {
                 $key = $field->field_key;
 
@@ -381,6 +535,7 @@ class SubmitSurveyAction
         $baseRow = [
             'response_id'  => $responseId,
             'field_id'     => $field->id,
+            'row_key'      => null,
             'option_id'    => null,
             'value_string' => null,
             'value_text'   => null,
@@ -389,6 +544,38 @@ class SubmitSurveyAction
             'value_bool'   => null,
             'created_at'   => now(),
         ];
+
+        if ($field->field_type->isMatrixLike()) {
+            // value = {row_key: option_value, ...}
+            $optionsByValue = $field->options->keyBy('option_value');
+            $rows = [];
+            foreach ((array) $answer->value as $rowKey => $optionValue) {
+                $option = $optionsByValue[(string) $optionValue] ?? null;
+                if ($option) {
+                    $rows[] = array_merge($baseRow, [
+                        'row_key'   => (string) $rowKey,
+                        'option_id' => $option->id,
+                    ]);
+                }
+            }
+            return $rows;
+        }
+
+        if ($field->field_type->isRanking()) {
+            // value = ['opt_val1', 'opt_val2', ...] — first element = rank 1
+            $optionsByValue = $field->options->keyBy('option_value');
+            $rows = [];
+            foreach (array_values((array) $answer->value) as $rank => $optionValue) {
+                $option = $optionsByValue[(string) $optionValue] ?? null;
+                if ($option) {
+                    $rows[] = array_merge($baseRow, [
+                        'option_id'    => $option->id,
+                        'value_number' => $rank + 1,
+                    ]);
+                }
+            }
+            return $rows;
+        }
 
         if ($field->field_type->isChoice()) {
             $optionsByValue = $field->options->keyBy('option_value');

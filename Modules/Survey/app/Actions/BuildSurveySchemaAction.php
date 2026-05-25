@@ -65,9 +65,11 @@ class BuildSurveySchemaAction
         $survey = Survey::active()
             ->bySlug($slug)
             ->with([
-                'sections'                => fn ($q) => $q->ordered(),
-                'sections.fields'         => fn ($q) => $q->active()->ordered(),
-                'sections.fields.options' => fn ($q) => $q->ordered(),
+                'sections'                      => fn ($q) => $q->ordered(),
+                'sections.fields'               => fn ($q) => $q->active()->ordered(),
+                'sections.fields.options'       => fn ($q) => $q->ordered(),
+                'sections.fields.conditions'    => fn ($q) => $q->orderBy('sort_order'),
+                'sections.fields.rows'          => fn ($q) => $q->orderBy('sort_order'),
             ])
             ->firstOrFail();
 
@@ -93,7 +95,15 @@ class BuildSurveySchemaAction
                         'field_key' => $field->field_key,
                         'label'     => $field->label,
                     ]);
+                    return false;
+                }
 
+                if ($field->field_type === FieldType::Matrix && $field->rows->isEmpty()) {
+                    Log::warning('survey.schema.matrix_field_no_rows', [
+                        'survey_id' => $survey->id,
+                        'field_key' => $field->field_key,
+                        'label'     => $field->label,
+                    ]);
                     return false;
                 }
 

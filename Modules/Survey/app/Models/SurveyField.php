@@ -78,6 +78,16 @@ class SurveyField extends Model
         return $this->hasMany(SurveyAnswer::class, 'field_id');
     }
 
+    public function conditions(): HasMany
+    {
+        return $this->hasMany(SurveyFieldCondition::class, 'field_id')->orderBy('sort_order');
+    }
+
+    public function rows(): HasMany
+    {
+        return $this->hasMany(SurveyFieldRow::class, 'field_id')->orderBy('sort_order');
+    }
+
     // ── Scopes ────────────────────────────────────────────────────────
 
     public function scopeActive(Builder $query): Builder

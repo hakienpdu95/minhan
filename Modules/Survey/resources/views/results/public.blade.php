@@ -244,46 +244,6 @@
     </div>
     @endif
 
-    {{-- ── Job Positions ─────────────────────────────────────────────────── --}}
-    @if($result->jobPositions->isNotEmpty())
-    @php
-        $jobDefs = \Modules\Survey\Models\JobPosition::forAssessment($survey->assessment_code)
-            ->pluck('title', 'position_code');
-    @endphp
-    <div class="card bg-base-100 shadow-sm">
-        <div class="card-body py-5 space-y-3">
-            <h2 class="card-title text-base flex items-center gap-2">
-                <svg class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                </svg>
-                Vị trí công việc phù hợp
-            </h2>
-            <div class="space-y-2">
-                @foreach($result->jobPositions as $jp)
-                @php
-                    $matchPct = round($jp->match_score);
-                    $matchColor = $matchPct >= 80 ? 'text-success' : ($matchPct >= 60 ? 'text-primary' : 'text-warning');
-                    $barColor = $matchPct >= 80 ? 'progress-success' : ($matchPct >= 60 ? 'progress-primary' : 'progress-warning');
-                @endphp
-                <div class="flex items-center gap-3 p-3 rounded-lg bg-base-200/40">
-                    <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-sm text-base-content">
-                            {{ $jobDefs[$jp->position_code] ?? $jp->position_code }}
-                        </p>
-                        <progress class="progress {{ $barColor }} w-full h-2 mt-1" value="{{ $matchPct }}" max="100"></progress>
-                    </div>
-                    <div class="shrink-0 text-right">
-                        <span class="text-xl font-bold {{ $matchColor }}">{{ $matchPct }}%</span>
-                        <p class="text-xs text-base-content/40">phù hợp</p>
-                    </div>
-                </div>
-                @endforeach
-            </div>
-        </div>
-    </div>
-    @endif
-
     {{-- ── Footer ──────────────────────────────────────────────────────── --}}
     <div class="text-center text-xs text-base-content/30 pt-2 pb-6">
         Powered by {{ config('app.name') }}

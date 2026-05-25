@@ -215,39 +215,102 @@
     </div>
     @endif
 
-    {{-- ── Job Positions ─────────────────────────────────────────────────── --}}
-    @php $jobPositions = $result->jobPositions ?? collect(); @endphp
-    @if($jobPositions->isNotEmpty())
-    <div class="card bg-base-100 border border-base-200 shadow-sm">
+    {{-- ── Phản hồi thực tế (T6 / Module 170) ───────────────────────── --}}
+    @can('survey.update')
+    @if($result)
+    @php
+        $feedbackUrl = route('backend.surveys.responses.result.feedback', [$survey, $response]);
+        $predictedBand = $feedback?->predicted_band ?? $result->maturity_level ?? '—';
+        $actualBand    = $feedback?->actual_band ?? '';
+        $isProcessed   = $feedback?->is_processed ?? false;
+    @endphp
+    <div class="card bg-base-100 border border-base-300 shadow-sm"
+         x-data="{
+             band: {{ Js::from($actualBand) }},
+             submitting: false,
+             saved: {{ Js::from((bool) $actualBand) }},
+             msg: '',
+             ok: true,
+             async submit() {
+                 if (!this.band) return;
+                 this.submitting = true; this.msg = '';
+                 try {
+                     const res = await fetch({{ Js::from($feedbackUrl) }}, {
+                         method: 'PATCH',
+                         headers: {
+                             'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                             'Content-Type': 'application/json',
+                             'Accept': 'application/json',
+                         },
+                         body: JSON.stringify({ actual_band: this.band }),
+                     });
+                     const data = await res.json();
+                     this.ok = data.success ?? res.ok;
+                     this.msg = data.message ?? (res.ok ? 'Đã lưu.' : 'Lỗi.');
+                     if (res.ok) this.saved = true;
+                 } catch { this.ok = false; this.msg = 'Lỗi kết nối.'; }
+                 finally   { this.submitting = false; }
+             }
+         }">
         <div class="px-5 py-3 border-b border-base-200 font-semibold text-sm flex items-center gap-2">
-            <svg class="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg class="w-4 h-4 text-info" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
             </svg>
-            Vị trí công việc phù hợp
+            Phản hồi thực tế
+            <span class="badge badge-xs ml-1"
+                  :class="saved ? 'badge-success' : 'badge-ghost'"
+                  x-text="saved ? 'Đã xác nhận' : 'Chưa xác nhận'"></span>
         </div>
-        <div class="divide-y divide-base-200">
-            @foreach($jobPositions as $jp)
-            <div class="px-5 py-3 flex items-center justify-between gap-4">
-                <div class="min-w-0">
-                    <p class="font-medium text-sm text-base-content">
-                        {{ \Modules\Survey\Models\JobPosition::where('position_code', $jp->position_code)
-                            ->where('assessment_code', $result->assessment_code)
-                            ->value('title') ?? $jp->position_code }}
-                    </p>
-                    <p class="text-xs text-base-content/50 font-mono">{{ $jp->position_code }}</p>
+        <div class="px-5 py-4 space-y-4">
+
+            {{-- Predicted vs Actual ---------------------------------------- --}}
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <p class="text-xs text-base-content/50 mb-1">Predicted (hệ thống tự tính)</p>
+                    <span class="badge badge-md badge-soft badge-info font-mono">{{ $predictedBand }}</span>
                 </div>
-                <div class="shrink-0 text-right">
-                    <span class="text-lg font-bold {{ $jp->match_score >= 80 ? 'text-success' : ($jp->match_score >= 60 ? 'text-primary' : 'text-warning') }}">
-                        {{ round($jp->match_score) }}%
-                    </span>
-                    <p class="text-xs text-base-content/40">khớp</p>
+                <div>
+                    <p class="text-xs text-base-content/50 mb-1">Actual (admin xác nhận)</p>
+                    <span x-show="saved" class="badge badge-md badge-soft badge-success font-mono" x-text="band"></span>
+                    <span x-show="!saved" class="text-xs italic text-base-content/40">Chưa xác nhận</span>
                 </div>
             </div>
-            @endforeach
+
+            {{-- Dropdown + nút -------------------------------------------- --}}
+            @if($bands->isNotEmpty())
+            <div class="flex items-end gap-3">
+                <div class="flex-1">
+                    <label class="text-xs text-base-content/50 mb-1 block">Cập nhật actual band</label>
+                    <select x-model="band" class="select select-bordered select-sm w-full">
+                        <option value="">-- Chọn band --</option>
+                        @foreach($bands as $b)
+                        <option value="{{ $b['code'] }}">{{ $b['label'] }} ({{ $b['code'] }})</option>
+                        @endforeach
+                    </select>
+                </div>
+                <button @click="submit()" :disabled="!band || submitting"
+                        class="btn btn-sm btn-primary min-w-20"
+                        :class="{ 'loading': submitting }">
+                    <span x-text="submitting ? 'Đang lưu...' : 'Xác nhận'"></span>
+                </button>
+            </div>
+            @else
+            <p class="text-xs text-base-content/40 italic">Chưa cấu hình bands — vào Scoring Config để thêm.</p>
+            @endif
+
+            {{-- Flash message -------------------------------------------- --}}
+            <p x-show="msg" x-transition class="text-xs font-medium"
+               :class="ok ? 'text-success' : 'text-error'" x-text="msg"></p>
+
+            {{-- Tuning status -------------------------------------------- --}}
+            <p class="text-xs text-base-content/30">
+                {{ $isProcessed ? 'Đã được tuning cycle xử lý.' : 'Chưa được tuning cycle xử lý.' }}
+            </p>
         </div>
     </div>
     @endif
+    @endcan
 
     @endif {{-- end $result --}}
 </div>

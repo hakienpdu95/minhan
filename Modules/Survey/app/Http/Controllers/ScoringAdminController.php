@@ -3,13 +3,14 @@
 namespace Modules\Survey\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Bus\Batch;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Modules\Survey\Models\Assessment;
 use Modules\Survey\Models\AssessmentDomain;
-use Modules\Survey\Models\JobPosition;
 use Modules\Survey\Models\PassFailConfig;
 use Modules\Survey\Models\Persona;
 use Modules\Survey\Models\PersonaCondition;
@@ -23,25 +24,14 @@ use Modules\Survey\Models\ScoreRuleNumericRange;
 use Modules\Survey\Models\ScoreRuleOption;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyField;
-use Modules\Survey\Scoring\AggregationFactory;
-use Modules\Survey\Scoring\ClassificationFactory;
-use Modules\Survey\Scoring\FeatureExtractor;
-use Modules\Survey\Scoring\PainPointDetector;
-use Modules\Survey\Scoring\RecommendationEngine;
-use Modules\Survey\Scoring\ScoringConfigLoader;
-use Modules\Survey\Scoring\WeightRepository;
+use Modules\Survey\Models\SurveyResponse;
+use Modules\Survey\Actions\CreateConfigSnapshotAction;
+use Modules\Survey\Actions\RestoreConfigFromSnapshotAction;
+use Modules\Survey\Jobs\CalculateSurveyScoreJob;
+use Modules\Survey\Models\AssessmentConfigSnapshot;
 
 class ScoringAdminController extends Controller
 {
-    public function __construct(
-        private readonly ScoringConfigLoader  $configLoader,
-        private readonly FeatureExtractor     $featureExtractor,
-        private readonly WeightRepository     $weightRepository,
-        private readonly AggregationFactory   $aggregationFactory,
-        private readonly ClassificationFactory $classificationFactory,
-        private readonly PainPointDetector    $painPointDetector,
-        private readonly RecommendationEngine $recommendationEngine,
-    ) {}
 
     // ── Trang chính wizard ────────────────────────────────────────────────────
 
@@ -76,8 +66,6 @@ class ScoringAdminController extends Controller
         $personas       = Persona::forAssessment($code)->with('conditions')->get();
         $painPoints     = PainPointRule::where('assessment_code', $code)->get();
         $recommendations = RecommendationRule::where('assessment_code', $code)->orderBy('priority')->get();
-        $jobPositions   = JobPosition::forAssessment($code)->ordered()->get();
-
         $roadmapRaw = RoadmapPhase::where('assessment_code', $code)
             ->with('milestones')
             ->orderBy('sort_order')
@@ -124,16 +112,6 @@ class ScoringAdminController extends Controller
             'pain_points'     => $painPoints->values(),
             'recommendations' => $recommendations->values(),
             'roadmap'         => $roadmap,
-            'job_positions'   => $jobPositions->map(fn ($jp) => [
-                'id'                => $jp->id,
-                'position_code'     => $jp->position_code,
-                'title'             => $jp->title,
-                'description'       => $jp->description,
-                'min_overall_score' => $jp->min_overall_score,
-                'requirements'      => $jp->requirements ?? [],
-                'sort_order'        => $jp->sort_order,
-                'is_active'         => $jp->is_active,
-            ])->values(),
         ]);
     }
 
@@ -169,14 +147,6 @@ class ScoringAdminController extends Controller
             'pain_points.*.required_flags'   => 'required|string|max:500',
             'recommendations'                => 'array|max:50',
             'roadmap'                        => 'array|max:20',
-            'job_positions'                  => 'array|max:50',
-            'job_positions.*.position_code'  => 'required|string|max:50|regex:/^[a-z0-9_]+$/',
-            'job_positions.*.title'          => 'required|string|max:200',
-            'job_positions.*.description'    => 'nullable|string|max:1000',
-            'job_positions.*.min_overall_score' => 'nullable|numeric|min:0|max:100',
-            'job_positions.*.requirements'   => 'nullable|array',
-            'job_positions.*.sort_order'     => 'nullable|integer|min:0',
-            'job_positions.*.is_active'      => 'nullable|boolean',
         ]);
 
         // Domain uniqueness check
@@ -287,13 +257,17 @@ class ScoringAdminController extends Controller
             // 4 — Score bands
             ScoreBand::where('assessment_code', $code)->delete();
             foreach ($data['bands'] ?? [] as $idx => $b) {
+                $min = (float) $b['min_score'];
+                $max = (float) $b['max_score'];
                 ScoreBand::create([
                     'assessment_code' => $code,
                     'band_code'       => $b['band_code'],
                     'label'           => $b['label'],
                     'description'     => $b['description'] ?? null,
-                    'min_score'       => (float) $b['min_score'],
-                    'max_score'       => (float) $b['max_score'],
+                    'min_score'       => $min,
+                    'max_score'       => $max,
+                    'default_min'     => $min,
+                    'default_max'     => $max,
                     'sort_order'      => $idx + 1,
                 ]);
             }
@@ -390,23 +364,115 @@ class ScoringAdminController extends Controller
                 }
             }
 
-            // 10 — Job positions (Module 150C)
-            JobPosition::where('assessment_code', $code)->delete();
-            foreach ($data['job_positions'] ?? [] as $idx => $jp) {
-                JobPosition::create([
-                    'assessment_code'   => $code,
-                    'position_code'     => $jp['position_code'],
-                    'title'             => $jp['title'],
-                    'description'       => $jp['description'] ?? null,
-                    'min_overall_score' => isset($jp['min_overall_score']) && $jp['min_overall_score'] !== '' ? (float) $jp['min_overall_score'] : null,
-                    'requirements'      => $jp['requirements'] ?? null,
-                    'sort_order'        => $jp['sort_order'] ?? $idx,
-                    'is_active'         => $jp['is_active'] ?? true,
-                ]);
-            }
         });
 
-        return response()->json(['success' => true, 'message' => 'Scoring đã được lưu và kích hoạt.']);
+        // Create versioned snapshot after the transaction commits
+        $snapshot = app(CreateConfigSnapshotAction::class)->handle(
+            $code,
+            auth()->user()?->email,
+            $request->input('change_note'),
+        );
+
+        return response()->json([
+            'success'          => true,
+            'message'          => 'Scoring đã được lưu và kích hoạt.',
+            'snapshot_version' => $snapshot->version,
+        ]);
+    }
+
+    // ── POST rollback to snapshot version ────────────────────────────────────
+
+    public function rollbackConfig(Request $request, Survey $survey, int $version): JsonResponse
+    {
+        $this->authorize('survey.update');
+
+        $code     = $survey->assessment_code ?? $this->deriveCode($survey);
+        $snapshot = AssessmentConfigSnapshot::where('assessment_code', $code)
+            ->where('version', $version)
+            ->firstOrFail();
+
+        $newSnapshot = app(RestoreConfigFromSnapshotAction::class)->handle(
+            $snapshot,
+            auth()->user()?->email,
+        );
+
+        return response()->json([
+            'success'          => true,
+            'message'          => "Đã khôi phục config về version {$version}. Version hiện tại: {$newSnapshot->version}.",
+            'restored_version' => $version,
+            'new_version'      => $newSnapshot->version,
+        ]);
+    }
+
+    // ── GET snapshot list ─────────────────────────────────────────────────────
+
+    public function getSnapshots(Survey $survey): JsonResponse
+    {
+        $this->authorize('survey.update');
+
+        $code      = $survey->assessment_code ?? $this->deriveCode($survey);
+        $snapshots = AssessmentConfigSnapshot::where('assessment_code', $code)
+            ->orderBy('version', 'desc')
+            ->get(['id', 'version', 'created_by', 'change_note', 'created_at']);
+
+        return response()->json(['snapshots' => $snapshots]);
+    }
+
+    // ── POST reprocess all responses ──────────────────────────────────────────
+
+    public function reprocessAll(Request $request, Survey $survey): JsonResponse
+    {
+        $this->authorize('survey.update');
+
+        if (! $survey->assessment_code) {
+            return response()->json(['message' => 'Survey chưa có assessment_code.'], 422);
+        }
+
+        $responseIds = SurveyResponse::forSurvey($survey->id)
+            ->complete()
+            ->pluck('id');
+
+        if ($responseIds->isEmpty()) {
+            return response()->json(['message' => 'Không có response nào để tính lại.', 'total' => 0]);
+        }
+
+        $jobs = $responseIds->map(fn ($id) => new CalculateSurveyScoreJob($id, force: true))->all();
+
+        $batch = Bus::batch($jobs)
+            ->name("reprocess-survey-{$survey->id}")
+            ->onQueue('low')
+            ->allowFailures()
+            ->dispatch();
+
+        return response()->json([
+            'batch_id' => $batch->id,
+            'total'    => count($jobs),
+            'message'  => count($jobs) . ' responses đã được đưa vào hàng đợi tính lại điểm.',
+        ]);
+    }
+
+    // ── GET batch progress ─────────────────────────────────────────────────────
+
+    public function getBatchStatus(Request $request, Survey $survey, string $batchId): JsonResponse
+    {
+        $this->authorize('survey.update');
+
+        $batch = Bus::findBatch($batchId);
+
+        if (! $batch) {
+            return response()->json(['message' => 'Batch không tìm thấy.'], 404);
+        }
+
+        return response()->json([
+            'id'             => $batch->id,
+            'name'           => $batch->name,
+            'total'          => $batch->totalJobs,
+            'processed'      => $batch->processedJobs(),
+            'failed'         => $batch->failedJobs,
+            'progress'       => $batch->progress(),
+            'finished'       => $batch->finished(),
+            'cancelled'      => $batch->cancelled(),
+        ]);
     }
 
     // ── GET fields ────────────────────────────────────────────────────────────
@@ -522,67 +588,44 @@ class ScoringAdminController extends Controller
             }
         }
 
+        // C.5 — Score rule constraints
+        foreach ($data['rules'] ?? [] as $r) {
+            $type   = $r['question_scoring_type'] ?? 'none';
+            $fKey   = $r['field_key'] ?? '?';
+            $optCnt = count($r['options'] ?? []);
+
+            if (in_array($type, ['multi_choice', 'single_choice'], true) && $optCnt < 2) {
+                $errors[] = "Câu '{$fKey}': {$type} cần tối thiểu 2 options (hiện có {$optCnt}).";
+            }
+
+            if ($type === 'multi_choice') {
+                $maxCap = $r['max_score_cap'] ?? null;
+                if ($maxCap === null || $maxCap === '') {
+                    $errors[] = "Câu '{$fKey}': multi_choice bắt buộc khai báo max_score_cap.";
+                }
+                $minCap = $r['min_score_cap'] ?? null;
+                if ($maxCap !== null && $maxCap !== '' && $minCap !== null && $minCap !== '' && (int) $minCap >= (int) $maxCap) {
+                    $errors[] = "Câu '{$fKey}': min_score_cap ({$minCap}) phải nhỏ hơn max_score_cap ({$maxCap}).";
+                }
+            }
+
+            if ($type === 'numeric_range') {
+                $ranges = collect($r['ranges'] ?? [])
+                    ->filter(fn ($nr) => ($nr['min_value'] ?? '') !== '' && ($nr['max_value'] ?? '') !== '')
+                    ->sortBy(fn ($nr) => (float) $nr['min_value'])
+                    ->values();
+
+                for ($i = 1; $i < $ranges->count(); $i++) {
+                    $prev = $ranges[$i - 1];
+                    $curr = $ranges[$i];
+                    if ((float) $curr['min_value'] < (float) $prev['max_value']) {
+                        $errors[] = "Câu '{$fKey}': numeric_range overlap [{$prev['min_value']}–{$prev['max_value']}] và [{$curr['min_value']}–{$curr['max_value']}].";
+                    }
+                }
+            }
+        }
+
         return response()->json(['valid' => empty($errors), 'errors' => $errors]);
-    }
-
-    // ── POST dry-run ──────────────────────────────────────────────────────────
-
-    public function dryRun(Request $request, Survey $survey): JsonResponse
-    {
-        $this->authorize('survey.update');
-
-        $code       = $survey->assessment_code ?? $this->deriveCode($survey);
-        $answers    = $request->input('answers', []);
-        $assessment = Assessment::where('assessment_code', $code)->first();
-
-        if (!$assessment || !$assessment->has_scoring) {
-            return response()->json(['error' => 'Survey này chưa có cấu hình scoring. Hãy lưu cấu hình trước.'], 422);
-        }
-
-        try {
-            $config = $this->configLoader->load($code);
-
-            [
-                'rawScores'      => $rawScores,
-                'signalFlags'    => $signalFlags,
-                'questionScores' => $questionScores,
-            ] = $this->featureExtractor->extract($config, $answers);
-
-            ['weights' => $weights] = $this->weightRepository->loadActive($code, $config);
-
-            $aggregated = $this->aggregationFactory
-                ->make($config->aggregationModel())
-                ->aggregate($config, $rawScores, $weights);
-
-            $classification = $this->classificationFactory
-                ->make($config->classificationType())
-                ->classify($config, $aggregated, $signalFlags);
-
-            $painPoints     = $this->painPointDetector->detect($config, $signalFlags);
-            $recommendations = $this->recommendationEngine->evaluate($config, $aggregated->domainScores);
-
-            return response()->json([
-                'domain_scores'   => collect($aggregated->domainScores)->map(fn ($ds) => [
-                    'raw'        => $ds->rawScore,
-                    'normalized' => round($ds->normalizedScore, 1),
-                ])->toArray(),
-                'overall_score'   => $aggregated->overallScore !== null
-                    ? round($aggregated->overallScore, 1)
-                    : null,
-                'classification'  => [
-                    'type'      => $classification->classificationType,
-                    'band_code' => $classification->bandCode,
-                    'passed'    => $classification->passed,
-                    'persona'   => $classification->personaCode,
-                ],
-                'signal_flags'    => $signalFlags,
-                'pain_points'     => $painPoints,
-                'recommendations' => collect($recommendations)->map(fn ($r) => $r->code)->all(),
-                'question_scores' => $questionScores,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

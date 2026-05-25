@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Log;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Survey\Models\SurveyResponse;
 use Modules\Survey\Scoring\ScoringEngineService;
+use Modules\Survey\Services\WebhookDispatcher;
 
 class CalculateSurveyScoreAction
 {
@@ -13,6 +14,7 @@ class CalculateSurveyScoreAction
 
     public function __construct(
         private readonly ScoringEngineService $engine,
+        private readonly WebhookDispatcher   $webhooks,
     ) {}
 
     public function handle(int $responseId, bool $force = false): void
@@ -32,7 +34,7 @@ class CalculateSurveyScoreAction
         }
 
         try {
-            $this->engine->calculate($assessmentCode, $responseId, $force);
+            $result = $this->engine->calculate($assessmentCode, $responseId, $force);
         } catch (\Throwable $e) {
             Log::error('scoring.action.failed', [
                 'response_id'     => $responseId,
@@ -41,5 +43,15 @@ class CalculateSurveyScoreAction
             ]);
             throw $e;
         }
+
+        // Dispatch webhook after successful scoring
+        $this->webhooks->dispatch($response->survey_id, 'result.calculated', [
+            'survey_id'      => $response->survey_id,
+            'response_id'    => $responseId,
+            'respondent_ref' => $response->respondent_ref,
+            'overall_score'  => $result->overallScore !== null ? round($result->overallScore, 2) : null,
+            'band_code'      => $result->classification->bandCode ?? null,
+            'calculated_at'  => now()->toISOString(),
+        ]);
     }
 }

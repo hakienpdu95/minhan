@@ -22,13 +22,15 @@ class Survey extends Model
         'assessment_code',
         'status',
         'version',
+        'allow_multiple_responses',
     ];
 
     protected function casts(): array
     {
         return [
-            'status'  => SurveyStatus::class,
-            'version' => 'integer',
+            'status'                   => SurveyStatus::class,
+            'version'                  => 'integer',
+            'allow_multiple_responses' => 'boolean',
         ];
     }
 

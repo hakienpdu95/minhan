@@ -14,6 +14,8 @@ class SurveyToken extends Model
         'is_active',
         'last_used_at',
         'expires_at',
+        'usage_limit',
+        'usage_count',
     ];
 
     // Không serialize token_encrypted ra ngoài API response
@@ -23,6 +25,8 @@ class SurveyToken extends Model
         'is_active'    => 'boolean',
         'last_used_at' => 'datetime',
         'expires_at'   => 'datetime',
+        'usage_limit'  => 'integer',
+        'usage_count'  => 'integer',
     ];
 
     // ── Relations ─────────────────────────────────────────────────────
@@ -54,5 +58,10 @@ class SurveyToken extends Model
     public function isValid(): bool
     {
         return $this->is_active && !$this->isExpired();
+    }
+
+    public function hasReachedUsageLimit(): bool
+    {
+        return $this->usage_limit !== null && $this->usage_count >= $this->usage_limit;
     }
 }

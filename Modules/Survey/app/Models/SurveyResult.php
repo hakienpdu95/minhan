@@ -70,11 +70,6 @@ class SurveyResult extends Model
         return $this->hasOne(ResultClassification::class, 'result_id');
     }
 
-    public function jobPositions(): HasMany
-    {
-        return $this->hasMany(ResultJobPosition::class, 'result_id')->orderByDesc('match_score');
-    }
-
     public function scopeForResponse(Builder $query, int $responseId): Builder
     {
         return $query->where('response_id', $responseId);

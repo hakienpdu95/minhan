@@ -28,6 +28,8 @@ class ExportSurveyResponsesJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 600; // 10 phút cho dataset lớn
+    public int $tries = 3;
+    public array $backoff = [10, 60, 300];
 
     public function __construct(
         private readonly int     $surveyId,
@@ -35,7 +37,9 @@ class ExportSurveyResponsesJob implements ShouldQueue
         private readonly ?string $respondentRef = null,
         private readonly ?string $from          = null,
         private readonly ?string $to            = null,
-    ) {}
+    ) {
+        $this->onQueue('low');
+    }
 
     public function handle(): void
     {
@@ -126,7 +130,7 @@ class ExportSurveyResponsesJob implements ShouldQueue
     private function buildAnswerIndex(array $responseIds): array
     {
         $answers = SurveyAnswer::query()
-            ->select(['response_id', 'field_id', 'option_id', 'value_string', 'value_text', 'value_number', 'value_date', 'value_bool'])
+            ->select(['response_id', 'field_id', 'row_key', 'option_id', 'value_string', 'value_text', 'value_number', 'value_date', 'value_bool'])
             ->whereIn('response_id', $responseIds)
             ->orderBy('response_id')
             ->orderBy('field_id')
@@ -151,7 +155,8 @@ class ExportSurveyResponsesJob implements ShouldQueue
             FieldType::Text     => (string) ($answers[0]->value_string ?? ''),
             FieldType::Textarea => (string) ($answers[0]->value_text   ?? ''),
             FieldType::Number,
-            FieldType::Rating   => $answers[0]->value_number !== null
+            FieldType::Rating,
+            FieldType::Nps      => $answers[0]->value_number !== null
                                     ? rtrim(rtrim(number_format((float) $answers[0]->value_number, 2), '0'), '.')
                                     : '',
             FieldType::Date     => $answers[0]->value_date
@@ -165,6 +170,16 @@ class ExportSurveyResponsesJob implements ShouldQueue
             FieldType::Checkbox => implode(', ', array_filter(
                 array_map(fn ($a) => $optionMap[$a->option_id] ?? null, $answers)
             )),
+            FieldType::Ranking  => implode(' > ', array_map(
+                fn ($a) => $optionMap[$a->option_id] ?? '',
+                collect($answers)->sortBy(fn ($a) => (float) ($a->value_number ?? 0))->all()
+            )),
+            FieldType::Matrix   => implode('; ', array_filter(array_map(
+                fn ($a) => $a->row_key !== null
+                    ? $a->row_key . ': ' . ($optionMap[$a->option_id] ?? '')
+                    : null,
+                $answers
+            ))),
         };
     }
 }

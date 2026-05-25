@@ -4,9 +4,12 @@ namespace Modules\Survey\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
 class ScoreBand extends Model
 {
+    use LogsActivity;
     protected $table = 'score_bands';
 
     protected $fillable = [
@@ -22,6 +25,14 @@ class ScoreBand extends Model
         'lead_temperature',
         'sort_order',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->useLogName('scoring');
+    }
 
     protected function casts(): array
     {

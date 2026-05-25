@@ -6,9 +6,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Modules\Survey\Models\ScoreRuleNumericRange;
+use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
 class ScoreRule extends Model
 {
+    use LogsActivity;
     protected $table = 'score_rules';
 
     protected $fillable = [
@@ -24,12 +27,16 @@ class ScoreRule extends Model
         'min_score_cap',
         'max_score_cap',
         'section_id',
-        'behavior_metric',
-        'threshold_value',
-        'operator',
-        'score_adjustment',
         'is_active',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->useLogName('scoring');
+    }
 
     protected function casts(): array
     {
@@ -38,8 +45,6 @@ class ScoreRule extends Model
             'score_if_false'  => 'integer',
             'min_score_cap'   => 'integer',
             'max_score_cap'   => 'integer',
-            'threshold_value' => 'float',
-            'score_adjustment' => 'integer',
             'is_active'       => 'boolean',
         ];
     }

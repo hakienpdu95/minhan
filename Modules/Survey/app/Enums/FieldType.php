@@ -13,22 +13,41 @@ enum FieldType: int
     case Rating   = 7;
     case Date     = 8;
     case Boolean  = 9;
+    case Matrix   = 10;
+    case Ranking  = 11;
+    case Nps      = 12;
 
     public function valueKind(): ValueKind
     {
         return match ($this) {
-            self::Text                                => ValueKind::String,
-            self::Textarea                            => ValueKind::Text,
-            self::Number, self::Rating                => ValueKind::Number,
-            self::Select, self::Radio, self::Checkbox => ValueKind::Option,
-            self::Date                                => ValueKind::Date,
-            self::Boolean                             => ValueKind::Bool,
+            self::Text                                          => ValueKind::String,
+            self::Textarea                                      => ValueKind::Text,
+            self::Number, self::Rating, self::Nps               => ValueKind::Number,
+            self::Select, self::Radio, self::Checkbox,
+            self::Matrix, self::Ranking                         => ValueKind::Option,
+            self::Date                                          => ValueKind::Date,
+            self::Boolean                                       => ValueKind::Bool,
         };
     }
 
     public function isChoice(): bool
     {
         return in_array($this, [self::Select, self::Radio, self::Checkbox]);
+    }
+
+    public function isMatrixLike(): bool
+    {
+        return $this === self::Matrix;
+    }
+
+    public function isRanking(): bool
+    {
+        return $this === self::Ranking;
+    }
+
+    public function isNps(): bool
+    {
+        return $this === self::Nps;
     }
 
     public function allowsMultiple(): bool
@@ -48,12 +67,15 @@ enum FieldType: int
             self::Rating   => 'Đánh giá sao',
             self::Date     => 'Ngày tháng',
             self::Boolean  => 'Có / Không',
+            self::Matrix   => 'Ma trận (grid)',
+            self::Ranking  => 'Xếp hạng',
+            self::Nps      => 'NPS (0–10)',
         };
     }
 
     /** True nếu field_type có rule_min / rule_max */
     public function hasRules(): bool
     {
-        return in_array($this, [self::Text, self::Textarea, self::Number, self::Rating]);
+        return in_array($this, [self::Text, self::Textarea, self::Number, self::Rating, self::Nps]);
     }
 }

@@ -5,9 +5,12 @@ namespace Modules\Survey\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
 class Persona extends Model
 {
+    use LogsActivity;
     protected $table = 'personas';
 
     protected $fillable = [
@@ -17,6 +20,14 @@ class Persona extends Model
         'description',
         'sort_order',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->useLogName('scoring');
+    }
 
     public function conditions(): HasMany
     {

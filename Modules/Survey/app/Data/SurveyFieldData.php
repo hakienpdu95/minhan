@@ -7,6 +7,7 @@ use Modules\Survey\Enums\ValueKind;
 use Modules\Survey\Models\SurveyField;
 use Spatie\LaravelData\Data;
 
+
 class SurveyFieldData extends Data
 {
     public function __construct(
@@ -24,10 +25,26 @@ class SurveyFieldData extends Data
         public readonly ?string   $placeholder,
         /** @var SurveyFieldOptionData[] */
         public readonly array     $options,
+        /** @var SurveyFieldConditionData[] */
+        public readonly array     $conditions = [],
+        /** @var SurveyFieldRowData[] */
+        public readonly array     $rows = [],
     ) {}
 
-    public static function fromModel(SurveyField $field): self
+    /**
+     * @param  array<int, string>  $fieldKeyMap  [field_id => field_key] for resolving depends_on_field_key
+     */
+    public static function fromModel(SurveyField $field, array $fieldKeyMap = []): self
     {
+        $conditions = $field->relationLoaded('conditions')
+            ? $field->conditions
+                ->map(function ($c) use ($fieldKeyMap) {
+                    $depKey = $fieldKeyMap[$c->depends_on_field_id] ?? (string) $c->depends_on_field_id;
+                    return SurveyFieldConditionData::fromModel($c, $depKey);
+                })
+                ->all()
+            : [];
+
         return new self(
             id:              $field->id,
             parent_field_id: $field->parent_field_id,
@@ -44,6 +61,10 @@ class SurveyFieldData extends Data
             options:         $field->options
                 ->map(fn($o) => SurveyFieldOptionData::fromModel($o))
                 ->all(),
+            conditions:      $conditions,
+            rows:            $field->relationLoaded('rows')
+                ? $field->rows->map(fn($r) => SurveyFieldRowData::fromModel($r))->all()
+                : [],
         );
     }
 }
