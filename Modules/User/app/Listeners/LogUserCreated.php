@@ -2,12 +2,15 @@
 
 namespace Modules\User\Listeners;
 
+use Modules\ActivityLog\Core\ActivityLogger;
 use Modules\User\Events\UserCreated;
 
 class LogUserCreated
 {
     public function handle(UserCreated $event): void
     {
-        activity()->on($event->user)->log('user.created');
+        ActivityLogger::info('User', 'user_created', $event->user, [
+            'email' => $event->user->email,
+        ]);
     }
 }

@@ -6,6 +6,7 @@ use Illuminate\Support\Str;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Survey\Data\SurveyFormData;
 use Modules\Survey\Enums\SurveyStatus;
+use Modules\ActivityLog\Core\ActivityLogger;
 use Modules\Survey\Models\Survey;
 
 class CreateSurveyAction
@@ -23,10 +24,7 @@ class CreateSurveyAction
             'version' => $data->version ?? 1,
         ]);
 
-        activity()
-            ->performedOn($survey)
-            ->withProperties(['title' => $survey->title, 'slug' => $survey->slug])
-            ->log('survey.created');
+        ActivityLogger::info('Survey', 'survey_created', $survey, ['title' => $survey->title, 'slug' => $survey->slug]);
 
         return $survey;
     }

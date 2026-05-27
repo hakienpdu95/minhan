@@ -8,11 +8,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Survey\Enums\SurveyStatus;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class Survey extends Model
 {
     use HasFactory;
     use SoftDeletes;
+    use LogsActivity;
 
     protected $table = 'surveys';
 
@@ -76,5 +79,20 @@ class Survey extends Model
     public function hasScoring(): bool
     {
         return $this->assessment_code !== null;
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['title', 'slug', 'status', 'assessment_code', 'version'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->setDescriptionForEvent(fn (string $event) => match ($event) {
+                'created' => "Tạo khảo sát: {$this->title}",
+                'updated' => "Cập nhật khảo sát: {$this->title}",
+                'deleted' => "Xóa khảo sát: {$this->title}",
+                default   => $event,
+            })
+            ->useLogName('Survey');
     }
 }

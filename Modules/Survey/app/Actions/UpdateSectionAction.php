@@ -6,6 +6,7 @@ use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Data\SectionFormData;
 use Modules\Survey\Models\Survey;
+use Modules\ActivityLog\Core\ActivityLogger;
 use Modules\Survey\Models\SurveySection;
 
 class UpdateSectionAction
@@ -19,9 +20,7 @@ class UpdateSectionAction
             'icon'  => $data->icon,
         ]);
 
-        activity()->performedOn($section)
-            ->withProperties(['title' => $data->title])
-            ->log('section.updated');
+        ActivityLogger::info('Survey', 'section_updated', $section, ['title' => $data->title]);
 
         BuildSurveySchemaAction::purgeCache($survey->slug);
 

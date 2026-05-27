@@ -1,6 +1,6 @@
 # ActivityLog Module — Specification (Package-Optimized)
 
-> **Stack đầy đủ**: Laravel 13 · PHP 8.4 · MySQL 8+ · Redis (`predis/predis`)
+> **Stack đầy đủ**: Laravel 13 · PHP 8.4 · MySQL 8+ (production) / SQLite (dev — xem ghi chú tương thích §2.1) · Redis (`predis/predis`)
 > **Packages tận dụng**:
 > - `spatie/laravel-activitylog ^5.0` — engine lõi ghi log Model
 > - `spatie/laravel-data ^4.23` — typed DTOs thay readonly class
@@ -9,7 +9,7 @@
 > - `rap2hpoutre/fast-excel ^5.7` — export không tốn RAM
 > - `predis/predis ^3.0` — Redis queue + cache
 >
-> **Scale mục tiêu**: <10k log/ngày · 1 server VPS· MySQL 8+ · chỉ có Redis
+> **Scale mục tiêu**: <10k log/ngày · 1 server VPS · MySQL 8+ · chỉ có Redis
 >
 > **Triết lý**: tận dụng tối đa những gì package đã làm tốt, chỉ tự build
 > những gì package không có (level, typed context, HTTP tracking, alert).
@@ -20,12 +20,13 @@
 
 ## Mục lục
 
+0. [Chiến lược chuyển đổi từ code hiện tại](#0-chiến-lược-chuyển-đổi-từ-code-hiện-tại)
 1. [Chiến lược tích hợp Spatie ActivityLog](#1-chiến-lược-tích-hợp-spatie-activitylog)
 2. [Database Schema — mở rộng trên Spatie](#2-database-schema)
 3. [DTOs với spatie/laravel-data](#3-dtos-với-spatielaravel-data)
 4. [Core Engine](#4-core-engine)
 5. [Actions với lorisleiva/laravel-actions](#5-actions-với-lorisleivallaravel-actions)
-6. [Model Observers — dùng HasActivity của Spatie](#6-model-observers--dùng-hasactivity-của-spatie)
+6. [Model Observers — dùng LogsActivity của Spatie](#6-model-observers--dùng-logsactivity-của-spatie)
 7. [Event Listeners](#7-event-listeners)
 8. [Middleware & Request Tracking](#8-middleware--request-tracking)
 9. [Routes & Controllers](#9-routes--controllers)
@@ -42,15 +43,85 @@
 
 ---
 
+## 0. Chiến lược chuyển đổi từ code hiện tại
+
+### 0.1 Tình trạng hiện tại
+
+Hệ thống đang dùng `App\Shared\Support\ActivityLogger` (wrapper Spatie) với API cũ,
+song song với các call site dùng thẳng `activity()` builder của Spatie:
+
+```php
+// API cũ — đang dùng trong >20 call site
+ActivityLogger::log('created', $model);
+ActivityLogger::logEvent('organization.registered', [...]);
+ActivityLogger::on('auth')->event('login')->log('login');
+
+// Raw Spatie builder — dùng trong Organization Listeners, Survey Actions
+activity()->causedBy(Auth::user())->performedOn($model)->withProperties([...])->log('event');
+```
+
+Call sites phân bố:
+- `Modules/Auth/app/Actions/RegisterOrganizationAction.php`
+- `Modules/Auth/app/Listeners/LogSuccessfulLogin.php`
+- `Modules/Organization/app/Listeners/LogOrganizationCreated.php`
+- `Modules/Organization/app/Listeners/LogOrganizationUpdated.php`
+- `Modules/Survey/app/Actions/*` — hơn 10 file
+- `Modules/Survey/app/Http/Controllers/SurveyController.php`
+
+### 0.2 Chiến lược migration — song song, không breaking
+
+Giữ `App\Shared\Support\ActivityLogger` cũ hoạt động trong quá trình chuyển đổi.
+Module `ActivityLog` mới dùng class `Modules\ActivityLog\app\Core\ActivityLogger` song song.
+Migrate từng module theo 4 phase:
+
+| Phase | Hạng mục | Mô tả |
+|-------|----------|-------|
+| 1 | Infrastructure | Migrations, models, core engine — **không đụng code cũ** |
+| 2 | Survey module | Chuyển toàn bộ call site Survey sang `ActivityLogger::*` mới |
+| 3 | Auth + Organization | Chuyển Listeners, Actions |
+| 4 | Cleanup | Xóa `App\Shared\Support\ActivityLogger` cũ |
+
+### 0.3 Namespace conflict trong Phase 1-3
+
+Dùng **alias** trong các file đang migrate để tránh nhầm lẫn:
+
+```php
+use Modules\ActivityLog\app\Core\ActivityLogger as ActivityLog;
+// hoặc import đầy đủ khi viết code mới trong module Survey
+```
+
+### 0.4 Fix namespace `LogsActivity` trong models Survey hiện tại
+
+Spatie v5 đổi namespace trait. Các model Survey đang import sai (Spatie v4 path):
+
+```php
+// HIỆN TẠI — SAI với Spatie v5
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+
+// ĐÚNG — Spatie v5
+use Spatie\Activitylog\Traits\LogsActivity;
+```
+
+Models cần fix khi thực hiện Phase 2:
+`Assessment`, `Persona`, `PainPointRule`, `RecommendationRule`, `ScoreBand`, `ScoreRule`.
+
+### 0.5 Xử lý column `attribute_changes` hiện có
+
+Migration tại `database/migrations/vendor/2026_05_13_020054_create_activity_log_table.php`
+đã tạo bảng `activity_log` với column `attribute_changes JSON` (custom, không có trong Spatie chuẩn).
+Column này không dùng trong spec mới — **giữ nguyên, không drop** (backward compat).
+
+---
+
 ## 1. Chiến lược tích hợp Spatie ActivityLog
 
 ### 1.1 Spatie làm được gì — dùng trực tiếp
 
 | Tính năng Spatie | Dùng hay không | Lý do |
 |-----------------|---------------|-------|
-| `HasActivity` trait trên Model | ✅ Dùng | Tự ghi created/updated/deleted, diff attributes |
+| `LogsActivity` trait trên Model | ✅ Dùng | Tự ghi created/updated/deleted, diff attributes |
 | `activity()` log builder | ✅ Dùng | API fluent, causedBy, performedOn, withProperties |
-| `Activity` model | ✅ Extend | Thêm columns: level, request_id, module, action |
+| `Activity` model | ✅ Extend | Thêm columns: level, organization_id, request_id, module, action... |
 | `activity_log` table | ✅ Extend | Thêm migrations bổ sung |
 | `LogsActivity` on Model | ✅ Dùng | Tự động log CRUD |
 | `CleansUpActivityLog` | ✅ Dùng | Tự cleanup theo config |
@@ -60,8 +131,12 @@
 | Tính năng cần thêm | Giải pháp |
 |--------------------|-----------|
 | `level` (info/warning/error/critical) | Thêm column vào `activity_log` |
+| `organization_id` — tenant scoping | Thêm column + inject từ `TenantContext` |
 | `request_id` để trace 1 request | Thêm column + middleware |
 | `module` / `action` thay vì `log_name` | Thêm 2 column; `log_name` = `"{module}.{action}"` (tương thích ngược) |
+| `actor_name`, `actor_ip` — snapshot tại thời điểm log | Thêm columns; không join sang `users` về sau |
+| `subject_label` — snapshot label của subject | Thêm column; tránh join khi query |
+| `session_id` — trace session | Thêm column |
 | HTTP context (method, url, status, duration) | Bảng `activity_log_http` riêng |
 | Typed context (không JSON) | Bảng `activity_log_contexts` (EAV) |
 | Alert rules | Bảng `activity_log_alert_rules` + service |
@@ -70,12 +145,12 @@
 ### 1.3 Kiến trúc tổng thể
 
 ```
-Module khác (Survey, Auth, User...)
+Module khác (Survey, Auth, Organization...)
         │
         │  3 cách gọi log:
         │  1. ActivityLogger::info(...)   ← facade tùy chỉnh (wrap Spatie)
         │  2. event(SomeEvent::class)     ← Listener gọi ActivityLogger
-        │  3. Model dùng HasActivity      ← Spatie tự log CRUD
+        │  3. Model dùng LogsActivity     ← Spatie tự log CRUD
         │
         ▼
   ActivityLogger::log()
@@ -84,7 +159,7 @@ Module khác (Survey, Auth, User...)
         ▼
   WriteActivityLogAction (asJob)      ← lorisleiva/laravel-actions
         │
-        ├── activity()->causedBy()->performedOn()->log()  [Spatie]
+        ├── DB::table('activity_log')->insert(...)  [không qua Spatie builder để kiểm soát hoàn toàn]
         ├── INSERT activity_log_contexts  (EAV, typed)
         └── INSERT activity_log_http     (HTTP metadata)
         │
@@ -96,59 +171,62 @@ Module khác (Survey, Auth, User...)
 
 ## 2. Database Schema
 
-### 2.1 Mở rộng bảng `activity_log` của Spatie
+### 2.1 Ghi chú tương thích SQLite / MySQL
 
-Spatie tạo bảng `activity_log` với schema mặc định. Ta **thêm migration** bổ sung các column cần thiết thay vì tạo bảng mới — giữ tương thích với package.
+> **Dev**: SQLite — tất cả migrations dùng `Blueprint` của Laravel (driver-agnostic).
+> **Production**: MySQL 8+.
+> **Ngoại lệ duy nhất**: Prefix index trên `activity_log_contexts` dùng raw SQL —
+> chỉ apply trên MySQL, bỏ qua trên SQLite (kiểm tra `DB::getDriverName()` trong migration).
 
-**Spatie schema mặc định** (để tham khảo):
+### 2.2 Mở rộng bảng `activity_log` của Spatie
+
+Bảng `activity_log` đã được tạo tại `database/migrations/vendor/2026_05_13_020054_create_activity_log_table.php`.
+Ta **thêm migration bổ sung** các column cần thiết thay vì tạo bảng mới.
+
+**Schema hiện tại trong project** (để tham khảo):
 ```
 id, log_name, description, subject_type, subject_id,
 causer_type, causer_id, properties (JSON), event,
-batch_uuid, created_at, updated_at
+attribute_changes (JSON — custom, giữ nguyên),
+created_at, updated_at
 ```
 
 **Thêm vào qua migration bổ sung** (`add_custom_columns_to_activity_log`):
 ```sql
-ALTER TABLE activity_log
-    ADD COLUMN `level`      TINYINT UNSIGNED NOT NULL DEFAULT 2
-                            COMMENT '1=debug 2=info 3=warning 4=error 5=critical'
-                            AFTER log_name,
+level          TINYINT UNSIGNED  NOT NULL DEFAULT 2    '1=debug 2=info 3=warning 4=error 5=critical'
+organization_id BIGINT UNSIGNED  NULL                  'Tenant — NULL khi CLI/system job'
+module         VARCHAR(64)       NULL                  'Survey, Auth, Organization...'
+action         VARCHAR(128)      NULL                  'survey_created, login_failed...'
+actor_name     VARCHAR(255)      NULL                  'Snapshot tên actor tại thời điểm log'
+actor_ip       VARCHAR(45)       NULL                  'IPv4 hoặc IPv6. NULL khi CLI.'
+request_id     CHAR(36)          NULL                  'UUID per-request, set bởi middleware'
+session_id     VARCHAR(255)      NULL                  'Session ID'
+subject_label  VARCHAR(255)      NULL                  'Snapshot label của subject (name/title/email)'
+```
 
-    ADD COLUMN `module`     VARCHAR(64) NULL
-                            COMMENT 'Survey, Auth, User...'
-                            AFTER level,
+> **Tại sao `actor_ip` là VARCHAR(45) thay vì INT UNSIGNED?**
+> VARCHAR(45) hỗ trợ cả IPv4 và IPv6 (max 45 chars), driver-agnostic (SQLite không có UNSIGNED),
+> và không cần `ip2long()` / `long2ip()` conversion.
 
-    ADD COLUMN `action`     VARCHAR(128) NULL
-                            COMMENT 'survey_created, login_failed...'
-                            AFTER module,
-
-    ADD COLUMN `request_id` CHAR(36) NULL
-                            COMMENT 'UUID per-request, set by InjectRequestId middleware'
-                            AFTER action,
-
-    ADD COLUMN `actor_ip`   INT UNSIGNED NULL
-                            COMMENT 'INET_ATON(ipv4). NULL for IPv6/CLI.'
-                            AFTER request_id,
-
-    ADD INDEX `idx_level`         (`level`, `created_at`),
-    ADD INDEX `idx_module_action` (`module`, `action`, `created_at`),
-    ADD INDEX `idx_request`       (`request_id`),
-    ADD INDEX `idx_actor_ip`      (`actor_ip`);
+**Indexes bổ sung**:
+```
+idx_org_created   (organization_id, created_at)
+idx_level         (level, created_at)
+idx_module_action (module, action, created_at)
+idx_request       (request_id)
 ```
 
 **Tại sao không tạo bảng riêng?**
-- Spatie `HasActivity` trait và `activity()` builder ghi thẳng vào `activity_log`.
+- Spatie `LogsActivity` trait và `activity()` builder ghi thẳng vào `activity_log`.
 - Nếu tạo bảng riêng phải fork toàn bộ Spatie internals → mất update package.
 - Extend bảng gốc + thêm column → tận dụng 100% Spatie features.
 
 **Tại sao KHÔNG dùng `properties` JSON của Spatie cho context?**
 - `properties` là JSON column → không indexable → query chậm.
-- Ta để `properties` trống (hoặc để Spatie tự ghi khi dùng `HasActivity`),
-  dùng bảng `activity_log_contexts` riêng cho typed context của ta.
+- Ta để `properties` trống (hoặc để Spatie tự ghi khi dùng `LogsActivity`),
+  dùng bảng `activity_log_contexts` riêng cho typed context.
 
-### 2.2 Bảng `activity_log_contexts` — typed key-value
-
-Không đổi so với spec trước — đây là điểm mấu chốt để tránh JSON:
+### 2.3 Bảng `activity_log_contexts` — typed key-value
 
 ```sql
 CREATE TABLE `activity_log_contexts` (
@@ -168,19 +246,19 @@ CREATE TABLE `activity_log_contexts` (
     INDEX `idx_key_integer` (`key_name`, `val_integer`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Prefix index cho string search (Blueprint không hỗ trợ, dùng raw SQL)
+-- Prefix index — MySQL only (xem migration §17)
 ALTER TABLE activity_log_contexts
     ADD INDEX idx_key_string (key_name, val_string(64));
 ```
 
-### 2.3 Bảng `activity_log_http`
+### 2.4 Bảng `activity_log_http`
 
 ```sql
 CREATE TABLE `activity_log_http` (
     `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `log_id`       BIGINT UNSIGNED NOT NULL,
     `http_method`  TINYINT UNSIGNED NOT NULL
-                   COMMENT '1=GET 2=POST 3=PUT 4=PATCH 5=DELETE',
+                   COMMENT '1=GET 2=POST 3=PUT 4=PATCH 5=DELETE 6=HEAD 7=OPTIONS',
     `url`          VARCHAR(2000) NOT NULL,
     `route_name`   VARCHAR(191)  NULL,
     `status_code`  SMALLINT UNSIGNED NULL,
@@ -194,7 +272,7 @@ CREATE TABLE `activity_log_http` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
-### 2.4 Bảng `activity_log_alert_rules`
+### 2.5 Bảng `activity_log_alert_rules`
 
 ```sql
 CREATE TABLE `activity_log_alert_rules` (
@@ -265,12 +343,15 @@ use Spatie\LaravelData\Casts\EnumCast;
 class LogEntryData extends Data
 {
     public function __construct(
+        // Tenant
+        public readonly ?int          $organizationId,   // ← inject từ TenantContext
+
         // Actor
         public readonly ?int          $actorId,
         #[WithCast(EnumCast::class)]
         public readonly ActorType     $actorType,
-        public readonly string        $actorName,
-        public readonly ?int          $actorIpInt,
+        public readonly string        $actorName,        // snapshot tại thời điểm log
+        public readonly ?string       $actorIp,          // IPv4 hoặc IPv6 string
 
         // Action
         public readonly string        $module,
@@ -279,9 +360,9 @@ class LogEntryData extends Data
         public readonly LogLevel      $level,
 
         // Subject
-        public readonly ?string       $subjectType,  // class_basename của Model
+        public readonly ?string       $subjectType,      // FQCN đầy đủ của Model
         public readonly ?int          $subjectId,
-        public readonly ?string       $subjectLabel,
+        public readonly ?string       $subjectLabel,     // snapshot label
 
         // Misc
         public readonly ?string       $description,
@@ -303,7 +384,7 @@ class LogEntryData extends Data
 
 ## 4. Core Engine
 
-### 4.1 Enums (PHP 8.4 — dùng `#[\Override]` attribute)
+### 4.1 Enums (PHP 8.4 backed enum)
 
 ```php
 // Modules/ActivityLog/app/Enums/LogLevel.php
@@ -335,12 +416,6 @@ enum LogLevel: int
             self::Error    => 'badge-red',
             self::Critical => 'badge-crimson',
         };
-    }
-
-    public function spatieLogName(): string
-    {
-        // log_name trong Spatie = "module.action" — level encode riêng
-        return $this->name;
     }
 }
 
@@ -380,7 +455,6 @@ use Spatie\Activitylog\Models\Activity;
 
 class ActivityLog extends Activity
 {
-    // Override table name nếu muốn dùng tên khác — giữ nguyên 'activity_log' để tương thích
     protected $table = 'activity_log';
 
     protected $casts = [
@@ -413,15 +487,12 @@ class ActivityLog extends Activity
             ->all();
     }
 
-    /**
-     * Actor IP dưới dạng string (INET_NTOA)
-     */
-    public function getActorIpStringAttribute(): ?string
-    {
-        return $this->actor_ip ? long2ip($this->actor_ip) : null;
-    }
-
     // ── Scopes ───────────────────────────────────────────────────
+
+    public function scopeForOrganization(\Illuminate\Database\Eloquent\Builder $q, int $orgId): \Illuminate\Database\Eloquent\Builder
+    {
+        return $q->where('organization_id', $orgId);
+    }
 
     public function scopeModule(\Illuminate\Database\Eloquent\Builder $q, string $module): \Illuminate\Database\Eloquent\Builder
     {
@@ -438,9 +509,13 @@ class ActivityLog extends Activity
         return $q->where('level', '>=', $min);
     }
 
+    /**
+     * Lọc theo subject — dùng FQCN (get_class) để khớp với giá trị lưu trong DB.
+     * KHÔNG dùng class_basename() vì WriteActivityLogAction lưu FQCN đầy đủ.
+     */
     public function scopeForSubject(\Illuminate\Database\Eloquent\Builder $q, \Illuminate\Database\Eloquent\Model $model): \Illuminate\Database\Eloquent\Builder
     {
-        return $q->where('subject_type', class_basename($model))
+        return $q->where('subject_type', get_class($model))
                  ->where('subject_id', $model->getKey());
     }
 }
@@ -481,10 +556,72 @@ class ActivityLogContext extends \Illuminate\Database\Eloquent\Model
 }
 ```
 
-### 4.4 `LogEntryBuilder` — tái sử dụng giữa các call context
+### 4.4 `ActivityLogHttp` Model
+
+```php
+// Modules/ActivityLog/app/Models/ActivityLogHttp.php
+class ActivityLogHttp extends \Illuminate\Database\Eloquent\Model
+{
+    public $timestamps = false;
+
+    protected $fillable = [
+        'log_id', 'http_method', 'url', 'route_name',
+        'status_code', 'duration_ms', 'user_agent', 'created_at',
+    ];
+
+    protected $casts = [
+        'http_method' => HttpMethod::class,
+        'created_at'  => 'datetime',
+    ];
+
+    public function log(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(ActivityLog::class, 'log_id');
+    }
+
+    public function getHttpMethodLabelAttribute(): string
+    {
+        return $this->http_method?->name ?? '';
+    }
+}
+```
+
+### 4.5 `ActivityLogAlertRule` Model
+
+```php
+// Modules/ActivityLog/app/Models/ActivityLogAlertRule.php
+class ActivityLogAlertRule extends \Illuminate\Database\Eloquent\Model
+{
+    protected $fillable = [
+        'name', 'module', 'action', 'level_min',
+        'condition_type', 'threshold_count', 'window_minutes',
+        'notify_channel', 'notify_target',
+        'cooldown_minutes', 'last_triggered_at', 'is_active',
+    ];
+
+    protected $casts = [
+        'is_active'         => 'boolean',
+        'last_triggered_at' => 'datetime',
+    ];
+
+    /**
+     * condition_type:
+     *   1 = first_occurrence — trigger ngay lần đầu match
+     *   2 = count_threshold  — trigger khi đạt threshold_count trong window_minutes
+     */
+    public function isCountThreshold(): bool
+    {
+        return $this->condition_type === 2;
+    }
+}
+```
+
+### 4.6 `LogEntryBuilder` — tái sử dụng giữa các call context
 
 ```php
 // Modules/ActivityLog/app/Core/LogEntryBuilder.php
+use App\Shared\Tenancy\TenantContext;
+
 final class LogEntryBuilder
 {
     private const SENSITIVE = [
@@ -501,26 +638,32 @@ final class LogEntryBuilder
         ?string  $description,
     ): LogEntryData {
         return new LogEntryData(
-            actorId:      $this->actorId(),
-            actorType:    $this->actorType(),
-            actorName:    $this->actorName(),
-            actorIpInt:   $this->ipToInt(),
-            module:       $module,
-            action:       $action,
-            level:        $level,
-            subjectType:  $this->subjectType($subject),
-            subjectId:    $this->subjectId($subject),
-            subjectLabel: $this->subjectLabel($subject),
-            description:  $description ? substr($description, 0, 500) : null,
-            requestId:    request()->header('X-Request-Id', (string) \Str::uuid()),
-            sessionId:    $this->sessionId(),
-            context:      $this->sanitize($context),
-            http:         app()->runningInConsole() ? null : HttpSnapshotData::fromRequest(request()),
-            loggedAt:     new \DateTimeImmutable(),
+            organizationId: $this->organizationId(),
+            actorId:        $this->actorId(),
+            actorType:      $this->actorType(),
+            actorName:      $this->actorName(),
+            actorIp:        $this->actorIp(),
+            module:         $module,
+            action:         $action,
+            level:          $level,
+            subjectType:    $this->subjectType($subject),
+            subjectId:      $this->subjectId($subject),
+            subjectLabel:   $this->subjectLabel($subject),
+            description:    $description ? substr($description, 0, 500) : null,
+            requestId:      request()->header('X-Request-Id', (string) \Str::uuid()),
+            sessionId:      $this->sessionId(),
+            context:        $this->sanitize($context),
+            http:           app()->runningInConsole() ? null : HttpSnapshotData::fromRequest(request()),
+            loggedAt:       new \DateTimeImmutable(),
         );
     }
 
-    private function actorId(): ?int        { return auth()->id(); }
+    private function organizationId(): ?int
+    {
+        return TenantContext::isSet() ? TenantContext::getOrganizationId() : null;
+    }
+
+    private function actorId(): ?int { return auth()->id(); }
 
     private function actorType(): ActorType
     {
@@ -538,27 +681,21 @@ final class LogEntryBuilder
         return 'guest';
     }
 
-    private function ipToInt(): ?int
+    private function actorIp(): ?string
     {
         if (app()->runningInConsole()) return null;
-        $ip   = request()->ip();
-        $long = $ip ? ip2long($ip) : false;
-        if ($long === false) return null;
-        return $long < 0 ? $long + 4294967296 : $long; // unsigned
+        return request()->ip() ?: null;
     }
 
     private function subjectType(mixed $s): ?string
     {
-        return $s instanceof \Illuminate\Database\Eloquent\Model
-            ? class_basename($s)
-            : null;
+        // Lưu FQCN đầy đủ — nhất quán với scopeForSubject và HasActivityLog trait
+        return $s instanceof \Illuminate\Database\Eloquent\Model ? get_class($s) : null;
     }
 
     private function subjectId(mixed $s): ?int
     {
-        return $s instanceof \Illuminate\Database\Eloquent\Model
-            ? (int) $s->getKey()
-            : null;
+        return $s instanceof \Illuminate\Database\Eloquent\Model ? (int) $s->getKey() : null;
     }
 
     private function subjectLabel(mixed $s): ?string
@@ -588,7 +725,7 @@ final class LogEntryBuilder
 }
 ```
 
-### 4.5 `ActivityLogger` — Facade wrapper
+### 4.7 `ActivityLogger` — Facade wrapper
 
 ```php
 // Modules/ActivityLog/app/Core/ActivityLogger.php
@@ -610,7 +747,6 @@ final class ActivityLogger
             $entry = app(LogEntryBuilder::class)->build(
                 $module, $action, $subject, $context, $level, $description
             );
-            // Dùng lorisleiva/laravel-actions dispatch as job
             WriteActivityLogAction::dispatch($entry)->onQueue(
                 config('activitylog.queue', 'actlog')
             );
@@ -661,10 +797,10 @@ class WriteActivityLogAction
     use AsAction;
 
     // ── Job config ────────────────────────────────────────────────
-    public string $jobQueue       = 'actlog';
-    public int    $jobTries       = 5;
-    public array  $jobBackoff     = [3, 10, 30, 60, 120];
-    public int    $jobTimeout     = 30;
+    public string $jobQueue   = 'actlog';
+    public int    $jobTries   = 5;
+    public array  $jobBackoff = [3, 10, 30, 60, 120];
+    public int    $jobTimeout = 30;
 
     // ── Handle ───────────────────────────────────────────────────
 
@@ -682,12 +818,12 @@ class WriteActivityLogAction
 
     // ── Job failed handler ────────────────────────────────────────
 
-    public function jobFailed(\Throwable $e): void
+    public function jobFailed(\Throwable $e, LogEntryData $entry): void
     {
         logger()->error('[ActivityLog] WriteActivityLogAction failed permanently', [
-            'module'  => $this->entry?->module ?? 'unknown',
-            'action'  => $this->entry?->action ?? 'unknown',
-            'error'   => $e->getMessage(),
+            'module' => $entry->module,
+            'action' => $entry->action,
+            'error'  => $e->getMessage(),
         ]);
     }
 
@@ -695,37 +831,27 @@ class WriteActivityLogAction
 
     private function writeMainLog(LogEntryData $entry): int
     {
-        // Dùng Spatie activity() builder để ghi vào activity_log
-        // nhưng với custom columns ta thêm bằng tap()
-        $causer = $entry->actorId
-            ? \App\Models\User::find($entry->actorId)
-            : null;
-
-        // Subject model (reconstruct từ type + id nếu cần)
-        // Spatie lưu subject_type (FQCN) + subject_id
-        // Ta lưu subject_type = class_basename, cần map ngược sang FQCN
-        // → Dùng DB::table thay vì Spatie builder để kiểm soát hoàn toàn
-
+        // Dùng DB::table thay vì Spatie builder để kiểm soát custom columns hoàn toàn
         return \DB::table('activity_log')->insertGetId([
-            'log_name'     => "{$entry->module}.{$entry->action}",
-                            // Giữ log_name tương thích Spatie format
-            'description'  => $entry->description ?? $entry->action,
-            'subject_type' => $entry->subjectType
-                                ? $this->resolveSubjectFqcn($entry->subjectType)
-                                : null,
-            'subject_id'   => $entry->subjectId,
-            'causer_type'  => $entry->actorId ? \App\Models\User::class : null,
-            'causer_id'    => $entry->actorId,
-            'event'        => $entry->action,
+            'log_name'        => "{$entry->module}.{$entry->action}",
+            'description'     => $entry->description ?? $entry->action,
+            'subject_type'    => $entry->subjectType,   // FQCN đầy đủ
+            'subject_id'      => $entry->subjectId,
+            'causer_type'     => $entry->actorId ? \App\Models\User::class : null,
+            'causer_id'       => $entry->actorId,
+            'event'           => $entry->action,
             // Custom columns
-            'level'        => $entry->level->value,
-            'module'       => $entry->module,
-            'action'       => $entry->action,
-            'request_id'   => $entry->requestId,
-            'actor_ip'     => $entry->actorIpInt,
-            // properties = null (ta không dùng JSON column của Spatie)
-            'created_at'   => $entry->loggedAt->format('Y-m-d H:i:s.v'),
-            'updated_at'   => now(),
+            'organization_id' => $entry->organizationId,
+            'level'           => $entry->level->value,
+            'module'          => $entry->module,
+            'action'          => $entry->action,
+            'actor_name'      => $entry->actorName,
+            'actor_ip'        => $entry->actorIp,
+            'request_id'      => $entry->requestId,
+            'session_id'      => $entry->sessionId,
+            'subject_label'   => $entry->subjectLabel,
+            'created_at'      => $entry->loggedAt->format('Y-m-d H:i:s'),
+            'updated_at'      => now(),
         ]);
     }
 
@@ -744,7 +870,8 @@ class WriteActivityLogAction
     {
         if ($entry->http === null) return;
 
-        // Enrich với status_code + duration từ Cache (set bởi CaptureHttpContext middleware)
+        // Enrich status_code + duration từ Cache (set bởi CaptureHttpContext middleware).
+        // TTL = 60s. Nếu job chạy sau 60s, status_code/duration_ms sẽ là NULL — chấp nhận được.
         $cached = \Cache::pull("actlog:http_ctx:{$entry->requestId}");
 
         \DB::table('activity_log_http')->insert([
@@ -752,8 +879,8 @@ class WriteActivityLogAction
             'http_method' => $entry->http->method->value,
             'url'         => $entry->http->url,
             'route_name'  => $entry->http->routeName,
-            'status_code' => $cached['status_code'] ?? $entry->http->statusCode,
-            'duration_ms' => $cached['duration_ms'] ?? $entry->http->durationMs,
+            'status_code' => $cached['status_code'] ?? null,
+            'duration_ms' => $cached['duration_ms'] ?? null,
             'user_agent'  => $entry->http->userAgent,
             'created_at'  => now(),
         ]);
@@ -770,11 +897,11 @@ class WriteActivityLogAction
             'created_at'   => now(),
         ];
 
-        if      (is_bool($value))                    { $row['value_type'] = 4; $row['val_boolean']  = (int) $value; }
-        elseif  (is_int($value))                     { $row['value_type'] = 2; $row['val_integer']  = $value; }
-        elseif  (is_float($value))                   { $row['value_type'] = 3; $row['val_decimal']  = $value; }
+        if      (is_bool($value))                     { $row['value_type'] = 4; $row['val_boolean']  = (int) $value; }
+        elseif  (is_int($value))                      { $row['value_type'] = 2; $row['val_integer']  = $value; }
+        elseif  (is_float($value))                    { $row['value_type'] = 3; $row['val_decimal']  = $value; }
         elseif  ($value instanceof \DateTimeInterface){ $row['value_type'] = 5; $row['val_datetime'] = $value->format('Y-m-d H:i:s'); }
-        elseif  ($value instanceof \BackedEnum)      {
+        elseif  ($value instanceof \BackedEnum) {
             $v = $value->value;
             if (is_int($v)) { $row['value_type'] = 2; $row['val_integer'] = $v; }
             else             { $row['value_type'] = 1; $row['val_string']  = substr((string) $v, 0, 500); }
@@ -782,17 +909,6 @@ class WriteActivityLogAction
         else { $row['value_type'] = 1; $row['val_string'] = substr((string) $value, 0, 500); }
 
         return $row;
-    }
-
-    private function resolveSubjectFqcn(string $basename): ?string
-    {
-        // Map class_basename → FQCN để Spatie subject_type hoạt động đúng
-        // Cache vì map này không đổi
-        return \Cache::remember("actlog:fqcn:{$basename}", 3600, function () use ($basename) {
-            // Các module đăng ký FQCN của mình khi boot
-            $map = config('activitylog.subject_map', []);
-            return $map[$basename] ?? null;
-        });
     }
 }
 ```
@@ -807,15 +923,14 @@ class PurgeOldLogsAction
 {
     use AsAction;
 
-    // Dùng như Artisan command: php artisan activitylog:purge
-    public string $commandSignature    = 'activitylog:purge';
-    public string $commandDescription  = 'Xóa log cũ theo retention policy';
+    public string $commandSignature   = 'activitylog:purge';
+    public string $commandDescription = 'Xóa log cũ theo retention policy';
 
     public function handle(): void
     {
-        $cutoff     = now()->subDays(config('activitylog.retain_days', 90));
-        $batchSize  = 1000;
-        $deleted    = 0;
+        $cutoff    = now()->subDays(config('activitylog.retain_days', 90));
+        $batchSize = 1000;
+        $deleted   = 0;
 
         // Xóa context + http trước (không có FK constraint), sau đó xóa log chính
         // Batch DELETE tránh lock table quá lâu
@@ -831,8 +946,7 @@ class PurgeOldLogsAction
             \DB::table('activity_log_http')->whereIn('log_id', $ids)->delete();
             $deleted += \DB::table('activity_log')->whereIn('id', $ids)->delete();
 
-            // Nhường CPU giữa các batch (chạy lúc 3h sáng nhưng vẫn tốt)
-            usleep(10_000); // 10ms
+            usleep(10_000); // 10ms — nhường CPU giữa các batch
         } while ($ids->count() === $batchSize);
 
         if ($deleted > 0) {
@@ -843,7 +957,6 @@ class PurgeOldLogsAction
         }
     }
 
-    // Output ra console khi chạy bằng Artisan
     public function asCommand(\Illuminate\Console\Command $command): void
     {
         $this->handle();
@@ -866,32 +979,36 @@ class ExportActivityLogsAction
     public string $jobQueue   = 'actlog';
     public int    $jobTimeout = 300;
 
+    // Danh sách filter hợp lệ — export controller validate trước khi dispatch
+    public const ALLOWED_FILTERS = [
+        'module', 'action', 'level_min', 'actor_id',
+        'date_from', 'date_to', 'search', 'organization_id',
+    ];
+
     public function handle(array $filters, string $exportKey): void
     {
         $path = storage_path("app/exports/actlog_{$exportKey}.xlsx");
 
-        // LazyCollection — không load toàn bộ vào RAM
-        $query = ActivityLog::with(['contexts', 'http'])
+        // Eager load http để tránh N+1 (causer không cần load — dùng actor_name snapshot)
+        $query = ActivityLog::with(['http'])
             ->tap(fn($q) => $this->applyFilters($q, $filters))
             ->orderByDesc('created_at');
 
         $collection = $query->lazy(500)->map(fn(ActivityLog $log) => [
-            'ID'         => $log->id,
-            'Thời gian'  => $log->created_at?->format('d/m/Y H:i:s'),
-            'Cấp độ'    => $log->level->label(),
-            'Module'     => $log->module,
-            'Action'     => $log->action,
-            'Actor'      => $log->causer_id
-                                ? ($log->causer?->name ?? "User#{$log->causer_id}")
-                                : 'system',
-            'Actor IP'   => $log->actor_ip_string,
-            'Subject'    => "{$log->subject_type}#{$log->subject_id}",
-            'Label'      => $log->subject_label,    // từ custom accessor
-            'Mô tả'     => $log->description,
-            'Request ID' => $log->request_id,
-            'URL'        => $log->http?->url,
-            'Status'     => $log->http?->status_code,
-            'Duration ms'=> $log->http?->duration_ms,
+            'ID'          => $log->id,
+            'Thời gian'   => $log->created_at?->format('d/m/Y H:i:s'),
+            'Cấp độ'     => $log->level->label(),
+            'Module'      => $log->module,
+            'Action'      => $log->action,
+            'Actor'       => $log->actor_name ?? ($log->causer_id ? "User#{$log->causer_id}" : 'system'),
+            'Actor IP'    => $log->actor_ip,
+            'Subject'     => $log->subject_type ? "{$log->subject_type}#{$log->subject_id}" : null,
+            'Label'       => $log->subject_label,
+            'Mô tả'      => $log->description,
+            'Request ID'  => $log->request_id,
+            'URL'         => $log->http?->url,
+            'Status'      => $log->http?->status_code,
+            'Duration ms' => $log->http?->duration_ms,
         ]);
 
         (new FastExcel($collection))->export($path);
@@ -902,24 +1019,17 @@ class ExportActivityLogsAction
 
     private function applyFilters(\Illuminate\Database\Eloquent\Builder $q, array $filters): void
     {
-        if (!empty($filters['module']))
-            $q->where('module', $filters['module']);
-        if (!empty($filters['action']))
-            $q->where('action', $filters['action']);
-        if (!empty($filters['level_min']))
-            $q->where('level', '>=', $filters['level_min']);
-        if (!empty($filters['actor_id']))
-            $q->where('causer_id', $filters['actor_id']);
-        if (!empty($filters['date_from']))
-            $q->where('created_at', '>=', $filters['date_from'] . ' 00:00:00');
-        if (!empty($filters['date_to']))
-            $q->where('created_at', '<=', $filters['date_to'] . ' 23:59:59');
+        if (!empty($filters['organization_id'])) $q->where('organization_id', $filters['organization_id']);
+        if (!empty($filters['module']))           $q->where('module', $filters['module']);
+        if (!empty($filters['action']))           $q->where('action', $filters['action']);
+        if (!empty($filters['level_min']))        $q->where('level', '>=', $filters['level_min']);
+        if (!empty($filters['actor_id']))         $q->where('causer_id', $filters['actor_id']);
+        if (!empty($filters['date_from']))        $q->where('created_at', '>=', $filters['date_from'].' 00:00:00');
+        if (!empty($filters['date_to']))          $q->where('created_at', '<=', $filters['date_to'].' 23:59:59');
         if (!empty($filters['search'])) {
-            $term = '%' . $filters['search'] . '%';
-            $q->where(fn($q2) => $q2
-                ->where('description', 'like', $term)
-                ->orWhere('action',    'like', $term)
-            );
+            $t = '%'.$filters['search'].'%';
+            $q->where(fn($q2) => $q2->where('description', 'like', $t)
+                                    ->orWhere('action', 'like', $t));
         }
     }
 }
@@ -927,15 +1037,19 @@ class ExportActivityLogsAction
 
 ---
 
-## 6. Model Observers — dùng HasActivity của Spatie
+## 6. Model Observers — dùng `LogsActivity` của Spatie
 
-### 6.1 Tận dụng `HasActivity` trait
+> **Lưu ý namespace Spatie v5**: Dùng `Spatie\Activitylog\Traits\LogsActivity`.
+> Các model Survey hiện tại import sai path v4 (`Spatie\Activitylog\Models\Concerns\LogsActivity`) —
+> cần fix trong Phase 2 (xem §0.4).
+
+### 6.1 Tận dụng `LogsActivity` trait
 
 Với các Model đơn giản chỉ cần log CRUD, dùng thẳng Spatie trait:
 
 ```php
 // Trong Survey model — KHÔNG cần Observer thủ công
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Traits\LogsActivity;   // ← Spatie v5 namespace
 use Spatie\Activitylog\LogOptions;
 
 class Survey extends Model
@@ -946,15 +1060,15 @@ class Survey extends Model
     {
         return LogOptions::defaults()
             ->logOnly(['title', 'slug', 'status', 'assessment_code'])
-            ->logOnlyDirty()          // chỉ log field thực sự thay đổi
-            ->dontSubmitEmptyLogs()   // bỏ qua update không đổi gì
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(fn(string $event) => match($event) {
                 'created' => "Tạo khảo sát: {$this->title}",
                 'updated' => "Cập nhật khảo sát: {$this->title}",
                 'deleted' => "Xóa khảo sát: {$this->title}",
                 default   => $event,
             })
-            ->useLogName('Survey.survey_' . '{event}');
+            ->useLogName('Survey.survey_{event}');
             // log_name = 'Survey.survey_created' — tương thích với module.action format
     }
 }
@@ -963,7 +1077,7 @@ class Survey extends Model
 ### 6.2 `BaseModelObserver` — khi cần custom context
 
 Khi cần ghi thêm context riêng (before/after, business logic), dùng Observer thủ công
-thay vì `HasActivity`:
+thay vì `LogsActivity`:
 
 ```php
 // Modules/ActivityLog/app/Observers/BaseModelObserver.php
@@ -1005,14 +1119,14 @@ abstract class BaseModelObserver
 }
 ```
 
-**Khi nào dùng `HasActivity` (Spatie) vs `BaseModelObserver` (custom)?**
+**Khi nào dùng `LogsActivity` (Spatie) vs `BaseModelObserver` (custom)?**
 
 | Tình huống | Dùng cái gì |
 |-----------|-------------|
-| Log CRUD cơ bản, chỉ cần biết field nào đổi | `HasActivity` trait của Spatie |
+| Log CRUD cơ bản, chỉ cần biết field nào đổi | `LogsActivity` trait của Spatie |
 | Cần ghi thêm context riêng (business data) | `BaseModelObserver` custom |
 | Cần logic đặc biệt (vd: delete level phụ thuộc data) | `BaseModelObserver` custom |
-| Model đã dùng `HasActivity` nhưng muốn thêm context | Kết hợp: giữ Spatie log + gọi thêm `ActivityLogger::info()` trong Action |
+| Model đã dùng `LogsActivity` nhưng muốn thêm context | Kết hợp: giữ Spatie log + gọi thêm `ActivityLogger::info()` trong Action |
 
 ---
 
@@ -1063,7 +1177,7 @@ class InjectRequestId
     {
         $requestId = $request->header('X-Request-Id', (string) \Str::uuid());
         $request->headers->set('X-Request-Id', $requestId);
-        $response = $next($request);
+        $response  = $next($request);
         $response->headers->set('X-Request-Id', $requestId);
         return $response;
     }
@@ -1076,6 +1190,10 @@ class InjectRequestId
 // Modules/ActivityLog/app/Http/Middleware/CaptureHttpContext.php
 class CaptureHttpContext
 {
+    // TTL đủ lâu cho job queue xử lý trong điều kiện bình thường.
+    // Nếu queue bận > TTL, status_code/duration_ms sẽ là NULL — acceptable.
+    private const CACHE_TTL_SECONDS = 60;
+
     public function handle(\Illuminate\Http\Request $request, \Closure $next): \Symfony\Component\HttpFoundation\Response
     {
         $startMs  = (int)(microtime(true) * 1000);
@@ -1085,7 +1203,7 @@ class CaptureHttpContext
             \Cache::put("actlog:http_ctx:{$requestId}", [
                 'status_code' => $response->getStatusCode(),
                 'duration_ms' => (int)(microtime(true) * 1000) - $startMs,
-            ], 30);
+            ], self::CACHE_TTL_SECONDS);
         }
         return $response;
     }
@@ -1148,6 +1266,8 @@ Route::prefix('backend/api/activity-logs')
 
 ```php
 // Modules/ActivityLog/app/Http/Controllers/ActivityLogApiController.php
+use App\Shared\Tenancy\TenantContext;
+
 class ActivityLogApiController extends \Illuminate\Routing\Controller
 {
     public function index(\Illuminate\Http\Request $request): \Illuminate\Http\JsonResponse
@@ -1157,7 +1277,7 @@ class ActivityLogApiController extends \Illuminate\Routing\Controller
             'action'       => 'nullable|string|max:128',
             'level_min'    => 'nullable|integer|min:1|max:5',
             'actor_id'     => 'nullable|integer',
-            'subject_type' => 'nullable|string|max:64',
+            'subject_type' => 'nullable|string|max:255',
             'subject_id'   => 'nullable|integer',
             'request_id'   => 'nullable|string|size:36',
             'search'       => 'nullable|string|max:100',
@@ -1169,10 +1289,14 @@ class ActivityLogApiController extends \Illuminate\Routing\Controller
             'dir'          => 'nullable|in:asc,desc',
         ]);
 
-        $page = $v['page'] ?? 0;
-        $size = $v['size'] ?? 20;
-
+        $page  = $v['page'] ?? 0;
+        $size  = $v['size'] ?? 20;
         $query = ActivityLog::query();
+
+        // Luôn scope theo tenant hiện tại — admin chỉ thấy log của org mình
+        if (TenantContext::isSet()) {
+            $query->forOrganization(TenantContext::getOrganizationId());
+        }
 
         if (!empty($v['module']))       $query->where('module', $v['module']);
         if (!empty($v['action']))       $query->where('action', $v['action']);
@@ -1180,10 +1304,10 @@ class ActivityLogApiController extends \Illuminate\Routing\Controller
         if (!empty($v['actor_id']))     $query->where('causer_id', $v['actor_id']);
         if (!empty($v['request_id']))   $query->where('request_id', $v['request_id']);
         if (!empty($v['subject_type']) && !empty($v['subject_id'])) {
-            $fqcn = \Cache::get("actlog:fqcn:{$v['subject_type']}");
-            if ($fqcn) {
-                $query->where('subject_type', $fqcn)->where('subject_id', $v['subject_id']);
-            }
+            // subject_type trong DB là FQCN — client gửi lên FQCN hoặc class_basename
+            // UI nên gửi FQCN đầy đủ (lấy từ response trước)
+            $query->where('subject_type', $v['subject_type'])
+                  ->where('subject_id', $v['subject_id']);
         }
         if (!empty($v['date_from']))    $query->where('created_at', '>=', $v['date_from'].' 00:00:00');
         if (!empty($v['date_to']))      $query->where('created_at', '<=', $v['date_to'].' 23:59:59');
@@ -1197,9 +1321,9 @@ class ActivityLogApiController extends \Illuminate\Routing\Controller
         $items = $query
             ->orderBy($v['sort'] ?? 'created_at', $v['dir'] ?? 'desc')
             ->offset($page * $size)->limit($size)
-            ->get(['id','log_name','description','subject_type','subject_id',
+            ->get(['id','log_name','description','subject_type','subject_id','subject_label',
                    'causer_id','event','level','module','action','request_id',
-                   'actor_ip','created_at']);
+                   'actor_name','actor_ip','created_at']);
 
         return response()->json([
             'data'      => $items,
@@ -1210,30 +1334,42 @@ class ActivityLogApiController extends \Illuminate\Routing\Controller
 
     public function stats(\Illuminate\Http\Request $request): \Illuminate\Http\JsonResponse
     {
-        $days = min(90, max(1, (int) $request->input('days', 30)));
-        $from = now()->subDays($days);
+        $days     = min(90, max(1, (int) $request->input('days', 30)));
+        $from     = now()->subDays($days);
+        $orgId    = TenantContext::isSet() ? TenantContext::getOrganizationId() : null;
+        $cacheKey = "actlog:stats:{$days}:" . ($orgId ?? 'all');
 
-        return response()->json(\Cache::remember("actlog:stats:{$days}", 300, fn() => [
-            'by_level'       => ActivityLog::where('created_at', '>=', $from)
-                ->selectRaw('level, COUNT(*) as count')->groupBy('level')->get(),
-            'by_module'      => ActivityLog::where('created_at', '>=', $from)
-                ->selectRaw('module, COUNT(*) as count')
-                ->groupBy('module')->orderByDesc('count')->limit(10)->get(),
-            'by_day'         => ActivityLog::where('created_at', '>=', $from)
-                ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
-                ->groupBy('date')->orderBy('date')->get(),
-            'error_today'    => ActivityLog::where('level', '>=', 4)->whereDate('created_at', today())->count(),
-            'critical_today' => ActivityLog::where('level', 5)->whereDate('created_at', today())->count(),
-        ]));
+        return response()->json(\Cache::remember($cacheKey, 300, function () use ($from, $orgId) {
+            $base = ActivityLog::where('created_at', '>=', $from)
+                ->when($orgId, fn($q) => $q->where('organization_id', $orgId));
+
+            return [
+                'by_level'       => (clone $base)->selectRaw('level, COUNT(*) as count')->groupBy('level')->get(),
+                'by_module'      => (clone $base)->selectRaw('module, COUNT(*) as count')
+                                        ->groupBy('module')->orderByDesc('count')->limit(10)->get(),
+                'by_day'         => (clone $base)->selectRaw('DATE(created_at) as date, COUNT(*) as count')
+                                        ->groupBy('date')->orderBy('date')->get(),
+                'error_today'    => ActivityLog::where('level', '>=', 4)->whereDate('created_at', today())
+                                        ->when($orgId, fn($q) => $q->where('organization_id', $orgId))->count(),
+                'critical_today' => ActivityLog::where('level', 5)->whereDate('created_at', today())
+                                        ->when($orgId, fn($q) => $q->where('organization_id', $orgId))->count(),
+            ];
+        }));
     }
 
     public function meta(): \Illuminate\Http\JsonResponse
     {
-        return response()->json(\Cache::remember('actlog:meta', 600, fn() => [
-            'modules' => ActivityLog::distinct()->orderBy('module')->pluck('module')->filter(),
-            'actions' => ActivityLog::distinct()->select('module','action')
-                ->orderBy('action')->get()->groupBy('module'),
-        ]));
+        $orgId    = TenantContext::isSet() ? TenantContext::getOrganizationId() : null;
+        $cacheKey = 'actlog:meta:' . ($orgId ?? 'all');
+
+        return response()->json(\Cache::remember($cacheKey, 600, function () use ($orgId) {
+            $base = ActivityLog::when($orgId, fn($q) => $q->where('organization_id', $orgId));
+            return [
+                'modules' => (clone $base)->distinct()->orderBy('module')->pluck('module')->filter(),
+                'actions' => (clone $base)->distinct()->select('module', 'action')
+                                ->orderBy('action')->get()->groupBy('module'),
+            ];
+        }));
     }
 }
 ```
@@ -1241,6 +1377,9 @@ class ActivityLogApiController extends \Illuminate\Routing\Controller
 ### 9.3 `ActivityLogController`
 
 ```php
+// Modules/ActivityLog/app/Http/Controllers/ActivityLogController.php
+use App\Shared\Tenancy\TenantContext;
+
 class ActivityLogController extends \Illuminate\Routing\Controller
 {
     public function index(): \Illuminate\View\View
@@ -1250,6 +1389,11 @@ class ActivityLogController extends \Illuminate\Routing\Controller
 
     public function show(ActivityLog $log): \Illuminate\View\View
     {
+        // Tenant gate: chỉ xem log của org mình
+        if (TenantContext::isSet() && $log->organization_id !== TenantContext::getOrganizationId()) {
+            abort(403);
+        }
+
         $contexts = ActivityLogContext::where('log_id', $log->id)->orderBy('key_name')->get();
         $http     = ActivityLogHttp::where('log_id', $log->id)->first();
 
@@ -1273,9 +1417,26 @@ class ActivityLogController extends \Illuminate\Routing\Controller
 
     public function export(\Illuminate\Http\Request $request): \Illuminate\Http\JsonResponse
     {
+        // Validate trước khi dispatch — không pass $request->all() thẳng vào job
+        $filters = $request->validate([
+            'module'    => 'nullable|string|max:64',
+            'action'    => 'nullable|string|max:128',
+            'level_min' => 'nullable|integer|min:1|max:5',
+            'actor_id'  => 'nullable|integer',
+            'date_from' => 'nullable|date',
+            'date_to'   => 'nullable|date',
+            'search'    => 'nullable|string|max:100',
+        ]);
+
+        // Inject organization_id vào filter để job giữ đúng scope tenant
+        if (TenantContext::isSet()) {
+            $filters['organization_id'] = TenantContext::getOrganizationId();
+        }
+
         $key = (string) \Str::uuid();
-        ExportActivityLogsAction::dispatch($request->all(), $key)
+        ExportActivityLogsAction::dispatch($filters, $key)
             ->onQueue(config('activitylog.queue', 'actlog'));
+
         return response()->json(['key' => $key]);
     }
 
@@ -1411,7 +1572,7 @@ function activityLogIndex() {
         },
 
         async doExport() {
-            const r    = await fetch('/dashboard/activity-logs/export', {
+            const r = await fetch('/dashboard/activity-logs/export', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
@@ -1466,10 +1627,12 @@ function activityLogIndex() {
                       }},
                     { title:'Cấp độ', field:'level', width:95, hozAlign:'center',
                       formatter: c => self.levelBadge(c.getValue()) },
-                    { title:'Module', field:'module', width:100 },
-                    { title:'Action', field:'action', width:210 },
-                    { title:'Mô tả', field:'description', minWidth:200 },
-                    { title:'Actor ID', field:'causer_id', width:90, hozAlign:'center' },
+                    { title:'Module',  field:'module', width:100 },
+                    { title:'Action',  field:'action', width:200 },
+                    { title:'Actor',   field:'actor_name', width:140 },
+                    { title:'IP',      field:'actor_ip',   width:120 },
+                    { title:'Label',   field:'subject_label', minWidth:150 },
+                    { title:'Mô tả',   field:'description', minWidth:180 },
                     { title:'',
                       formatter: () => '<a class="btn-xs">Xem</a>',
                       width:60, hozAlign:'center',
@@ -1561,8 +1724,8 @@ class SendAlertAction
 {
     use AsAction;
 
-    public string $jobQueue = 'actlog';
-    public int    $jobTries = 3;
+    public string $jobQueue  = 'actlog';
+    public int    $jobTries  = 3;
     public array  $jobBackoff = [10, 60, 300];
 
     public function handle(int $ruleId, LogEntryData $entry): void
@@ -1597,9 +1760,11 @@ class SendAlertAction
 
 ## 12. Export với FastExcel
 
-Đã implement trong `ExportActivityLogsAction` (mục 5.3). Tóm tắt ưu điểm FastExcel:
+Đã implement trong `ExportActivityLogsAction` (§5.3). Tóm tắt ưu điểm FastExcel:
 - `LazyCollection` + `lazy(500)` → stream 500 rows/lần, không bao giờ OOM.
-- Không cần config PhpSpreadsheet riêng.
+- Eager load `http` (không cần eager load `causer` vì dùng `actor_name` snapshot).
+- `actor_name` lấy từ snapshot column — không cần join sang `users` table.
+- `subject_label` lấy từ snapshot column — không cần join sang subject model.
 - API đơn giản: `(new FastExcel($collection))->export($path)`.
 - Nhanh hơn ~5x so với Laravel Excel ở cùng file size.
 
@@ -1618,25 +1783,30 @@ Schedule::job(
     \Modules\ActivityLog\app\Actions\PurgeOldLogsAction::makeJob()
 )->dailyAt('03:00')->name('activitylog:purge')->onOneServer();
 
-// Invalidate stats cache — fresh data mỗi 5 phút
-Schedule::call(fn() => \Cache::forget('actlog:stats:30'))
-    ->everyFiveMinutes();
+// Invalidate stats cache (có org-scoped keys)
+Schedule::call(function () {
+    // Dùng Cache::tags nếu Redis hỗ trợ, ngược lại flush toàn bộ actlog:stats:* keys
+    \Cache::forget('actlog:meta:all');
+    // Org-scoped keys cần invalidate riêng hoặc dùng short TTL (300s)
+})->everyFiveMinutes();
 ```
 
-### 13.2 Cấu hình Spatie CleansUpActivityLog
+### 13.2 Cấu hình Spatie
 
-Spatie có command `php artisan activitylog:clean` — tích hợp vào scheduler:
+Dùng `PurgeOldLogsAction` của ta thay vì `php artisan activitylog:clean` của Spatie —
+vì Spatie chỉ xóa bảng chính, ta cần xóa thêm bảng con (`contexts`, `http`).
 
 ```php
-// config/activitylog.php (Spatie config)
+// config/activitylog.php (Spatie config — publish từ package)
 return [
-    // ... Spatie defaults
-    'delete_records_older_than_days' => env('ACTIVITYLOG_RETAIN_DAYS', 90),
+    'enabled'                        => env('ACTIVITY_LOGGER_ENABLED', true),
+    'delete_records_older_than_days' => 90, // đồng bộ với retain_days
+    'default_log_name'               => 'default',
+    'activity_model'                 => \Modules\ActivityLog\app\Models\ActivityLog::class,
+    // ↑ Quan trọng: trỏ về custom model để Spatie dùng model mở rộng của ta
+    'table_name'                     => 'activity_log',
+    'database_connection'            => env('ACTIVITY_LOG_DB_CONNECTION'),
 ];
-
-// Thêm vào scheduler (bổ sung, không thay PurgeOldLogsAction)
-// Spatie clean xóa bảng chính, ta cần xóa thêm bảng con
-// → dùng PurgeOldLogsAction của ta là đủ, không cần Spatie clean
 ```
 
 ---
@@ -1646,31 +1816,57 @@ return [
 ```php
 // Modules/ActivityLog/database/seeders/ActivityLogPermissionsSeeder.php
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use App\Enums\RoleEnum;
 
 class ActivityLogPermissionsSeeder extends \Illuminate\Database\Seeder
 {
+    private const PERMISSIONS = [
+        'activitylog.view',           // xem danh sách + chi tiết log
+        'activitylog.export',         // xuất Excel
+        'activitylog.manage_alerts',  // quản lý alert rules
+    ];
+
+    // Roles theo RoleEnum — system_admin và ceo nhận full access mặc định
+    private const ADMIN_ROLES = [
+        RoleEnum::ADMIN->value,  // 'system_admin'
+        RoleEnum::CEO->value,    // 'ceo'
+    ];
+
     public function run(): void
     {
-        $permissions = [
-            'activitylog.view',           // xem danh sách + chi tiết log
-            'activitylog.export',         // xuất Excel
-            'activitylog.manage_alerts',  // quản lý alert rules
-        ];
-
-        foreach ($permissions as $perm) {
+        foreach (self::PERMISSIONS as $perm) {
             Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
         }
 
-        // Gán cho role admin (nếu role đã tồn tại)
-        $adminRole = \Spatie\Permission\Models\Role::where('name', 'admin')->first();
-        if ($adminRole) {
-            $adminRole->givePermissionTo($permissions);
+        foreach (self::ADMIN_ROLES as $roleName) {
+            $role = Role::where('name', $roleName)->first();
+            $role?->givePermissionTo(self::PERMISSIONS);
         }
     }
 }
 ```
 
-Dùng trong route middleware: `->middleware('can:activitylog.view')` (như đã khai báo trong routes).
+**Đăng ký vào `config/permissions.php`** — thêm vào array của từng role:
+
+```php
+// Thêm vào array R::ADMIN->value trong config/permissions.php
+'activitylog.view',
+'activitylog.export',
+'activitylog.manage_alerts',
+
+// Thêm vào array R::CEO->value (chỉ view + export, không manage alerts)
+'activitylog.view',
+'activitylog.export',
+```
+
+**Thêm vào `RoleEnum::visibleModules()`** (sidebar):
+
+```php
+// Trong RoleEnum::visibleModules(), thêm 'activity_log' vào danh sách của system_admin
+self::ADMIN  => [...existing..., 'activity_log'],
+self::CEO    => [...existing..., 'activity_log'],
+```
 
 ---
 
@@ -1691,7 +1887,7 @@ ActivityLogger::error('Survey', 'scoring_job_failed', $response, [
     'attempt'     => 3,
 ], 'Job chấm điểm thất bại sau 3 lần retry');
 
-// Cách 3: Dùng HasActivity trên Model (Spatie tự log)
+// Cách 3: Dùng LogsActivity trên Model (Spatie tự log)
 // Chỉ cần thêm trait vào Model — không cần Observer thủ công
 
 // Cách 4: Context types — tự động detect
@@ -1731,35 +1927,16 @@ trait HasActivityLog
 {
     public function recentActivityLogs(int $limit = 15): \Illuminate\Support\Collection
     {
-        $fqcn = get_class($this);
-        return ActivityLog::where('subject_type', $fqcn)
+        // Dùng get_class() (FQCN) — nhất quán với WriteActivityLogAction::writeMainLog()
+        // KHÔNG dùng class_basename() vì DB lưu FQCN đầy đủ
+        return ActivityLog::where('subject_type', get_class($this))
             ->where('subject_id', $this->getKey())
             ->where('created_at', '>=', now()->subDays(30))
             ->orderByDesc('created_at')
             ->limit($limit)
-            ->get(['id','module','action','level','description','causer_id','created_at']);
+            ->get(['id','module','action','level','description','actor_name','actor_ip','created_at']);
     }
 }
-```
-
-### 15.4 Đăng ký subject_map
-
-Mỗi module đăng ký FQCN của mình trong ServiceProvider để `WriteActivityLogAction` có thể
-map `class_basename` → FQCN (Spatie cần FQCN trong `subject_type`):
-
-```php
-// Modules/Survey/app/Providers/SurveyServiceProvider.php
-public function register(): void
-{
-    // Merge vào config activitylog.subject_map
-    $this->mergeConfigFrom(__DIR__.'/../../config/activitylog_subjects.php', 'activitylog.subject_map');
-}
-
-// Modules/Survey/config/activitylog_subjects.php
-return [
-    'Survey'         => \Modules\Survey\app\Models\Survey::class,
-    'SurveyResponse' => \Modules\Survey\app\Models\SurveyResponse::class,
-];
 ```
 
 ---
@@ -1783,88 +1960,74 @@ return [
 
     /*
     | Queue riêng cho ActivityLog jobs.
-    | Tách khỏi queue chính để không cạnh tranh.
+    | Tách khỏi queue chính để không cạnh tranh với business jobs.
     */
     'queue' => env('ACTIVITYLOG_QUEUE', 'actlog'),
-
-    /*
-    | Map class_basename → FQCN để Spatie subject_type hoạt động đúng.
-    | Mỗi module tự merge thêm vào đây qua mergeConfigFrom().
-    */
-    'subject_map' => [
-        // VD: 'Survey' => \Modules\Survey\app\Models\Survey::class,
-    ],
 ];
 ```
 
-**Config Spatie** (`config/activitylog.php` — publish từ package):
-```php
-return [
-    'enabled'                       => env('ACTIVITY_LOGGER_ENABLED', true),
-    'delete_records_older_than_days' => 90, // đồng bộ với retain_days
-    'default_log_name'              => 'default',
-    'activity_model'                => \Modules\ActivityLog\app\Models\ActivityLog::class,
-    // ↑ Quan trọng: trỏ về custom model của ta
-    'table_name'                    => 'activity_log',
-    'database_connection'           => env('ACTIVITY_LOG_DB_CONNECTION'),
-];
-```
+> **Lưu ý**: Không cần `subject_map` nữa vì `LogEntryBuilder` lưu thẳng FQCN
+> vào `subjectType` — không cần resolve ngược từ `class_basename`.
 
 ---
 
 ## 17. Migrations hoàn chỉnh
 
-### Migration 1 — Publish + chạy Spatie migration
+### Migration 1 — Spatie (đã chạy, không cần lại)
 
-Spatie publish migration tự động tạo bảng `activity_log`.
+Bảng `activity_log` đã được tạo tại:
+`database/migrations/vendor/2026_05_13_020054_create_activity_log_table.php`
 
-```bash
-php artisan vendor:publish --provider="Spatie\Activitylog\ActivitylogServiceProvider" --tag="activitylog-migrations"
-php artisan migrate
-```
+Không publish lại. Migration bổ sung bên dưới sẽ `ALTER` bảng này.
 
 ### Migration 2 — Thêm custom columns vào `activity_log`
 
 ```php
-// Modules/ActivityLog/database/migrations/2026_01_01_000002_add_custom_columns_to_activity_log.php
+// Modules/ActivityLog/database/migrations/2026_XX_XX_000001_add_custom_columns_to_activity_log.php
 public function up(): void
 {
     Schema::table('activity_log', function (Blueprint $table) {
         $table->unsignedTinyInteger('level')
-              ->default(2)
-              ->after('log_name')
+              ->default(2)->after('log_name')
               ->comment('1=debug 2=info 3=warning 4=error 5=critical');
 
-        $table->string('module', 64)
-              ->nullable()
-              ->after('level');
+        $table->unsignedBigInteger('organization_id')
+              ->nullable()->after('level')
+              ->comment('Tenant context — NULL khi CLI/system job');
 
-        $table->string('action', 128)
-              ->nullable()
-              ->after('module');
+        $table->string('module', 64)->nullable()->after('organization_id');
+        $table->string('action', 128)->nullable()->after('module');
 
-        $table->char('request_id', 36)
-              ->nullable()
-              ->after('action');
+        $table->string('actor_name', 255)->nullable()->after('action')
+              ->comment('Snapshot tên actor tại thời điểm log');
 
-        $table->unsignedInteger('actor_ip')
-              ->nullable()
-              ->after('request_id')
-              ->comment('INET_ATON(ipv4)');
+        $table->string('actor_ip', 45)->nullable()->after('actor_name')
+              ->comment('IPv4 hoặc IPv6');
 
-        $table->index(['level', 'created_at'],          'idx_level');
-        $table->index(['module', 'action', 'created_at'],'idx_module_action');
-        $table->index('request_id',                      'idx_request');
+        $table->char('request_id', 36)->nullable()->after('actor_ip');
+        $table->string('session_id', 255)->nullable()->after('request_id');
+
+        $table->string('subject_label', 255)->nullable()->after('session_id')
+              ->comment('Snapshot label của subject (name/title/email)');
+
+        $table->index(['organization_id', 'created_at'], 'idx_org_created');
+        $table->index(['level', 'created_at'],            'idx_level');
+        $table->index(['module', 'action', 'created_at'], 'idx_module_action');
+        $table->index('request_id',                       'idx_request');
     });
 }
 
 public function down(): void
 {
     Schema::table('activity_log', function (Blueprint $table) {
+        $table->dropIndex('idx_org_created');
         $table->dropIndex('idx_level');
         $table->dropIndex('idx_module_action');
         $table->dropIndex('idx_request');
-        $table->dropColumn(['level', 'module', 'action', 'request_id', 'actor_ip']);
+        $table->dropColumn([
+            'level', 'organization_id', 'module', 'action',
+            'actor_name', 'actor_ip', 'request_id', 'session_id', 'subject_label',
+        ]);
     });
 }
 ```
@@ -1872,6 +2035,7 @@ public function down(): void
 ### Migration 3 — `activity_log_contexts`
 
 ```php
+// Modules/ActivityLog/database/migrations/2026_XX_XX_000002_create_activity_log_contexts_table.php
 public function up(): void
 {
     Schema::create('activity_log_contexts', function (Blueprint $table) {
@@ -1891,16 +2055,24 @@ public function up(): void
         $table->index(['key_name', 'val_integer'],  'idx_key_integer');
     });
 
-    // Prefix index: Blueprint không hỗ trợ — dùng raw SQL
-    DB::statement(
-        'ALTER TABLE activity_log_contexts ADD INDEX idx_key_string (key_name, val_string(64))'
-    );
+    // Prefix index — MySQL only (Blueprint không hỗ trợ prefix index)
+    if (\DB::getDriverName() === 'mysql') {
+        \DB::statement(
+            'ALTER TABLE activity_log_contexts ADD INDEX idx_key_string (key_name, val_string(64))'
+        );
+    }
+}
+
+public function down(): void
+{
+    Schema::dropIfExists('activity_log_contexts');
 }
 ```
 
 ### Migration 4 — `activity_log_http`
 
 ```php
+// Modules/ActivityLog/database/migrations/2026_XX_XX_000003_create_activity_log_http_table.php
 public function up(): void
 {
     Schema::create('activity_log_http', function (Blueprint $table) {
@@ -1920,11 +2092,17 @@ public function up(): void
         $table->index('status_code', 'idx_status');
     });
 }
+
+public function down(): void
+{
+    Schema::dropIfExists('activity_log_http');
+}
 ```
 
 ### Migration 5 — `activity_log_alert_rules`
 
 ```php
+// Modules/ActivityLog/database/migrations/2026_XX_XX_000004_create_activity_log_alert_rules_table.php
 public function up(): void
 {
     Schema::create('activity_log_alert_rules', function (Blueprint $table) {
@@ -1947,6 +2125,11 @@ public function up(): void
 
         $table->index(['is_active', 'module', 'action'], 'idx_active');
     });
+}
+
+public function down(): void
+{
+    Schema::dropIfExists('activity_log_alert_rules');
 }
 ```
 
@@ -2041,25 +2224,26 @@ class DefaultAlertRulesSeeder extends \Illuminate\Database\Seeder
 
 | # | Hạng mục | Effort | Package/Tool |
 |---|----------|--------|-------------|
-| 1 | Publish + chạy Spatie migration | Rất thấp | `spatie/laravel-activitylog` |
+| 1 | **[Phase 1]** Fix namespace `LogsActivity` v4→v5 trong models Survey | Rất thấp | |
 | 2 | Migration thêm custom columns vào `activity_log` | Thấp | |
 | 3 | Migration `activity_log_contexts`, `_http`, `_alert_rules` | Thấp | |
 | 4 | Enums: `LogLevel`, `ActorType`, `HttpMethod` | Thấp | PHP 8.4 backed enum |
 | 5 | DTOs: `LogEntryData`, `HttpSnapshotData` | Thấp | `spatie/laravel-data` |
-| 6 | `ActivityLog` model (extend Spatie) | Thấp | |
-| 7 | `ActivityLogContext`, `ActivityLogHttp` models | Thấp | |
-| 8 | `LogEntryBuilder` | Trung | |
-| 9 | `ActivityLogger` facade | Thấp | |
-| 10 | `WriteActivityLogAction` (asJob) | Trung | `lorisleiva/laravel-actions` |
-| 11 | **Tích hợp Survey ngay** — gọi `ActivityLogger::*` trong Actions/Events | Thấp | Quick win |
-| 12 | `InjectRequestId` + `CaptureHttpContext` middleware | Thấp | |
-| 13 | Permissions seeder | Thấp | `spatie/laravel-permission` |
-| 14 | `ActivityLogApiController` (Tabulator data) | Trung | |
-| 15 | View `logs/index.blade.php` + Tabulator | Trung | Alpine.js |
-| 16 | View `logs/show.blade.php` | Trung | |
-| 17 | `HasActivity` trên Survey/User model | Thấp | `spatie/laravel-activitylog` |
-| 18 | `AlertEvaluatorService` + `SendAlertAction` | Trung | `lorisleiva/laravel-actions` |
-| 19 | Alert rules seeder + UI quản lý | Trung | |
-| 20 | `PurgeOldLogsAction` + scheduler | Thấp | |
-| 21 | `ExportActivityLogsAction` | Thấp | `rap2hpoutre/fast-excel` |
-| 22 | `HasActivityLog` trait + timeline partial | Thấp | |
+| 6 | Models: `ActivityLog` (extend Spatie), `ActivityLogContext`, `ActivityLogHttp`, `ActivityLogAlertRule` | Thấp | |
+| 7 | `LogEntryBuilder` | Trung | |
+| 8 | `ActivityLogger` facade | Thấp | |
+| 9 | `WriteActivityLogAction` (asJob) | Trung | `lorisleiva/laravel-actions` |
+| 10 | `InjectRequestId` + `CaptureHttpContext` middleware | Thấp | |
+| 11 | Permissions seeder + cập nhật `config/permissions.php` + `RoleEnum::visibleModules()` | Thấp | `spatie/laravel-permission` |
+| 12 | **[Phase 2]** Migrate Survey call sites sang `ActivityLogger::*` mới | Trung | Quick win |
+| 13 | `ActivityLogApiController` (Tabulator data source) | Trung | |
+| 14 | View `logs/index.blade.php` + Tabulator | Trung | Alpine.js |
+| 15 | View `logs/show.blade.php` | Trung | |
+| 16 | `LogsActivity` trait trên Survey/User models (Spatie CRUD log) | Thấp | `spatie/laravel-activitylog` |
+| 17 | `AlertEvaluatorService` + `SendAlertAction` | Trung | `lorisleiva/laravel-actions` |
+| 18 | Alert rules seeder + UI quản lý | Trung | |
+| 19 | `PurgeOldLogsAction` + scheduler | Thấp | |
+| 20 | `ExportActivityLogsAction` | Thấp | `rap2hpoutre/fast-excel` |
+| 21 | `HasActivityLog` trait + timeline partial | Thấp | |
+| 22 | **[Phase 3]** Migrate Auth + Organization call sites | Thấp | |
+| 23 | **[Phase 4]** Xóa `App\Shared\Support\ActivityLogger` cũ | Rất thấp | |

@@ -3,6 +3,7 @@
 namespace Modules\Survey\Actions;
 
 use Lorisleiva\Actions\Concerns\AsAction;
+use Modules\ActivityLog\Core\ActivityLogger;
 use Modules\Survey\Models\SurveyToken;
 
 class RevokeSurveyTokenAction
@@ -13,9 +14,6 @@ class RevokeSurveyTokenAction
     {
         $token->update(['is_active' => false]);
 
-        activity()
-            ->performedOn($token)
-            ->withProperties(['survey_id' => $token->survey_id, 'name' => $token->name])
-            ->log('token.revoked');
+        ActivityLogger::warning('Survey', 'token_revoked', $token, ['survey_id' => $token->survey_id, 'name' => $token->name]);
     }
 }

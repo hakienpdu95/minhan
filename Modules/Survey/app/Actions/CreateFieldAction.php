@@ -7,6 +7,7 @@ use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Data\FieldFormData;
 use Modules\Survey\Enums\FieldType;
 use Modules\Survey\Models\Survey;
+use Modules\ActivityLog\Core\ActivityLogger;
 use Modules\Survey\Models\SurveyField;
 
 class CreateFieldAction
@@ -39,9 +40,7 @@ class CreateFieldAction
         $field->is_active = true;
         $field->save();
 
-        activity()->performedOn($field)
-            ->withProperties(['survey_id' => $survey->id, 'field_key' => $field->field_key])
-            ->log('field.created');
+        ActivityLogger::info('Survey', 'field_created', $field, ['survey_id' => $survey->id, 'field_key' => $field->field_key]);
 
         BuildSurveySchemaAction::purgeCache($survey->slug);
 

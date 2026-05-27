@@ -4,6 +4,7 @@ namespace Modules\Survey\Actions;
 
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Survey\Data\SurveyFormData;
+use Modules\ActivityLog\Core\ActivityLogger;
 use Modules\Survey\Models\Survey;
 
 class UpdateSurveyAction
@@ -17,10 +18,7 @@ class UpdateSurveyAction
 
         $survey->update($payload);
 
-        activity()
-            ->performedOn($survey)
-            ->withProperties(['title' => $survey->title])
-            ->log('survey.updated');
+        ActivityLogger::info('Survey', 'survey_updated', $survey, ['title' => $survey->title]);
 
         return $survey->fresh();
     }

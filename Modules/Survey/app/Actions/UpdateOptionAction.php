@@ -9,6 +9,7 @@ use Modules\Survey\Data\OptionFormData;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyField;
 use Modules\Survey\Models\SurveyFieldOption;
+use Modules\ActivityLog\Core\ActivityLogger;
 use Modules\Survey\Support\GuardsSurveyIntegrity;
 
 class UpdateOptionAction
@@ -42,7 +43,7 @@ class UpdateOptionAction
 
         $option->update($payload);
 
-        activity()->performedOn($option)->log('option.updated');
+        ActivityLogger::info('Survey', 'option_updated', $option, []);
 
         BuildSurveySchemaAction::purgeCache($survey->slug);
 

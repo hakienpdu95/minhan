@@ -4,7 +4,7 @@ namespace Modules\Auth\Actions;
 
 use App\Enums\RoleEnum;
 use App\Models\User;
-use App\Shared\Support\ActivityLogger;
+use Modules\ActivityLog\Core\ActivityLogger;
 use App\Shared\Tenancy\Models\Organization;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -51,7 +51,7 @@ class RegisterOrganizationAction
             setPermissionsTeamId(null);
 
             // 5. Ghi audit log
-            ActivityLogger::logEvent('organization.registered', [
+            ActivityLogger::info('Auth', 'organization_registered', $organization, [
                 'organization_id'   => $organization->id,
                 'organization_name' => $organization->name,
                 'owner_email'       => $user->email,

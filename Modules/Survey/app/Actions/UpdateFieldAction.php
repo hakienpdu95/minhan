@@ -7,6 +7,7 @@ use Modules\Survey\Data\FieldFormData;
 use Modules\Survey\Enums\SurveyStatus;
 use Modules\Survey\Exceptions\FieldImmutableException;
 use Modules\Survey\Models\Survey;
+use Modules\ActivityLog\Core\ActivityLogger;
 use Modules\Survey\Models\SurveyField;
 use Modules\Survey\Actions\BuildSurveySchemaAction;
 
@@ -48,9 +49,7 @@ class UpdateFieldAction
             $field->update($payload);
         }
 
-        activity()->performedOn($field)
-            ->withProperties(['field_key' => $field->field_key])
-            ->log('field.updated');
+        ActivityLogger::info('Survey', 'field_updated', $field, ['field_key' => $field->field_key]);
 
         BuildSurveySchemaAction::purgeCache($survey->slug);
 

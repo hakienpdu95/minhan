@@ -2,20 +2,16 @@
 
 namespace Modules\Organization\Listeners;
 
-use Illuminate\Support\Facades\Auth;
+use Modules\ActivityLog\Core\ActivityLogger;
 use Modules\Organization\Events\OrganizationCreated;
 
 class LogOrganizationCreated
 {
     public function handle(OrganizationCreated $event): void
     {
-        activity()
-            ->causedBy(Auth::user())
-            ->performedOn($event->organization)
-            ->withProperties([
-                'organization_id' => $event->organization->id,
-                'name'            => $event->organization->name,
-            ])
-            ->log('organization.created');
+        ActivityLogger::info('Organization', 'organization_created', $event->organization, [
+            'organization_id' => $event->organization->id,
+            'name'            => $event->organization->name,
+        ]);
     }
 }

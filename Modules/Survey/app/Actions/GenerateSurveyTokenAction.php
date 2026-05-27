@@ -7,6 +7,7 @@ use Illuminate\Support\Str;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Survey\Data\TokenFormData;
 use Modules\Survey\Models\Survey;
+use Modules\ActivityLog\Core\ActivityLogger;
 use Modules\Survey\Models\SurveyToken;
 
 class GenerateSurveyTokenAction
@@ -35,10 +36,7 @@ class GenerateSurveyTokenAction
         $token->token = $hashed;
         $token->save();
 
-        activity()
-            ->performedOn($token)
-            ->withProperties(['survey_id' => $survey->id, 'name' => $data->name])
-            ->log('token.created');
+        ActivityLogger::info('Survey', 'token_created', $token, ['survey_id' => $survey->id, 'name' => $data->name]);
 
         return ['token' => $token, 'plain' => $plain];
     }

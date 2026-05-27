@@ -12,6 +12,7 @@ use Modules\Survey\Data\SurveyFormData;
 use Modules\Survey\Enums\FieldType;
 use Modules\Survey\Enums\SurveyStatus;
 use Modules\Survey\Http\Requests\SurveyRequest;
+use Modules\ActivityLog\Core\ActivityLogger;
 use Modules\Survey\Models\Survey;
 
 class SurveyController extends Controller
@@ -141,9 +142,7 @@ class SurveyController extends Controller
         $title = $survey->title;
         $survey->delete();
 
-        activity()
-            ->withProperties(['title' => $title])
-            ->log('survey.deleted');
+        ActivityLogger::warning('Survey', 'survey_deleted', null, ['title' => $title]);
 
         return redirect()
             ->route('backend.surveys.index')

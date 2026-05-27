@@ -6,6 +6,7 @@ use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveySection;
+use Modules\ActivityLog\Core\ActivityLogger;
 use Modules\Survey\Support\GuardsSurveyIntegrity;
 
 class DestroySectionAction
@@ -20,9 +21,7 @@ class DestroySectionAction
         $title = $section->title;
         $section->delete();
 
-        activity()
-            ->withProperties(['survey_id' => $survey->id, 'title' => $title])
-            ->log('section.deleted');
+        ActivityLogger::warning('Survey', 'section_deleted', null, ['survey_id' => $survey->id, 'title' => $title]);
 
         BuildSurveySchemaAction::purgeCache($survey->slug);
     }

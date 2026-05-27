@@ -8,6 +8,7 @@ use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Data\OptionFormData;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyField;
+use Modules\ActivityLog\Core\ActivityLogger;
 use Modules\Survey\Models\SurveyFieldOption;
 
 class CreateOptionAction
@@ -37,9 +38,7 @@ class CreateOptionAction
             'is_other'     => $data->is_other,
         ]);
 
-        activity()->performedOn($option)
-            ->withProperties(['field_id' => $field->id, 'option_value' => $option->option_value])
-            ->log('option.created');
+        ActivityLogger::info('Survey', 'option_created', $option, ['field_id' => $field->id, 'option_value' => $option->option_value]);
 
         BuildSurveySchemaAction::purgeCache($survey->slug);
 

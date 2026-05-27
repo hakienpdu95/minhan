@@ -6,6 +6,7 @@ use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Data\SectionFormData;
 use Modules\Survey\Models\Survey;
+use Modules\ActivityLog\Core\ActivityLogger;
 use Modules\Survey\Models\SurveySection;
 
 class CreateSectionAction
@@ -23,9 +24,7 @@ class CreateSectionAction
             'sort_order' => $maxOrder + 1,
         ]);
 
-        activity()->performedOn($section)
-            ->withProperties(['survey_id' => $survey->id, 'title' => $data->title])
-            ->log('section.created');
+        ActivityLogger::info('Survey', 'section_created', $section, ['survey_id' => $survey->id, 'title' => $data->title]);
 
         BuildSurveySchemaAction::purgeCache($survey->slug);
 

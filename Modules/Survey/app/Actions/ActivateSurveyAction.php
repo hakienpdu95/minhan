@@ -9,6 +9,7 @@ use Modules\Survey\Enums\FieldType;
 use Modules\Survey\Enums\SurveyStatus;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyField;
+use Modules\ActivityLog\Core\ActivityLogger;
 use Modules\Survey\Models\SurveySection;
 
 class ActivateSurveyAction
@@ -69,10 +70,7 @@ class ActivateSurveyAction
         $survey->update(['status' => SurveyStatus::Active]);
         BuildSurveySchemaAction::purgeCache($survey->slug);
 
-        activity()
-            ->performedOn($survey)
-            ->withProperties(['slug' => $survey->slug])
-            ->log('survey.activated');
+        ActivityLogger::info('Survey', 'survey_activated', $survey, ['slug' => $survey->slug]);
 
         return $survey->fresh();
     }

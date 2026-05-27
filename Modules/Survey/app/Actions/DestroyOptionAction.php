@@ -5,6 +5,7 @@ namespace Modules\Survey\Actions;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyFieldOption;
+use Modules\ActivityLog\Core\ActivityLogger;
 use Modules\Survey\Support\GuardsSurveyIntegrity;
 
 class DestroyOptionAction
@@ -19,9 +20,7 @@ class DestroyOptionAction
         $value = $option->option_value;
         $option->delete();
 
-        activity()
-            ->withProperties(['option_value' => $value])
-            ->log('option.deleted');
+        ActivityLogger::warning('Survey', 'option_deleted', null, ['option_value' => $value]);
 
         BuildSurveySchemaAction::purgeCache($survey->slug);
     }

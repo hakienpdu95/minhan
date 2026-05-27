@@ -29,6 +29,7 @@ use Modules\Survey\Actions\CreateConfigSnapshotAction;
 use Modules\Survey\Actions\RestoreConfigFromSnapshotAction;
 use Modules\Survey\Jobs\CalculateSurveyScoreJob;
 use Modules\Survey\Models\AssessmentConfigSnapshot;
+use Spatie\Activitylog\Models\Activity;
 
 class ScoringAdminController extends Controller
 {
@@ -373,6 +374,23 @@ class ScoringAdminController extends Controller
             $request->input('change_note'),
         );
 
+        activity('scoring_config')
+            ->performedOn($survey)
+            ->causedBy(auth()->user())
+            ->event('config_saved')
+            ->withProperties([
+                'assessment_code'   => $code,
+                'version'           => $snapshot->version,
+                'change_note'       => $request->input('change_note'),
+                'domains_count'     => count($data['domains'] ?? []),
+                'rules_count'       => count($data['rules'] ?? []),
+                'bands_count'       => count($data['bands'] ?? []),
+                'personas_count'    => count($data['personas'] ?? []),
+                'pain_points_count' => count($data['pain_points'] ?? []),
+                'recs_count'        => count($data['recommendations'] ?? []),
+            ])
+            ->log('Đã lưu & kích hoạt scoring config');
+
         return response()->json([
             'success'          => true,
             'message'          => 'Scoring đã được lưu và kích hoạt.',
@@ -395,6 +413,17 @@ class ScoringAdminController extends Controller
             $snapshot,
             auth()->user()?->email,
         );
+
+        activity('scoring_config')
+            ->performedOn($survey)
+            ->causedBy(auth()->user())
+            ->event('config_rollback')
+            ->withProperties([
+                'assessment_code'  => $code,
+                'restored_version' => $version,
+                'new_version'      => $newSnapshot->version,
+            ])
+            ->log("Đã rollback scoring config về v{$version}");
 
         return response()->json([
             'success'          => true,
@@ -443,6 +472,16 @@ class ScoringAdminController extends Controller
             ->onQueue('low')
             ->allowFailures()
             ->dispatch();
+
+        activity('scoring_config')
+            ->performedOn($survey)
+            ->causedBy(auth()->user())
+            ->event('reprocess_all')
+            ->withProperties([
+                'total_responses' => $responseIds->count(),
+                'batch_id'        => $batch->id,
+            ])
+            ->log("Đã tính lại {$responseIds->count()} responses");
 
         return response()->json([
             'batch_id' => $batch->id,
@@ -626,6 +665,33 @@ class ScoringAdminController extends Controller
         }
 
         return response()->json(['valid' => empty($errors), 'errors' => $errors]);
+    }
+
+    // ── GET activity log ──────────────────────────────────────────────────────
+
+    public function getActivityLog(Survey $survey): JsonResponse
+    {
+        $this->authorize('survey.update');
+
+        $activities = Activity::query()
+            ->where('log_name', 'scoring_config')
+            ->where('subject_type', Survey::class)
+            ->where('subject_id', $survey->id)
+            ->with('causer')
+            ->latest()
+            ->limit(100)
+            ->get();
+
+        return response()->json([
+            'activities' => $activities->map(fn ($a) => [
+                'id'          => $a->id,
+                'event'       => $a->event,
+                'description' => $a->description,
+                'causer_name' => $a->causer ? ($a->causer->name ?? $a->causer->email) : 'System',
+                'properties'  => $a->properties->toArray(),
+                'created_at'  => $a->created_at->toISOString(),
+            ]),
+        ]);
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Modules\Organization\Models\OrganizationMember;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Permission\Traits\HasRoles;
 
 #[Fillable(['name', 'email', 'password', 'organization_id', 'department', 'is_active', 'last_active_at'])]
@@ -20,7 +22,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, Notifiable, HasRoles, LogsActivity;
 
     protected function casts(): array
     {
@@ -65,5 +67,20 @@ class User extends Authenticatable
     public function belongsToOrganization(int $organizationId): bool
     {
         return $this->organization_id === $organizationId;
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'email', 'department', 'is_active'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->setDescriptionForEvent(fn (string $event) => match ($event) {
+                'created' => "Tạo tài khoản: {$this->email}",
+                'updated' => "Cập nhật tài khoản: {$this->email}",
+                'deleted' => "Xóa tài khoản: {$this->email}",
+                default   => $event,
+            })
+            ->useLogName('Auth');
     }
 }

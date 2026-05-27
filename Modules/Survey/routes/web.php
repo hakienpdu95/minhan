@@ -58,6 +58,7 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
             Route::post('/rollback/{version}',        [ScoringAdminController::class, 'rollbackConfig'])->name('rollback');
             Route::post('/reprocess-all',             [ScoringAdminController::class, 'reprocessAll'])->name('reprocess-all');
             Route::get('/batch/{batchId}',            [ScoringAdminController::class, 'getBatchStatus'])->name('batch-status');
+            Route::get('/activity-log',               [ScoringAdminController::class, 'getActivityLog'])->name('activity-log');
         });
 
         // ── Scoring results ────────────────────────────────────────────

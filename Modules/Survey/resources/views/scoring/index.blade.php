@@ -932,6 +932,135 @@
         </div>
     </div>
 
+    {{-- ══════════════════════════ Tab 8: Lịch sử ═════════════════════════════ --}}
+    <div x-show="activeTab === 8" class="space-y-4">
+        <div class="card bg-base-100 shadow-sm border border-base-200">
+            <div class="card-body p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="font-bold text-base">Lịch sử hoạt động</h2>
+                    <button @click="loadActivityLog()" :disabled="activityLoading"
+                            class="btn btn-ghost btn-xs gap-1">
+                        <svg class="w-3.5 h-3.5" :class="activityLoading ? 'animate-spin' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        Làm mới
+                    </button>
+                </div>
+
+                {{-- Empty state --}}
+                <div x-show="!activityLoading && activityLog.length === 0"
+                     class="text-center py-10 text-base-content/40 text-sm">
+                    <svg class="w-10 h-10 mx-auto mb-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                    Chưa có hoạt động nào. Lưu config để bắt đầu ghi lịch sử.
+                </div>
+
+                {{-- Loading --}}
+                <div x-show="activityLoading" class="flex justify-center py-8">
+                    <span class="loading loading-spinner loading-md text-primary"></span>
+                </div>
+
+                {{-- Timeline --}}
+                <div x-show="!activityLoading && activityLog.length > 0"
+                     class="relative pl-6 border-l-2 border-base-200 space-y-5">
+                    <template x-for="entry in activityLog" :key="entry.id">
+                        <div class="relative">
+                            {{-- Timeline dot --}}
+                            <span class="absolute -left-[1.45rem] flex items-center justify-center w-6 h-6 rounded-full ring-2 ring-base-100"
+                                  :class="{
+                                      'bg-success text-success-content': entry.event === 'config_saved',
+                                      'bg-warning text-warning-content': entry.event === 'config_rollback',
+                                      'bg-info text-info-content':    entry.event === 'reprocess_all',
+                                  }">
+                                {{-- icon config_saved --}}
+                                <template x-if="entry.event === 'config_saved'">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                </template>
+                                {{-- icon config_rollback --}}
+                                <template x-if="entry.event === 'config_rollback'">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6M3 10l6-6"/></svg>
+                                </template>
+                                {{-- icon reprocess_all --}}
+                                <template x-if="entry.event === 'reprocess_all'">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                </template>
+                            </span>
+
+                            {{-- Entry body --}}
+                            <div class="ml-2">
+                                <div class="flex flex-wrap items-center gap-2 mb-1">
+                                    <span class="badge badge-xs font-medium"
+                                          :class="{
+                                              'badge-success': entry.event === 'config_saved',
+                                              'badge-warning': entry.event === 'config_rollback',
+                                              'badge-info':    entry.event === 'reprocess_all',
+                                          }"
+                                          x-text="{
+                                              config_saved:    'Lưu config',
+                                              config_rollback: 'Rollback',
+                                              reprocess_all:   'Tính lại',
+                                          }[entry.event] || entry.event"></span>
+
+                                    {{-- config_saved: version badge --}}
+                                    <template x-if="entry.event === 'config_saved' && entry.properties.version">
+                                        <span class="badge badge-outline badge-xs" x-text="'v' + entry.properties.version"></span>
+                                    </template>
+
+                                    {{-- config_rollback: từ → đến --}}
+                                    <template x-if="entry.event === 'config_rollback'">
+                                        <span class="text-xs text-base-content/60">
+                                            v<span x-text="entry.properties.new_version"></span>
+                                            → v<span x-text="entry.properties.restored_version"></span>
+                                            (rollback)
+                                        </span>
+                                    </template>
+
+                                    {{-- reprocess_all: số responses --}}
+                                    <template x-if="entry.event === 'reprocess_all'">
+                                        <span class="text-xs text-base-content/60">
+                                            <span x-text="entry.properties.total_responses"></span> responses
+                                        </span>
+                                    </template>
+
+                                    <span class="text-xs text-base-content/40 ml-auto" x-text="entry.causer_name"></span>
+                                    <span class="text-xs text-base-content/30"
+                                          x-text="new Date(entry.created_at).toLocaleString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })"></span>
+                                </div>
+
+                                {{-- change_note --}}
+                                <template x-if="entry.event === 'config_saved' && entry.properties.change_note">
+                                    <p class="text-sm text-base-content/70 italic mb-1" x-text="'&quot;' + entry.properties.change_note + '&quot;'"></p>
+                                </template>
+
+                                {{-- config_saved summary --}}
+                                <template x-if="entry.event === 'config_saved'">
+                                    <div class="flex flex-wrap gap-2 text-xs text-base-content/50 mt-1">
+                                        <template x-if="entry.properties.domains_count">
+                                            <span x-text="entry.properties.domains_count + ' domain'"></span>
+                                        </template>
+                                        <template x-if="entry.properties.rules_count">
+                                            <span x-text="entry.properties.rules_count + ' rule'"></span>
+                                        </template>
+                                        <template x-if="entry.properties.bands_count">
+                                            <span x-text="entry.properties.bands_count + ' band'"></span>
+                                        </template>
+                                        <template x-if="entry.properties.personas_count">
+                                            <span x-text="entry.properties.personas_count + ' persona'"></span>
+                                        </template>
+                                        <template x-if="entry.properties.recs_count">
+                                            <span x-text="entry.properties.recs_count + ' đề xuất'"></span>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- ══════════════════════════ Sticky save bar ══════════════════════════════ --}}
     <div x-show="dirty && cfg.hasScoring" x-cloak
          class="fixed bottom-0 left-0 right-0 z-40 bg-base-100/95 backdrop-blur border-t border-base-200 shadow-lg"
@@ -1030,10 +1159,12 @@ function scoringConfig(surveyId, csrfToken) {
         savedCfg:         null,
         showChangeDetail: false,
         activeTab:        1,
-        flash:      { text: '', type: 'success' },
-        fields:     [],
-        flags:      [],
+        flash:            { text: '', type: 'success' },
+        fields:           [],
+        flags:            [],
         activeRoadmapBand: null,
+        activityLog:       [],
+        activityLoading:   false,
 
         cfg: {
             hasScoring:         false,
@@ -1090,6 +1221,7 @@ function scoringConfig(surveyId, csrfToken) {
                 { id: 5, label: '⑤ Outputs',    disabled: noScoring,      hasError: false,                            valid: this.cfg.painPoints.length > 0 || this.cfg.recommendations.length > 0 },
                 { id: 6, label: '⑥ Roadmap',    disabled: noScoring,      hasError: false,                            valid: Object.keys(this.cfg.roadmap).length > 0 },
                 { id: 7, label: '⑦ Review',     disabled: false,          hasError: this.hasErrors,                  valid: false },
+                { id: 8, label: '⑧ Lịch sử',   disabled: false,          hasError: false,                            valid: false },
             ];
         },
 
@@ -1144,6 +1276,10 @@ function scoringConfig(surveyId, csrfToken) {
             window.addEventListener('beforeunload', (e) => {
                 if (this.dirty) { e.preventDefault(); e.returnValue = ''; }
             });
+            // Lazy-load activity log when tab is first opened
+            this.$watch('activeTab', (tab) => {
+                if (tab === 8 && this.activityLog.length === 0) this.loadActivityLog();
+            });
         },
 
         snapshotCfg() {
@@ -1187,6 +1323,13 @@ function scoringConfig(surveyId, csrfToken) {
             if (res) this.flags = res.flags || [];
         },
 
+        async loadActivityLog() {
+            this.activityLoading = true;
+            const res = await this.api(`/dashboard/surveys/${this.surveyId}/scoring/activity-log`, 'GET');
+            if (res) this.activityLog = res.activities || [];
+            this.activityLoading = false;
+        },
+
         // ── Save ────────────────────────────────────────────────────────────────
         async saveConfig() {
             if (this.hasErrors) { this.err('Có lỗi cần sửa trước khi lưu.'); return; }
@@ -1215,6 +1358,7 @@ function scoringConfig(surveyId, csrfToken) {
                 await this.$nextTick();
                 this.snapshotCfg();
                 this.ok(res.message || 'Đã lưu thành công.');
+                this.loadActivityLog();
             }
         },
 
