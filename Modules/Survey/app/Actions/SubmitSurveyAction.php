@@ -22,6 +22,8 @@ use Modules\Survey\Models\SurveyFieldCondition;
 use Modules\Survey\Models\SurveyResponse;
 use Modules\Survey\Services\WebhookDispatcher;
 use Modules\Survey\Jobs\CalculateSurveyScoreJob;
+use Modules\WorkflowAutomation\Core\WorkflowDispatcher;
+use Modules\WorkflowAutomation\Data\TriggerPayload;
 use Modules\Survey\Services\SurveyStatsService;
 use Modules\Survey\Support\AnswerValueResolver;
 use Spatie\LaravelData\DataCollection;
@@ -129,6 +131,12 @@ class SubmitSurveyAction
         // Dispatch scoring job nếu survey có assessment_code
         if ($survey->assessment_code !== null) {
             CalculateSurveyScoreJob::dispatch($responseId);
+        }
+
+        // Fire workflow trigger after commit
+        $response = SurveyResponse::with('survey')->find($responseId);
+        if ($response !== null) {
+            WorkflowDispatcher::fire(TriggerPayload::forSurveySubmit($response));
         }
 
         // Dispatch webhook for response.created event

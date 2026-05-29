@@ -3,5 +3,9 @@
     "Organization": true,
     "User": true,
     "Survey": true,
-    "ActivityLog": true
+    "ActivityLog": true,
+    "WorkflowAutomation": true,
+    "Lead": true,
+    "LeadPipelineStage": true,
+    "LeadSource": true
 }

@@ -64,6 +64,7 @@ class RolePermissionSeeder extends Seeder
                 P::LEADS_EDIT->value,
                 P::LEADS_DELETE->value,
                 P::LEADS_ASSIGN->value,
+                P::LEADS_EXPORT->value,
 
                 P::SALES_AI_VIEW->value,
 
@@ -117,6 +118,8 @@ class RolePermissionSeeder extends Seeder
                 P::CEO_DASH_VIEW->value,
 
                 P::LEADS_VIEW_ALL->value,
+                P::LEADS_EXPORT->value,
+                P::LEADS_MANAGE_TAGS->value,
 
                 P::TASKS_VIEW_ALL->value,
                 P::TASKS_CREATE->value,
@@ -202,6 +205,10 @@ class RolePermissionSeeder extends Seeder
                 P::CEO_DASH_CONFIG->value,
 
                 P::LEADS_CONFIG->value,
+                P::LEADS_VIEW_ALL->value,
+                P::LEADS_MANAGE_PIPELINE->value,
+                P::LEADS_MANAGE_SOURCES->value,
+                P::LEADS_MANAGE_TAGS->value,
 
                 P::SALES_AI_CONFIG->value,
 
@@ -209,6 +216,8 @@ class RolePermissionSeeder extends Seeder
 
                 P::SOP_CONFIG->value,
 
+                P::WORKFLOW_MONITOR->value,
+                P::WORKFLOW_EDIT->value,
                 P::WORKFLOW_FULL_CONFIG->value,
 
                 P::PROMPT_ADMIN_CONFIG->value,

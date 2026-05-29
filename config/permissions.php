@@ -8,12 +8,13 @@ return [
     R::CEO->value => [
         // CEO Dashboard: Full
         P::CEO_DASH_FULL->value,
-        // CRM Leads: Full (view all + CRUD + assign)
+        // CRM Leads: Full (view all + CRUD + assign + export)
         P::LEADS_VIEW_ALL->value,
         P::LEADS_CREATE->value,
         P::LEADS_EDIT->value,
         P::LEADS_DELETE->value,
         P::LEADS_ASSIGN->value,
+        P::LEADS_EXPORT->value,
         // Sales AI: Full (view + use)
         P::SALES_AI_VIEW->value,
         P::SALES_AI_USE->value,
@@ -60,8 +61,10 @@ return [
     R::OPS->value => [
         // CEO Dashboard: Limited (view, không có AI brief, không có approve)
         P::CEO_DASH_VIEW->value,
-        // CRM Leads: Limited — view_all nhưng KHÔNG có edit/delete/assign
+        // CRM Leads: Limited — view_all + export + manage tags, KHÔNG có edit/delete/assign
         P::LEADS_VIEW_ALL->value,
+        P::LEADS_EXPORT->value,
+        P::LEADS_MANAGE_TAGS->value,
         // Tasks: Full team (view all + full CRUD + assign)
         P::TASKS_VIEW_ALL->value,
         P::TASKS_CREATE->value,
@@ -123,7 +126,8 @@ return [
         P::TASKS_VIEW_LIMITED->value,
         // SOP: AI config (cấu hình AI flow trong SOP)
         P::SOP_AI_CONFIG->value,
-        // Workflow: AI config
+        // Workflow: Monitor + AI config
+        P::WORKFLOW_MONITOR->value,
         P::WORKFLOW_AI_CONFIG->value,
         // Prompt Management: Full
         P::PROMPT_FULL->value,
@@ -137,10 +141,15 @@ return [
         // Config trên tất cả module (độc lập với data)
         P::CEO_DASH_CONFIG->value,
         P::LEADS_CONFIG->value,
-        P::LEADS_VIEW_ALL->value,   // Để support — activity log ghi lại
+        P::LEADS_VIEW_ALL->value,          // Để support — activity log ghi lại
+        P::LEADS_MANAGE_PIPELINE->value,   // Quản lý pipeline stages
+        P::LEADS_MANAGE_SOURCES->value,    // Quản lý lead sources
+        P::LEADS_MANAGE_TAGS->value,       // Quản lý tags
         P::SALES_AI_CONFIG->value,
         P::TASKS_CONFIG->value,
         P::SOP_CONFIG->value,
+        P::WORKFLOW_MONITOR->value,
+        P::WORKFLOW_EDIT->value,
         P::WORKFLOW_FULL_CONFIG->value,
         P::PROMPT_ADMIN_CONFIG->value,
         P::AI_LOGS_FULL->value,

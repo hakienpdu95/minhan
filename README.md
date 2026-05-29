@@ -66,5 +66,5 @@ php artisan db:seed
 
 php artisan module:make Auth
 
-# > Đọc file spec/activitylog.md và implement theo đúng spec đó, làm chắc chắn và tối ưu từng task một, hỏi để xác nhận trước khi làm tiếp
+# > Đọc file spec/lead.md và implement theo đúng spec đó, lưu ý là lead cơ hội của ai thì khi vào tài khoản sẽ xem được lead trong phạm vi của mình. Làm chắc chắn và tối ưu từng task một, hỏi để xác nhận trước khi làm tiếp
 

@@ -11,3 +11,9 @@ Artisan::command('inspire', function () {
 
 // GDPR: hard-purge soft-deleted survey responses older than 30 days
 Schedule::job(new PurgeDeletedResponsesJob())->dailyAt('03:00')->onOneServer();
+
+// Workflow: purge old execution logs beyond retain_execution_days
+Schedule::call(\Modules\WorkflowAutomation\Actions\PurgeOldExecutionsAction::make())
+    ->name('workflow:purge-executions')
+    ->dailyAt('02:00')
+    ->onOneServer();

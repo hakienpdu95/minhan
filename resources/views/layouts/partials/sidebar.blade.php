@@ -88,6 +88,36 @@
         </details>
         @endcan
 
+        @if(auth()->user()?->hasAnyPermission(['leads.view_all','leads.view_assigned','leads.view_source']))
+        <p class="section-title" style="margin-top:16px;">CRM</p>
+        <div class="nav-group">
+
+            <details {{ request()->routeIs('lead.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('lead.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                    <span class="nav-label">Cơ hội (Lead)</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('lead.index') }}" class="sub-link {{ request()->routeIs('lead.index') ? 'active' : '' }}">Danh sách cơ hội</a>
+                    @can('leads.create')
+                    <a href="{{ route('lead.create') }}" class="sub-link {{ request()->routeIs('lead.create') ? 'active' : '' }}">Thêm cơ hội</a>
+                    @endcan
+                    @can('leads.manage_pipeline')
+                    <a href="{{ route('lead-pipeline-stage.index') }}" class="sub-link {{ request()->routeIs('lead-pipeline-stage.*') ? 'active' : '' }}">Pipeline stages</a>
+                    @endcan
+                    @can('leads.manage_sources')
+                    <a href="{{ route('lead-source.index') }}" class="sub-link {{ request()->routeIs('lead-source.*') ? 'active' : '' }}">Nguồn cơ hội</a>
+                    @endcan
+                    @can('leads.manage_tags')
+                    <a href="{{ route('lead.tags.index') }}" class="sub-link {{ request()->routeIs('lead.tags.*') ? 'active' : '' }}">Tags</a>
+                    @endcan
+                </div>
+            </details>
+
+        </div>
+        @endif
+
         <p class="section-title" style="margin-top:16px;">Tổ chức</p>
         <div class="nav-group">
 
@@ -141,6 +171,28 @@
                     <a href="{{ route('activitylog.alert-rules.index') }}"
                        class="sub-link {{ request()->routeIs('activitylog.alert-rules.*') ? 'active' : '' }}">
                        Alert Rules
+                    </a>
+                    @endcan
+                </div>
+            </details>
+            @endcan
+
+            @can(\App\Enums\PermissionEnum::WORKFLOW_MONITOR->value)
+            <details {{ request()->routeIs('workflows.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('workflows.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    <span class="nav-label">Workflow</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('workflows.index') }}"
+                       class="sub-link {{ request()->routeIs('workflows.index') ? 'active' : '' }}">
+                        Danh sách workflow
+                    </a>
+                    @can(\App\Enums\PermissionEnum::WORKFLOW_EDIT->value)
+                    <a href="{{ route('workflows.create') }}"
+                       class="sub-link {{ request()->routeIs('workflows.create') ? 'active' : '' }}">
+                        Tạo workflow mới
                     </a>
                     @endcan
                 </div>

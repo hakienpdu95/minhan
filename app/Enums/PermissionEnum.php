@@ -18,7 +18,11 @@ enum PermissionEnum: string
     case LEADS_EDIT          = 'leads.edit';          // CEO, Sales(own via Policy)
     case LEADS_DELETE        = 'leads.delete';        // CEO only
     case LEADS_ASSIGN        = 'leads.assign';        // CEO
-    case LEADS_CONFIG        = 'leads.config';        // System Admin (độc lập, không kèm view data)
+    case LEADS_CONFIG          = 'leads.config';           // System Admin (độc lập, không kèm view data)
+    case LEADS_EXPORT          = 'leads.export';           // CEO, Ops — xuất Excel
+    case LEADS_MANAGE_PIPELINE = 'leads.manage_pipeline';  // System Admin — thêm/sửa/xóa stages
+    case LEADS_MANAGE_SOURCES  = 'leads.manage_sources';   // System Admin — thêm/sửa/xóa sources
+    case LEADS_MANAGE_TAGS     = 'leads.manage_tags';      // Ops, System Admin — quản lý tags
 
     // ══ SALES AI ═══════════════════════════════════════════════════
     // CEO=Full | Sales=Use | Marketing=Limited | AI_OP=Config prompt | Admin=Config

@@ -5,8 +5,11 @@ namespace Modules\Survey\Actions;
 use Illuminate\Support\Facades\Log;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Survey\Models\SurveyResponse;
+use Modules\Survey\Models\SurveyResult;
 use Modules\Survey\Scoring\ScoringEngineService;
 use Modules\Survey\Services\WebhookDispatcher;
+use Modules\WorkflowAutomation\Data\TriggerPayload;
+use Modules\WorkflowAutomation\Core\WorkflowDispatcher;
 
 class CalculateSurveyScoreAction
 {
@@ -42,6 +45,12 @@ class CalculateSurveyScoreAction
                 'error'           => $e->getMessage(),
             ]);
             throw $e;
+        }
+
+        // Fire workflow trigger after scoring completes
+        $surveyResult = SurveyResult::forResponse($responseId)->with('response')->first();
+        if ($surveyResult !== null) {
+            WorkflowDispatcher::fire(TriggerPayload::forSurveyResult($surveyResult));
         }
 
         // Dispatch webhook after successful scoring

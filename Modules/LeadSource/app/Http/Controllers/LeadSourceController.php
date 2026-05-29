@@ -1,0 +1,86 @@
+<?php
+
+namespace Modules\LeadSource\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\TenantContext;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
+use Modules\LeadSource\Actions\CreateSourceAction;
+use Modules\LeadSource\Actions\DeleteSourceAction;
+use Modules\LeadSource\Actions\ToggleSourceAction;
+use Modules\LeadSource\Actions\UpdateSourceAction;
+use Modules\LeadSource\Data\Requests\CreateSourceData;
+use Modules\LeadSource\Data\Requests\UpdateSourceData;
+use Modules\LeadSource\Models\LeadSource;
+use Modules\LeadSource\Queries\ListSourcesHandler;
+use Modules\LeadSource\Queries\ListSourcesQuery;
+
+class LeadSourceController extends Controller
+{
+    public function __construct()
+    {
+        $this->authorizeResource(LeadSource::class, 'source');
+    }
+
+    public function index(ListSourcesHandler $handler): View
+    {
+        $orgId   = $this->orgId();
+        $sources = $handler->handle(new ListSourcesQuery($orgId, activeOnly: false));
+
+        return view('lead-source::sources.index', compact('sources'));
+    }
+
+    public function create(): View
+    {
+        return view('lead-source::sources.create');
+    }
+
+    public function store(Request $request, CreateSourceAction $action): RedirectResponse
+    {
+        $data = CreateSourceData::validateAndCreate($request->all());
+        $action->handle($data, $this->orgId());
+
+        return redirect()->route('lead-source.index')
+            ->with('success', 'Đã thêm nguồn cơ hội mới.');
+    }
+
+    public function edit(LeadSource $source): View
+    {
+        return view('lead-source::sources.edit', compact('source'));
+    }
+
+    public function update(
+        Request $request,
+        LeadSource $source,
+        UpdateSourceAction $action,
+    ): RedirectResponse {
+        $data = UpdateSourceData::validateAndCreate($request->all());
+        $action->handle($source, $data);
+
+        return redirect()->route('lead-source.index')
+            ->with('success', 'Đã cập nhật nguồn cơ hội.');
+    }
+
+    public function destroy(LeadSource $source, DeleteSourceAction $action): RedirectResponse
+    {
+        $action->handle($source);
+
+        return redirect()->route('lead-source.index')
+            ->with('success', 'Đã xóa nguồn cơ hội.');
+    }
+
+    public function toggle(LeadSource $source, ToggleSourceAction $action): RedirectResponse
+    {
+        $this->authorize('update', $source);
+        $action->handle($source);
+
+        return back()->with('success', 'Đã cập nhật trạng thái.');
+    }
+
+    private function orgId(): int
+    {
+        return TenantContext::getOrganizationId() ?? abort(403, 'No organization context.');
+    }
+}

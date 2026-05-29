@@ -35,8 +35,8 @@
 10. [Actions với lorisleiva](#10-actions-với-lorisleiva)
 11. [Routes & Controllers](#11-routes--controllers)
 12. [Models](#12-models)
-    - 12.1–12.5 Model classes với relationships
-    - 12.6 [WorkflowApiController — Đầy đủ](#12b-workflowapicontroller--đầy-đủ)
+    - 12.1–12.8 Model classes với relationships
+    - [12b. WorkflowApiController — Đầy đủ](#12b-workflowapicontroller--đầy-đủ)
 13. [Admin UI — Workflow Builder](#13-admin-ui--workflow-builder)
 14. [Cách tích hợp — Survey (đã có)](#14-cách-tích-hợp--survey-đã-có)
 15. [Cách tích hợp — Lead (đang plan)](#15-cách-tích-hợp--lead-đang-plan)
@@ -48,6 +48,7 @@
 21. [Migrations hoàn chỉnh](#21-migrations-hoàn-chỉnh)
 22. [Seeders](#22-seeders)
 23. [Thứ tự triển khai](#23-thứ-tự-triển-khai)
+24. [Vận hành & Resilience](#24-vận-hành--resilience)
 
 ---
 
@@ -972,8 +973,6 @@ final class CooldownGuard
 
 ### 7.1 Survey triggers (trong Modules/Survey)
 
-**Lưu ý `trigger_config`**: lưu và đọc dưới dạng JSON (`json_encode`/`json_decode`), không dùng INI format.
-
 ```php
 // Modules/Survey/app/WorkflowTriggers/SurveySubmittedTrigger.php
 class SurveySubmittedTrigger implements TriggerSource
@@ -1360,6 +1359,11 @@ class CallWebhookExecutor implements ActionExecutor
             }
 
             $method   = match ($step->webhook_method) { 2 => 'POST', 3 => 'PUT', 4 => 'PATCH', default => 'GET' };
+            // Rate limiting outbound: nếu nhiều workflow cùng gọi 1 domain,
+            // dùng throttle cache key per domain để tránh flood.
+            // Hiện tại: không implement — chấp nhận rủi ro với giả định
+            // số workflow concurrent thấp (< 20/s). Nếu scale lớn hơn,
+            // thêm: RateLimiter::attempt("webhook:{$host}", 10, fn() => ..., 60)
             $response = \Http::withHeaders($headers)->timeout(15)->retry(2, 500)
                 ->{strtolower($method)}($url, json_decode($body, true));
 
@@ -1405,17 +1409,15 @@ class CreateLeadExecutor implements ActionExecutor
                 return ActionResult::ok(0, ['skipped' => 'lead already exists']);
             }
             Lead::create([
-                'email'           => $email,
-                'name'            => $payload->actorName,
-                'source'          => $step->lead_source ?? 'workflow',
-                'assigned_to'     => $step->lead_assigned_to,
-                'organization_id' => $payload->organizationId,
-                'meta'            => [
-                    'from_workflow'   => true,
-                    'trigger_type'    => $payload->triggerType,
-                    'band_code'       => $payload->extra['band_code'] ?? null,
-                    'survey_response' => $payload->subjectId,
-                ],
+                'email'                  => $email,
+                'name'                   => $payload->actorName,
+                'source'                 => $step->lead_source ?? 'workflow',
+                'assigned_to'            => $step->lead_assigned_to,
+                'organization_id'        => $payload->organizationId,
+                // Không dùng JSON meta — dùng typed columns trên bảng leads
+                'workflow_trigger_type'  => $payload->triggerType,
+                'workflow_subject_id'    => $payload->subjectId,
+                'band_code'              => $payload->extra['band_code'] ?? null,
             ]);
             return ActionResult::ok((int)((microtime(true) - $start) * 1000));
         } catch (\Throwable $e) {
@@ -1697,7 +1699,7 @@ class ExecuteWorkflowStepAction
         private readonly ActionRegistry $actions,
     ) {}
 
-    public function handle(int $stepId, TriggerPayload $payload): void
+    public function handle(int $stepId, TriggerPayload $payload, int $executionId = 0): void
     {
         $step = WorkflowStep::find($stepId);
         if (!$step) return;
@@ -1705,18 +1707,47 @@ class ExecuteWorkflowStepAction
         $executor = $this->actions->get($step->action_type);
         if (!$executor) {
             logger()->warning('[Workflow] Unknown action type in delayed step', ['action_type' => $step->action_type]);
+            $this->updateStepLog($executionId, $stepId, 3, 'Unknown action type', 0);
             return;
         }
 
+        $start  = microtime(true);
         $result = $executor->execute($step, $payload);
+        $ms     = (int)((microtime(true) - $start) * 1000);
+
+        // Cập nhật lại row trong workflow_execution_steps (trước đó là status=4 "scheduled")
+        $this->updateStepLog(
+            $executionId,
+            $stepId,
+            $result->success ? 1 : 3,
+            $result->errorMessage,
+            $ms,
+        );
 
         if (!$result->success) {
             logger()->error('[Workflow] Delayed step failed', [
-                'step_id'     => $stepId,
-                'action_type' => $step->action_type,
-                'error'       => $result->errorMessage,
+                'step_id'      => $stepId,
+                'execution_id' => $executionId,
+                'action_type'  => $step->action_type,
+                'error'        => $result->errorMessage,
             ]);
         }
+    }
+
+    private function updateStepLog(int $executionId, int $stepId, int $status, ?string $error, int $ms): void
+    {
+        if ($executionId === 0) return; // executionId không được truyền vào (backward compat)
+
+        \DB::table('workflow_execution_steps')
+            ->where('execution_id', $executionId)
+            ->where('step_id', $stepId)
+            ->update([
+                'status'        => $status,
+                'error_message' => $error ? substr($error, 0, 500) : null,
+                'duration_ms'   => $ms,
+                'executed_at'   => now()->format('Y-m-d H:i:s.v'),
+                'attempts'      => \DB::raw('attempts + 1'),
+            ]);
     }
 }
 ```
@@ -2045,7 +2076,10 @@ class WorkflowBuilderService
 
     private function syncSteps(Workflow $workflow, array $steps): void
     {
-        // Xóa headers của các steps cũ trước
+        // Lưu ý race condition: xóa-rồi-insert có khoảng trống ~ms mà ExecuteWorkflowAction
+        // có thể đọc steps rỗng. Rủi ro thấp (workflow update hiếm khi concurrent với execution),
+        // nhưng nếu cần zero-downtime: soft delete steps cũ (thêm deleted_at), chỉ hard delete
+        // sau khi insert xong. Hiện tại: chấp nhận rủi ro nhỏ này.
         $oldStepIds = $workflow->steps()->pluck('id');
         WorkflowStepHeader::whereIn('step_id', $oldStepIds)->delete();
         $workflow->steps()->delete();
@@ -2065,25 +2099,6 @@ class WorkflowBuilderService
         }
     }
 
-    private function createFromRequest(Request $request): Workflow
-    {
-        $data     = $this->validate($request);
-        $workflow = Workflow::create($this->workflowAttributes($data));
-        $this->syncTriggerParams($workflow, $data['trigger_params'] ?? []);
-        $this->syncConditions($workflow, $data['conditions'] ?? []);
-        $this->syncSteps($workflow, $data['steps'] ?? []);
-        return $workflow;
-    }
-
-    private function updateFromRequest(Request $request, Workflow $workflow): Workflow
-    {
-        $data = $this->validate($request);
-        $workflow->update($this->workflowAttributes($data));
-        $this->syncTriggerParams($workflow, $data['trigger_params'] ?? []);
-        $this->syncConditions($workflow, $data['conditions'] ?? []);
-        $this->syncSteps($workflow, $data['steps'] ?? []);
-        return $workflow;
-    }
 }
 ```
 
@@ -2212,7 +2227,7 @@ class WorkflowStep extends \Illuminate\Database\Eloquent\Model
         'email_to', 'email_subject', 'email_template',
         'notif_title', 'notif_body', 'notif_target',
         'update_model', 'update_field', 'update_value',
-        'webhook_url', 'webhook_method', 'webhook_secret', 'webhook_headers',
+        'webhook_url', 'webhook_method', 'webhook_secret',
         'lead_status', 'lead_source', 'lead_assigned_to',
         'user_tag', 'user_status',
         'delay_minutes',
@@ -2367,7 +2382,7 @@ class WorkflowStepHeader extends \Illuminate\Database\Eloquent\Model
 
 ---
 
-## 12.6 WorkflowApiController — Đầy đủ
+## 12b. WorkflowApiController — Đầy đủ
 
 ```php
 // Modules/WorkflowAutomation/app/Http/Controllers/WorkflowApiController.php
@@ -2691,6 +2706,12 @@ public function handle(): void
 }
 ```
 
+> **Lưu ý field mapping `SurveyResult`**: `TriggerPayload::forSurveyResult()` đọc
+> `$result->band_code`, `$result->overall_score`, `$result->weight_version`.
+> Trước khi build phải verify các field này tồn tại trên model `SurveyResult`
+> (kiểm tra migration `survey_results` table). Nếu tên khác (ví dụ `total_score`
+> thay vì `overall_score`), sửa trong factory method, không sửa DB schema.
+
 ---
 
 ## 15. Cách tích hợp — Lead (đang plan)
@@ -2983,56 +3004,76 @@ Sidebar tự render từ `PermissionEnum` + `RoleEnum::visibleModules()`. Không
 // Label:      'Workflow'
 ```
 
-### 19.4 Permissions Seeder
+### 19.4 Permissions — thêm vào `config/permissions.php`
+
+`config/permissions.php` là **single source of truth** cho RBAC của hệ thống. Chạy `php artisan permissions:sync` sau deploy để sync tự động — không cần seeder riêng.
 
 ```php
-// Modules/WorkflowAutomation/database/seeders/WorkflowPermissionsSeeder.php
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
-use App\Enums\PermissionEnum as P;
-use App\Enums\RoleEnum as R;
+// config/permissions.php — thêm vào các role tương ứng:
 
-class WorkflowPermissionsSeeder extends Seeder
-{
-    public function run(): void
-    {
-        // Tạo permissions (nếu chưa có — idempotent)
-        $permissions = [
-            P::WORKFLOW_MONITOR->value,
-            P::WORKFLOW_EDIT->value,
-            P::WORKFLOW_VIEW_LIMITED->value,
-            P::WORKFLOW_AI_CONFIG->value,
-            P::WORKFLOW_FULL_CONFIG->value,
-        ];
-        foreach ($permissions as $perm) {
-            Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
-        }
+R::CEO->value => [
+    // ... permissions hiện có ...
+    P::WORKFLOW_MONITOR->value,          // Xem list + execution history (không sửa)
+],
 
-        // Gán theo roles — khớp với config/permissions.php
-        $map = [
-            R::CEO->value     => [P::WORKFLOW_MONITOR->value],
-            R::OPS->value     => [P::WORKFLOW_MONITOR->value, P::WORKFLOW_EDIT->value],
-            R::SALES->value   => [P::WORKFLOW_VIEW_LIMITED->value],
-            R::HR->value      => [P::WORKFLOW_VIEW_LIMITED->value],
-            R::MARKETING->value => [P::WORKFLOW_VIEW_LIMITED->value],
-            R::AI_OP->value   => [P::WORKFLOW_MONITOR->value, P::WORKFLOW_AI_CONFIG->value],
-            R::ADMIN->value   => [
-                P::WORKFLOW_MONITOR->value, P::WORKFLOW_EDIT->value,
-                P::WORKFLOW_AI_CONFIG->value, P::WORKFLOW_FULL_CONFIG->value,
-            ],
-        ];
+R::OPS->value => [
+    // ... permissions hiện có ...
+    P::WORKFLOW_MONITOR->value,
+    P::WORKFLOW_EDIT->value,             // Tạo/sửa/toggle workflow
+],
 
-        foreach ($map as $roleName => $perms) {
-            $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
-            $role->givePermissionTo($perms);
-        }
-    }
-}
+R::SALES->value => [
+    // ... permissions hiện có ...
+    P::WORKFLOW_VIEW_LIMITED->value,     // Chỉ xem workflow public
+],
+
+R::HR->value => [
+    // ... permissions hiện có ...
+    P::WORKFLOW_VIEW_LIMITED->value,
+],
+
+R::MARKETING->value => [
+    // ... permissions hiện có ...
+    P::WORKFLOW_VIEW_LIMITED->value,
+],
+
+R::AI_OP->value => [
+    // ... permissions hiện có ...
+    P::WORKFLOW_MONITOR->value,
+    P::WORKFLOW_AI_CONFIG->value,        // Cấu hình AI-related steps
+],
+
+R::ADMIN->value => [
+    // ... permissions hiện có ...
+    P::WORKFLOW_MONITOR->value,
+    P::WORKFLOW_EDIT->value,
+    P::WORKFLOW_AI_CONFIG->value,
+    P::WORKFLOW_FULL_CONFIG->value,      // Xóa, force run, admin config
+],
 ```
 
-**Lưu ý**: Hệ thống đã có `php artisan permissions:sync` đọc từ `config/permissions.php`. Thêm workflow permissions vào đó thay vì dùng seeder riêng là cách chuẩn hơn — chỉ cần run `permissions:sync` sau deploy.
+```php
+// app/Enums/PermissionEnum.php — thêm 5 cases mới:
+case WORKFLOW_MONITOR      = 'workflow.monitor';
+case WORKFLOW_EDIT         = 'workflow.edit';
+case WORKFLOW_VIEW_LIMITED = 'workflow.view_limited';
+case WORKFLOW_AI_CONFIG    = 'workflow.ai_config';
+case WORKFLOW_FULL_CONFIG  = 'workflow.full_config';
+```
+
+```bash
+# Deploy command — sync permissions sau khi thêm cases mới:
+php artisan permissions:sync
+```
 
 ### 19.5 Queue configuration
+
+**Bước 0 — tạo queue tables** (nếu chưa có):
+```bash
+# Tạo bảng jobs, failed_jobs, job_batches
+php artisan queue:table
+php artisan migrate
+```
 
 ```env
 # .env
@@ -3048,6 +3089,28 @@ php artisan queue:work --queue=workflows,default
 # Hoặc dùng supervisor với config:
 # [program:workflow-worker]
 # command=php /var/www/html/minhan/artisan queue:work --queue=workflows --sleep=3 --tries=3
+```
+
+### 19.6 Cache invalidation sau deploy
+
+Cache meta (triggers/actions/subjects) TTL 600s. Nếu deploy thêm trigger/executor mới, admin có thể thấy UI cũ tới 10 phút.
+
+```bash
+# Thêm vào deploy script (sau php artisan migrate):
+php artisan cache:forget wf:meta:global
+# Hoặc nếu multi-org:
+php artisan tinker --execute="Cache::flush();"  # chỉ dùng khi cache là file/array driver
+# Redis: redis-cli KEYS "wf:meta:*" | xargs redis-cli DEL
+```
+
+Nếu cần zero-downtime cache refresh, cân nhắc versioned cache key:
+```php
+// config/workflow_automation.php
+'meta_cache_version' => env('WORKFLOW_META_VERSION', 1),
+
+// Trong WorkflowApiController::meta():
+$cacheKey = 'wf:meta:v' . config('workflow_automation.meta_cache_version') . ':' . ($orgId ?? 'global');
+// Increment WORKFLOW_META_VERSION trong .env sau mỗi deploy có thay đổi triggers/actions
 ```
 
 ---
@@ -3144,16 +3207,23 @@ $this->cache->put($key, 1, 365 * 86400);
 // TTL đủ lớn để thực tế là "1 lần", nhưng có thể dọn dẹp
 ```
 
-### ❌ 7. `trigger_config` dùng INI format
+### ❌ 7. Lưu trigger config dưới bất kỳ dạng serialized nào (INI, JSON, text)
 
 ```php
-// SAI — parse_ini_string() có edge cases với giá trị đặc biệt
+// SAI — INI: parse_ini_string() có edge cases, không handle boolean/array
 $config = "survey_id=5\nband_code=AI_READY";
-parse_ini_string($config); // không handle được JSON, arrays, boolean...
+parse_ini_string($config);
 
-// ĐÚNG — dùng JSON
-$config = json_encode(['survey_id' => 5, 'band_code' => 'AI_READY']);
-json_decode($config, true); // predictable, handle mọi type
+// SAI — JSON: không query được SQL, không index được
+$workflow->trigger_config = json_encode(['survey_id' => 5, 'band_code' => 'AI_READY']);
+// WHERE JSON_EXTRACT(...) — không portable, SQLite hỗ trợ kém
+
+// ĐÚNG — normalize thành workflow_trigger_params (index hit, type-safe, query chuẩn SQL)
+$workflow->triggerParams()->createMany([
+    ['param_key' => 'survey_id', 'param_value' => '5',        'param_type' => 2],
+    ['param_key' => 'band_code', 'param_value' => 'AI_READY', 'param_type' => 1],
+]);
+WorkflowTriggerParam::where('param_key', 'band_code')->where('param_value', 'AI_READY')->get();
 ```
 
 ### ❌ 9. Lưu config có cấu trúc vào TEXT/JSON column
@@ -3330,7 +3400,7 @@ class SampleWorkflowsSeeder extends Seeder
 | 12 | `ExecuteWorkflowStepAction` + `PurgeOldExecutionsAction` | Thấp | |
 | 13 | `WorkflowAutomationServiceProvider` (bind singletons, đăng ký built-ins) | Thấp | |
 | 14 | **Survey integration** — triggers + ServiceProvider + Dispatcher | Thấp | Quick win |
-| 15 | Permissions seeder (dùng `PermissionEnum` values) | Thấp | spatie/laravel-permission |
+| 15 | Workflow permissions vào `config/permissions.php` + `PermissionEnum` + `permissions:sync` | Thấp | Single source of truth |
 | 16 | `WorkflowApiController` (meta + index + executions + stats) | Trung | |
 | 17 | `WorkflowBuilderService` — validate + persist (trigger_params normalized) | Trung | |
 | 18 | `WorkflowController` + `WorkflowExecutionController` | Trung | |
@@ -3341,3 +3411,81 @@ class SampleWorkflowsSeeder extends Seeder
 | 23 | **Lead integration** — khi build module Lead | Thấp | Chỉ implement interface + đăng ký |
 | 24 | **User integration** — khi build module User | Thấp | Chỉ implement interface + đăng ký |
 | 25 | `PurgeOldExecutionsAction` scheduler (`console.php`) | Thấp | |
+| 26 | Monitor `failed_jobs` + alert setup | Thấp | Xem Section 24 |
+
+---
+
+## 24. Vận hành & Resilience
+
+### 24.1 Xử lý `failed_jobs`
+
+Khi job vượt `jobTries=3`, Laravel chuyển vào bảng `failed_jobs`. Workflow không có built-in alerting — cần monitor chủ động.
+
+```bash
+# Xem failed jobs
+php artisan queue:failed
+
+# Retry tất cả failed jobs
+php artisan queue:retry all
+
+# Retry 1 job cụ thể
+php artisan queue:retry <uuid>
+
+# Xóa failed jobs cũ
+php artisan queue:flush
+```
+
+**Khuyến nghị**:
+- Thêm `Telescope` (dev) hoặc `Horizon` (prod, Redis) để monitor queue health.
+- Hoặc đơn giản: schedule check `failed_jobs` count mỗi 5 phút, alert qua Slack/email nếu > 0.
+
+```php
+// Modules/WorkflowAutomation/routes/console.php
+Schedule::command('queue:failed-table')->when(fn() =>
+    \DB::table('failed_jobs')
+        ->where('payload', 'like', '%ExecuteWorkflowAction%')
+        ->where('failed_at', '>=', now()->subMinutes(10))
+        ->count() > 0
+)->runInBackground(); // placeholder — thay bằng notification thực tế
+```
+
+### 24.2 Retry policy theo action type
+
+Không phải mọi executor đều nên retry như nhau:
+
+| Action type | Retry phù hợp | Lý do |
+|-------------|--------------|-------|
+| `email.send` | 3 lần, backoff 10/60/300s | Mail server tạm thời unavailable |
+| `webhook.call` | 2 lần, backoff 500ms/2s | Đã có `retry(2, 500)` trong Http client |
+| `notification.send` | 3 lần | DB write, ít fail |
+| `subject.update` | 3 lần | DB write |
+| `lead.create` | 1 lần | Đã có idempotency check (email exists) |
+
+Hiện tại `ExecuteWorkflowAction` dùng chung `jobTries=3`. Nếu cần retry per-executor, truyền `retry_count` vào `WorkflowStep` config.
+
+### 24.3 Observability checklist
+
+Trước khi go-live:
+
+```
+□ queue:table migration đã chạy
+□ Queue worker đang chạy (supervisor hoặc systemd)
+□ failed_jobs được monitor (alert nếu > 0)
+□ workflow_executions.triggered_at index tồn tại (xem migration 4.4)
+□ Cache driver không phải 'array' trên prod (cooldown sẽ không hoạt động)
+□ WORKFLOW_QUEUE=workflows trong .env prod
+□ php artisan permissions:sync đã chạy sau deploy
+□ Cache meta invalidated sau deploy (php artisan cache:forget wf:meta:*)
+□ SurveyResult field names verified (band_code, overall_score, weight_version)
+□ PurgeOldExecutionsAction scheduled trong console.php
+```
+
+### 24.4 Scaling considerations
+
+**Hiện tại (SQLite / database queue)**: phù hợp dev và prod nhỏ (< 1000 workflow executions/ngày).
+
+**Khi cần scale**:
+- Chuyển `QUEUE_CONNECTION=redis` + Laravel Horizon để có visibility và concurrency control.
+- Tách queue riêng: `workflows` (low latency) và `workflows-heavy` (webhook, email bulk).
+- Thêm index `(organization_id, status, triggered_at)` trên `workflow_executions` nếu query stats chậm.
+- `PurgeOldExecutionsAction` chạy daily là đủ cho volume thấp; với volume cao, chạy hourly với chunk delete (`->limit(1000)`).
