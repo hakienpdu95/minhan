@@ -7,16 +7,17 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Modules\Assessment\Models\AssessmentDomain;
+use Modules\Assessment\Models\AssessmentResult;
+use Modules\Assessment\Models\MaturityLevel;
+use Modules\Assessment\Models\PainPointRule;
+use Modules\Assessment\Models\RecommendationRule;
+use Modules\Assessment\Models\ResultDomainScore;
+use Modules\Assessment\Models\ScoreBand;
+use Modules\Assessment\Models\ScoringFeedback;
 use Modules\Survey\Actions\CalculateSurveyScoreAction;
-use Modules\Survey\Models\AssessmentDomain;
-use Modules\Survey\Models\MaturityLevel;
-use Modules\Survey\Models\PainPointRule;
-use Modules\Survey\Models\RecommendationRule;
-use Modules\Survey\Models\ScoreBand;
-use Modules\Survey\Models\ScoringFeedback;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyResponse;
-use Modules\Survey\Models\SurveyResult;
 
 class SurveyResultController extends Controller
 {
@@ -34,17 +35,17 @@ class SurveyResultController extends Controller
 
         if ($ref === '') {
             return view('survey::results.public', [
-                'survey'      => $survey,
-                'response'    => null,
-                'result'      => null,
-                'processing'  => false,
-                'notFound'    => true,
-                'ref'         => '',
-                'token'       => $token,
-                'recLabels'   => collect(),
-                'painLabels'  => collect(),
-                'domainLabels'=> collect(),
-                'maturityInfo'=> null,
+                'survey'       => $survey,
+                'response'     => null,
+                'result'       => null,
+                'processing'   => false,
+                'notFound'     => true,
+                'ref'          => '',
+                'token'        => $token,
+                'recLabels'    => collect(),
+                'painLabels'   => collect(),
+                'domainLabels' => collect(),
+                'maturityInfo' => null,
             ]);
         }
 
@@ -55,21 +56,21 @@ class SurveyResultController extends Controller
 
         if (! $response) {
             return view('survey::results.public', [
-                'survey'      => $survey,
-                'response'    => null,
-                'result'      => null,
-                'processing'  => false,
-                'notFound'    => true,
-                'ref'         => $ref,
-                'token'       => $token,
-                'recLabels'   => collect(),
-                'painLabels'  => collect(),
-                'domainLabels'=> collect(),
-                'maturityInfo'=> null,
+                'survey'       => $survey,
+                'response'     => null,
+                'result'       => null,
+                'processing'   => false,
+                'notFound'     => true,
+                'ref'          => $ref,
+                'token'        => $token,
+                'recLabels'    => collect(),
+                'painLabels'   => collect(),
+                'domainLabels' => collect(),
+                'maturityInfo' => null,
             ]);
         }
 
-        $result = SurveyResult::forResponse($response->id)
+        $result = AssessmentResult::forResponse($response->id)
             ->with([
                 'domainScores',
                 'signalFlags',
@@ -81,10 +82,9 @@ class SurveyResultController extends Controller
             ->first();
 
         $assessmentCode = $survey->assessment_code;
-
-        $recLabels  = collect();
-        $painLabels = collect();
-        $maturityInfo = null;
+        $recLabels      = collect();
+        $painLabels     = collect();
+        $maturityInfo   = null;
 
         if ($result) {
             $recLabels = RecommendationRule::where('assessment_code', $assessmentCode)
@@ -122,12 +122,12 @@ class SurveyResultController extends Controller
 
     // ── T6.2: Admin xem chi tiết một result ──────────────────────────────────
 
-    public function show(Survey $survey, SurveyResponse $response): \Illuminate\View\View
+    public function show(Survey $survey, SurveyResponse $response): View
     {
         $this->authorize('survey.view_responses');
         $this->checkOwnership($response, $survey);
 
-        $result = SurveyResult::forResponse($response->id)
+        $result = AssessmentResult::forResponse($response->id)
             ->with([
                 'domainScores',
                 'signalFlags',
@@ -137,13 +137,11 @@ class SurveyResultController extends Controller
             ])
             ->first();
 
-        // Enrich recommendations với label từ config
         $recLabels = $result
             ? RecommendationRule::where('assessment_code', $result->assessment_code)
                 ->pluck('label', 'recommendation_code')
             : collect();
 
-        // Domain labels từ config
         $domainLabels = $survey->assessment_code
             ? AssessmentDomain::forAssessment($survey->assessment_code)
                 ->pluck('label', 'domain_code')
@@ -162,47 +160,33 @@ class SurveyResultController extends Controller
 
     // ── T6.3: Admin xem tổng hợp scoring toàn bộ responses ───────────────────
 
-    public function summary(Survey $survey): \Illuminate\View\View
+    public function summary(Survey $survey): View
     {
         $this->authorize('survey.view_responses');
 
-        if (!$survey->hasScoring()) {
+        if (! $survey->hasScoring()) {
             abort(404, 'Survey này không có cấu hình chấm điểm.');
         }
 
         $assessmentCode = $survey->assessment_code;
 
-        // Phân bố maturity levels
-        $maturityDistribution = SurveyResult::whereHas(
-            'response', fn ($q) => $q->where('survey_id', $survey->id)
-        )
+        $maturityDistribution = AssessmentResult::forSurvey($survey->id)
             ->selectRaw('maturity_level, COUNT(*) as count')
             ->groupBy('maturity_level')
             ->pluck('count', 'maturity_level');
 
-        // Avg domain scores
-        $avgDomainScores = \Modules\Survey\Models\ResultDomainScore::whereHas(
-            'result.response', fn ($q) => $q->where('survey_id', $survey->id)
+        $avgDomainScores = ResultDomainScore::whereHas(
+            'result', fn ($q) => $q->forSurvey($survey->id)
         )
             ->selectRaw('domain_code, ROUND(AVG(normalized_score), 2) as avg_score')
             ->groupBy('domain_code')
             ->pluck('avg_score', 'domain_code');
 
-        // Overall avg
-        $avgOverall = SurveyResult::whereHas(
-            'response', fn ($q) => $q->where('survey_id', $survey->id)
-        )->avg('overall_score');
+        $avgOverall  = AssessmentResult::forSurvey($survey->id)->avg('overall_score');
+        $totalScored = AssessmentResult::forSurvey($survey->id)->count();
 
-        // Total scored
-        $totalScored = SurveyResult::whereHas(
-            'response', fn ($q) => $q->where('survey_id', $survey->id)
-        )->count();
-
-        // Maturity level labels
         $maturityLevels = MaturityLevel::forAssessment($assessmentCode)->ordered()->get();
-
-        // Domain labels
-        $domains = AssessmentDomain::forAssessment($assessmentCode)->ordered()->get();
+        $domains        = AssessmentDomain::forAssessment($assessmentCode)->ordered()->get();
 
         return view('survey::results.summary', compact(
             'survey',
@@ -218,14 +202,14 @@ class SurveyResultController extends Controller
     // ── T6.4: Admin force recalculate một result ──────────────────────────────
 
     public function recalculate(
-        Survey               $survey,
-        SurveyResponse       $response,
+        Survey $survey,
+        SurveyResponse $response,
         CalculateSurveyScoreAction $action,
     ): JsonResponse {
         $this->authorize('survey.update');
         $this->checkOwnership($response, $survey);
 
-        if (!$survey->hasScoring()) {
+        if (! $survey->hasScoring()) {
             return response()->json(['success' => false, 'message' => 'Survey không có cấu hình chấm điểm.'], 422);
         }
 
@@ -237,21 +221,19 @@ class SurveyResultController extends Controller
     // ── T6: Admin xác nhận actual_band ───────────────────────────────────────
 
     public function submitFeedback(
-        Survey         $survey,
+        Survey $survey,
         SurveyResponse $response,
-        Request        $request,
+        Request $request,
     ): JsonResponse {
         $this->authorize('survey.update');
         $this->checkOwnership($response, $survey);
 
-        $result = SurveyResult::forResponse($response->id)->first();
-        if (!$result) {
+        $result = AssessmentResult::forResponse($response->id)->first();
+        if (! $result) {
             return response()->json(['success' => false, 'message' => 'Chưa có kết quả chấm điểm.'], 422);
         }
 
-        $validCodes = $this->loadBands($result->assessment_code)
-            ->pluck('code')
-            ->all();
+        $validCodes = $this->loadBands($result->assessment_code)->pluck('code')->all();
 
         $data = $request->validate([
             'actual_band' => ['required', 'string', 'max:60', Rule::in($validCodes)],
@@ -270,7 +252,7 @@ class SurveyResultController extends Controller
     /** @return \Illuminate\Support\Collection<int, array{code:string,label:string}> */
     private function loadBands(?string $assessmentCode): \Illuminate\Support\Collection
     {
-        if (!$assessmentCode) {
+        if (! $assessmentCode) {
             return collect();
         }
 

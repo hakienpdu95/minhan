@@ -9,9 +9,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Modules\Assessment\Contracts\ScoringSubjectInterface;
+use Modules\Assessment\Engine\AnswerReader;
 use Modules\Survey\Enums\ResponseStatus;
 
-class SurveyResponse extends Model
+class SurveyResponse extends Model implements ScoringSubjectInterface
 {
     use HasFactory, SoftDeletes;
 
@@ -83,5 +85,27 @@ class SurveyResponse extends Model
     public function scopeForSurvey(Builder $query, int $surveyId): Builder
     {
         return $query->where('survey_id', $surveyId);
+    }
+
+    // ── ScoringSubjectInterface ───────────────────────────────────────
+
+    public function getScoringSubjectId(): int
+    {
+        return $this->id;
+    }
+
+    public function getScoringSubjectType(): string
+    {
+        return static::class;
+    }
+
+    public function getAssessmentCode(): string
+    {
+        return $this->survey?->assessment_code ?? '';
+    }
+
+    public function getScoringAnswers(): array
+    {
+        return app(AnswerReader::class)->read($this->id, $this->survey_id);
     }
 }

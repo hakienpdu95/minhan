@@ -28,7 +28,8 @@ class IdentifyOrganization
         $organization = $this->resolveFromSubdomain($request)
             ?? $this->resolveFromHeader($request)
             ?? $this->resolveFromAuthUser($request)
-            ?? $this->resolveFromSession($request);
+            ?? $this->resolveFromSession($request)
+            ?? $this->resolveDefaultForSuperAdmin($request);
 
         if ($organization?->isActive()) {
             TenantContext::set($organization);
@@ -110,6 +111,22 @@ class IdentifyOrganization
         }
 
         return $this->findById((int) $orgId);
+    }
+
+    /**
+     * Super-admin không thuộc org nào → mặc định lấy org đầu tiên đang active.
+     * Session sẽ ghi nhớ cho các request tiếp theo.
+     * Có thể đổi org bằng header X-Organization-ID.
+     */
+    private function resolveDefaultForSuperAdmin(Request $request): ?Organization
+    {
+        $user = $request->user();
+
+        if (!$user || $user->organization_id !== null || !$user->hasRole('super-admin')) {
+            return null;
+        }
+
+        return Organization::active()->orderBy('id')->first();
     }
 
     private function findBySlug(string $slug): ?Organization

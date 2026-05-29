@@ -4,8 +4,6 @@ namespace Modules\Lead\Queries;
 
 use App\Shared\Contracts\QueryHandlerInterface;
 use App\Shared\Contracts\QueryInterface;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Modules\Lead\Enums\LeadStatus;
 use Modules\Lead\Models\Lead;
@@ -15,59 +13,40 @@ class LeadStatsHandler implements QueryHandlerInterface
     public function handle(QueryInterface $query): array
     {
         /** @var LeadStatsQuery $query */
-        $cacheKey = sprintf(
-            'lead_stats:%d:%s:%s:%s',
-            $query->orgId,
-            $query->from?->toDateString() ?? 'all',
-            $query->to?->toDateString()   ?? 'now',
-            $query->scopeUserId           ?? 'all'
-        );
+        $base = Lead::where('organization_id', $query->orgId)
+            ->when($query->scopeUserId, fn ($q) => $q->where('assigned_to', $query->scopeUserId))
+            ->when($query->from, fn ($q) => $q->where('created_at', '>=', $query->from))
+            ->when($query->to,   fn ($q) => $q->where('created_at', '<=', $query->to));
 
-        $loader = function () use ($query) {
-            $base = Lead::where('organization_id', $query->orgId)
-                ->when($query->scopeUserId, fn ($q) => $q->where('assigned_to', $query->scopeUserId))
-                ->when($query->from, fn ($q) => $q->where('created_at', '>=', $query->from))
-                ->when($query->to,   fn ($q) => $q->where('created_at', '<=', $query->to));
-
-            return [
-                'total_count'       => (clone $base)->count(),
-                'by_status'         => (clone $base)
-                    ->groupBy('status')
-                    ->selectRaw('status, COUNT(*) as cnt')
-                    ->pluck('cnt', 'status'),
-                'by_stage'          => (clone $base)
-                    ->groupBy('stage_id')
-                    ->selectRaw('stage_id, COUNT(*) as cnt')
-                    ->pluck('cnt', 'stage_id'),
-                'total_value'       => (clone $base)
-                    ->where('status', LeadStatus::Active->value)
-                    ->sum('expected_value'),
-                'weighted_value'    => $this->weightedPipelineValue($query),
-                'conversion_rate'   => $this->conversionRate($query),
-                'avg_days_to_close' => $this->avgTimeToClose($query),
-            ];
-        };
-
-        try {
-            return Cache::tags(["org:{$query->orgId}", 'stats'])
-                ->remember($cacheKey, config('lead.cache_ttl.stats', 300), $loader);
-        } catch (\BadMethodCallException) {
-            return Cache::remember($cacheKey, config('lead.cache_ttl.stats', 300), $loader);
-        }
+        return [
+            'total_count'       => (clone $base)->count(),
+            'by_status'         => (clone $base)
+                ->groupBy('status')
+                ->selectRaw('status, COUNT(*) as cnt')
+                ->pluck('cnt', 'status'),
+            'by_stage'          => (clone $base)
+                ->groupBy('stage_id')
+                ->selectRaw('stage_id, COUNT(*) as cnt')
+                ->pluck('cnt', 'stage_id'),
+            'total_value'       => (clone $base)
+                ->where('status', LeadStatus::Active->value)
+                ->sum('expected_value'),
+            'weighted_value'    => $this->weightedPipelineValue($query),
+            'conversion_rate'   => $this->conversionRate($query),
+            'avg_days_to_close' => $this->avgTimeToClose($query),
+        ];
     }
 
     private function weightedPipelineValue(LeadStatsQuery $query): float
     {
-        $q = DB::table('leads')
+        return (float) DB::table('leads')
             ->join('lead_pipeline_stages', 'leads.stage_id', '=', 'lead_pipeline_stages.id')
             ->where('leads.organization_id', $query->orgId)
             ->where('leads.status', LeadStatus::Active->value)
             ->whereNull('leads.deleted_at')
             ->when($query->scopeUserId, fn ($q) => $q->where('leads.assigned_to', $query->scopeUserId))
             ->when($query->from, fn ($q) => $q->where('leads.created_at', '>=', $query->from))
-            ->when($query->to,   fn ($q) => $q->where('leads.created_at', '<=', $query->to));
-
-        return (float) $q
+            ->when($query->to,   fn ($q) => $q->where('leads.created_at', '<=', $query->to))
             ->selectRaw('COALESCE(SUM(leads.expected_value * lead_pipeline_stages.probability / 100), 0) as v')
             ->value('v');
     }

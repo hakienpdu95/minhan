@@ -6,8 +6,8 @@ use Modules\Survey\Http\Controllers\FieldController;
 use Modules\Survey\Http\Controllers\WebhookController;
 use Modules\Survey\Http\Controllers\OptionController;
 use Modules\Survey\Http\Controllers\ResponseController;
-use Modules\Survey\Http\Controllers\ScoringAdminController;
 use Modules\Survey\Http\Controllers\SectionController;
+use Modules\Survey\Http\Controllers\SurveyScoringRedirectController;
 use Modules\Survey\Http\Controllers\StatsController;
 use Modules\Survey\Http\Controllers\SurveyController;
 use Modules\Survey\Http\Controllers\SurveyResultController;
@@ -46,20 +46,9 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
         Route::get('/{survey}/stats', [StatsController::class, 'index'])->name('stats.index');
         Route::get('/{survey}/stats/fields/{field}', [StatsController::class, 'fieldStats'])->name('stats.field');
 
-        // ── Scoring config wizard ──────────────────────────────────────
-        Route::prefix('/{survey}/scoring')->name('scoring.')->group(function () {
-            Route::get('/',                           [ScoringAdminController::class, 'index'])->name('index');
-            Route::get('/config',                     [ScoringAdminController::class, 'getConfig'])->name('config');
-            Route::put('/config',                     [ScoringAdminController::class, 'saveConfig'])->name('config.save');
-            Route::get('/fields',                     [ScoringAdminController::class, 'getFields'])->name('fields');
-            Route::get('/flags',                      [ScoringAdminController::class, 'getFlags'])->name('flags');
-            Route::post('/validate',                  [ScoringAdminController::class, 'validateConfig'])->name('validate');
-            Route::get('/snapshots',                  [ScoringAdminController::class, 'getSnapshots'])->name('snapshots');
-            Route::post('/rollback/{version}',        [ScoringAdminController::class, 'rollbackConfig'])->name('rollback');
-            Route::post('/reprocess-all',             [ScoringAdminController::class, 'reprocessAll'])->name('reprocess-all');
-            Route::get('/batch/{batchId}',            [ScoringAdminController::class, 'getBatchStatus'])->name('batch-status');
-            Route::get('/activity-log',               [ScoringAdminController::class, 'getActivityLog'])->name('activity-log');
-        });
+        // ── Scoring config — redirect sang Assessment module ───────────
+        Route::get('/{survey}/scoring', [SurveyScoringRedirectController::class, 'redirect'])
+             ->name('scoring.index');
 
         // ── Scoring results ────────────────────────────────────────────
         Route::prefix('/{survey}/results')->name('results.')->group(function () {

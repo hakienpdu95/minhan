@@ -7,5 +7,6 @@
     "WorkflowAutomation": true,
     "Lead": true,
     "LeadPipelineStage": true,
-    "LeadSource": true
+    "LeadSource": true,
+    "Assessment": true
 }

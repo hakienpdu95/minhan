@@ -45,6 +45,11 @@ class WorkflowAutomationServiceProvider extends ModuleServiceProvider
         $triggerRegistry = app(TriggerRegistry::class);
         $triggerRegistry->register(new ManualTrigger());
 
+        // Assessment triggers
+        if (class_exists(\Modules\Assessment\WorkflowTriggers\AssessmentResultBandTrigger::class)) {
+            $triggerRegistry->register(app(\Modules\Assessment\WorkflowTriggers\AssessmentResultBandTrigger::class));
+        }
+
         $actionRegistry = app(ActionRegistry::class);
         $actionRegistry->register(app(SendEmailExecutor::class));
         $actionRegistry->register(app(SendNotificationExecutor::class));

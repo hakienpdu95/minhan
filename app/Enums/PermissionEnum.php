@@ -95,6 +95,13 @@ enum PermissionEnum: string
     case REPORTS_AI_USAGE  = 'reports.ai_usage';  // AI Operator
     case REPORTS_SHARED    = 'reports.shared';    // Viewer
 
+    // ══ ASSESSMENT (Chấm điểm khảo sát) ═══════════════════════════
+    // CEO=View | Ops=View | AI_OP=Config+Reprocess | Admin=Full
+    case ASSESSMENT_VIEW      = 'assessment.view';      // CEO, Ops, AI_OP — xem danh sách assessments
+    case ASSESSMENT_CONFIG    = 'assessment.config';    // AI_OP, Admin — wizard cấu hình
+    case ASSESSMENT_RESULTS   = 'assessment.results';   // CEO, Ops, AI_OP — xem kết quả
+    case ASSESSMENT_REPROCESS = 'assessment.reprocess'; // AI_OP, Admin — force recalculate
+
     // ══ SYSTEM ═════════════════════════════════════════════════════
     case INTEGRATION_MANAGE = 'integration.manage';
     case AUDIT_VIEW         = 'audit.view';

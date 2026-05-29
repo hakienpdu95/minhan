@@ -15,15 +15,18 @@ use Modules\Lead\Listeners\LogLeadAssigned;
 use Modules\Lead\Listeners\LogLeadCreated;
 use Modules\Lead\Listeners\LogLeadStageChanged;
 use Modules\Lead\Listeners\LogLeadUpdated;
+use Modules\Lead\Listeners\TriggerLeadAssessment;
 
 class EventServiceProvider extends ServiceProvider
 {
     protected $listen = [
         LeadCreated::class => [
             LogLeadCreated::class,
+            TriggerLeadAssessment::class,
         ],
         LeadUpdated::class => [
             LogLeadUpdated::class,
+            TriggerLeadAssessment::class,
         ],
         LeadStageChanged::class => [
             LogLeadStageChanged::class,

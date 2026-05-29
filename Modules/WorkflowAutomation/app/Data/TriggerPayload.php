@@ -69,6 +69,32 @@ class TriggerPayload extends Data
         );
     }
 
+    public static function forAssessmentResult(
+        \Modules\Assessment\Models\AssessmentResult $result,
+    ): self {
+        return new self(
+            triggerType:    'assessment.result_calculated',
+            sourceModule:   'Assessment',
+            organizationId: \App\Shared\Tenancy\TenantContext::getOrganizationId(),
+            actorId:        null,
+            actorEmail:     null,
+            actorName:      null,
+            actorRole:      null,
+            subjectType:    $result->subject_type,
+            subjectId:      $result->subject_id,
+            subjectLabel:   "AssessmentResult #{$result->id}",
+            extra: [
+                'assessment_code' => $result->assessment_code,
+                'band_code'       => $result->maturity_level,
+                'overall_score'   => $result->overall_score,
+                'weight_version'  => $result->weight_version,
+                'subject_type'    => $result->subject_type,
+                'subject_id'      => $result->subject_id,
+            ],
+            requestId: (string) \Str::uuid(),
+        );
+    }
+
     public function resolve(string $field): mixed
     {
         return match(true) {

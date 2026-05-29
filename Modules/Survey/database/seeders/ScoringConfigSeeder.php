@@ -3,17 +3,16 @@
 namespace Modules\Survey\Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Modules\Survey\Models\Assessment;
-use Modules\Survey\Models\AssessmentDomain;
-use Modules\Survey\Models\FeatureWeight;
-use Modules\Survey\Models\MaturityLevel;
-use Modules\Survey\Models\PainPointRule;
-use Modules\Survey\Models\RecommendationRule;
-use Modules\Survey\Models\RoadmapMilestone;
-use Modules\Survey\Models\RoadmapPhase;
-use Modules\Survey\Models\ScoreBand;
-use Modules\Survey\Models\ScoreRule;
-use Modules\Survey\Models\ScoreRuleOption;
+use Modules\Assessment\Models\Assessment;
+use Modules\Assessment\Models\AssessmentDomain;
+use Modules\Assessment\Models\MaturityLevel;
+use Modules\Assessment\Models\PainPointRule;
+use Modules\Assessment\Models\RecommendationRule;
+use Modules\Assessment\Models\RoadmapMilestone;
+use Modules\Assessment\Models\RoadmapPhase;
+use Modules\Assessment\Models\ScoreBand;
+use Modules\Assessment\Models\ScoreRule;
+use Modules\Assessment\Models\ScoreRuleOption;
 
 class ScoringConfigSeeder extends Seeder
 {
@@ -28,7 +27,6 @@ class ScoringConfigSeeder extends Seeder
 
         $this->seedAssessment();
         $this->seedDomains();
-        $this->seedFeatureWeights();
         $this->seedScoreBands();
         $this->seedMaturityLevels();
         $this->seedScoreRules();
@@ -70,34 +68,6 @@ class ScoringConfigSeeder extends Seeder
 
         foreach ($domains as $d) {
             AssessmentDomain::create(array_merge(['assessment_code' => self::CODE], $d));
-        }
-    }
-
-    // ── Feature Weights (Module 130 — trọng số domain, Phase 1 static) ───────
-
-    private function seedFeatureWeights(): void
-    {
-        $domainWeights = [
-            ['workflow', 0.2500],
-            ['sales',    0.2000],
-            ['hr',       0.1500],
-            ['data',     0.2000],
-            ['ai',       0.2000],
-        ];
-
-        foreach ($domainWeights as [$domainCode, $weight]) {
-            FeatureWeight::create([
-                'assessment_code' => self::CODE,
-                'feature_code'    => $domainCode,
-                'domain_code'     => $domainCode,
-                'weight_level'    => 'domain',
-                'weight'          => $weight,
-                'default_weight'  => $weight,
-                'weight_min'      => 0.0,
-                'weight_max'      => 1.0,
-                'version'         => 1,
-                'updated_by'      => 'manual',
-            ]);
         }
     }
 

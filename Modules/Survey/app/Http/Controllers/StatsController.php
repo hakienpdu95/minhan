@@ -4,9 +4,9 @@ namespace Modules\Survey\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
-use Modules\Survey\Models\AssessmentDomain;
-use Modules\Survey\Models\MaturityLevel;
-use Modules\Survey\Models\ResultDomainScore;
+use Modules\Assessment\Models\AssessmentDomain;
+use Modules\Assessment\Models\MaturityLevel;
+use Modules\Assessment\Models\ResultDomainScore;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyField;
 use Modules\Survey\Models\SurveyResult;

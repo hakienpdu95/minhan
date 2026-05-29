@@ -21,6 +21,16 @@ class CreateLeadAction
 
     public function handle(StoreLeadData $data, int $orgId): Lead
     {
+        // 0. Idempotency — Workflow retry sẽ không tạo lead trùng
+        if ($data->idempotent_key) {
+            $existing = Lead::withoutGlobalScopes()
+                ->where('idempotent_key', $data->idempotent_key)
+                ->first();
+            if ($existing) {
+                return $existing;
+            }
+        }
+
         $lead = DB::transaction(function () use ($data, $orgId) {
 
             // 1. Resolve / create contact (dedup per org + hash)
@@ -47,6 +57,10 @@ class CreateLeadAction
                 'expected_close_date' => $data->expected_close_date,
                 'title'               => $data->title,
                 'description'         => $data->description,
+                'survey_response_id'  => $data->survey_response_id,
+                'survey_band_code'    => $data->survey_band_code,
+                'survey_score'        => $data->survey_score,
+                'idempotent_key'      => $data->idempotent_key,
                 'status'              => LeadStatus::Active,
                 'last_activity_at'    => now(),
                 'created_by'          => Auth::id(),
@@ -86,7 +100,12 @@ class CreateLeadAction
         // 7. Fire domain event after transaction commits
         event(new LeadCreated($lead));
 
-        // 8. Async scoring after transaction commit
+        // 8. Sync tags (outside transaction — safe to retry)
+        if (!empty($data->tag_ids)) {
+            SyncLeadTagsAction::run($lead, $data->tag_ids);
+        }
+
+        // 9. Async scoring after transaction commit
         ScoreLeadAction::dispatchForLead($lead->id);
 
         return $lead;
@@ -116,7 +135,15 @@ class CreateLeadAction
             'full_name'       => $data->contact_name,
             'email'           => $data->contact_email,
             'phone'           => $data->contact_phone,
+            'phone_alt'       => $data->contact_phone_alt,
             'company'         => $data->contact_company,
+            'job_title'       => $data->contact_job_title,
+            'website'         => $data->contact_website,
+            'address'         => $data->contact_address,
+            'province_code'   => $data->province_code,
+            'province_name'   => $data->province_name,
+            'ward_code'       => $data->ward_code,
+            'ward_name'       => $data->ward_name,
             'dedup_hash'      => $hash,
             'created_by'      => Auth::id(),
         ]);
@@ -126,7 +153,15 @@ class CreateLeadAction
     private function mergeContactFields(LeadContact $contact, StoreLeadData $data): void
     {
         $updates = array_filter([
-            'company' => $data->contact_company,
+            'company'       => $data->contact_company,
+            'job_title'     => $data->contact_job_title,
+            'website'       => $data->contact_website,
+            'phone_alt'     => $data->contact_phone_alt,
+            'address'       => $data->contact_address,
+            'province_code' => $data->province_code,
+            'province_name' => $data->province_name,
+            'ward_code'     => $data->ward_code,
+            'ward_name'     => $data->ward_name,
         ], fn ($v) => $v !== null && $v !== '');
 
         if ($updates) {

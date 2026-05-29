@@ -88,6 +88,30 @@
         </details>
         @endcan
 
+        @if(auth()->user()?->hasAnyPermission(['assessment.view','assessment.config','assessment.results']))
+        <details {{ request()->routeIs('assessments.*') ? 'open' : '' }}>
+            <summary class="nav-summary {{ request()->routeIs('assessments.*') ? 'active' : '' }}">
+                <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                <span class="nav-label">Chấm điểm</span>
+                <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+            </summary>
+            <div class="sub-menu">
+                @can('assessment.view')
+                <a href="{{ route('assessments.index') }}"
+                   class="sub-link {{ request()->routeIs('assessments.index') ? 'active' : '' }}">
+                    Danh sách Assessment
+                </a>
+                @endcan
+                @can('assessment.config')
+                <a href="{{ route('assessments.create') }}"
+                   class="sub-link {{ request()->routeIs('assessments.create') ? 'active' : '' }}">
+                    Tạo Assessment mới
+                </a>
+                @endcan
+            </div>
+        </details>
+        @endif
+
         @if(auth()->user()?->hasAnyPermission(['leads.view_all','leads.view_assigned','leads.view_source']))
         <p class="section-title" style="margin-top:16px;">CRM</p>
         <div class="nav-group">

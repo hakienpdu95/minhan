@@ -88,6 +88,10 @@ class RolePermissionSeeder extends Seeder
                 P::REPORTS_FULL->value,
 
                 P::AUDIT_VIEW->value,
+
+                // Assessment: view + results
+                P::ASSESSMENT_VIEW->value,
+                P::ASSESSMENT_RESULTS->value,
             ],
 
             // ─────────────────────────────────────────────────────────
@@ -137,6 +141,10 @@ class RolePermissionSeeder extends Seeder
                 P::AI_LOGS_VIEW->value,
 
                 P::REPORTS_OPS->value,
+
+                // Assessment: view + results
+                P::ASSESSMENT_VIEW->value,
+                P::ASSESSMENT_RESULTS->value,
             ],
 
             // ─────────────────────────────────────────────────────────
@@ -195,6 +203,12 @@ class RolePermissionSeeder extends Seeder
                 P::AI_LOGS_FULL->value,
 
                 P::REPORTS_AI_USAGE->value,
+
+                // Assessment: full (config + reprocess)
+                P::ASSESSMENT_VIEW->value,
+                P::ASSESSMENT_CONFIG->value,
+                P::ASSESSMENT_RESULTS->value,
+                P::ASSESSMENT_REPROCESS->value,
             ],
 
             // ─────────────────────────────────────────────────────────
@@ -232,6 +246,12 @@ class RolePermissionSeeder extends Seeder
                 P::INTEGRATION_MANAGE->value,
                 P::AUDIT_VIEW->value,
                 P::SYSTEM_CONFIG->value,
+
+                // Assessment: full
+                P::ASSESSMENT_VIEW->value,
+                P::ASSESSMENT_CONFIG->value,
+                P::ASSESSMENT_RESULTS->value,
+                P::ASSESSMENT_REPROCESS->value,
             ],
 
             // ─────────────────────────────────────────────────────────

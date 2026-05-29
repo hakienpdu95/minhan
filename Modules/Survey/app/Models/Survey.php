@@ -86,7 +86,6 @@ class Survey extends Model
         return LogOptions::defaults()
             ->logOnly(['title', 'slug', 'status', 'assessment_code', 'version'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(fn (string $event) => match ($event) {
                 'created' => "Tạo khảo sát: {$this->title}",
                 'updated' => "Cập nhật khảo sát: {$this->title}",

@@ -37,6 +37,9 @@ return [
         P::USERS_VIEW->value,
         // Reports: Full
         P::REPORTS_FULL->value,
+        // Assessment: View + Results
+        P::ASSESSMENT_VIEW->value,
+        P::ASSESSMENT_RESULTS->value,
     ],
 
     R::SALES->value => [
@@ -82,6 +85,9 @@ return [
         P::AI_LOGS_VIEW->value,
         // Reports: Operations scope
         P::REPORTS_OPS->value,
+        // Assessment: View + Results
+        P::ASSESSMENT_VIEW->value,
+        P::ASSESSMENT_RESULTS->value,
     ],
 
     R::MARKETING->value => [
@@ -135,6 +141,11 @@ return [
         P::AI_LOGS_FULL->value,
         // Reports: AI usage scope
         P::REPORTS_AI_USAGE->value,
+        // Assessment: Config + Reprocess
+        P::ASSESSMENT_VIEW->value,
+        P::ASSESSMENT_CONFIG->value,
+        P::ASSESSMENT_RESULTS->value,
+        P::ASSESSMENT_REPROCESS->value,
     ],
 
     R::ADMIN->value => [
@@ -161,6 +172,11 @@ return [
         P::AUDIT_VIEW->value,
         P::SYSTEM_CONFIG->value,
         P::REPORTS_FULL->value,
+        // Assessment: Full config
+        P::ASSESSMENT_VIEW->value,
+        P::ASSESSMENT_CONFIG->value,
+        P::ASSESSMENT_RESULTS->value,
+        P::ASSESSMENT_REPROCESS->value,
     ],
 
     R::VIEWER->value => [

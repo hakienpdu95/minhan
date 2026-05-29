@@ -11,7 +11,7 @@ use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Actions\ExportSurveyResponsesAction;
 use Modules\Survey\Actions\SubmitSurveyAction;
 use Modules\Survey\Http\Requests\SubmitSurveyRequest;
-use Modules\Survey\Models\RecommendationRule;
+use Modules\Assessment\Models\RecommendationRule;
 use Modules\Survey\Models\SubmissionBehaviorLog;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyDraft;

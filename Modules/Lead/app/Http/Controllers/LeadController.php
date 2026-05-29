@@ -27,6 +27,9 @@ use Modules\Lead\Queries\GetPipelineStagesHandler;
 use Modules\Lead\Queries\GetPipelineStagesQuery;
 use Modules\Lead\Queries\ListLeadsHandler;
 use Modules\Lead\Queries\ListLeadsQuery;
+use App\Models\Province;
+use Modules\Lead\Queries\ListTagsHandler;
+use Modules\Lead\Queries\ListTagsQuery;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LeadController extends Controller
@@ -55,13 +58,16 @@ class LeadController extends Controller
     public function create(
         GetPipelineStagesHandler $stagesHandler,
         GetLeadSourcesHandler $sourcesHandler,
+        ListTagsHandler $tagsHandler,
     ): View {
         $orgId = $this->orgId();
 
-        $stages  = $stagesHandler->handle(new GetPipelineStagesQuery($orgId));
-        $sources = $sourcesHandler->handle(new GetLeadSourcesQuery($orgId));
+        $stages    = $stagesHandler->handle(new GetPipelineStagesQuery($orgId));
+        $sources   = $sourcesHandler->handle(new GetLeadSourcesQuery($orgId));
+        $tags      = $tagsHandler->handle(new ListTagsQuery($orgId));
+        $provinces = Province::orderBy('name')->get(['province_code', 'name']);
 
-        return view('lead::leads.create', compact('stages', 'sources'));
+        return view('lead::leads.create', compact('stages', 'sources', 'tags', 'provinces'));
     }
 
     public function store(Request $request, CreateLeadAction $action): RedirectResponse
@@ -99,7 +105,18 @@ class LeadController extends Controller
             }
         }
 
-        return view('lead::leads.show', compact('lead', 'stages', 'sources', 'maskContact', 'surveyResponseUrl'));
+        // Assessment result (nếu org đã bật lead assessment)
+        $assessmentResult = null;
+        if (class_exists(\Modules\Assessment\Models\AssessmentResult::class) && $lead->getAssessmentCode()) {
+            $assessmentResult = \Modules\Assessment\Models\AssessmentResult
+                ::forSubject(Lead::class, $lead->id)
+                ->with(['domainScores', 'classification', 'painPoints', 'recommendations', 'roadmapPhases.phase'])
+                ->first();
+        }
+
+        return view('lead::leads.show', compact(
+            'lead', 'stages', 'sources', 'maskContact', 'surveyResponseUrl', 'assessmentResult'
+        ));
     }
 
     public function edit(

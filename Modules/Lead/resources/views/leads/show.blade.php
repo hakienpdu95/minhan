@@ -87,6 +87,16 @@
                         @click="tab = 'history'">
                     Lịch sử tình trạng
                 </button>
+                @if($assessmentResult)
+                <button class="tab tab-sm" :class="tab === 'assessment' ? 'tab-active' : ''"
+                        @click="tab = 'assessment'">
+                    <svg class="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    Đánh giá sâu
+                    <span class="badge badge-xs badge-primary ml-1">{{ round($assessmentResult->overall_score) }}</span>
+                </button>
+                @endif
             </div>
 
             {{-- ── Tab: Activities ─────────────────────────────────────── --}}
@@ -293,6 +303,92 @@
                     </div>
                 </div>
             </div>
+
+            {{-- ── Tab: Đánh giá sâu (Assessment) ──────────────────────── --}}
+            @if($assessmentResult)
+            <div x-show="tab === 'assessment'">
+                <div class="space-y-4">
+
+                    {{-- Overall score card --}}
+                    <div class="card bg-base-100 shadow-sm border border-base-200">
+                        <div class="card-body py-4 px-5">
+                            <div class="grid grid-cols-3 gap-4 text-center">
+                                <div>
+                                    <p class="text-xs text-base-content/50 mb-1">Điểm tổng</p>
+                                    <p class="text-4xl font-bold text-primary">{{ round($assessmentResult->overall_score, 1) }}</p>
+                                    <p class="text-xs text-base-content/40 mt-0.5">/ 100</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-base-content/50 mb-1">Phân loại</p>
+                                    <span class="badge badge-lg badge-soft badge-info font-semibold">
+                                        {{ $assessmentResult->maturity_level ?? '—' }}
+                                    </span>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-base-content/50 mb-1">Cập nhật</p>
+                                    <p class="text-sm font-medium">{{ $assessmentResult->calculated_at?->format('d/m H:i') ?? '—' }}</p>
+                                    @can('assessment.reprocess')
+                                    <button onclick="rerunLeadAssessment()"
+                                            class="btn btn-xs btn-ghost text-warning mt-1" title="Tính lại">↻ Tính lại</button>
+                                    @endcan
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Domain scores --}}
+                    @if($assessmentResult->domainScores->isNotEmpty())
+                    <div class="card bg-base-100 shadow-sm border border-base-200">
+                        <div class="px-5 py-3 border-b border-base-200 font-semibold text-sm">Điểm theo domain</div>
+                        <div class="divide-y divide-base-200">
+                            @foreach($assessmentResult->domainScores as $ds)
+                            <div class="px-5 py-3 flex items-center gap-4">
+                                <div class="w-36 shrink-0 text-sm font-medium">{{ $ds->domain_code }}</div>
+                                <div class="flex-1 flex items-center gap-3">
+                                    <div class="flex-1 bg-base-200 rounded-full h-2 overflow-hidden">
+                                        <div class="h-2 rounded-full bg-primary transition-all"
+                                             style="width: {{ min(100, round($ds->normalized_score)) }}%"></div>
+                                    </div>
+                                    <span class="text-sm font-bold text-primary w-10 text-right">
+                                        {{ round($ds->normalized_score, 1) }}
+                                    </span>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+
+                    {{-- Pain points --}}
+                    @if($assessmentResult->painPoints->isNotEmpty())
+                    <div class="card bg-base-100 shadow-sm border border-base-200">
+                        <div class="px-5 py-3 border-b border-base-200 font-semibold text-sm text-warning">⚠ Điểm yếu</div>
+                        <div class="px-5 py-3 flex flex-wrap gap-2">
+                            @foreach($assessmentResult->painPoints as $pp)
+                            <span class="badge badge-sm badge-soft badge-warning font-mono">{{ $pp->pain_point_code }}</span>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+
+                    {{-- Recommendations --}}
+                    @if($assessmentResult->recommendations->isNotEmpty())
+                    <div class="card bg-base-100 shadow-sm border border-base-200">
+                        <div class="px-5 py-3 border-b border-base-200 font-semibold text-sm">💡 Đề xuất hành động</div>
+                        <div class="divide-y divide-base-200">
+                            @foreach($assessmentResult->recommendations as $rec)
+                            <div class="px-5 py-3 flex items-center gap-3">
+                                <span class="badge badge-xs badge-ghost w-6 text-center shrink-0">#{{ $rec->priority }}</span>
+                                <span class="text-sm font-mono text-base-content/70">{{ $rec->recommendation_code }}</span>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+
+                </div>
+            </div>
+            @endif
 
         </div>
 
@@ -518,6 +614,22 @@ var CSRF_TOKEN       = '{{ csrf_token() }}';
 var LEAD_ID          = {{ $lead->id }};
 var CHANGE_STAGE_URL = '{{ route('lead.change-stage', $lead) }}';
 var ORIG_STAGE_ID    = {{ $lead->stage_id }};
+
+// ── Lead Assessment rerun ─────────────────────────────────────────────────────
+function rerunLeadAssessment() {
+    if (!confirm('Tính lại đánh giá sâu cho lead này?')) return;
+    @if($assessmentResult)
+    var code = @js($assessmentResult->assessment_code);
+    var id   = @js($assessmentResult->id);
+    fetch('/dashboard/assessments/' + code + '/results/' + id + '/recalculate', {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': CSRF_TOKEN, 'Accept': 'application/json' },
+    }).then(r => r.json()).then(d => {
+        if (d.ok) { setTimeout(() => location.reload(), 800); }
+        else alert(d.message || 'Lỗi khi tính lại.');
+    }).catch(() => alert('Lỗi kết nối.'));
+    @endif
+}
 
 // ── Stage change ──────────────────────────────────────────────────────────────
 function stageSelectChanged(sel) {
