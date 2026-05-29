@@ -474,7 +474,7 @@ document.addEventListener('alpine:init', function () {
                     var found = ROLES.find(function (r) { return r.value === OLD_ROLE; });
                     if (found) self.selectedRoleLabel = found.label;
                 }
-                document.addEventListener('DOMContentLoaded', function () { self._setup(); }, { once: true });
+                self.$nextTick(() => self._setup());
             },
 
             _setup: function () {

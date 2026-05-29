@@ -302,6 +302,7 @@ CREATE TABLE `leads` (
     `organization_id`              INT UNSIGNED    NOT NULL,
     -- BẮT BUỘC — single-tenant dùng organization_id=1
 
+
     -- ── Contact ──────────────────────────────────────────────
     `contact_id`          BIGINT UNSIGNED NOT NULL,
 

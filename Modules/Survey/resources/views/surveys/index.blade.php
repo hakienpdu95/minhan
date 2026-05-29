@@ -363,7 +363,7 @@ document.addEventListener('alpine:init', function () {
                 var self = this;
                 self.loadState();
                 try { self.hiddenCols = JSON.parse(localStorage.getItem(LS_COLS) || '[]'); } catch (e) {}
-                document.addEventListener('DOMContentLoaded', function () { self._setup(); }, { once: true });
+                self.$nextTick(() => self._setup());
             },
 
             _setup: function () {

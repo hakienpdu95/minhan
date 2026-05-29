@@ -247,7 +247,7 @@ document.addEventListener('alpine:init', function () {
             get hasFilters() { return !!(this.filters.search || this.filters.is_active !== ''); },
 
             init() {
-                document.addEventListener('DOMContentLoaded', () => this._setup(), { once: true });
+                this.$nextTick(() => this._setup());
             },
 
             _setup() {

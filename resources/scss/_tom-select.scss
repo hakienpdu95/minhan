@@ -1,0 +1,117 @@
+// resources/scss/_tom-select.scss
+// ─────────────────────────────────────────────────────────────────────
+// TomSelect v2 — theme override cho DaisyUI 5 (light + dark).
+// Load một lần, áp dụng toàn hệ thống.
+//
+// Cách dùng: @use 'tom-select';
+//
+// Lý do tồn tại:
+//   TomSelect dùng màu cứng (#fff, #000...). File này ghi đè bằng
+//   oklch(var(--b1)) etc. để tự động đổi khi user chuyển dark/light.
+// ─────────────────────────────────────────────────────────────────────
+
+@use 'tokens' as t;
+
+.ts-wrapper {
+    // ── Control (ô hiển thị đã chọn) ──────────────────────────────────
+    &.single .ts-control,
+    &.multi  .ts-control {
+        background:    t.$base-100;
+        border:        1px solid t.$border;
+        border-radius: t.$radius-md;
+        color:         t.$text;
+        min-height:    t.$input-h;
+        padding:       t.$input-py t.$input-px;
+        font-size:     t.$input-font;
+        box-shadow:    none;
+        transition:    border-color t.$transition-fast, box-shadow t.$transition-fast;
+
+        input {
+            color:      t.$text !important;
+            font-size:  t.$input-font;
+            background: transparent;
+        }
+    }
+
+    // ── Focus ────────────────────────────────────────────────────────
+    &.single.focus .ts-control,
+    &.multi.focus  .ts-control {
+        border-color: t.$border-focus;
+        outline:      none;
+        box-shadow:   0 0 0 2px oklch(var(--p) / .2);
+    }
+
+    // ── Error state (triggered by .form-control:has(.form-val-msg)) ──
+    // Defined in _form-patterns.scss at form-control level
+
+    // ── Disabled ─────────────────────────────────────────────────────
+    &.disabled .ts-control {
+        opacity:        .6;
+        cursor:         not-allowed;
+        pointer-events: none;
+    }
+
+    // ── Multi: selected item chips ────────────────────────────────────
+    &.multi .ts-control .item {
+        background:    t.$primary-subtle;
+        border:        1px solid t.$primary;
+        color:         t.$primary;
+        border-radius: t.$radius-sm;
+        font-size:     .8125rem;
+        padding:       .1rem .5rem;
+    }
+
+    // ── Clear button ─────────────────────────────────────────────────
+    .clear-button {
+        color: t.$text-muted;
+        &:hover { color: t.$error; }
+    }
+}
+
+// ── Dropdown ────────────────────────────────────────────────────────
+.ts-dropdown {
+    background:    t.$base-100;
+    border:        1px solid t.$border;
+    border-radius: t.$radius-lg;
+    box-shadow:    t.$shadow-md;
+    z-index:       t.$z-dropdown;
+    margin-top:    .25rem;
+    overflow:      hidden;
+
+    // ── Option ───────────────────────────────────────────────────────
+    .ts-option {
+        color:       t.$text;
+        padding:     .45rem .75rem;
+        font-size:   t.$input-font;
+        transition:  background-color t.$transition-fast;
+
+        &:hover,
+        &.active           { background: t.$base-200; }
+        &.selected         { background: t.$primary-subtle; color: t.$primary; }
+        &.selected.active  { background: oklch(var(--p) / .2); }
+        &.disabled         { color: t.$text-faint; cursor: not-allowed; }
+    }
+
+    // ── Optgroup ─────────────────────────────────────────────────────
+    .ts-optgroup-header {
+        font-size:      .6875rem;
+        font-weight:    700;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        color:          t.$text-muted;
+        padding:        .5rem .75rem .25rem;
+    }
+
+    // ── No results ────────────────────────────────────────────────────
+    .no-results {
+        padding:   .75rem;
+        font-size: .875rem;
+        color:     t.$text-muted;
+        text-align: center;
+    }
+}
+
+// ── Error state: form-control chứa lỗi → TomSelect viền đỏ ─────────
+.form-control:has(.form-val-msg) .ts-wrapper .ts-control {
+    border-color: t.$border-error;
+}

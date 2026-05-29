@@ -181,7 +181,7 @@ document.addEventListener('alpine:init', function () {
 
             init() {
                 this.loadStats();
-                document.addEventListener('DOMContentLoaded', () => this.initTable(), { once: true });
+                this.\$nextTick(() => this.initTable());
             },
 
             async loadStats() {

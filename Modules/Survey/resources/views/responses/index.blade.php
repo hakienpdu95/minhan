@@ -382,7 +382,7 @@ document.addEventListener('alpine:init', function () {
                 var self = this;
                 this.loadState();
                 // Defer to DOMContentLoaded since Tabulator and other libs need the DOM
-                document.addEventListener('DOMContentLoaded', function () { self._setup(); }, { once: true });
+                self.$nextTick(() => self._setup());
             },
 
             _setup: function () {

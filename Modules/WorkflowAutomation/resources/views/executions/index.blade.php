@@ -137,7 +137,7 @@ document.addEventListener('alpine:init', function () {
             _table: null,
 
             init() {
-                document.addEventListener('DOMContentLoaded', () => {
+                this.$nextTick(() => {
                     var self = this;
                     self._table = new window.Tabulator('#exec-table', {
                         ajaxURL:    EXEC_API,
@@ -169,7 +169,7 @@ document.addEventListener('alpine:init', function () {
                         columns: EXEC_COLUMNS,
                         placeholder: '<div class="py-12 text-center opacity-40 text-sm">Chưa có lần chạy nào</div>',
                     });
-                }, { once: true });
+                });
             },
 
             refresh() { this._table && this._table.replaceData(); },

@@ -5,30 +5,44 @@
  * ─────────────────────────────────────────────────────────────────────
  *
  * CHIẾN LƯỢC BUNDLE
- * ┌────────────────────────────────────────────────────────────────┐
- * │ CORE  (tải trên MỌI trang backend)                             │
- * │  · app.css  → Tailwind 4 + DaisyUI 5 + layout admin CSS       │
- * │  · app.js   → jQuery global, Alpine 3, iconify, admin shell   │
- * ├────────────────────────────────────────────────────────────────┤
- * │ MODULES  (tải riêng theo trang — @vite() trong blade)          │
- * │  · toastify    toast noti          (nhẹ, nhiều trang)          │
- * │  · datatables  DataTables.net v2   (trang bảng dữ liệu)       │
- * │  · tabulator   Tabulator v6        (bảng nâng cao)             │
- * │  · filepond    FilePond + plugins  (trang upload)              │
- * │  · flatpickr   date/time picker    (form)                      │
- * │  · jodit       rich-text editor    (~500 KB, lazy)             │
- * │  · tom-select  select/autocomplete (form)                      │
- * │  · swiper      carousel/slider                                 │
- * │  · qrcode      QR code generator                               │
- * └────────────────────────────────────────────────────────────────┘
+ * ┌────────────────────────────────────────────────────────────────────┐
+ * │ CORE  — tải trên MỌI trang backend                                 │
+ * │  · app.css  → Tailwind 4 + DaisyUI 5 + admin shell layout          │
+ * │  · app.js   → jQuery, Alpine 3, Iconify, admin-shell, form-valid.  │
+ * ├────────────────────────────────────────────────────────────────────┤
+ * │ WIDGET LIBS  — tải lazy theo trang (@vite trong blade)             │
+ * │  · toastify    toast notification  (nhẹ, nhiều trang)              │
+ * │  · tabulator   Tabulator v6        (bảng nâng cao)                 │
+ * │  · filepond    FilePond + plugins  (trang upload)                  │
+ * │  · flatpickr   date/time picker    (form có date)                  │
+ * │  · jodit       rich-text editor    (~500 KB, lazy)                 │
+ * │  · tom-select  select/autocomplete (form có select nâng cao)       │
+ * │  · swiper      carousel/slider                                     │
+ * │  · qrcode      QR code generator                                   │
+ * ├────────────────────────────────────────────────────────────────────┤
+ * │ MODULE ASSETS  — SCSS + JS riêng mỗi module, tải per-page          │
+ * │                                                                    │
+ * │  SCSS — @use shared partials từ resources/scss/:                   │
+ * │    @use 'tokens'        → DaisyUI CSS vars → SCSS vars             │
+ * │    @use 'mixins'        → mixin tái dụng                           │
+ * │    @use 'form-patterns' → .color-picker-combo, .field-readonly...  │
+ * │    @use 'tom-select'    → TomSelect dark/light theme               │
+ * │                                                                    │
+ * │  JS — import shared utils từ resources/js/shared/:                 │
+ * │    import { makeFormController }   from '@shared/form-controller'  │
+ * │    import { makeWizardController } from '@shared/wizard-controller'│
+ * │    import { createTs }             from '@shared/tom-select-factory'│
+ * └────────────────────────────────────────────────────────────────────┘
  *
  * LỆNH:
  *   npm run dev    → vite --config vite.config.backend.js
  *   npm run build  → vite build --config vite.config.backend.js
  *
  * BLADE:
- *   @vite(['resources/css/app.css', 'resources/js/app.js'])
- *   @vite(['resources/js/modules/datatables.js'])
+ *   Core  : @vite(['resources/css/app.css', 'resources/js/app.js'], 'build/backend')
+ *   Widget: @vite(['resources/js/modules/tom-select.js'], 'build/backend')
+ *   Module: @vite(['Modules/Lead/resources/assets/sass/lead.scss',
+ *                  'Modules/Lead/resources/assets/js/lead.js'], 'build/backend')
  */
 
 import { defineConfig } from 'vite';
@@ -36,11 +50,14 @@ import laravel          from 'laravel-vite-plugin';
 import tailwindcss      from '@tailwindcss/vite';
 import path             from 'path';
 
-/* ─── Tên file JS output (entry points) ─── */
+// ─── Output file name maps ────────────────────────────────────────────
+
+/** JS entry chunks → output path */
 const JS_OUTPUT = {
+  // Core
   'app':        'assets/app.[hash].js',
+  // Widget libs
   'toastify':   'assets/toastify.[hash].js',
-  'datatables': 'assets/datatables.[hash].js',
   'tabulator':  'assets/tabulator.[hash].js',
   'filepond':   'assets/filepond.[hash].js',
   'flatpickr':  'assets/flatpickr.[hash].js',
@@ -48,44 +65,73 @@ const JS_OUTPUT = {
   'tom-select': 'assets/tom-select.[hash].js',
   'swiper':     'assets/swiper.[hash].js',
   'qrcode':     'assets/qrcode.[hash].js',
+  // Module JS — named [module] to avoid chunk name collision
+  'lead':         'assets/modules/lead.[hash].js',
+  'user':         'assets/modules/user.[hash].js',
+  'organization': 'assets/modules/organization.[hash].js',
+
 };
 
-/* ─── Tên file CSS output ─── */
+/** CSS asset name → output path.
+ *  Key = original filename (Vite uses source filename as asset.name).
+ *  SCSS entries compile to CSS; Vite uses the SCSS filename as asset.name.
+ */
 const CSS_OUTPUT = {
-  'app.css':                       'assets/app.[hash].css',
+  // Core
+  'app.css': 'assets/app.[hash].css',
+  // Widget libs CSS
   'filepond.css':                  'assets/filepond.[hash].css',
   'flatpickr.css':                 'assets/flatpickr.[hash].css',
   'jodit.min.css':                 'assets/jodit.[hash].css',
   'tom-select.css':                'assets/tom-select.[hash].css',
   'swiper.css':                    'assets/swiper.[hash].css',
-  'dataTables.dataTables.min.css': 'assets/datatables.[hash].css',
+  // Module SCSS → CSS
+  // asset.name là tên sau khi compile: 'lead.css', không phải 'lead.scss'
+  'lead.css':         'assets/modules/lead.[hash].css',
+  'user.css':         'assets/modules/user.[hash].css',
+  'organization.css': 'assets/modules/organization.[hash].css',
 };
+
+// ─── Module input entries ─────────────────────────────────────────────
+// Thêm module mới vào đây khi module có views cần custom SCSS hoặc JS.
+// Quy tắc đặt tên: [module-name].scss / [module-name].js (không phải app.scss/app.js)
+// để tránh chunk name collision trong rollup output.
+
+const MODULE_ENTRIES = [
+  // Lead
+  'Modules/Lead/resources/assets/sass/lead.scss',
+  'Modules/Lead/resources/assets/js/lead.js',
+  // User
+  'Modules/User/resources/assets/sass/user.scss',
+  'Modules/User/resources/assets/js/user.js',
+  // Organization
+  'Modules/Organization/resources/assets/sass/organization.scss',
+  'Modules/Organization/resources/assets/js/organization.js',
+];
+
+// ─────────────────────────────────────────────────────────────────────
 
 export default defineConfig(({ mode }) => {
   const isProd = mode === 'production';
 
   return {
 
-    /* ── Base URL ──────────────────────────────────────── */
+    /* ── Base URL ────────────────────────────────────────────────── */
     base: isProd ? '/build/backend/' : '/',
 
-    /* ── Plugins ───────────────────────────────────────── */
+    /* ── Plugins ─────────────────────────────────────────────────── */
     plugins: [
-      /*
-       * Tailwind CSS v4 (vite-native, không cần postcss/tailwind.config.js).
-       * Đặt TRƯỚC laravel() để CSS pipeline đúng thứ tự.
-       */
+      // Tailwind CSS v4 — đặt TRƯỚC laravel()
       tailwindcss(),
 
-      /* Laravel Vite Plugin */
       laravel({
         input: [
-          /* CORE */
+          /* ── CORE ─────────────────────────────────────────────── */
           'resources/css/app.css',
           'resources/js/app.js',
-          /* MODULES */
+
+          /* ── WIDGET LIBS (lazy per-page) ──────────────────────── */
           'resources/js/modules/toastify.js',
-          'resources/js/modules/datatables.js',
           'resources/js/modules/tabulator.js',
           'resources/js/modules/filepond.js',
           'resources/js/modules/flatpickr.js',
@@ -93,20 +139,31 @@ export default defineConfig(({ mode }) => {
           'resources/js/modules/tom-select.js',
           'resources/js/modules/swiper.js',
           'resources/js/modules/qrcode.js',
+
+          /* ── MODULE ASSETS (lazy per-page) ────────────────────── */
+          ...MODULE_ENTRIES,
         ],
+
         refresh: [
+          /* Core views */
           'resources/views/**/*.blade.php',
           'resources/css/**/*.css',
+          'resources/scss/**/*.scss',      // shared SCSS partials
           'resources/js/**/*.js',
+          /* Module views + assets */
+          'Modules/*/resources/views/**/*.blade.php',
+          'Modules/*/resources/assets/sass/**/*.scss',
+          'Modules/*/resources/assets/js/**/*.js',
+          /* Routes */
           'routes/**/*.php',
+          'Modules/*/routes/**/*.php',
         ],
+
         buildDirectory: 'build/backend',
         modulePreload:  { polyfill: true },
       }),
 
-      /*
-       * Jodit side-effects — tắt tree-shaking để không lỗi runtime.
-       */
+      // Jodit side-effects — tắt tree-shaking
       {
         name: 'no-treeshake-jodit',
         transform(_code, id) {
@@ -117,18 +174,50 @@ export default defineConfig(({ mode }) => {
       },
     ],
 
-    /* ── Aliases ───────────────────────────────────────── */
+    /* ── Resolve aliases ─────────────────────────────────────────── */
     resolve: {
       alias: {
         '@':        path.resolve(__dirname, 'resources'),
         '@css':     path.resolve(__dirname, 'resources/css'),
         '@js':      path.resolve(__dirname, 'resources/js'),
         '@modules': path.resolve(__dirname, 'resources/js/modules'),
+        '@shared':  path.resolve(__dirname, 'resources/js/shared'),   // shared JS utils
         '@fonts':   path.resolve(__dirname, 'resources/webfonts'),
       },
     },
 
-    /* ── Build ─────────────────────────────────────────── */
+    /* ── CSS / SCSS preprocessor ─────────────────────────────────── */
+    css: {
+      preprocessorOptions: {
+        scss: {
+          /*
+           * loadPaths: cho phép module SCSS dùng @use 'tokens', @use 'mixins'...
+           * mà không cần đường dẫn tương đối dài.
+           *
+           * Thứ tự resolve: Vite thử loadPaths theo thứ tự này:
+           *  1. resources/scss/         → shared partials (_tokens, _mixins...)
+           *  2. [module]/resources/assets/sass/  → được tự động thêm bởi Vite
+           *                                        khi xử lý file trong thư mục đó
+           *
+           * Dùng trong module SCSS:
+           *   @use 'tokens' as t;          → resources/scss/_tokens.scss
+           *   @use 'form-patterns';        → resources/scss/_form-patterns.scss
+           *   @use 'tom-select';           → resources/scss/_tom-select.scss
+           *   @use 'lead-components' as l; → [module]/sass/_lead-components.scss
+           */
+          loadPaths: [
+            path.resolve(__dirname, 'resources/scss'),
+          ],
+          /*
+           * Modern Sass API — tránh legacy deprecation warnings từ sass 1.77+
+           * Nếu gặp lỗi với sass cũ hơn, bỏ dòng này.
+           */
+          api: 'modern',
+        },
+      },
+    },
+
+    /* ── Build ───────────────────────────────────────────────────── */
     build: {
       outDir:               'public/build/backend',
       manifest:             'manifest.json',
@@ -136,13 +225,6 @@ export default defineConfig(({ mode }) => {
       sourcemap:            false,
       reportCompressedSize: true,
       chunkSizeWarningLimit: 500,
-
-      /*
-       * Vite 8 dùng rolldown + oxc làm bundler/minifier mặc định.
-       *  · 'oxc'    = built-in Vite 8, nhanh, không cần cài thêm  ← DÙNG
-       *  · 'esbuild'= deprecated Vite 8, gây lỗi transformWithEsbuild  ✗
-       *  · 'terser' = optional, cần: npm install -D terser             ✗
-       */
       minify:    'oxc',
       cssMinify: 'oxc',
       cssCodeSplit: true,
@@ -150,20 +232,20 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
 
-          /* Entry file names */
+          /* JS entry file names */
           entryFileNames: (chunk) =>
             JS_OUTPUT[chunk.name] ?? `assets/${chunk.name}.[hash].js`,
 
           /* Shared chunk names */
           chunkFileNames: (chunk) => {
             const map = {
+              'shared-utils':      'assets/shared-utils.[hash].js',   // resources/js/shared/*
               'vendor-jquery':     'assets/vendor-jquery.[hash].js',
               'vendor-alpine':     'assets/vendor-alpine.[hash].js',
               'vendor-daisyui':    'assets/vendor-daisyui.[hash].js',
               'vendor-iconify':    'assets/vendor-iconify.[hash].js',
               'vendor-jodit':      'assets/vendor-jodit.[hash].js',
               'vendor-swiper':     'assets/vendor-swiper.[hash].js',
-              'vendor-datatables': 'assets/vendor-datatables.[hash].js',
               'vendor-tabulator':  'assets/vendor-tabulator.[hash].js',
               'vendor-filepond':   'assets/vendor-filepond.[hash].js',
               'vendor-tom-select': 'assets/vendor-tom-select.[hash].js',
@@ -174,7 +256,7 @@ export default defineConfig(({ mode }) => {
             return map[chunk.name] ?? `assets/chunk-${chunk.name}.[hash].js`;
           },
 
-          /* CSS + fonts + images */
+          /* CSS + font + image names */
           assetFileNames: (asset) => {
             const name = asset.name ?? '';
             if (/\.(woff2?|ttf|eot)$/.test(name))
@@ -187,58 +269,50 @@ export default defineConfig(({ mode }) => {
           },
 
           /*
-           * manualChunks: mỗi vendor thư viện → 1 chunk riêng.
-           * → Browser cache độc lập từng thư viện.
-           * → Chỉ thay đổi app code → vendor chunks KHÔNG re-download.
+           * manualChunks: tách vendor + shared utils → cache độc lập.
+           * Thay đổi app code không làm re-download vendor chunk.
            */
           manualChunks(id) {
-            if (id.includes('node_modules/alpinejs'))           return 'vendor-alpine';
-            if (id.includes('node_modules/jquery'))             return 'vendor-jquery';
-            if (id.includes('node_modules/daisyui'))            return 'vendor-daisyui';
-            if (id.includes('node_modules/iconify-icon'))       return 'vendor-iconify';
-            if (id.includes('node_modules/jodit'))              return 'vendor-jodit';
-            if (id.includes('node_modules/swiper'))             return 'vendor-swiper';
-            if (id.includes('node_modules/datatables.net'))     return 'vendor-datatables';
-            if (id.includes('node_modules/tabulator-tables'))   return 'vendor-tabulator';
-            if (id.includes('node_modules/filepond'))           return 'vendor-filepond';
-            if (id.includes('node_modules/tom-select'))         return 'vendor-tom-select';
-            if (id.includes('node_modules/flatpickr'))          return 'vendor-flatpickr';
-            if (id.includes('node_modules/toastify-js'))        return 'vendor-toastify';
-            if (id.includes('node_modules/qrcode-generator'))   return 'vendor-qrcode';
+            // Shared JS utilities → 1 chunk chung tái dụng bởi mọi module
+            if (id.includes('resources/js/shared/'))         return 'shared-utils';
+            // Vendor libs
+            if (id.includes('node_modules/alpinejs'))        return 'vendor-alpine';
+            if (id.includes('node_modules/jquery'))          return 'vendor-jquery';
+            if (id.includes('node_modules/daisyui'))         return 'vendor-daisyui';
+            if (id.includes('node_modules/iconify-icon'))    return 'vendor-iconify';
+            if (id.includes('node_modules/jodit'))           return 'vendor-jodit';
+            if (id.includes('node_modules/swiper'))          return 'vendor-swiper';
+            if (id.includes('node_modules/tabulator-tables'))return 'vendor-tabulator';
+            if (id.includes('node_modules/filepond'))        return 'vendor-filepond';
+            if (id.includes('node_modules/tom-select'))      return 'vendor-tom-select';
+            if (id.includes('node_modules/flatpickr'))       return 'vendor-flatpickr';
+            if (id.includes('node_modules/toastify-js'))     return 'vendor-toastify';
+            if (id.includes('node_modules/qrcode-generator'))return 'vendor-qrcode';
           },
         },
       },
     },
 
-    /* ── Dev server ────────────────────────────────────── */
+    /* ── Dev server ──────────────────────────────────────────────── */
     server: {
-      /*
-       * Dùng port 5174 để tránh conflict với Vite frontend (5173).
-       * laravel-vite-plugin tự detect port này và inject đúng vào blade.
-       * Nếu port bị chiếm: đổi thành 5175, 5176...
-       */
-      port:        5174,
-      strictPort:  true,
-      hmr:  { host: 'localhost' },
-      watch:{ usePolling: false },
+      port:       5174,
+      strictPort: true,
+      hmr:   { host: 'localhost' },
+      watch: { usePolling: false },
     },
 
-    /* ── optimizeDeps (pre-bundle trong dev) ───────────── */
+    /* ── optimizeDeps (pre-bundle trong dev) ─────────────────────── */
     optimizeDeps: {
-      /* Pre-bundle: chỉ CORE packages → dev start nhanh */
       include: [
         'jquery',
         'alpinejs',
         'toastify-js',
         'iconify-icon',
       ],
-      /* Không pre-bundle: load lazy per-page */
       exclude: [
         'jodit',
         'swiper',
         'tabulator-tables',
-        'datatables.net',
-        'datatables.net-dt',
         'filepond',
         'filepond-plugin-image-preview',
         'filepond-plugin-file-validate-size',

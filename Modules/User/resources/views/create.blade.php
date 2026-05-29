@@ -648,7 +648,7 @@ document.addEventListener('alpine:init', function () {
                     if (f) self.selectedRoleLabel = f.label;
                 }
                 if (self.name) self.updateAvatar();
-                document.addEventListener('DOMContentLoaded', function () { self._setup(); }, { once: true });
+                self.$nextTick(() => self._setup());
             },
 
             _setup: function () {

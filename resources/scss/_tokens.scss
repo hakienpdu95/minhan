@@ -1,0 +1,61 @@
+// resources/scss/_tokens.scss
+// ─────────────────────────────────────────────────────────────────────
+// Ánh xạ DaisyUI 5 CSS custom properties → SCSS variables.
+// Import file này trong mọi SCSS partial cần dùng màu / spacing.
+//
+// Dùng: @use 'tokens' as t;
+//       border: 1px solid t.$border;
+//       color: t.$text-muted;
+// ─────────────────────────────────────────────────────────────────────
+
+// ── DaisyUI color tokens (oklch format, dùng var() để theo theme) ────
+
+// Base surfaces
+$base-100: oklch(var(--b1));     // nền card, input
+$base-200: oklch(var(--b2));     // nền hover, readonly, skeleton
+$base-300: oklch(var(--b3));     // viền mặc định
+
+// Text
+$text:       oklch(var(--bc));                // text chính
+$text-muted: oklch(var(--bc) / .5);          // hint, placeholder secondary
+$text-faint: oklch(var(--bc) / .3);          // disabled, icon phụ
+
+// Brand
+$primary:         oklch(var(--p));
+$primary-content: oklch(var(--pc));
+$primary-subtle:  oklch(var(--p) / .12);     // nền highlight nhẹ
+
+$secondary:         oklch(var(--s));
+$success:           oklch(var(--su));
+$warning:           oklch(var(--wa));
+$error:             oklch(var(--er));
+$info:              oklch(var(--in));
+
+// ── Border ──────────────────────────────────────────────────────────
+$border:         oklch(var(--b3));
+$border-focus:   oklch(var(--p));
+$border-error:   oklch(var(--er));
+
+// ── Sizing (dùng nhất quán, không override tuỳ tiện) ────────────────
+$input-h:        2.25rem;    // chiều cao input-sm / select-sm
+$input-px:       .6rem;
+$input-py:       .3rem;
+$input-font:     .875rem;    // 14px
+
+// ── Border radius (khớp với @theme trong app.css) ───────────────────
+$radius-sm:  4px;
+$radius-md:  8px;
+$radius-lg:  12px;
+$radius-xl:  16px;
+
+// ── Shadow ──────────────────────────────────────────────────────────
+$shadow-sm: 0 1px 3px rgb(0 0 0 / .06), 0 1px 2px rgb(0 0 0 / .04);
+$shadow-md: 0 4px 16px rgb(0 0 0 / .10);
+
+// ── Z-index scale ───────────────────────────────────────────────────
+$z-dropdown: 9999;
+$z-modal:    10000;
+
+// ── Transition ──────────────────────────────────────────────────────
+$transition-fast:   .15s ease;
+$transition-normal: .2s ease;

@@ -26,7 +26,7 @@ window.$ = window.jQuery = jQuery;
  *    Alpine.data(), Alpine.store(), Alpine.directive() ở script inline
  *    mà chạy TRƯỚC DOMContentLoaded
  *  - alpine:init event để đăng ký data/store/directive an toàn
- *  - start() KHÔNG gọi trong DOMContentLoaded — Alpine tự quản lý
+ *  - start() gọi trong DOMContentLoaded (xem giải thích bên dưới)
  *
  * Không dùng @alpinejs/collapse, focus, persist... vì không có trong
  * package.json — thêm sau nếu cần bằng npm install @alpinejs/...
@@ -99,8 +99,20 @@ document.addEventListener('alpine:init', () => {
     }));
 });
 
-/* Alpine.start() phải gọi SAU khi đăng ký tất cả plugins/components */
-Alpine.start();
+/*
+ * Alpine.start() phải gọi SAU khi tất cả module scripts đã đăng ký
+ * alpine:init listeners của chúng.
+ *
+ * Vì sao dùng DOMContentLoaded thay vì gọi trực tiếp:
+ *  · Mọi <script type="module"> (Vite) là deferred — chạy SAU khi HTML parse xong
+ *    nhưng TRƯỚC DOMContentLoaded, theo thứ tự xuất hiện trong document.
+ *  · Nếu Alpine.start() chạy ngay trong app.js, nó xử lý DOM trước khi
+ *    các module script sau (lead.js, organization.js...) kịp đăng ký
+ *    alpine:init listener → "orgListPage is not defined".
+ *  · Đặt vào DOMContentLoaded đảm bảo TẤT CẢ module scripts đã chạy
+ *    xong và đăng ký xong trước khi Alpine.start() fire alpine:init.
+ */
+document.addEventListener('DOMContentLoaded', () => Alpine.start(), { once: true });
 
 /* ── 3. Iconify web component ───────────────────────────────────────
  * Self-registers as <iconify-icon> custom element.
@@ -126,4 +138,4 @@ import './modules/form-validation.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     initAdminShell();
-});
+}, { once: true });
