@@ -17,4 +17,4 @@
 
 import './pages/lead-form.js';
 import './pages/lead-index.js';
-// import './pages/lead-show.js';
+import './pages/lead-show.js';

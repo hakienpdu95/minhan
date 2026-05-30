@@ -7,41 +7,76 @@
     <span class="sep">›</span>
     <a href="{{ route('lead.index') }}">Cơ hội</a>
     <span class="sep">›</span>
-    <span class="current">{{ $lead->displayTitle() }}</span>
+    <span class="current">{{ Str::limit($lead->displayTitle(), 40) }}</span>
 </nav>
 @endsection
 
 @section('content')
-<div x-data="leadShowPage" x-init="init()">
 
-    {{-- ── Lead header ──────────────────────────────────────────────────── --}}
-    <div class="flex flex-wrap items-start justify-between gap-3 mb-6">
-        <div class="flex-1">
-            <div class="flex flex-wrap items-center gap-2 mb-1">
+{{-- Delete form (ngoài Alpine wrapper để tránh lồng form) --}}
+@can('delete', $lead)
+<form id="form-delete-lead" method="POST" action="{{ route('lead.destroy', $lead) }}" class="hidden">
+    @csrf @method('DELETE')
+</form>
+@endcan
+
+<div x-data="leadShowPage"
+     data-lead-show
+     data-lead-id="{{ $lead->id }}"
+     data-csrf="{{ csrf_token() }}"
+     data-change-stage-url="{{ route('lead.change-stage', $lead) }}"
+     data-orig-stage="{{ $lead->stage_id }}">
+
+    {{-- ── Page header ────────────────────────────────────────────────── --}}
+    <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+
+        {{-- Identity --}}
+        <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center gap-2 mb-1.5">
                 <span class="text-xs font-mono text-base-content/30">#{{ $lead->id }}</span>
+
                 {{-- Stage badge --}}
-                <span class="badge badge-sm gap-1" style="background:{{ $lead->stage?->color ?? '#94a3b8' }}20; color:{{ $lead->stage?->color ?? '#94a3b8' }}; border-color:{{ $lead->stage?->color ?? '#94a3b8' }}40">
-                    <span class="w-1.5 h-1.5 rounded-full" style="background:{{ $lead->stage?->color ?? '#94a3b8' }}"></span>
+                <span class="badge badge-sm gap-1"
+                      style="background:{{ $lead->stage?->color ?? '#94a3b8' }}20;
+                             color:{{ $lead->stage?->color ?? '#94a3b8' }};
+                             border-color:{{ $lead->stage?->color ?? '#94a3b8' }}40">
+                    <span class="w-1.5 h-1.5 rounded-full"
+                          style="background:{{ $lead->stage?->color ?? '#94a3b8' }}"></span>
                     {{ $lead->stage?->label ?? 'Không rõ' }}
                 </span>
+
                 {{-- Status badge --}}
                 <span class="badge badge-sm badge-soft {{ $lead->status?->badgeClass() }}">
                     {{ $lead->status?->label() }}
                 </span>
-                {{-- Score --}}
+
+                {{-- Lead score --}}
                 @if($lead->lead_score !== null)
                 <span class="badge badge-sm {{ $lead->lead_score >= 70 ? 'badge-error' : ($lead->lead_score >= 40 ? 'badge-warning' : 'badge-ghost') }}">
                     {{ $lead->lead_score }} điểm
                 </span>
                 @endif
             </div>
-            <h1 class="text-xl font-bold text-base-content">{{ $lead->displayTitle() }}</h1>
+
+            <h1 class="text-xl font-bold text-base-content leading-tight">
+                {{ $lead->displayTitle() }}
+            </h1>
+
             @if($lead->description)
-            <p class="text-sm text-base-content/60 mt-1 line-clamp-2">{{ $lead->description }}</p>
+            <p class="text-sm text-base-content/50 mt-1 line-clamp-2">
+                {{ $lead->description }}
+            </p>
             @endif
         </div>
 
-        <div class="flex gap-2 shrink-0">
+        {{-- Actions --}}
+        <div class="flex items-center gap-2 shrink-0">
+            <a href="{{ route('lead.index') }}" class="btn btn-ghost btn-sm gap-1.5">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                Danh sách
+            </a>
             @can('update', $lead)
             <a href="{{ route('lead.edit', $lead) }}" class="btn btn-ghost btn-sm gap-1.5">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -51,58 +86,78 @@
             </a>
             @endcan
             @can('delete', $lead)
-            <form method="POST" action="{{ route('lead.destroy', $lead) }}"
-                  onsubmit="return confirm('Xóa cơ hội này?')">
-                @csrf @method('DELETE')
-                <button type="submit" class="btn btn-ghost btn-sm text-error gap-1.5">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                    Xóa
-                </button>
-            </form>
+            <button type="button" class="btn btn-ghost btn-sm text-error gap-1.5"
+                    onclick="deleteLeadModal.showModal()">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+                Xóa
+            </button>
             @endcan
         </div>
+
     </div>
 
-    {{-- ── 2-column layout ─────────────────────────────────────────────── --}}
+    {{-- ── 2-column layout ────────────────────────────────────────────── --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {{-- ── LEFT: Tabs ─────────────────────────────────────────────── --}}
+        {{-- ── LEFT: content tabs ─────────────────────────────────────── --}}
         <div class="lg:col-span-2 space-y-4">
 
-            {{-- Tab bar --}}
-            <div class="tabs tabs-bordered">
-                <button class="tab tab-sm" :class="tab === 'activities' ? 'tab-active' : ''"
-                        @click="tab = 'activities'">
-                    Hoạt động
-                    <span class="badge badge-xs badge-ghost ml-1">{{ $lead->activity_count }}</span>
-                </button>
-                <button class="tab tab-sm" :class="tab === 'notes' ? 'tab-active' : ''"
-                        @click="tab = 'notes'">
-                    Ghi chú
-                    <span class="badge badge-xs badge-ghost ml-1">{{ $lead->notes->count() }}</span>
-                </button>
-                <button class="tab tab-sm" :class="tab === 'history' ? 'tab-active' : ''"
-                        @click="tab = 'history'">
-                    Lịch sử tình trạng
-                </button>
-                @if($assessmentResult)
-                <button class="tab tab-sm" :class="tab === 'assessment' ? 'tab-active' : ''"
-                        @click="tab = 'assessment'">
-                    <svg class="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                    </svg>
-                    Đánh giá sâu
-                    <span class="badge badge-xs badge-primary ml-1">{{ round($assessmentResult->overall_score) }}</span>
-                </button>
-                @endif
+            {{-- Tab navigation --}}
+            <div class="border-b border-base-200">
+                <nav class="flex -mb-px" role="tablist">
+
+                    <button type="button" role="tab" :aria-selected="tab === 'activities'"
+                            @click="tab = 'activities'"
+                            class="flex items-center gap-1.5 px-1 py-3.5 mr-5 text-sm font-medium border-b-2 transition-colors"
+                            :class="tab === 'activities'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-content/20'">
+                        Hoạt động
+                        <span class="badge badge-xs badge-ghost">{{ $lead->activity_count }}</span>
+                    </button>
+
+                    <button type="button" role="tab" :aria-selected="tab === 'notes'"
+                            @click="tab = 'notes'"
+                            class="flex items-center gap-1.5 px-1 py-3.5 mr-5 text-sm font-medium border-b-2 transition-colors"
+                            :class="tab === 'notes'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-content/20'">
+                        Ghi chú
+                        <span class="badge badge-xs badge-ghost">{{ $lead->notes->count() }}</span>
+                    </button>
+
+                    <button type="button" role="tab" :aria-selected="tab === 'history'"
+                            @click="tab = 'history'"
+                            class="flex items-center gap-1.5 px-1 py-3.5 mr-5 text-sm font-medium border-b-2 transition-colors"
+                            :class="tab === 'history'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-content/20'">
+                        Lịch sử
+                    </button>
+
+                    @if($assessmentResult)
+                    <button type="button" role="tab" :aria-selected="tab === 'assessment'"
+                            @click="tab = 'assessment'"
+                            class="flex items-center gap-1.5 px-1 py-3.5 text-sm font-medium border-b-2 transition-colors"
+                            :class="tab === 'assessment'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-content/20'">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                        Đánh giá sâu
+                        <span class="badge badge-xs badge-primary">{{ round($assessmentResult->overall_score) }}</span>
+                    </button>
+                    @endif
+
+                </nav>
             </div>
 
             {{-- ── Tab: Activities ─────────────────────────────────────── --}}
             <div x-show="tab === 'activities'">
 
-                {{-- Log activity form --}}
                 @can('update', $lead)
                 <div class="card bg-base-100 shadow-sm border border-base-200">
                     <div class="card-body py-3 px-4">
@@ -113,12 +168,13 @@
                                 </svg>
                                 Ghi lại hoạt động
                             </button>
-
                             <div x-show="open" x-transition class="mt-3 pt-3 border-t border-base-200">
                                 <form id="activity-form" @submit.prevent="submitActivity($event)">
                                     <div class="grid grid-cols-2 gap-3 mb-3">
                                         <div class="form-control">
-                                            <label class="label py-0 pb-1"><span class="label-text text-xs font-medium">Loại <span class="text-error">*</span></span></label>
+                                            <label class="label py-0 pb-1">
+                                                <span class="label-text text-xs font-medium">Loại <span class="text-error">*</span></span>
+                                            </label>
                                             <select name="type" class="select select-bordered select-xs w-full" required>
                                                 @foreach(\Modules\Lead\Enums\LeadActivityType::cases() as $type)
                                                 <option value="{{ $type->value }}">{{ $type->label() }}</option>
@@ -126,20 +182,26 @@
                                             </select>
                                         </div>
                                         <div class="form-control">
-                                            <label class="label py-0 pb-1"><span class="label-text text-xs font-medium">Ngày hoàn thành</span></label>
+                                            <label class="label py-0 pb-1">
+                                                <span class="label-text text-xs font-medium">Ngày hoàn thành</span>
+                                            </label>
                                             <input type="datetime-local" name="completed_at"
                                                    value="{{ now()->format('Y-m-d\TH:i') }}"
                                                    class="input input-bordered input-xs w-full">
                                         </div>
                                     </div>
                                     <div class="form-control mb-3">
-                                        <label class="label py-0 pb-1"><span class="label-text text-xs font-medium">Tiêu đề <span class="text-error">*</span></span></label>
+                                        <label class="label py-0 pb-1">
+                                            <span class="label-text text-xs font-medium">Tiêu đề <span class="text-error">*</span></span>
+                                        </label>
                                         <input type="text" name="title" required
                                                class="input input-bordered input-xs w-full"
                                                placeholder="VD: Gọi điện tư vấn sản phẩm">
                                     </div>
                                     <div class="form-control mb-3">
-                                        <label class="label py-0 pb-1"><span class="label-text text-xs font-medium">Nội dung / Kết quả</span></label>
+                                        <label class="label py-0 pb-1">
+                                            <span class="label-text text-xs font-medium">Nội dung / Kết quả</span>
+                                        </label>
                                         <textarea name="description" rows="2"
                                                   class="textarea textarea-bordered textarea-xs w-full"
                                                   placeholder="Ghi tóm tắt nội dung trao đổi..."></textarea>
@@ -159,7 +221,6 @@
                 </div>
                 @endcan
 
-                {{-- Activity timeline --}}
                 <div class="card bg-base-100 shadow-sm border border-base-200">
                     <div class="card-body p-0">
                         @if($lead->activities->isEmpty())
@@ -200,7 +261,6 @@
             {{-- ── Tab: Notes ───────────────────────────────────────────── --}}
             <div x-show="tab === 'notes'">
 
-                {{-- Add note --}}
                 <div class="card bg-base-100 shadow-sm border border-base-200 mb-3">
                     <div class="card-body py-3 px-4">
                         <form @submit.prevent="submitNote($event)">
@@ -218,10 +278,9 @@
                     </div>
                 </div>
 
-                {{-- Notes list --}}
                 <div class="space-y-2" id="notes-list">
                     @forelse($lead->notes as $note)
-                    <div class="card bg-base-100 shadow-sm border border-base-200{{ $note->is_pinned ? ' border-warning/40 bg-warning/5' : '' }}"
+                    <div class="card bg-base-100 shadow-sm border {{ $note->is_pinned ? 'border-warning/40 bg-warning/5' : 'border-base-200' }}"
                          data-note-id="{{ $note->id }}">
                         <div class="card-body py-3 px-4">
                             <div class="flex items-start justify-between gap-3">
@@ -304,12 +363,11 @@
                 </div>
             </div>
 
-            {{-- ── Tab: Đánh giá sâu (Assessment) ──────────────────────── --}}
+            {{-- ── Tab: Đánh giá sâu ───────────────────────────────────── --}}
             @if($assessmentResult)
             <div x-show="tab === 'assessment'">
                 <div class="space-y-4">
 
-                    {{-- Overall score card --}}
                     <div class="card bg-base-100 shadow-sm border border-base-200">
                         <div class="card-body py-4 px-5">
                             <div class="grid grid-cols-3 gap-4 text-center">
@@ -328,15 +386,19 @@
                                     <p class="text-xs text-base-content/50 mb-1">Cập nhật</p>
                                     <p class="text-sm font-medium">{{ $assessmentResult->calculated_at?->format('d/m H:i') ?? '—' }}</p>
                                     @can('assessment.reprocess')
-                                    <button onclick="rerunLeadAssessment()"
-                                            class="btn btn-xs btn-ghost text-warning mt-1" title="Tính lại">↻ Tính lại</button>
+                                    <button type="button"
+                                            data-assessment-code="{{ $assessmentResult->assessment_code }}"
+                                            data-assessment-result-id="{{ $assessmentResult->id }}"
+                                            onclick="rerunLeadAssessment(this)"
+                                            class="btn btn-xs btn-ghost text-warning mt-1" title="Tính lại">
+                                        ↻ Tính lại
+                                    </button>
                                     @endcan
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {{-- Domain scores --}}
                     @if($assessmentResult->domainScores->isNotEmpty())
                     <div class="card bg-base-100 shadow-sm border border-base-200">
                         <div class="px-5 py-3 border-b border-base-200 font-semibold text-sm">Điểm theo domain</div>
@@ -359,7 +421,6 @@
                     </div>
                     @endif
 
-                    {{-- Pain points --}}
                     @if($assessmentResult->painPoints->isNotEmpty())
                     <div class="card bg-base-100 shadow-sm border border-base-200">
                         <div class="px-5 py-3 border-b border-base-200 font-semibold text-sm text-warning">⚠ Điểm yếu</div>
@@ -371,7 +432,6 @@
                     </div>
                     @endif
 
-                    {{-- Recommendations --}}
                     @if($assessmentResult->recommendations->isNotEmpty())
                     <div class="card bg-base-100 shadow-sm border border-base-200">
                         <div class="px-5 py-3 border-b border-base-200 font-semibold text-sm">💡 Đề xuất hành động</div>
@@ -390,9 +450,9 @@
             </div>
             @endif
 
-        </div>
+        </div>{{-- /left --}}
 
-        {{-- ── RIGHT: Sidebar info ─────────────────────────────────────── --}}
+        {{-- ── RIGHT: Sidebar ─────────────────────────────────────────── --}}
         <div class="space-y-4">
 
             {{-- Stage change --}}
@@ -400,23 +460,24 @@
             @if(!$lead->isTerminal())
             <div class="card bg-base-100 shadow-sm border border-base-200">
                 <div class="card-body py-3 px-4">
-                    <h3 class="font-semibold text-sm mb-2">Đổi tình trạng</h3>
-                    <select id="stage-select" class="select select-bordered select-sm w-full mb-2"
+                    <h3 class="font-semibold text-sm mb-3">Đổi tình trạng</h3>
+                    <select id="stage-select"
+                            class="select select-bordered select-sm w-full mb-2"
                             onchange="stageSelectChanged(this)">
                         @foreach($stages as $stage)
                         <option value="{{ $stage->id }}"
-                            {{ $lead->stage_id == $stage->id ? 'selected' : '' }}
-                            data-won="{{ $stage->is_won ? '1' : '0' }}"
-                            data-lost="{{ $stage->is_lost ? '1' : '0' }}">
-                            {{ $stage->label }}
-                            @if($stage->probability) ({{ $stage->probability }}%) @endif
+                                {{ $lead->stage_id == $stage->id ? 'selected' : '' }}
+                                data-won="{{ $stage->is_won ? '1' : '0' }}"
+                                data-lost="{{ $stage->is_lost ? '1' : '0' }}">
+                            {{ $stage->label }}@if($stage->probability) ({{ $stage->probability }}%)@endif
                         </option>
                         @endforeach
                     </select>
                     <textarea id="stage-note" rows="2"
                               class="textarea textarea-bordered textarea-xs w-full mb-2 hidden"
                               placeholder="Ghi chú (tuỳ chọn)..."></textarea>
-                    <button id="stage-save-btn" class="btn btn-primary btn-sm w-full hidden"
+                    <button id="stage-save-btn"
+                            class="btn btn-primary btn-sm w-full hidden"
                             onclick="saveStageChange()">
                         Lưu thay đổi
                     </button>
@@ -430,39 +491,46 @@
             <div class="card bg-base-100 shadow-sm border border-base-200">
                 <div class="card-body py-3 px-4">
                     <h3 class="font-semibold text-sm mb-3">Thông tin cơ hội</h3>
-                    <dl class="space-y-2 text-sm">
+                    <dl class="space-y-2.5 text-sm">
                         @if($lead->expected_value)
-                        <div class="flex justify-between">
-                            <dt class="text-base-content/50 text-xs">Giá trị</dt>
+                        <div class="flex items-center justify-between gap-2">
+                            <dt class="text-xs text-base-content/50 shrink-0">Giá trị</dt>
                             <dd class="font-semibold text-success">
                                 {{ number_format($lead->expected_value) }} {{ $lead->currency }}
                             </dd>
                         </div>
                         @endif
                         @if($lead->expected_close_date)
-                        <div class="flex justify-between">
-                            <dt class="text-base-content/50 text-xs">Ngày chốt dự kiến</dt>
+                        <div class="flex items-center justify-between gap-2">
+                            <dt class="text-xs text-base-content/50 shrink-0">Ngày chốt DK</dt>
                             <dd class="{{ $lead->expected_close_date->isPast() && $lead->isActive() ? 'text-error font-medium' : '' }}">
                                 {{ $lead->expected_close_date->format('d/m/Y') }}
                             </dd>
                         </div>
                         @endif
                         @if($lead->actual_close_date)
-                        <div class="flex justify-between">
-                            <dt class="text-base-content/50 text-xs">Ngày chốt thực tế</dt>
+                        <div class="flex items-center justify-between gap-2">
+                            <dt class="text-xs text-base-content/50 shrink-0">Ngày chốt TT</dt>
                             <dd>{{ $lead->actual_close_date->format('d/m/Y') }}</dd>
                         </div>
                         @endif
                         @if($lead->source)
-                        <div class="flex justify-between">
-                            <dt class="text-base-content/50 text-xs">Nguồn</dt>
+                        <div class="flex items-center justify-between gap-2">
+                            <dt class="text-xs text-base-content/50 shrink-0">Nguồn</dt>
                             <dd>{{ $lead->source->label }}</dd>
                         </div>
                         @endif
+                        @if($lead->source_detail)
+                        <div class="flex items-start justify-between gap-2">
+                            <dt class="text-xs text-base-content/50 shrink-0 mt-0.5">Chi tiết nguồn</dt>
+                            <dd class="text-right text-xs text-base-content/60">{{ $lead->source_detail }}</dd>
+                        </div>
+                        @endif
                         @if($lead->survey_score !== null)
-                        <div class="flex justify-between">
-                            <dt class="text-base-content/50 text-xs">Điểm khảo sát</dt>
-                            <dd class="font-medium">{{ $lead->survey_score }}
+                        <div class="flex items-center justify-between gap-2">
+                            <dt class="text-xs text-base-content/50 shrink-0">Điểm khảo sát</dt>
+                            <dd class="font-medium">
+                                {{ $lead->survey_score }}
                                 @if($lead->survey_band_code)
                                 <span class="badge badge-xs badge-ghost ml-1">{{ $lead->survey_band_code }}</span>
                                 @endif
@@ -470,8 +538,8 @@
                         </div>
                         @endif
                         @if($surveyResponseUrl)
-                        <div class="flex justify-between items-center">
-                            <dt class="text-base-content/50 text-xs">Kết quả khảo sát</dt>
+                        <div class="flex items-center justify-between gap-2">
+                            <dt class="text-xs text-base-content/50 shrink-0">Khảo sát</dt>
                             <dd>
                                 <a href="{{ $surveyResponseUrl }}" target="_blank"
                                    class="link link-primary text-xs flex items-center gap-1">
@@ -483,13 +551,13 @@
                             </dd>
                         </div>
                         @endif
-                        <div class="flex justify-between">
-                            <dt class="text-base-content/50 text-xs">Tạo lúc</dt>
-                            <dd class="text-xs">{{ $lead->created_at->format('d/m/Y H:i') }}</dd>
+                        <div class="flex items-center justify-between gap-2 pt-1 border-t border-base-200/60">
+                            <dt class="text-xs text-base-content/40 shrink-0">Tạo lúc</dt>
+                            <dd class="text-xs text-base-content/50">{{ $lead->created_at->format('d/m/Y H:i') }}</dd>
                         </div>
-                        <div class="flex justify-between">
-                            <dt class="text-base-content/50 text-xs">Cập nhật</dt>
-                            <dd class="text-xs">{{ $lead->updated_at->format('d/m/Y H:i') }}</dd>
+                        <div class="flex items-center justify-between gap-2">
+                            <dt class="text-xs text-base-content/40 shrink-0">Cập nhật</dt>
+                            <dd class="text-xs text-base-content/50">{{ $lead->updated_at->diffForHumans() }}</dd>
                         </div>
                     </dl>
                 </div>
@@ -498,47 +566,51 @@
             {{-- Contact info --}}
             <div class="card bg-base-100 shadow-sm border border-base-200">
                 <div class="card-body py-3 px-4">
-                    <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center justify-between mb-3">
                         <h3 class="font-semibold text-sm">Khách hàng</h3>
                         @if($maskContact)
                         <span class="badge badge-xs badge-warning">Ẩn thông tin</span>
                         @endif
                     </div>
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="avatar placeholder">
-                            <div class="w-9 rounded-full bg-primary/20 text-primary text-sm font-bold">
-                                <span>{{ mb_substr($lead->contact_name, 0, 1) }}</span>
-                            </div>
+
+                    <div class="flex items-center gap-2.5 mb-3">
+                        <div class="w-9 h-9 rounded-full bg-primary/15 text-primary font-bold text-sm flex items-center justify-center shrink-0 select-none">
+                            {{ mb_strtoupper(mb_substr($lead->contact_name, 0, 1)) }}
                         </div>
-                        <div>
-                            @if($maskContact)
-                            <p class="font-medium text-sm">{{ mb_substr($lead->contact_name, 0, 1) }}***</p>
-                            @else
-                            <p class="font-medium text-sm">{{ $lead->contact_name }}</p>
-                            @endif
+                        <div class="min-w-0">
+                            <p class="font-medium text-sm truncate">
+                                @if($maskContact)
+                                    {{ mb_substr($lead->contact_name, 0, 1) }}***
+                                @else
+                                    {{ $lead->contact_name }}
+                                @endif
+                            </p>
                             @if($lead->contact_company)
-                            <p class="text-xs text-base-content/50">
+                            <p class="text-xs text-base-content/50 truncate">
                                 @if($maskContact) *** @else {{ $lead->contact_company }} @endif
                             </p>
                             @endif
                         </div>
                     </div>
+
                     @unless($maskContact)
                     <dl class="space-y-1.5 text-sm">
                         @if($lead->contact_phone)
                         <div class="flex items-center gap-2">
-                            <svg class="w-3.5 h-3.5 text-base-content/40 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg class="w-3.5 h-3.5 text-base-content/35 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                             </svg>
-                            <a href="tel:{{ $lead->contact_phone }}" class="hover:text-primary transition-colors">{{ $lead->contact_phone }}</a>
+                            <a href="tel:{{ $lead->contact_phone }}"
+                               class="hover:text-primary transition-colors">{{ $lead->contact_phone }}</a>
                         </div>
                         @endif
                         @if($lead->contact?->email)
                         <div class="flex items-center gap-2">
-                            <svg class="w-3.5 h-3.5 text-base-content/40 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg class="w-3.5 h-3.5 text-base-content/35 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                             </svg>
-                            <a href="mailto:{{ $lead->contact->email }}" class="hover:text-primary transition-colors">{{ $lead->contact->email }}</a>
+                            <a href="mailto:{{ $lead->contact->email }}"
+                               class="hover:text-primary transition-colors truncate">{{ $lead->contact->email }}</a>
                         </div>
                         @endif
                     </dl>
@@ -549,13 +621,11 @@
             {{-- Assignment --}}
             <div class="card bg-base-100 shadow-sm border border-base-200">
                 <div class="card-body py-3 px-4">
-                    <h3 class="font-semibold text-sm mb-2">Người phụ trách</h3>
+                    <h3 class="font-semibold text-sm mb-3">Người phụ trách</h3>
                     @if($lead->assignee)
-                    <div class="flex items-center gap-2">
-                        <div class="avatar placeholder">
-                            <div class="w-8 rounded-full bg-primary/20 text-primary text-xs font-bold">
-                                <span>{{ mb_substr($lead->assignee->name, 0, 1) }}</span>
-                            </div>
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-full bg-primary/15 text-primary font-bold text-xs flex items-center justify-center shrink-0 select-none">
+                            {{ mb_strtoupper(mb_substr($lead->assignee->name, 0, 1)) }}
                         </div>
                         <div>
                             <p class="font-medium text-sm">{{ $lead->assignee->name }}</p>
@@ -574,17 +644,14 @@
             <div class="card bg-base-100 shadow-sm border border-base-200">
                 <div class="card-body py-3 px-4">
                     <h3 class="font-semibold text-sm mb-2">Tags</h3>
-
-                    {{-- Current tags display --}}
                     <div id="tags-display" class="flex flex-wrap gap-1.5 mb-2 min-h-5">
                         @forelse($lead->tags as $tag)
                         <span class="badge badge-sm font-medium text-white"
                               style="background: {{ $tag->color }}">{{ $tag->name }}</span>
                         @empty
-                        <span class="text-xs text-base-content/40" id="tags-empty">Chưa có tag</span>
+                        <span class="text-xs text-base-content/40">Chưa có tag</span>
                         @endforelse
                     </div>
-
                     @can('update', $lead)
                     <select id="tag-select" multiple
                             class="select select-bordered select-xs w-full"
@@ -601,293 +668,46 @@
                 </div>
             </div>
 
+        </div>{{-- /sidebar --}}
+
+    </div>{{-- /grid --}}
+
+</div>{{-- /x-data --}}
+
+{{-- Delete confirm modal --}}
+@can('delete', $lead)
+<dialog id="deleteLeadModal" class="modal">
+    <div class="modal-box max-w-sm">
+        <h3 class="font-bold text-lg text-error">Xác nhận xóa</h3>
+        <p class="py-3 text-sm text-base-content/70">
+            Bạn có chắc muốn xóa cơ hội
+            <strong class="text-base-content">{{ $lead->displayTitle() }}</strong>?
+        </p>
+        <p class="text-xs text-error/70">Toàn bộ hoạt động, ghi chú và lịch sử liên quan sẽ bị xóa theo.</p>
+        <div class="modal-action mt-4">
+            <button class="btn btn-error btn-sm gap-1.5"
+                    onclick="document.getElementById('form-delete-lead').submit()">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+                Xóa
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="deleteLeadModal.close()">Hủy</button>
         </div>
     </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+@endcan
 
-</div>
 @endsection
 
+@push('styles')
+    @vite(['Modules/Lead/resources/assets/sass/lead.scss'], 'build/backend')
+@endpush
+
 @push('scripts')
-@vite(['resources/js/modules/tom-select.js'], 'build/backend')
-<script>
-var CSRF_TOKEN       = '{{ csrf_token() }}';
-var LEAD_ID          = {{ $lead->id }};
-var CHANGE_STAGE_URL = '{{ route('lead.change-stage', $lead) }}';
-var ORIG_STAGE_ID    = {{ $lead->stage_id }};
-
-// ── Lead Assessment rerun ─────────────────────────────────────────────────────
-function rerunLeadAssessment() {
-    if (!confirm('Tính lại đánh giá sâu cho lead này?')) return;
-    @if($assessmentResult)
-    var code = @js($assessmentResult->assessment_code);
-    var id   = @js($assessmentResult->id);
-    fetch('/dashboard/assessments/' + code + '/results/' + id + '/recalculate', {
-        method: 'POST',
-        headers: { 'X-CSRF-TOKEN': CSRF_TOKEN, 'Accept': 'application/json' },
-    }).then(r => r.json()).then(d => {
-        if (d.ok) { setTimeout(() => location.reload(), 800); }
-        else alert(d.message || 'Lỗi khi tính lại.');
-    }).catch(() => alert('Lỗi kết nối.'));
-    @endif
-}
-
-// ── Stage change ──────────────────────────────────────────────────────────────
-function stageSelectChanged(sel) {
-    var newId = parseInt(sel.value);
-    var note  = document.getElementById('stage-note');
-    var btn   = document.getElementById('stage-save-btn');
-    var err   = document.getElementById('stage-error');
-
-    if (newId !== ORIG_STAGE_ID) {
-        note.classList.remove('hidden');
-        btn.classList.remove('hidden');
-    } else {
-        note.classList.add('hidden');
-        btn.classList.add('hidden');
-    }
-    err.classList.add('hidden');
-}
-
-async function saveStageChange() {
-    var sel  = document.getElementById('stage-select');
-    var note = document.getElementById('stage-note');
-    var btn  = document.getElementById('stage-save-btn');
-    var err  = document.getElementById('stage-error');
-
-    btn.disabled    = true;
-    btn.textContent = 'Đang lưu...';
-
-    try {
-        var res = await fetch(CHANGE_STAGE_URL, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN':     CSRF_TOKEN,
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept':           'application/json',
-                'Content-Type':     'application/json',
-            },
-            body: JSON.stringify({
-                stage_id: parseInt(sel.value),
-                note:     note.value.trim() || null,
-            }),
-        });
-
-        var data = await res.json();
-
-        if (res.ok && data.ok) {
-            window.location.reload();
-        } else {
-            err.textContent = data.message || 'Đổi tình trạng thất bại.';
-            err.classList.remove('hidden');
-            btn.disabled    = false;
-            btn.textContent = 'Lưu thay đổi';
-        }
-    } catch (e) {
-        err.textContent = 'Lỗi kết nối.';
-        err.classList.remove('hidden');
-        btn.disabled    = false;
-        btn.textContent = 'Lưu thay đổi';
-    }
-}
-
-// ── Note helpers ──────────────────────────────────────────────────────────────
-async function toggleNotePin(noteId, btn) {
-    btn.disabled = true;
-    try {
-        var res = await fetch('/api/v1/leads/' + LEAD_ID + '/notes/' + noteId + '/toggle-pin', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN':     CSRF_TOKEN,
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept':           'application/json',
-            },
-        });
-        if (res.ok) window.location.reload();
-    } finally {
-        btn.disabled = false;
-    }
-}
-
-async function deleteNote(noteId, btn) {
-    if (!confirm('Xóa ghi chú này?')) return;
-    btn.disabled = true;
-    try {
-        var res = await fetch('/api/v1/leads/' + LEAD_ID + '/notes/' + noteId, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN':     CSRF_TOKEN,
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept':           'application/json',
-            },
-        });
-        if (res.ok) {
-            var card = btn.closest('[data-note-id]');
-            if (card) card.remove();
-        }
-    } finally {
-        btn.disabled = false;
-    }
-}
-
-// ── Tags TomSelect ────────────────────────────────────────────────────────────
-var tagSelectEl = document.getElementById('tag-select');
-if (tagSelectEl) {
-    var tagsUrl = tagSelectEl.dataset.tagsUrl;
-    var syncUrl = tagSelectEl.dataset.syncUrl;
-
-    var tagTs = new window.TomSelect('#tag-select', {
-        plugins: ['remove_button'],
-        valueField:  'id',
-        labelField:  'text',
-        searchField: ['text'],
-        placeholder: 'Thêm / gỡ tag...',
-        create: false,
-        load: function(query, callback) {
-            fetch(tagsUrl + '?q=' + encodeURIComponent(query))
-                .then(function(r) { return r.json(); })
-                .then(callback)
-                .catch(function() { callback(); });
-        },
-        render: {
-            option: function(data) {
-                return '<div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full" style="background:' + (data.color || '#6b7280') + '"></span>' + data.text + '</div>';
-            },
-            item: function(data) {
-                return '<div class="flex items-center gap-1" style="background:' + (data.color || '#6b7280') + ';color:#fff;border-radius:4px;padding:0 6px">' + data.text + '</div>';
-            },
-        },
-        onChange: function(values) {
-            var tagIds = values.map(function(v) { return parseInt(v); }).filter(Boolean);
-            syncTags(tagIds);
-        },
-    });
-
-    function syncTags(tagIds) {
-        var err = document.getElementById('tags-error');
-        err.classList.add('hidden');
-
-        fetch(syncUrl, {
-            method: 'PUT',
-            headers: {
-                'X-CSRF-TOKEN':     CSRF_TOKEN,
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept':           'application/json',
-                'Content-Type':     'application/json',
-            },
-            body: JSON.stringify({ tag_ids: tagIds }),
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            if (data.ok) {
-                // Re-render badges
-                var display = document.getElementById('tags-display');
-                if (data.tags && data.tags.length) {
-                    display.innerHTML = data.tags.map(function(t) {
-                        return '<span class="badge badge-sm font-medium text-white" style="background:' + t.color + '">' + t.name + '</span>';
-                    }).join('');
-                } else {
-                    display.innerHTML = '<span class="text-xs text-base-content/40">Chưa có tag</span>';
-                }
-            } else {
-                err.textContent = 'Lỗi khi cập nhật tag.';
-                err.classList.remove('hidden');
-            }
-        })
-        .catch(function() {
-            err.textContent = 'Lỗi kết nối.';
-            err.classList.remove('hidden');
-        });
-    }
-}
-
-// ── Alpine component ──────────────────────────────────────────────────────────
-document.addEventListener('alpine:init', function() {
-    Alpine.data('leadShowPage', function() {
-        return {
-            tab:       'activities',
-            actSaving: false,
-            actError:  '',
-            noteSaving: false,
-            noteError:  '',
-
-            init() {},
-
-            async submitActivity(e) {
-                var form = e.target;
-                var fd   = new FormData(form);
-                var body = {};
-                fd.forEach(function(v, k) { body[k] = v; });
-
-                if (!body.type || !body.title) {
-                    this.actError = 'Vui lòng điền đầy đủ loại và tiêu đề.';
-                    return;
-                }
-
-                this.actSaving = true;
-                this.actError  = '';
-
-                try {
-                    var res = await fetch('/api/v1/leads/' + LEAD_ID + '/activities', {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN':     CSRF_TOKEN,
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Accept':           'application/json',
-                            'Content-Type':     'application/json',
-                        },
-                        body: JSON.stringify(body),
-                    });
-
-                    var data = await res.json();
-
-                    if (res.ok && data.ok) {
-                        window.location.reload();
-                    } else {
-                        var msgs = data.errors ? Object.values(data.errors).flat().join(' ') : (data.message || 'Lỗi không xác định.');
-                        this.actError = msgs;
-                    }
-                } catch(e) {
-                    this.actError = 'Lỗi kết nối.';
-                } finally {
-                    this.actSaving = false;
-                }
-            },
-
-            async submitNote(e) {
-                var content = document.getElementById('note-input').value.trim();
-                if (!content) return;
-
-                this.noteSaving = true;
-                this.noteError  = '';
-
-                try {
-                    var res = await fetch('/api/v1/leads/' + LEAD_ID + '/notes', {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN':     CSRF_TOKEN,
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Accept':           'application/json',
-                            'Content-Type':     'application/json',
-                        },
-                        body: JSON.stringify({ content: content }),
-                    });
-
-                    var data = await res.json();
-
-                    if (res.ok && data.ok) {
-                        window.location.reload();
-                    } else {
-                        var msgs = data.errors ? Object.values(data.errors).flat().join(' ') : (data.message || 'Lỗi không xác định.');
-                        this.noteError = msgs;
-                    }
-                } catch(e) {
-                    this.noteError = 'Lỗi kết nối.';
-                } finally {
-                    this.noteSaving = false;
-                }
-            },
-        };
-    });
-});
-</script>
+    @vite([
+        'resources/js/modules/tom-select.js',
+        'Modules/Lead/resources/assets/js/lead.js',
+    ], 'build/backend')
 @endpush
