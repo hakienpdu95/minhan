@@ -74,7 +74,7 @@ class User extends Authenticatable
         return LogOptions::defaults()
             ->logOnly(['name', 'email', 'department', 'is_active'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs()
+            ->dontLogEmptyChanges()
             ->setDescriptionForEvent(fn (string $event) => match ($event) {
                 'created' => "Tạo tài khoản: {$this->email}",
                 'updated' => "Cập nhật tài khoản: {$this->email}",

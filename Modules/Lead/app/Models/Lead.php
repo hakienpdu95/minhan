@@ -11,7 +11,7 @@ use Modules\Lead\Enums\LeadStatus;
 use Modules\LeadPipelineStage\Models\LeadPipelineStage;
 use Modules\LeadSource\Models\LeadSource;
 use Modules\Assessment\Contracts\ScoringSubjectInterface;
-use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
 class Lead extends Model implements ScoringSubjectInterface
@@ -29,7 +29,7 @@ class Lead extends Model implements ScoringSubjectInterface
                 'title', 'description',
             ])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontLogEmptyChanges();
     }
 
     protected $table = 'leads';

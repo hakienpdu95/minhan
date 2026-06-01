@@ -22,8 +22,7 @@ use Modules\Survey\Models\SurveyFieldCondition;
 use Modules\Survey\Models\SurveyResponse;
 use Modules\Survey\Services\WebhookDispatcher;
 use Modules\Survey\Jobs\CalculateSurveyScoreJob;
-use Modules\WorkflowAutomation\Core\WorkflowDispatcher;
-use Modules\WorkflowAutomation\Data\TriggerPayload;
+use Modules\WorkflowAutomation\Support\Workflows;
 use Modules\Survey\Services\SurveyStatsService;
 use Modules\Survey\Support\AnswerValueResolver;
 use Spatie\LaravelData\DataCollection;
@@ -133,10 +132,14 @@ class SubmitSurveyAction
             CalculateSurveyScoreJob::dispatch($responseId);
         }
 
-        // Fire workflow trigger after commit
+        // Fire workflow trigger (this code already runs after the DB transaction commits)
         $response = SurveyResponse::with('survey')->find($responseId);
         if ($response !== null) {
-            WorkflowDispatcher::fire(TriggerPayload::forSurveySubmit($response));
+            Workflows::fireNow('survey.submitted', $response, [
+                'survey_id'      => $response->survey_id,
+                'survey_slug'    => $response->survey?->slug,
+                'respondent_ref' => $response->respondent_ref,
+            ]);
         }
 
         // Dispatch webhook for response.created event

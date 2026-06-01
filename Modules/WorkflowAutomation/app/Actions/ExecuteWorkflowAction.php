@@ -126,6 +126,7 @@ class ExecuteWorkflowAction
             'subject_type'     => $payload->subjectType,
             'subject_id'       => $payload->subjectId,
             'actor_id'         => $payload->actorId,
+            'context'          => json_encode($payload->toContext(), JSON_UNESCAPED_UNICODE),
             'status'           => $status->value,
             'skip_reason'      => $skipReason,
             'condition_result' => $conditionResult,

@@ -19,6 +19,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(\Modules\ActivityLog\Http\Middleware\InjectRequestId::class);
         $middleware->web(\App\Http\Middleware\IdentifyOrganization::class);
         $middleware->appendToGroup('web', \Modules\ActivityLog\Http\Middleware\CaptureHttpContext::class);
+        // EnsureFrontendRequestsAreStateful phải đứng đầu api group để auth:sanctum
+        // có thể dùng session cookie từ browser (SPA/Tabulator AJAX calls).
+        // Không có middleware này, sanctum chỉ nhận Bearer token → 401.
+        $middleware->prependToGroup('api', \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class);
         $middleware->appendToGroup('api', \Modules\ActivityLog\Http\Middleware\CaptureHttpContext::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

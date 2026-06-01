@@ -66,9 +66,15 @@ const JS_OUTPUT = {
   'swiper':     'assets/swiper.[hash].js',
   'qrcode':     'assets/qrcode.[hash].js',
   // Module JS — named [module] to avoid chunk name collision
-  'lead':         'assets/modules/lead.[hash].js',
-  'user':         'assets/modules/user.[hash].js',
-  'organization': 'assets/modules/organization.[hash].js',
+  'lead':                 'assets/modules/lead.[hash].js',
+  'user':                 'assets/modules/user.[hash].js',
+  'organization':         'assets/modules/organization.[hash].js',
+  'lead-pipeline-stage':  'assets/modules/lead-pipeline-stage.[hash].js',
+  'lead-source':          'assets/modules/lead-source.[hash].js',
+  'survey':               'assets/modules/survey.[hash].js',
+  'assessment':           'assets/modules/assessment.[hash].js',
+  'activity-log':           'assets/modules/activity-log.[hash].js',
+  'workflow-automation':    'assets/modules/workflow-automation.[hash].js',
 
 };
 
@@ -87,9 +93,15 @@ const CSS_OUTPUT = {
   'swiper.css':                    'assets/swiper.[hash].css',
   // Module SCSS → CSS
   // asset.name là tên sau khi compile: 'lead.css', không phải 'lead.scss'
-  'lead.css':         'assets/modules/lead.[hash].css',
-  'user.css':         'assets/modules/user.[hash].css',
-  'organization.css': 'assets/modules/organization.[hash].css',
+  'lead.css':                 'assets/modules/lead.[hash].css',
+  'user.css':                 'assets/modules/user.[hash].css',
+  'organization.css':         'assets/modules/organization.[hash].css',
+  'lead-pipeline-stage.css':  'assets/modules/lead-pipeline-stage.[hash].css',
+  'lead-source.css':          'assets/modules/lead-source.[hash].css',
+  'survey.css':               'assets/modules/survey.[hash].css',
+  'assessment.css':           'assets/modules/assessment.[hash].css',
+  'activity-log.css':           'assets/modules/activity-log.[hash].css',
+  'workflow-automation.css':    'assets/modules/workflow-automation.[hash].css',
 };
 
 // ─── Module input entries ─────────────────────────────────────────────
@@ -107,6 +119,24 @@ const MODULE_ENTRIES = [
   // Organization
   'Modules/Organization/resources/assets/sass/organization.scss',
   'Modules/Organization/resources/assets/js/organization.js',
+  // LeadPipelineStage
+  'Modules/LeadPipelineStage/resources/assets/sass/lead-pipeline-stage.scss',
+  'Modules/LeadPipelineStage/resources/assets/js/lead-pipeline-stage.js',
+  // LeadSource
+  'Modules/LeadSource/resources/assets/sass/lead-source.scss',
+  'Modules/LeadSource/resources/assets/js/lead-source.js',
+  // Survey
+  'Modules/Survey/resources/assets/sass/survey.scss',
+  'Modules/Survey/resources/assets/js/survey.js',
+  // Assessment
+  'Modules/Assessment/resources/assets/sass/assessment.scss',
+  'Modules/Assessment/resources/assets/js/assessment.js',
+  // ActivityLog
+  'Modules/ActivityLog/resources/assets/sass/activity-log.scss',
+  'Modules/ActivityLog/resources/assets/js/activity-log.js',
+  // WorkflowAutomation
+  'Modules/WorkflowAutomation/resources/assets/sass/workflow-automation.scss',
+  'Modules/WorkflowAutomation/resources/assets/js/workflow-automation.js',
 ];
 
 // ─────────────────────────────────────────────────────────────────────

@@ -12,7 +12,7 @@ class WorkflowExecution extends Model
     protected $fillable = [
         'workflow_id', 'organization_id', 'run_id',
         'trigger_type', 'source_module',
-        'subject_type', 'subject_id', 'actor_id',
+        'subject_type', 'subject_id', 'actor_id', 'context',
         'status', 'skip_reason', 'condition_result',
         'steps_total', 'steps_success', 'steps_failed', 'steps_scheduled',
         'duration_ms',
@@ -22,6 +22,7 @@ class WorkflowExecution extends Model
     protected $casts = [
         'status'           => 'integer',
         'condition_result' => 'boolean',
+        'context'          => 'array',
         'triggered_at'     => 'datetime',
         'executed_at'      => 'datetime',
         'finished_at'      => 'datetime',

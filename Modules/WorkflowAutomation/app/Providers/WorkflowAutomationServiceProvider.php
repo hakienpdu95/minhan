@@ -12,6 +12,8 @@ use Modules\WorkflowAutomation\Executors\CallWebhookExecutor;
 use Modules\WorkflowAutomation\Executors\SendEmailExecutor;
 use Modules\WorkflowAutomation\Executors\SendNotificationExecutor;
 use Modules\WorkflowAutomation\Executors\UpdateSubjectExecutor;
+use Modules\WorkflowAutomation\Listeners\WorkflowEventSubscriber;
+use Modules\WorkflowAutomation\Triggers\GenericEventTrigger;
 use Modules\WorkflowAutomation\Triggers\ManualTrigger;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
@@ -29,6 +31,14 @@ class WorkflowAutomationServiceProvider extends ModuleServiceProvider
     {
         parent::register();
 
+        // nwidart registers module config under the namespaced key
+        // `workflowautomation.workflow_automation`. Re-expose it under the canonical
+        // top-level `workflow_automation` key the module code reads from.
+        $this->mergeConfigFrom(
+            __DIR__ . '/../../config/workflow_automation.php',
+            'workflow_automation'
+        );
+
         $this->app->singleton(TriggerRegistry::class);
         $this->app->singleton(ActionRegistry::class);
         $this->app->singleton(SubjectRegistry::class);
@@ -45,9 +55,10 @@ class WorkflowAutomationServiceProvider extends ModuleServiceProvider
         $triggerRegistry = app(TriggerRegistry::class);
         $triggerRegistry->register(new ManualTrigger());
 
-        // Assessment triggers
-        if (class_exists(\Modules\Assessment\WorkflowTriggers\AssessmentResultBandTrigger::class)) {
-            $triggerRegistry->register(app(\Modules\Assessment\WorkflowTriggers\AssessmentResultBandTrigger::class));
+        // Declarative triggers — one GenericEventTrigger per config entry. Adding a new
+        // trigger anywhere in the system is a config change, not a new class.
+        foreach (config('workflow_automation.triggers', []) as $type => $def) {
+            $triggerRegistry->register(new GenericEventTrigger($type, $def));
         }
 
         $actionRegistry = app(ActionRegistry::class);
@@ -55,5 +66,8 @@ class WorkflowAutomationServiceProvider extends ModuleServiceProvider
         $actionRegistry->register(app(SendNotificationExecutor::class));
         $actionRegistry->register(app(UpdateSubjectExecutor::class));
         $actionRegistry->register(app(CallWebhookExecutor::class));
+
+        // Bind every config trigger that declares an `event` to the application event bus.
+        app('events')->subscribe(WorkflowEventSubscriber::class);
     }
 }

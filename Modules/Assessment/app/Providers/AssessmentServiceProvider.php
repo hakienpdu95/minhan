@@ -3,7 +3,6 @@
 namespace Modules\Assessment\Providers;
 
 use Nwidart\Modules\Support\ModuleServiceProvider;
-use Modules\Assessment\WorkflowTriggers\AssessmentResultBandTrigger;
 
 class AssessmentServiceProvider extends ModuleServiceProvider
 {
@@ -15,16 +14,7 @@ class AssessmentServiceProvider extends ModuleServiceProvider
         RouteServiceProvider::class,
     ];
 
-    public function boot(): void
-    {
-        parent::boot();
-
-        // Đăng ký Workflow trigger
-        if (class_exists(\Modules\WorkflowAutomation\Core\TriggerRegistry::class)) {
-            $this->app->booted(function () {
-                app(\Modules\WorkflowAutomation\Core\TriggerRegistry::class)
-                    ->register(app(AssessmentResultBandTrigger::class));
-            });
-        }
-    }
+    // The `assessment.result_calculated` trigger is now declared in
+    // config('workflow_automation.triggers'); AssessmentCompleted implements
+    // ProvidesWorkflowContext, so no manual registration is required here.
 }

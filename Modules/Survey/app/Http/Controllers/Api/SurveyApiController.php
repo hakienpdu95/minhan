@@ -159,16 +159,23 @@ class SurveyApiController extends Controller
             return response()->json(['error' => 'Survey này không có chấm điểm.'], 422);
         }
 
-        $ref = $request->query('ref');
-        if (empty($ref)) {
-            return response()->json(['error' => 'Tham số ?ref= (email/phone) là bắt buộc.'], 422);
-        }
+        $responseId = $request->query('response_id');
+        $ref        = $request->query('ref');
 
-        $response = SurveyResponse::forSurvey($survey->id)
-            ->complete()
-            ->where('respondent_ref', $ref)
-            ->latest('submitted_at')
-            ->first();
+        if (!empty($responseId)) {
+            $response = SurveyResponse::forSurvey($survey->id)
+                ->complete()
+                ->where('id', (int) $responseId)
+                ->first();
+        } elseif (!empty($ref)) {
+            $response = SurveyResponse::forSurvey($survey->id)
+                ->complete()
+                ->where('respondent_ref', $ref)
+                ->latest('submitted_at')
+                ->first();
+        } else {
+            return response()->json(['error' => 'Tham số ?response_id= hoặc ?ref= là bắt buộc.'], 422);
+        }
 
         if (!$response) {
             return response()->json(['error' => 'Không tìm thấy phản hồi cho thông tin này.'], 404);

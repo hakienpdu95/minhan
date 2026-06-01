@@ -3,16 +3,15 @@
 namespace Modules\WorkflowAutomation\Providers;
 
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
-use Modules\Assessment\Events\AssessmentCompleted;
-use Modules\WorkflowAutomation\Listeners\FireWorkflowOnAssessmentCompleted;
 
 class EventServiceProvider extends ServiceProvider
 {
-    protected $listen = [
-        AssessmentCompleted::class => [
-            FireWorkflowOnAssessmentCompleted::class,
-        ],
-    ];
+    /**
+     * Event→workflow bindings are registered dynamically from
+     * config('workflow_automation.triggers') via WorkflowEventSubscriber
+     * (see WorkflowAutomationServiceProvider::boot()), so nothing is hardcoded here.
+     */
+    protected $listen = [];
 
     protected static $shouldDiscoverEvents = false;
 

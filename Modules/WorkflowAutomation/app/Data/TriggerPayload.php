@@ -1,6 +1,8 @@
 <?php
 namespace Modules\WorkflowAutomation\Data;
 
+use App\Shared\Tenancy\TenantContext;
+use Illuminate\Database\Eloquent\Model;
 use Spatie\LaravelData\Data;
 
 class TriggerPayload extends Data
@@ -17,96 +19,82 @@ class TriggerPayload extends Data
         public readonly ?int    $subjectId,
         public readonly ?string $subjectLabel,
         public readonly array   $extra = [],
+        /** Snapshot of the subject model's attributes, addressable via `subject.attr.<field>`. */
+        public readonly array   $subjectAttributes = [],
         public readonly string  $requestId = '',
         public readonly \DateTimeImmutable $firedAt = new \DateTimeImmutable(),
     ) {}
 
-    public static function forSurveySubmit(
-        \Modules\Survey\Models\SurveyResponse $response,
-        ?int $actorId = null,
+    /**
+     * Generic, module-agnostic factory. Builds a payload from any subject (Eloquent model
+     * or plain object) plus arbitrary extra context. Organization is taken from the current
+     * tenant (falling back to the subject's organization_id), and the actor from auth().
+     *
+     * Any field can be forced through $overrides (e.g. ['actorEmail' => $respondentRef]).
+     */
+    public static function make(
+        string  $triggerType,
+        string  $sourceModule,
+        ?object $subject = null,
+        array   $extra = [],
+        array   $overrides = [],
     ): self {
-        return new self(
-            triggerType:    'survey.submitted',
-            sourceModule:   'Survey',
-            organizationId: \App\Shared\Tenancy\TenantContext::getOrganizationId(),
-            actorId:        $actorId ?? auth()->id(),
-            actorEmail:     $response->respondent_ref,
-            actorName:      null,
-            actorRole:      null,
-            subjectType:    'SurveyResponse',
-            subjectId:      $response->id,
-            subjectLabel:   "Response #{$response->id}",
-            extra: [
-                'survey_id'      => $response->survey_id,
-                'survey_slug'    => $response->survey?->slug,
-                'respondent_ref' => $response->respondent_ref,
-            ],
-            requestId: request()->header('X-Request-Id', (string) \Str::uuid()),
-        );
-    }
+        $subjectType  = null;
+        $subjectId    = null;
+        $subjectLabel = null;
+        $subjectAttrs = [];
+        $subjectOrgId = null;
 
-    public static function forSurveyResult(
-        \Modules\Survey\Models\SurveyResult $result,
-    ): self {
-        return new self(
-            triggerType:    'survey.result_calculated',
-            sourceModule:   'Survey',
-            organizationId: \App\Shared\Tenancy\TenantContext::getOrganizationId(),
-            actorId:        null,
-            actorEmail:     $result->response?->respondent_ref,
-            actorName:      null,
-            actorRole:      null,
-            subjectType:    'SurveyResponse',
-            subjectId:      $result->response_id,
-            subjectLabel:   "Result #{$result->id}",
-            extra: [
-                'survey_id'      => $result->response?->survey_id,
-                'band_code'      => $result->maturity_level,
-                'overall_score'  => $result->overall_score,
-                'weight_version' => $result->weight_version,
-            ],
-            requestId: (string) \Str::uuid(),
-        );
-    }
+        if ($subject instanceof Model) {
+            $subjectType  = class_basename($subject);
+            $subjectId    = is_numeric($subject->getKey()) ? (int) $subject->getKey() : null;
+            $subjectLabel = "{$subjectType} #{$subject->getKey()}";
+            $subjectAttrs = $subject->attributesToArray();
+            $subjectOrgId = $subjectAttrs['organization_id'] ?? null;
+        }
 
-    public static function forAssessmentResult(
-        \Modules\Assessment\Models\AssessmentResult $result,
-    ): self {
-        return new self(
-            triggerType:    'assessment.result_calculated',
-            sourceModule:   'Assessment',
-            organizationId: \App\Shared\Tenancy\TenantContext::getOrganizationId(),
-            actorId:        null,
-            actorEmail:     null,
-            actorName:      null,
-            actorRole:      null,
-            subjectType:    $result->subject_type,
-            subjectId:      $result->subject_id,
-            subjectLabel:   "AssessmentResult #{$result->id}",
-            extra: [
-                'assessment_code' => $result->assessment_code,
-                'band_code'       => $result->maturity_level,
-                'overall_score'   => $result->overall_score,
-                'weight_version'  => $result->weight_version,
-                'subject_type'    => $result->subject_type,
-                'subject_id'      => $result->subject_id,
-            ],
-            requestId: (string) \Str::uuid(),
-        );
+        $user = auth()->user();
+
+        $defaults = [
+            'triggerType'       => $triggerType,
+            'sourceModule'      => $sourceModule,
+            'organizationId'    => TenantContext::isSet()
+                                    ? TenantContext::getOrganizationId()
+                                    : ($subjectOrgId !== null ? (int) $subjectOrgId : null),
+            'actorId'           => auth()->id(),
+            'actorEmail'        => $user?->email,
+            'actorName'         => $user?->name,
+            'actorRole'         => ($user && method_exists($user, 'getRoleNames'))
+                                    ? $user->getRoleNames()->first()
+                                    : null,
+            'subjectType'       => $subjectType,
+            'subjectId'         => $subjectId,
+            'subjectLabel'      => $subjectLabel,
+            'extra'             => $extra,
+            'subjectAttributes' => $subjectAttrs,
+            'requestId'         => request()->header('X-Request-Id') ?? (string) \Str::uuid(),
+        ];
+
+        $args = array_merge($defaults, $overrides);
+
+        return new self(...$args);
     }
 
     public function resolve(string $field): mixed
     {
-        return match(true) {
-            $field === 'trigger.type'          => $this->triggerType,
-            $field === 'trigger.module'        => $this->sourceModule,
-            $field === 'actor.id'              => $this->actorId,
-            $field === 'actor.email'           => $this->actorEmail,
-            $field === 'actor.role'            => $this->actorRole,
-            $field === 'subject.type'          => $this->subjectType,
-            $field === 'subject.id'            => $this->subjectId,
-            str_starts_with($field, 'extra.')  => $this->extra[substr($field, 6)] ?? null,
-            default                            => null,
+        return match (true) {
+            $field === 'trigger.type'                => $this->triggerType,
+            $field === 'trigger.module'              => $this->sourceModule,
+            $field === 'actor.id'                    => $this->actorId,
+            $field === 'actor.email'                 => $this->actorEmail,
+            $field === 'actor.name'                  => $this->actorName,
+            $field === 'actor.role'                  => $this->actorRole,
+            $field === 'subject.type'                => $this->subjectType,
+            $field === 'subject.id'                  => $this->subjectId,
+            $field === 'subject.label'               => $this->subjectLabel,
+            str_starts_with($field, 'subject.attr.') => $this->subjectAttributes[substr($field, 13)] ?? null,
+            str_starts_with($field, 'extra.')        => $this->extra[substr($field, 6)] ?? null,
+            default                                  => null,
         };
     }
 
@@ -116,5 +104,17 @@ class TriggerPayload extends Data
             $val = $this->resolve($m[1]);
             return $val !== null ? (string) $val : $m[0];
         }, $template);
+    }
+
+    /** Compact snapshot stored on the execution row for traceability. */
+    public function toContext(): array
+    {
+        return array_filter([
+            'extra'              => $this->extra,
+            'subject_attributes' => $this->subjectAttributes,
+            'actor_name'         => $this->actorName,
+            'actor_email'        => $this->actorEmail,
+            'subject_label'      => $this->subjectLabel,
+        ], fn ($v) => $v !== null && $v !== []);
     }
 }

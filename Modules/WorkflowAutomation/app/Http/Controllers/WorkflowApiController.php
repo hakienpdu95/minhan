@@ -62,9 +62,11 @@ class WorkflowApiController extends Controller
     public function meta(): \Illuminate\Http\JsonResponse
     {
         $orgId    = TenantContext::isSet() ? TenantContext::getOrganizationId() : null;
-        $cacheKey = 'wf:meta:' . ($orgId ?? 'global');
+        $version  = config('workflow_automation.meta_cache_version', 1);
+        $ttl      = (int) config('workflow_automation.meta_cache_ttl', 600);
+        $cacheKey = 'wf:meta:v' . $version . ':' . ($orgId ?? 'global');
 
-        return response()->json(\Cache::remember($cacheKey, 600, function () {
+        return response()->json(\Cache::remember($cacheKey, $ttl, function () {
             return [
                 'trigger_groups' => app(TriggerRegistry::class)->groupedByModule(),
                 'action_groups'  => app(ActionRegistry::class)->groupedByModule(),

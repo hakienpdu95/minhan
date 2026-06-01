@@ -4,6 +4,7 @@ namespace Modules\Survey\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Modules\Assessment\Models\RoadmapPhase;
 
 class ResultRoadmapPhase extends Model
 {
