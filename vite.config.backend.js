@@ -79,6 +79,10 @@ const JS_OUTPUT = {
   'department':             'assets/modules/department.[hash].js',
   'job-title':              'assets/modules/job-title.[hash].js',
   'employee':               'assets/modules/employee.[hash].js',
+  'performance-review':     'assets/modules/performance-review.[hash].js',
+  'project':                'assets/modules/project.[hash].js',
+  'org-chart':              'assets/modules/org-chart.[hash].js',
+  'role-scope':             'assets/modules/role-scope.[hash].js',
 
 };
 
@@ -110,6 +114,10 @@ const CSS_OUTPUT = {
   'department.css':             'assets/modules/department.[hash].css',
   'job-title.css':              'assets/modules/job-title.[hash].css',
   'employee.css':               'assets/modules/employee.[hash].css',
+  'performance-review.css':     'assets/modules/performance-review.[hash].css',
+  'project.css':                'assets/modules/project.[hash].css',
+  'org-chart.css':              'assets/modules/org-chart.[hash].css',
+  'role-scope.css':             'assets/modules/role-scope.[hash].css',
 };
 
 // ─── Module input entries ─────────────────────────────────────────────
@@ -157,6 +165,18 @@ const MODULE_ENTRIES = [
   // Employee
   'Modules/Employee/resources/assets/sass/employee.scss',
   'Modules/Employee/resources/assets/js/employee.js',
+  // PerformanceReview
+  'Modules/PerformanceReview/resources/assets/sass/performance-review.scss',
+  'Modules/PerformanceReview/resources/assets/js/performance-review.js',
+  // Project
+  'Modules/Project/resources/assets/sass/project.scss',
+  'Modules/Project/resources/assets/js/project.js',
+  // OrgChart
+  'Modules/OrgChart/resources/assets/sass/org-chart.scss',
+  'Modules/OrgChart/resources/assets/js/org-chart.js',
+  // RoleScope
+  'Modules/RoleScope/resources/assets/sass/role-scope.scss',
+  'Modules/RoleScope/resources/assets/js/role-scope.js',
 ];
 
 // ─────────────────────────────────────────────────────────────────────

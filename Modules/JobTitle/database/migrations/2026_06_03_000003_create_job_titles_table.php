@@ -22,6 +22,7 @@ return new class extends Migration
             $table->tinyInteger('is_locked')->default(0);
             $table->tinyInteger('is_active')->default(1);
             $table->timestamps();
+            $table->softDeletes();
 
             $table->unique(['organization_id', 'code'], 'uq_job_title_code');
             $table->index(['organization_id', 'is_active'], 'idx_job_titles_org');

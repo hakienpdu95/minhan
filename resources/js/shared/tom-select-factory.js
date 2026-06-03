@@ -18,9 +18,10 @@
  */
 
 const DEFAULTS = {
-    create:      false,
-    maxOptions:  200,
-    plugins:     ['clear_button'],
+    create:         false,
+    maxOptions:     200,
+    dropdownParent: 'body',
+    plugins:        ['clear_button'],
     render: {
         no_results: () =>
             `<div class="no-results" style="padding:.75rem;font-size:.875rem;color:#94a3b8;text-align:center">
@@ -77,7 +78,6 @@ export function createTsRemote(selector, opts = {}) {
         valueField,
         labelField,
         searchField,
-        dropdownParent: 'body',
         load(query, callback) {
             const endpoint = url + (url.includes('?') ? '&' : '?') + 'q=' + encodeURIComponent(query);
             fetch(endpoint)
@@ -122,6 +122,40 @@ export function createTsAssignee(selector, apiUrl, onChange) {
                  </div>`,
         },
     });
+}
+
+/**
+ * Auto-init TomSelect cho tất cả `select.ts-init` trong container.
+ *
+ * Cách dùng trong module page controller:
+ *   import { initAllTomSelects } from '@shared/tom-select-factory.js';
+ *   initAllTomSelects(form);   // gọi 1 lần, tự tìm mọi select.ts-init
+ *
+ * Placeholder ưu tiên:
+ *   1. data-ts-placeholder attribute trên <select>
+ *   2. Text của <option value=""> đầu tiên
+ *   3. '— Chọn —' (fallback mặc định)
+ *
+ * Select đã có .tomselect (đã init) → bỏ qua, không init lại.
+ * Select cần config đặc biệt (onChange, cascade...) → không thêm ts-init,
+ * gọi createTs() thủ công sau.
+ *
+ * @param {HTMLElement|Document} container  - form hoặc document
+ * @param {Function} [afterInit]            - callback chạy sau khi tất cả TS đã init
+ */
+export function initAllTomSelects(container = document, afterInit) {
+    if (!window.TomSelect) {
+        console.warn('[TS] TomSelect chưa load. Thêm @vite tom-select.js trước module JS.');
+        return;
+    }
+    for (const el of container.querySelectorAll('select.ts-init')) {
+        if (el.tomselect) continue;
+        const placeholder = el.dataset.tsPlaceholder
+            || el.querySelector('option[value=""]')?.textContent.trim()
+            || '— Chọn —';
+        createTs(el, { placeholder });
+    }
+    afterInit?.();
 }
 
 /**

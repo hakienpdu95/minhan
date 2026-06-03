@@ -33,6 +33,7 @@ return new class extends Migration
             $table->timestamp('reviewed_at')->nullable();
             $table->timestamp('acknowledged_at')->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->unique(['employee_id', 'template_id', 'period'], 'uq_review_period');
 

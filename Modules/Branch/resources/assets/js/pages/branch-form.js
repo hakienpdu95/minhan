@@ -1,93 +1,157 @@
 /**
  * pages/branch-form.js
- * JS cho form tạo/sửa chi nhánh (create.blade.php + edit.blade.php).
+ * JS controller cho create.blade.php + edit.blade.php của module Branch.
  *
- * Xử lý: Province → Ward cascade cho form địa chỉ.
- * Globals: window.TomSelect (từ tom-select.js bundle)
+ * Xử lý:
+ *  - initFormValidation  (global từ app.js)
+ *  - Tab-Aware Submit Guard (Section 17 spec)
+ *  - TomSelect cho mọi <select> (Section 22 spec)
+ *  - Province → Ward cascade tích hợp TomSelect
  */
 
+import { createTs, initAllTomSelects } from '@shared/tom-select-factory.js';
+
+// ── Constants ──────────────────────────────────────────────────────────────
+const FORM_SEL = '[data-branch-form]';
+
+const RE_TAB_XSHOW = /tab\s*===\s*['"](\w+)['"]/;
+
+// Ward TomSelect instance — module-level vì cascade cần destroy/recreate
+let _tsWard = null;
+
+// ── Entry point ────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+    const form = document.querySelector(FORM_SEL);
+    if (!form) return;
 
-    // ── Province → Ward cascade (create form) ────────────────────────────────
-    const provinceEl = document.getElementById('form-province');
-    const wardEl     = document.getElementById('form-ward');
-
-    if (provinceEl && wardEl) {
-        initProvinceWardCascade(provinceEl, wardEl);
-    }
-
-    // ── Province → Ward cascade (edit form) ──────────────────────────────────
-    const editProvinceEl = document.getElementById('edit-form-province');
-    const editWardEl     = document.getElementById('edit-form-ward');
-
-    if (editProvinceEl && editWardEl) {
-        const currentWard = editWardEl.getAttribute('data-selected') || editWardEl.querySelector('option[selected]')?.value || '';
-        initProvinceWardCascade(editProvinceEl, editWardEl, currentWard);
-    }
+    initFormValidation(FORM_SEL);
+    _setupTabGuard(form);
+    initAllTomSelects(form);   // init mọi select.ts-init
+    _initProvinceWard(form);   // cascade: province (onChange) + ward (dynamic)
 });
 
-/**
- * Khởi tạo cascade province → ward với TomSelect.
- * Nếu TomSelect chưa load (form nhẹ không cần), dùng native <select> onChange.
- */
-function initProvinceWardCascade(provinceEl, wardEl, initialWard) {
-    const wardsCache = {};
+// ── TomSelect: Province → Ward cascade ────────────────────────────────────
+function _initProvinceWard(form) {
+    const provinceEl = form.querySelector('[name="province_code"]');
+    const wardEl     = form.querySelector('[name="ward_code"]');
+    if (!provinceEl || !wardEl) return;
 
-    // Lấy current selected province (restore từ old() hoặc model binding)
-    const currentProvince = provinceEl.value;
-    if (currentProvince) {
-        loadFormWards(currentProvince, wardEl, initialWard || wardEl.value, wardsCache);
+    const wardsCache  = {};
+    const initialWard = wardEl.dataset.selectedWard || '';
+
+    // Ward: KHÔNG ts-init — JS tự quản lý lifecycle (destroy/recreate)
+    _tsWard = createTs(wardEl, {
+        placeholder: provinceEl.value ? 'Chọn phường/xã...' : 'Chọn tỉnh trước...',
+    });
+    if (!provinceEl.value) _tsWard?.disable();
+
+    // Province đã được initAllTomSelects() init qua ts-init → lấy instance, gắn onChange
+    const tsProvince = provinceEl.tomselect;
+    if (tsProvince) {
+        tsProvince.on('change', (val) => {
+            _rebuildWardTs(wardEl, { enabled: false, placeholder: 'Chọn tỉnh trước...' });
+            if (!val) return;
+            _loadWards(val, wardEl, null, wardsCache);
+        });
     }
 
-    provinceEl.addEventListener('change', function () {
-        const code = this.value;
-        // Reset ward
-        wardEl.innerHTML = '<option value="">Chọn phường/xã...</option>';
-        wardEl.value = '';
-
-        if (!code) {
-            wardEl.disabled = true;
-            wardEl.innerHTML = '<option value="">Chọn tỉnh trước...</option>';
-            return;
-        }
-
-        loadFormWards(code, wardEl, null, wardsCache);
-    });
+    // Nếu province đã được chọn (old() hoặc model binding), load wards luôn
+    if (provinceEl.value) {
+        _loadWards(provinceEl.value, wardEl, initialWard, wardsCache);
+    }
 }
 
-function loadFormWards(code, wardEl, pendingWard, cache) {
+/** Destroy + recreate ward TomSelect với placeholder và trạng thái mới. */
+function _rebuildWardTs(wardEl, { enabled, placeholder, options = [] }) {
+    if (_tsWard) { _tsWard.destroy(); _tsWard = null; }
+
+    wardEl.innerHTML = `<option value="">${placeholder}</option>`;
+    for (const opt of options) {
+        const el = document.createElement('option');
+        el.value       = opt.value;
+        el.textContent = opt.text;
+        if (opt.selected) el.selected = true;
+        wardEl.appendChild(el);
+    }
+    wardEl.disabled = !enabled;
+
+    _tsWard = createTs(wardEl, { placeholder });
+    if (!enabled) _tsWard?.disable();
+}
+
+function _loadWards(code, wardEl, pendingWard, cache) {
     if (cache[code]) {
-        applyFormWards(cache[code], wardEl, pendingWard);
+        _applyWards(cache[code], wardEl, pendingWard);
         return;
     }
 
-    wardEl.disabled = true;
-    wardEl.innerHTML = '<option value="">Đang tải...</option>';
+    _rebuildWardTs(wardEl, { enabled: false, placeholder: 'Đang tải...' });
 
-    const apiBase = document.querySelector('meta[name=wards-api]')?.content
+    const apiBase = document.querySelector('meta[name="wards-api"]')?.content
         || window.location.origin + '/api/provinces';
 
-    fetch(apiBase + '/' + encodeURIComponent(code) + '/wards', {
+    fetch(`${apiBase}/${encodeURIComponent(code)}/wards`, {
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
     })
         .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-        .then(data => {
-            cache[code] = data;
-            applyFormWards(data, wardEl, pendingWard);
-        })
-        .catch(() => {
-            wardEl.innerHTML = '<option value="">Lỗi tải dữ liệu</option>';
-        });
+        .then(data => { cache[code] = data; _applyWards(data, wardEl, pendingWard); })
+        .catch(() => _rebuildWardTs(wardEl, { enabled: false, placeholder: 'Lỗi tải dữ liệu' }));
 }
 
-function applyFormWards(wards, wardEl, pendingWard) {
-    wardEl.innerHTML = '<option value="">Chọn phường/xã...</option>';
-    wards.forEach(w => {
-        const opt = document.createElement('option');
-        opt.value = w.ward_code;
-        opt.textContent = w.name;
-        if (pendingWard && w.ward_code === pendingWard) opt.selected = true;
-        wardEl.appendChild(opt);
-    });
-    wardEl.disabled = false;
+function _applyWards(wards, wardEl, pendingWard) {
+    const options = wards.map(w => ({
+        value: w.ward_code,
+        text:  w.name,
+        selected: pendingWard && w.ward_code === pendingWard,
+    }));
+    _rebuildWardTs(wardEl, { enabled: true, placeholder: 'Chọn phường/xã...', options });
+}
+
+// ── Tab-Aware Submit Guard ─────────────────────────────────────────────────
+function _setupTabGuard(form) {
+    let wrapper = null;
+
+    form.addEventListener('submit', (e) => {
+        const errors = _collectHiddenErrors(form);
+        if (!errors.size) return;
+
+        e.preventDefault();
+        wrapper ??= form.closest('[x-data]') ?? document.querySelector('[x-data]');
+        _switchAlpineTab(wrapper, errors.keys().next().value);
+        _toastHiddenErrors(errors);
+    }, /* capture */ true);
+}
+
+function _collectHiddenErrors(form) {
+    const map = new Map();
+    for (const field of form.querySelectorAll('[data-req]')) {
+        if (field.value.trim()) continue;
+        const panel = field.closest('[x-show]');
+        if (!panel || panel.style.display !== 'none') continue;
+        const tabKey = RE_TAB_XSHOW.exec(panel.getAttribute('x-show') ?? '')?.[1];
+        if (!tabKey) continue;
+        if (!map.has(tabKey)) map.set(tabKey, { label: panel.dataset.tabLabel ?? tabKey, fields: [] });
+        map.get(tabKey).fields.push(_resolveFieldLabel(field));
+    }
+    return map;
+}
+
+function _resolveFieldLabel(field) {
+    return field.closest('.form-control')?.querySelector('.label-text')
+        ?.textContent.replace(/\s*\*\s*$/, '').trim()
+        ?? field.placeholder ?? field.name ?? 'Trường bắt buộc';
+}
+
+function _switchAlpineTab(wrapper, tabKey) {
+    if (!wrapper) return;
+    try {
+        const data = window.Alpine?.$data(wrapper);
+        if (data?.tab !== undefined) data.tab = tabKey;
+    } catch { /* Alpine not ready */ }
+}
+
+function _toastHiddenErrors(errors) {
+    if (!window.Toast) return;
+    const lines = Array.from(errors.values(), ({ label, fields }) => `${label}: ${fields.join(', ')}`);
+    Toast.warning(`Còn thiếu thông tin bắt buộc:\n${lines.join('\n')}`, { duration: 5000 });
 }

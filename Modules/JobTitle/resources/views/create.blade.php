@@ -11,8 +11,11 @@
 </nav>
 @endsection
 
+@push('styles')
+    @vite(['Modules/JobTitle/resources/assets/sass/job-title.scss'], 'build/backend')
+@endpush
+
 @section('content')
-<div>
 
 {{-- Page header --}}
 <div class="flex items-center justify-between mb-6">
@@ -42,107 +45,137 @@
 </div>
 @endif
 
-<form method="POST" action="{{ route('backend.job-titles.store') }}" novalidate>
+<form method="POST" action="{{ route('backend.job-titles.store') }}" novalidate data-job-title-form>
     @csrf
 
-    <div class="grid grid-cols-1 xl:grid-cols-[1fr_260px] gap-6 items-start">
+    <div class="grid grid-cols-1 xl:grid-cols-[1fr_268px] gap-6 items-start">
 
         {{-- ── Card chính ──────────────────────────────────────────────── --}}
         <div class="card bg-base-100 shadow-sm border border-base-200">
-            <div class="card-body gap-5">
+            <div class="card-body">
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <h2 class="card-title text-base mb-5">
+                    <svg class="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Thông tin chức danh
+                </h2>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                     <div class="form-control sm:col-span-2">
-                        <label class="label"><span class="label-text font-medium">Tên chức danh <span class="text-error">*</span></span></label>
+                        <label class="label py-0 pb-1.5">
+                            <span class="label-text font-medium">Tên chức danh <span class="text-error">*</span></span>
+                        </label>
                         <input type="text" name="name" value="{{ old('name') }}"
-                               class="input input-bordered @error('name') input-error @enderror"
-                               placeholder="VD: Trưởng phòng Kinh doanh"/>
-                        @error('name')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
+                               data-req="Vui lòng nhập tên chức danh"
+                               class="input input-bordered input-sm w-full @error('name') input-error @enderror"
+                               placeholder="VD: Trưởng phòng Kinh doanh">
+                        @error('name')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
                     <div class="form-control">
-                        <label class="label">
+                        <label class="label py-0 pb-1.5">
                             <span class="label-text font-medium">Mã chức danh <span class="text-error">*</span></span>
-                            <span class="label-text-alt text-xs opacity-50">Tự động uppercase</span>
+                            <span class="label-text-alt text-base-content/40 text-xs">Tự động uppercase</span>
                         </label>
                         <input type="text" name="code" value="{{ old('code') }}"
-                               class="input input-bordered font-mono @error('code') input-error @enderror"
-                               placeholder="VD: MGR, DIR, STAFF"/>
-                        @error('code')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
+                               data-req="Vui lòng nhập mã chức danh"
+                               class="input input-bordered input-sm w-full font-mono @error('code') input-error @enderror"
+                               placeholder="VD: MGR, DIR, STAFF">
+                        @error('code')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
                     <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Nhóm chức danh <span class="text-error">*</span></span></label>
-                        <select name="category" class="select select-bordered @error('category') select-error @enderror">
+                        <label class="label py-0 pb-1.5">
+                            <span class="label-text font-medium">Nhóm chức danh <span class="text-error">*</span></span>
+                        </label>
+                        <select id="ts-category" name="category"
+                                data-req="Vui lòng chọn nhóm chức danh"
+                                class="select select-bordered select-sm w-full ts-init @error('category') select-error @enderror"
+                                data-ts-placeholder="— Chọn nhóm —">
+                            <option value="">— Chọn nhóm —</option>
                             @foreach($categories as $cat)
                             <option value="{{ $cat['value'] }}" {{ old('category', 'staff') === $cat['value'] ? 'selected' : '' }}>
                                 {{ $cat['text'] }}
                             </option>
                             @endforeach
                         </select>
-                        @error('category')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
+                        @error('category')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
                     <div class="form-control">
-                        <label class="label">
+                        <label class="label py-0 pb-1.5">
                             <span class="label-text font-medium">Cấp bậc <span class="text-error">*</span></span>
-                            <span class="label-text-alt text-xs opacity-50">1–20 (cao hơn = cấp cao hơn)</span>
+                            <span class="label-text-alt text-base-content/40 text-xs">1–20 (cao hơn = cấp cao hơn)</span>
                         </label>
                         <input type="number" name="level" value="{{ old('level', 1) }}"
                                min="1" max="20"
-                               class="input input-bordered @error('level') input-error @enderror"
-                               placeholder="1"/>
-                        @error('level')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
+                               data-req="Vui lòng nhập cấp bậc"
+                               class="input input-bordered input-sm w-full @error('level') input-error @enderror"
+                               placeholder="1">
+                        <p class="mt-1 text-xs text-base-content/40">CEO = 20, Thực tập = 1</p>
+                        @error('level')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
-                    <div class="form-control sm:col-span-2">
-                        <label class="label"><span class="label-text font-medium">Mô tả vai trò / trách nhiệm</span></label>
-                        <textarea name="description" rows="4"
-                                  class="textarea textarea-bordered @error('description') textarea-error @enderror"
-                                  placeholder="Mô tả ngắn về vai trò và trách nhiệm của chức danh này...">{{ old('description') }}</textarea>
-                        @error('description')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
-                    </div>
+                </div>
 
+                <div class="form-control mt-4">
+                    <label class="label py-0 pb-1.5">
+                        <span class="label-text font-medium">Mô tả vai trò / trách nhiệm</span>
+                    </label>
+                    <textarea name="description" rows="4"
+                              class="textarea textarea-bordered textarea-sm w-full @error('description') textarea-error @enderror"
+                              placeholder="Mô tả ngắn về vai trò và trách nhiệm của chức danh này...">{{ old('description') }}</textarea>
+                    @error('description')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                 </div>
 
             </div>
         </div>
 
-        {{-- ── Sidebar ──────────────────────────────────────────────────── --}}
-        <div class="space-y-4">
+        {{-- ── Sidebar sticky: Xuất bản ───────────────────────────────────── --}}
+        <div class="xl:sticky xl:top-4 space-y-4">
+
             <div class="card bg-base-100 shadow-sm border border-base-200">
-                <div class="card-body gap-3">
-                    <h3 class="font-semibold text-sm">Trạng thái</h3>
-                    <label class="flex items-center gap-3 cursor-pointer">
-                        <input type="hidden" name="is_active" value="0"/>
-                        <input type="checkbox" name="is_active" value="1"
-                               class="checkbox checkbox-sm checkbox-primary"
-                               {{ old('is_active', '1') === '1' ? 'checked' : '' }}/>
-                        <div>
-                            <p class="text-sm font-medium">Đang dùng</p>
-                            <p class="text-xs text-base-content/50">Hiển thị trong danh sách chọn</p>
-                        </div>
-                    </label>
+                <div class="card-body p-4">
+
+                    <p class="text-xs font-semibold text-base-content/40 uppercase tracking-wide mb-3">
+                        Xuất bản
+                    </p>
+
+                    <div class="form-control mb-4">
+                        <input type="hidden" name="is_active" value="0">
+                        <label class="flex items-start gap-2.5 cursor-pointer select-none group">
+                            <input type="checkbox" name="is_active" value="1"
+                                   class="checkbox checkbox-sm checkbox-primary mt-0.5 shrink-0"
+                                   {{ old('is_active', '1') == '1' ? 'checked' : '' }}>
+                            <div>
+                                <span class="text-sm font-medium group-hover:text-primary transition-colors">Đang hoạt động</span>
+                                <p class="text-xs text-base-content/50 mt-0.5">Hiển thị trong danh sách chọn</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <a href="{{ route('backend.job-titles.index') }}" class="btn btn-ghost btn-sm flex-1">Hủy</a>
+                        <button type="submit" class="btn btn-primary btn-sm flex-1 gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            Tạo mới
+                        </button>
+                    </div>
+
+                    <p class="text-center text-xs text-base-content/30 mt-2.5">
+                        <span class="text-error">*</span> là trường bắt buộc
+                    </p>
+
                 </div>
             </div>
 
             <div class="card bg-base-100 shadow-sm border border-base-200">
-                <div class="card-body gap-3">
-                    <h3 class="font-semibold text-sm">Thao tác</h3>
-                    <button type="submit" class="btn btn-primary w-full gap-2">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                        </svg>
-                        Lưu chức danh
-                    </button>
-                    <a href="{{ route('backend.job-titles.index') }}" class="btn btn-ghost w-full">Hủy</a>
-                </div>
-            </div>
-
-            <div class="card bg-base-100 shadow-sm border border-base-200">
-                <div class="card-body gap-2">
-                    <h3 class="font-semibold text-sm">Hướng dẫn</h3>
+                <div class="card-body p-4">
+                    <p class="text-xs font-semibold text-base-content/40 uppercase tracking-wide mb-3">Hướng dẫn</p>
                     <ul class="text-xs text-base-content/60 space-y-1.5 list-disc list-inside">
                         <li>Mã chức danh phải duy nhất trong org (VD: CEO, MGR, STAFF)</li>
                         <li>Cấp bậc 1–20: cao hơn = cấp cao hơn (CEO = 20, Thực tập = 1)</li>
@@ -151,9 +184,18 @@
                     </ul>
                 </div>
             </div>
+
         </div>
 
     </div>
 </form>
-</div>
+
 @endsection
+
+@push('scripts')
+    @vite([
+        'resources/js/modules/toastify.js',
+        'resources/js/modules/tom-select.js',
+        'Modules/JobTitle/resources/assets/js/job-title.js',
+    ], 'build/backend')
+@endpush

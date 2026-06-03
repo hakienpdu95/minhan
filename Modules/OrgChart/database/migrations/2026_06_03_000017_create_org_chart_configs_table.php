@@ -26,6 +26,7 @@ return new class extends Migration
             $table->tinyInteger('expand_by_default')->default(0);
             $table->tinyInteger('is_default')->default(0);
             $table->timestamps();
+            $table->softDeletes();
         });
 
         // Generated column: default_lock = organization_id when is_default=1, else NULL

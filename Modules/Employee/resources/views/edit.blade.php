@@ -17,18 +17,19 @@
 <div x-data="{
     tab: 'basic',
     tabFields: {
-        basic:    ['full_name', 'employee_code', 'email', 'branch_id', 'department_id', 'job_title_id', 'manager_id', 'status', 'employment_type'],
+        basic:    ['full_name', 'employee_code', 'email', 'branch_id', 'department_id', 'job_title_id', 'manager_id', 'employment_type'],
         personal: ['phone', 'gender', 'date_of_birth', 'national_id', 'tax_code', 'locale'],
         dates:    ['hired_at', 'left_at'],
     },
     errs: {{ Js::from($errors->keys()) }},
     errCount(t) { return this.tabFields[t].filter(f => this.errs.includes(f)).length; },
     init() {
-        const order = ['basic','personal','dates'];
+        const order = ['basic', 'personal', 'dates'];
         for (const t of order) { if (this.errCount(t) > 0) { this.tab = t; break; } }
     }
 }">
 
+{{-- Page header --}}
 <div class="flex items-center justify-between mb-6">
     <div>
         <h1 class="text-2xl font-bold text-base-content">Sửa hồ sơ nhân viên</h1>
@@ -56,245 +57,404 @@
 </div>
 @endif
 
-<form method="POST" action="{{ route('backend.employees.update', $employee) }}" novalidate>
+<form method="POST" action="{{ route('backend.employees.update', $employee) }}" novalidate data-employee-form>
     @csrf
     @method('PUT')
 
-    <div class="grid grid-cols-1 xl:grid-cols-[1fr_260px] gap-6 items-start">
+    <div class="grid grid-cols-1 xl:grid-cols-[1fr_268px] gap-6 items-start">
 
         {{-- ── Card chính với tabs ──────────────────────────────────────── --}}
         <div class="card bg-base-100 shadow-sm border border-base-200">
 
+            {{-- Tab navigation --}}
             <div class="border-b border-base-200 px-6">
-                <nav class="flex -mb-px" role="tablist">
-                    @foreach([
-                        ['key' => 'basic',    'label' => 'Vị trí & Trạng thái'],
-                        ['key' => 'personal', 'label' => 'Thông tin cá nhân'],
-                        ['key' => 'dates',    'label' => 'Ngày công tác'],
-                    ] as $t)
-                    <button type="button" role="tab"
-                            @click="tab = '{{ $t['key'] }}'"
-                            :aria-selected="tab === '{{ $t['key'] }}'"
+                <nav class="flex -mb-px" role="tablist" aria-label="Form sections">
+
+                    <button type="button" role="tab" :aria-selected="tab === 'basic'"
+                            @click="tab = 'basic'"
                             class="flex items-center gap-1.5 px-1 py-4 mr-6 text-sm font-medium border-b-2 transition-colors"
-                            :class="tab === '{{ $t['key'] }}'
+                            :class="tab === 'basic'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-content/20'">
-                        {{ $t['label'] }}
-                        <template x-if="errCount('{{ $t['key'] }}') > 0">
-                            <span class="badge badge-error badge-xs" x-text="errCount('{{ $t['key'] }}')"></span>
-                        </template>
+                        Vị trí & Hợp đồng
+                        <span x-show="errCount('basic') > 0" x-text="errCount('basic')"
+                              class="badge badge-error badge-xs"></span>
                     </button>
-                    @endforeach
+
+                    <button type="button" role="tab" :aria-selected="tab === 'personal'"
+                            @click="tab = 'personal'"
+                            class="flex items-center gap-1.5 px-1 py-4 mr-6 text-sm font-medium border-b-2 transition-colors"
+                            :class="tab === 'personal'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-content/20'">
+                        Thông tin cá nhân
+                        <span x-show="errCount('personal') > 0" x-text="errCount('personal')"
+                              class="badge badge-error badge-xs"></span>
+                    </button>
+
+                    <button type="button" role="tab" :aria-selected="tab === 'dates'"
+                            @click="tab = 'dates'"
+                            class="flex items-center gap-1.5 px-1 py-4 text-sm font-medium border-b-2 transition-colors"
+                            :class="tab === 'dates'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-content/20'">
+                        Ngày công tác
+                        <span x-show="errCount('dates') > 0" x-text="errCount('dates')"
+                              class="badge badge-error badge-xs"></span>
+                    </button>
+
                 </nav>
             </div>
 
-            <div class="card-body gap-5">
+            {{-- Tab panels --}}
+            <div class="p-6">
 
-                {{-- Tab: Vị trí & Trạng thái --}}
-                <div x-show="tab === 'basic'" class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {{-- Panel: Vị trí & Hợp đồng --}}
+                <div x-show="tab === 'basic'" data-tab-label="Vị trí & Hợp đồng" class="space-y-4">
 
-                    <div class="form-control sm:col-span-2">
-                        <label class="label"><span class="label-text font-medium">Họ và tên <span class="text-error">*</span></span></label>
+                    <div class="form-control">
+                        <label class="label py-0 pb-1.5">
+                            <span class="label-text font-medium">Họ và tên <span class="text-error">*</span></span>
+                        </label>
                         <input type="text" name="full_name" value="{{ old('full_name', $employee->full_name) }}"
-                               class="input input-bordered @error('full_name') input-error @enderror"/>
-                        @error('full_name')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
+                               data-req="Vui lòng nhập họ và tên"
+                               class="input input-bordered input-sm w-full @error('full_name') input-error @enderror"
+                               placeholder="VD: Nguyễn Văn A">
+                        @error('full_name')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Mã nhân viên <span class="text-error">*</span></span>
+                            </label>
+                            <input type="text" name="employee_code" value="{{ old('employee_code', $employee->employee_code) }}"
+                                   data-req="Vui lòng nhập mã nhân viên"
+                                   class="input input-bordered input-sm w-full font-mono @error('employee_code') input-error @enderror"
+                                   placeholder="VD: NV001">
+                            @error('employee_code')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Email công việc <span class="text-error">*</span></span>
+                            </label>
+                            <input type="email" name="email" value="{{ old('email', $employee->email) }}"
+                                   data-req="Vui lòng nhập email công việc"
+                                   data-val-email="Email không đúng định dạng"
+                                   class="input input-bordered input-sm w-full @error('email') input-error @enderror"
+                                   placeholder="ten.ho@congty.com">
+                            @error('email')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Chi nhánh <span class="text-error">*</span></span>
+                            </label>
+                            <select id="ts-branch_id" name="branch_id"
+                                    data-req="Vui lòng chọn chi nhánh"
+                                    class="select select-bordered select-sm w-full ts-init @error('branch_id') select-error @enderror"
+                                    data-ts-placeholder="— Chọn chi nhánh —">
+                                <option value="">— Chọn chi nhánh —</option>
+                                @foreach($branches as $b)
+                                <option value="{{ $b->id }}" {{ old('branch_id', $employee->branch_id) == $b->id ? 'selected' : '' }}>
+                                    {{ $b->name }} ({{ $b->code }})
+                                </option>
+                                @endforeach
+                            </select>
+                            @error('branch_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Phòng ban <span class="text-error">*</span></span>
+                            </label>
+                            <select id="ts-department_id" name="department_id"
+                                    data-req="Vui lòng chọn phòng ban"
+                                    class="select select-bordered select-sm w-full ts-init @error('department_id') select-error @enderror"
+                                    data-ts-placeholder="— Chọn phòng ban —">
+                                <option value="">— Chọn phòng ban —</option>
+                                @foreach($departments as $d)
+                                <option value="{{ $d->id }}" {{ old('department_id', $employee->department_id) == $d->id ? 'selected' : '' }}>
+                                    {{ $d->name }} ({{ $d->code }})
+                                </option>
+                                @endforeach
+                            </select>
+                            @error('department_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Chức danh</span>
+                            </label>
+                            <select id="ts-job_title_id" name="job_title_id"
+                                    class="select select-bordered select-sm w-full ts-init @error('job_title_id') select-error @enderror"
+                                    data-ts-placeholder="— Chưa xác định —">
+                                <option value="">— Chưa xác định —</option>
+                                @foreach($jobTitles as $jt)
+                                <option value="{{ $jt->id }}" {{ old('job_title_id', $employee->job_title_id) == $jt->id ? 'selected' : '' }}>
+                                    {{ $jt->name }} (Lv.{{ $jt->level }})
+                                </option>
+                                @endforeach
+                            </select>
+                            @error('job_title_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Quản lý trực tiếp</span>
+                            </label>
+                            <select id="ts-manager_id" name="manager_id"
+                                    class="select select-bordered select-sm w-full ts-init @error('manager_id') select-error @enderror"
+                                    data-ts-placeholder="— Không có —">
+                                <option value="">— Không có —</option>
+                                @foreach($managers as $m)
+                                <option value="{{ $m->id }}" {{ old('manager_id', $employee->manager_id) == $m->id ? 'selected' : '' }}>
+                                    {{ $m->full_name }} ({{ $m->employee_code }})
+                                </option>
+                                @endforeach
+                            </select>
+                            @error('manager_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
                     </div>
 
                     <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Mã nhân viên <span class="text-error">*</span></span></label>
-                        <input type="text" name="employee_code" value="{{ old('employee_code', $employee->employee_code) }}"
-                               class="input input-bordered font-mono @error('employee_code') input-error @enderror"/>
-                        @error('employee_code')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Email công việc <span class="text-error">*</span></span></label>
-                        <input type="email" name="email" value="{{ old('email', $employee->email) }}"
-                               class="input input-bordered @error('email') input-error @enderror"/>
-                        @error('email')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Chi nhánh <span class="text-error">*</span></span></label>
-                        <select name="branch_id" class="select select-bordered @error('branch_id') select-error @enderror">
-                            @foreach($branches as $b)
-                            <option value="{{ $b->id }}" {{ old('branch_id', $employee->branch_id) == $b->id ? 'selected' : '' }}>
-                                {{ $b->name }} ({{ $b->code }})
-                            </option>
-                            @endforeach
-                        </select>
-                        @error('branch_id')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Phòng ban <span class="text-error">*</span></span></label>
-                        <select name="department_id" class="select select-bordered @error('department_id') select-error @enderror">
-                            @foreach($departments as $d)
-                            <option value="{{ $d->id }}" {{ old('department_id', $employee->department_id) == $d->id ? 'selected' : '' }}>
-                                {{ $d->name }} ({{ $d->code }})
-                            </option>
-                            @endforeach
-                        </select>
-                        @error('department_id')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Chức danh</span></label>
-                        <select name="job_title_id" class="select select-bordered @error('job_title_id') select-error @enderror">
-                            <option value="">Chưa xác định</option>
-                            @foreach($jobTitles as $jt)
-                            <option value="{{ $jt->id }}" {{ old('job_title_id', $employee->job_title_id) == $jt->id ? 'selected' : '' }}>
-                                {{ $jt->name }} (Lv.{{ $jt->level }})
-                            </option>
-                            @endforeach
-                        </select>
-                        @error('job_title_id')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Quản lý trực tiếp</span></label>
-                        <select name="manager_id" class="select select-bordered @error('manager_id') select-error @enderror">
-                            <option value="">Không có</option>
-                            @foreach($managers as $m)
-                            <option value="{{ $m->id }}" {{ old('manager_id', $employee->manager_id) == $m->id ? 'selected' : '' }}>
-                                {{ $m->full_name }} ({{ $m->employee_code }})
-                            </option>
-                            @endforeach
-                        </select>
-                        @error('manager_id')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Trạng thái <span class="text-error">*</span></span></label>
-                        <select name="status" class="select select-bordered @error('status') select-error @enderror">
-                            @foreach($statuses as $s)
-                            <option value="{{ $s['value'] }}" {{ old('status', $employee->status->value) === $s['value'] ? 'selected' : '' }}>
-                                {{ $s['text'] }}
-                            </option>
-                            @endforeach
-                        </select>
-                        @error('status')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Loại hợp đồng <span class="text-error">*</span></span></label>
-                        <select name="employment_type" class="select select-bordered @error('employment_type') select-error @enderror">
+                        <label class="label py-0 pb-1.5">
+                            <span class="label-text font-medium">Loại hợp đồng <span class="text-error">*</span></span>
+                        </label>
+                        <select id="ts-employment_type" name="employment_type"
+                                class="select select-bordered select-sm w-full ts-init @error('employment_type') select-error @enderror"
+                                data-ts-placeholder="— Chọn loại hợp đồng —">
+                            <option value="">— Chọn loại hợp đồng —</option>
                             @foreach($employmentTypes as $t)
                             <option value="{{ $t['value'] }}" {{ old('employment_type', $employee->employment_type->value) === $t['value'] ? 'selected' : '' }}>
                                 {{ $t['text'] }}
                             </option>
                             @endforeach
                         </select>
-                        @error('employment_type')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
+                        @error('employment_type')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                    </div>
+
+                    {{-- Tab footer: next --}}
+                    <div class="flex justify-end pt-2">
+                        <button type="button" @click="tab = 'personal'"
+                                class="btn btn-ghost btn-sm gap-1.5">
+                            Tiếp theo: Thông tin cá nhân
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </button>
                     </div>
 
                 </div>
 
-                {{-- Tab: Thông tin cá nhân --}}
-                <div x-show="tab === 'personal'" class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {{-- Panel: Thông tin cá nhân --}}
+                <div x-show="tab === 'personal'" data-tab-label="Thông tin cá nhân" class="space-y-4">
 
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Số điện thoại</span></label>
-                        <input type="tel" name="phone" value="{{ old('phone', $employee->phone) }}"
-                               class="input input-bordered @error('phone') input-error @enderror"/>
-                        @error('phone')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Số điện thoại</span>
+                            </label>
+                            <input type="text" name="phone" value="{{ old('phone', $employee->phone) }}"
+                                   class="input input-bordered input-sm w-full @error('phone') input-error @enderror"
+                                   placeholder="VD: 0901234567">
+                            @error('phone')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Giới tính</span>
+                            </label>
+                            <select id="ts-gender" name="gender"
+                                    class="select select-bordered select-sm w-full ts-init @error('gender') select-error @enderror"
+                                    data-ts-placeholder="— Không xác định —">
+                                <option value="">— Không xác định —</option>
+                                <option value="male"   {{ old('gender', $employee->gender) === 'male'   ? 'selected' : '' }}>Nam</option>
+                                <option value="female" {{ old('gender', $employee->gender) === 'female' ? 'selected' : '' }}>Nữ</option>
+                                <option value="other"  {{ old('gender', $employee->gender) === 'other'  ? 'selected' : '' }}>Khác</option>
+                            </select>
+                            @error('gender')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Ngày sinh</span>
+                            </label>
+                            <input type="date" name="date_of_birth"
+                                   value="{{ old('date_of_birth', $employee->date_of_birth?->format('Y-m-d')) }}"
+                                   class="input input-bordered input-sm w-full @error('date_of_birth') input-error @enderror">
+                            @error('date_of_birth')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Số CCCD/CMND</span>
+                                <span class="label-text-alt text-xs text-base-content/40">eKYC</span>
+                            </label>
+                            <input type="text" name="national_id" value="{{ old('national_id', $employee->national_id) }}"
+                                   class="input input-bordered input-sm w-full font-mono @error('national_id') input-error @enderror"
+                                   placeholder="VD: 012345678901">
+                            @error('national_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Mã số thuế cá nhân</span>
+                                <span class="label-text-alt text-xs text-base-content/40">Quyết toán TNCN</span>
+                            </label>
+                            <input type="text" name="tax_code" value="{{ old('tax_code', $employee->tax_code) }}"
+                                   class="input input-bordered input-sm w-full font-mono @error('tax_code') input-error @enderror"
+                                   placeholder="VD: 0123456789">
+                            @error('tax_code')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Ngôn ngữ giao diện</span>
+                                <span class="label-text-alt text-xs text-base-content/40">Mặc định theo org</span>
+                            </label>
+                            <select id="ts-locale" name="locale"
+                                    class="select select-bordered select-sm w-full ts-init @error('locale') select-error @enderror"
+                                    data-ts-placeholder="— Mặc định theo org —">
+                                <option value="">— Mặc định theo org —</option>
+                                <option value="vi" {{ old('locale', $employee->locale) === 'vi' ? 'selected' : '' }}>Tiếng Việt</option>
+                                <option value="en" {{ old('locale', $employee->locale) === 'en' ? 'selected' : '' }}>English</option>
+                            </select>
+                            @error('locale')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
                     </div>
 
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Giới tính</span></label>
-                        <select name="gender" class="select select-bordered @error('gender') select-error @enderror">
-                            <option value="">Không xác định</option>
-                            <option value="male"   {{ old('gender', $employee->gender) === 'male'   ? 'selected' : '' }}>Nam</option>
-                            <option value="female" {{ old('gender', $employee->gender) === 'female' ? 'selected' : '' }}>Nữ</option>
-                            <option value="other"  {{ old('gender', $employee->gender) === 'other'  ? 'selected' : '' }}>Khác</option>
-                        </select>
-                        @error('gender')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Ngày sinh</span></label>
-                        <input type="date" name="date_of_birth" value="{{ old('date_of_birth', $employee->date_of_birth?->format('Y-m-d')) }}"
-                               class="input input-bordered @error('date_of_birth') input-error @enderror"/>
-                        @error('date_of_birth')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Số CCCD/CMND</span></label>
-                        <input type="text" name="national_id" value="{{ old('national_id', $employee->national_id) }}"
-                               class="input input-bordered font-mono @error('national_id') input-error @enderror"/>
-                        @error('national_id')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Mã số thuế cá nhân</span></label>
-                        <input type="text" name="tax_code" value="{{ old('tax_code', $employee->tax_code) }}"
-                               class="input input-bordered font-mono @error('tax_code') input-error @enderror"/>
-                        @error('tax_code')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Ngôn ngữ giao diện</span></label>
-                        <select name="locale" class="select select-bordered @error('locale') select-error @enderror">
-                            <option value="">Mặc định theo org</option>
-                            <option value="vi" {{ old('locale', $employee->locale) === 'vi' ? 'selected' : '' }}>Tiếng Việt</option>
-                            <option value="en" {{ old('locale', $employee->locale) === 'en' ? 'selected' : '' }}>English</option>
-                        </select>
-                        @error('locale')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
+                    {{-- Tab footer: prev / next --}}
+                    <div class="flex items-center justify-between pt-2">
+                        <button type="button" @click="tab = 'basic'"
+                                class="btn btn-ghost btn-sm gap-1.5">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                            </svg>
+                            Vị trí & Hợp đồng
+                        </button>
+                        <button type="button" @click="tab = 'dates'"
+                                class="btn btn-ghost btn-sm gap-1.5">
+                            Tiếp theo: Ngày công tác
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </button>
                     </div>
 
                 </div>
 
-                {{-- Tab: Ngày công tác --}}
-                <div x-show="tab === 'dates'" class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {{-- Panel: Ngày công tác --}}
+                <div x-show="tab === 'dates'" data-tab-label="Ngày công tác" class="space-y-4">
 
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Ngày vào làm</span></label>
-                        <input type="date" name="hired_at" value="{{ old('hired_at', $employee->hired_at?->format('Y-m-d')) }}"
-                               class="input input-bordered @error('hired_at') input-error @enderror"/>
-                        @error('hired_at')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Ngày vào làm</span>
+                            </label>
+                            <input type="date" name="hired_at"
+                                   value="{{ old('hired_at', $employee->hired_at?->format('Y-m-d')) }}"
+                                   class="input input-bordered input-sm w-full @error('hired_at') input-error @enderror">
+                            @error('hired_at')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Ngày nghỉ việc</span>
+                                <span class="label-text-alt text-xs text-base-content/40">Điền khi đã nghỉ</span>
+                            </label>
+                            <input type="date" name="left_at"
+                                   value="{{ old('left_at', $employee->left_at?->format('Y-m-d')) }}"
+                                   class="input input-bordered input-sm w-full @error('left_at') input-error @enderror">
+                            @error('left_at')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
                     </div>
 
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Ngày nghỉ việc</span></label>
-                        <input type="date" name="left_at" value="{{ old('left_at', $employee->left_at?->format('Y-m-d')) }}"
-                               class="input input-bordered @error('left_at') input-error @enderror"/>
-                        @error('left_at')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
+                    {{-- Tab footer: prev --}}
+                    <div class="flex items-center justify-between pt-2">
+                        <button type="button" @click="tab = 'personal'"
+                                class="btn btn-ghost btn-sm gap-1.5">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                            </svg>
+                            Thông tin cá nhân
+                        </button>
+                        <span class="text-xs text-base-content/40">Nhấn <strong>Lưu lại</strong> ở bên phải khi xong</span>
                     </div>
 
                 </div>
 
-            </div>
-        </div>
+            </div>{{-- /tab panels --}}
+        </div>{{-- /card chính --}}
 
-        {{-- ── Sidebar: Actions ─────────────────────────────────────────── --}}
-        <div class="space-y-4">
+        {{-- ── Sidebar ──────────────────────────────────────────────────── --}}
+        <div class="xl:sticky xl:top-4 space-y-4">
+
             <div class="card bg-base-100 shadow-sm border border-base-200">
-                <div class="card-body gap-3">
-                    <h3 class="font-semibold text-sm">Thao tác</h3>
-                    <button type="submit" class="btn btn-primary w-full gap-2">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                        </svg>
-                        Lưu thay đổi
-                    </button>
-                    <a href="{{ route('backend.employees.show', $employee) }}" class="btn btn-ghost w-full">Hủy</a>
-                </div>
-            </div>
+                <div class="card-body p-4">
 
-            <div class="card bg-base-100 shadow-sm border border-base-200">
-                <div class="card-body gap-2">
-                    <h3 class="font-semibold text-sm text-base-content/70">Thông tin</h3>
-                    <div class="text-xs text-base-content/50 space-y-1.5">
-                        <p>Tạo: {{ $employee->created_at?->format('d/m/Y H:i') }}</p>
-                        <p>Cập nhật: {{ $employee->updated_at?->format('d/m/Y H:i') }}</p>
+                    <p class="text-xs font-semibold text-base-content/40 uppercase tracking-wide mb-3">Xuất bản</p>
+
+                    <div class="form-control mb-3">
+                        <label class="label py-0 pb-1">
+                            <span class="label-text text-xs font-medium">Trạng thái <span class="text-error">*</span></span>
+                        </label>
+                        <select id="ts-status" name="status"
+                                class="select select-bordered select-sm w-full ts-init @error('status') select-error @enderror"
+                                data-ts-placeholder="— Chọn trạng thái —">
+                            @foreach($statuses as $s)
+                            <option value="{{ $s['value'] }}" {{ old('status', $employee->status->value) === $s['value'] ? 'selected' : '' }}>
+                                {{ $s['text'] }}
+                            </option>
+                            @endforeach
+                        </select>
+                        @error('status')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
-                    <div class="divider my-1"></div>
-                    <p class="text-xs text-warning/80">Thay đổi chi nhánh, phòng ban, chức danh hoặc trạng thái sẽ tự động ghi vào lịch sử nhân sự.</p>
+
+                    <div class="flex justify-between text-xs text-base-content/40 mb-4 px-0.5">
+                        <span>Tạo {{ $employee->created_at->format('d/m/Y') }}</span>
+                        <span>Sửa {{ $employee->updated_at->diffForHumans() }}</span>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <a href="{{ route('backend.employees.show', $employee) }}" class="btn btn-ghost btn-sm flex-1">Hủy</a>
+                        <button type="submit" class="btn btn-primary btn-sm flex-1 gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            Lưu lại
+                        </button>
+                    </div>
+
+                    <p class="text-center text-xs text-base-content/30 mt-2.5">
+                        <span class="text-error">*</span> là trường bắt buộc
+                    </p>
+
                 </div>
             </div>
-        </div>
 
-    </div>
+        </div>{{-- /sidebar --}}
+
+    </div>{{-- /grid --}}
 </form>
 </div>
 @endsection
+
+@push('styles')
+    @vite(['Modules/Employee/resources/assets/sass/employee.scss'], 'build/backend')
+@endpush
+
+@push('scripts')
+    @vite([
+        'resources/js/modules/toastify.js',
+        'resources/js/modules/tom-select.js',
+        'Modules/Employee/resources/assets/js/employee.js',
+    ], 'build/backend')
+@endpush

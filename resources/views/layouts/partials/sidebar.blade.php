@@ -221,6 +221,55 @@
             </details>
             @endcan
 
+            @can('viewAny', \Modules\PerformanceReview\Models\PerformanceReview::class)
+            <details {{ request()->routeIs('backend.performance-reviews.*') || request()->routeIs('backend.review-templates.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('backend.performance-reviews.*') || request()->routeIs('backend.review-templates.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    <span class="nav-label">Đánh giá hiệu suất</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('backend.performance-reviews.index') }}" class="sub-link {{ request()->routeIs('backend.performance-reviews.index') ? 'active' : '' }}">Danh sách đánh giá</a>
+                    @can('create', \Modules\PerformanceReview\Models\PerformanceReview::class)
+                    <a href="{{ route('backend.performance-reviews.create') }}" class="sub-link {{ request()->routeIs('backend.performance-reviews.create') ? 'active' : '' }}">Tạo đánh giá</a>
+                    <a href="{{ route('backend.review-templates.index') }}" class="sub-link {{ request()->routeIs('backend.review-templates.*') ? 'active' : '' }}">Mẫu đánh giá</a>
+                    @endcan
+                </div>
+            </details>
+            @endcan
+
+            @can('viewAny', \Modules\Project\Models\Project::class)
+            <details {{ request()->routeIs('backend.projects.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('backend.projects.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+                    <span class="nav-label">Dự án</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('backend.projects.index') }}" class="sub-link {{ request()->routeIs('backend.projects.index') ? 'active' : '' }}">Danh sách dự án</a>
+                    @can('create', \Modules\Project\Models\Project::class)
+                    <a href="{{ route('backend.projects.create') }}" class="sub-link {{ request()->routeIs('backend.projects.create') ? 'active' : '' }}">Tạo dự án mới</a>
+                    @endcan
+                </div>
+            </details>
+            @endcan
+
+            @can('viewAny', \Modules\OrgChart\Models\OrgChartConfig::class)
+            <details {{ request()->routeIs('backend.org-charts.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('backend.org-charts.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 9l3-3 3 3M8 15l3 3 3-3M12 3v18M3 9h4M3 15h4M17 9h4M17 15h4"/></svg>
+                    <span class="nav-label">Sơ đồ tổ chức</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('backend.org-charts.index') }}" class="sub-link {{ request()->routeIs('backend.org-charts.index') ? 'active' : '' }}">Danh sách cấu hình</a>
+                    @can('create', \Modules\OrgChart\Models\OrgChartConfig::class)
+                    <a href="{{ route('backend.org-charts.create') }}" class="sub-link {{ request()->routeIs('backend.org-charts.create') ? 'active' : '' }}">Thêm cấu hình</a>
+                    @endcan
+                </div>
+            </details>
+            @endcan
+
             @can('viewAny', \Modules\RoleScope\Models\UserRoleScope::class)
             <details {{ request()->routeIs('backend.role-scopes.*') ? 'open' : '' }}>
                 <summary class="nav-summary {{ request()->routeIs('backend.role-scopes.*') ? 'active' : '' }}">

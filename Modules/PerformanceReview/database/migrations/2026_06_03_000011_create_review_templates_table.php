@@ -22,6 +22,7 @@ return new class extends Migration
             $table->tinyInteger('is_locked')->default(0);
             $table->tinyInteger('is_active')->default(1);
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index(['organization_id', 'is_active'], 'idx_review_templates_org');
         });

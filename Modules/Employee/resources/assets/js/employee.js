@@ -3,4 +3,5 @@
  * Entry point cho module Employee.
  */
 
+import './pages/employee-form.js';
 import './pages/employee-index.js';

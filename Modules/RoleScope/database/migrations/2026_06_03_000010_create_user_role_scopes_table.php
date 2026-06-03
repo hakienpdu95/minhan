@@ -20,6 +20,7 @@ return new class extends Migration
             $table->timestamp('expires_at')->nullable();
             $table->string('note', 500)->nullable();
             $table->timestamp('created_at')->useCurrent();
+            $table->softDeletes();
 
             $table->unique(['user_id', 'role_id', 'scope_branch_id', 'scope_dept_id'], 'uq_scope');
 

@@ -3,54 +3,171 @@
 namespace Modules\PerformanceReview\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\TenantContext;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Modules\Employee\Models\Employee;
+use Modules\Employee\Enums\EmployeeStatus;
+use Modules\PerformanceReview\Actions\Backend\DestroyPerformanceReviewAction;
+use Modules\PerformanceReview\Actions\Backend\FinalizeReviewAction;
+use Modules\PerformanceReview\Actions\Backend\StorePerformanceReviewAction;
+use Modules\PerformanceReview\Actions\Backend\UpdatePerformanceReviewAction;
+use Modules\PerformanceReview\Data\Requests\StorePerformanceReviewData;
+use Modules\PerformanceReview\Data\Requests\UpdatePerformanceReviewData;
+use Modules\PerformanceReview\Enums\ReviewStatus;
+use Modules\PerformanceReview\Models\PerformanceReview;
+use Modules\PerformanceReview\Models\ReviewTemplate;
 
 class PerformanceReviewController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    public function __construct()
+    {
+        $this->authorizeResource(PerformanceReview::class, 'performance_review');
+    }
+
     public function index()
     {
-        return view('performancereview::index');
+        $orgId = TenantContext::getOrganizationId();
+
+        $counts = PerformanceReview::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->selectRaw(
+                'COUNT(*) as total_all,
+                 SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as total_draft,
+                 SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as total_submitted,
+                 SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as total_finalized',
+                ['draft', 'submitted', 'finalized']
+            )
+            ->first();
+
+        $statuses = collect(ReviewStatus::cases())
+            ->map(fn ($s) => ['value' => $s->value, 'text' => $s->label()])
+            ->all();
+
+        $templates = ReviewTemplate::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn ($t) => ['value' => $t->id, 'text' => $t->name])
+            ->all();
+
+        return view('performancereview::index', [
+            'totalAll'       => (int) ($counts->total_all ?? 0),
+            'totalDraft'     => (int) ($counts->total_draft ?? 0),
+            'totalSubmitted' => (int) ($counts->total_submitted ?? 0),
+            'totalFinalized' => (int) ($counts->total_finalized ?? 0),
+            'statuses'       => $statuses,
+            'templates'      => $templates,
+        ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        return view('performancereview::create');
+        $orgId = TenantContext::getOrganizationId();
+
+        $employees = Employee::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('status', EmployeeStatus::Active->value)
+            ->orderBy('full_name')
+            ->get(['id', 'full_name', 'employee_code', 'snap_dept_name', 'snap_job_title']);
+
+        $templates = ReviewTemplate::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->with('criteria')
+            ->get();
+
+        return view('performancereview::create', compact('employees', 'templates'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request) {}
-
-    /**
-     * Show the specified resource.
-     */
-    public function show($id)
+    public function store(Request $request, StorePerformanceReviewAction $action): RedirectResponse
     {
-        return view('performancereview::show');
+        $data   = StorePerformanceReviewData::validateAndCreate($request->all());
+        $review = $action->handle($data);
+
+        return redirect()->route('backend.performance-reviews.show', $review)
+            ->with('success', 'Đánh giá hiệu suất đã được tạo thành công.');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit($id)
+    public function show(PerformanceReview $performanceReview)
     {
-        return view('performancereview::edit');
+        $performanceReview->load([
+            'employee.branch', 'employee.department', 'employee.jobTitle',
+            'reviewer',
+            'template.criteria',
+            'scores',
+        ]);
+
+        return view('performancereview::show', ['review' => $performanceReview]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, $id) {}
+    public function edit(PerformanceReview $performanceReview)
+    {
+        $orgId = TenantContext::getOrganizationId();
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy($id) {}
+        $employees = Employee::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('status', EmployeeStatus::Active->value)
+            ->orderBy('full_name')
+            ->get(['id', 'full_name', 'employee_code', 'snap_dept_name', 'snap_job_title']);
+
+        $templates = ReviewTemplate::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->with('criteria')
+            ->get();
+
+        $performanceReview->load(['scores', 'template.criteria', 'reviewer']);
+
+        return view('performancereview::edit', [
+            'review'    => $performanceReview,
+            'employees' => $employees,
+            'templates' => $templates,
+        ]);
+    }
+
+    public function update(Request $request, PerformanceReview $performanceReview, UpdatePerformanceReviewAction $action): RedirectResponse
+    {
+        $data = UpdatePerformanceReviewData::validateAndCreate($request->all());
+        $action->handle($performanceReview, $data);
+
+        return redirect()->route('backend.performance-reviews.show', $performanceReview)
+            ->with('success', 'Cập nhật đánh giá thành công.');
+    }
+
+    public function destroy(Request $request, PerformanceReview $performanceReview, DestroyPerformanceReviewAction $action): RedirectResponse|JsonResponse
+    {
+        $label = $action->handle($performanceReview);
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Đã xóa đánh giá "' . $label . '".' ]);
+        }
+
+        return redirect()->route('backend.performance-reviews.index')
+            ->with('success', 'Đã xóa đánh giá "' . $label . '".');
+    }
+
+    public function finalize(PerformanceReview $performanceReview, FinalizeReviewAction $action): RedirectResponse
+    {
+        $this->authorize('finalize', $performanceReview);
+
+        $action->handle($performanceReview);
+
+        return redirect()->route('backend.performance-reviews.show', $performanceReview)
+            ->with('success', 'Đánh giá đã được hoàn tất. Điểm tổng đã được tính.');
+    }
+
+    public function submit(PerformanceReview $performanceReview): RedirectResponse
+    {
+        $this->authorize('update', $performanceReview);
+
+        $performanceReview->update(['status' => 'submitted']);
+
+        return redirect()->route('backend.performance-reviews.show', $performanceReview)
+            ->with('success', 'Đã nộp đánh giá.');
+    }
 }
