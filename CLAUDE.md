@@ -27,11 +27,6 @@ php artisan migrate
 php artisan db:seed
 php artisan db:seed --class="Modules\Auth\Database\Seeders\AuthDatabaseSeeder"
 
-# Testing
-php artisan test             # All tests
-php artisan test --filter=TestName  # Single test
-./vendor/bin/phpunit
-
 # Module scaffolding
 php artisan module:make ModuleName
 php artisan migration:generate --fresh
@@ -55,19 +50,3 @@ Eight roles (CEO, Sales, Ops, Marketing, HR, AI_Operator, System_Admin, Viewer) 
 ### Module System (NWIDART)
 
 Feature modules live in `Modules/`. The `Auth` module is fully active. Other domain modules (CRM, Tasks, SOP, Workflow, etc.) have placeholder routes returning 503 stubs and are not yet implemented. Generate new modules with `php artisan module:make`.
-
-### Frontend Architecture
-
-Two Vite configs:
-- `vite.config.js` — core bundle (app.css + app.js: jQuery, Alpine.js, Iconify, DaisyUI)
-- `vite.config.backend.js` — lazy-loaded per-page bundles (DataTables, FilePond, Jodit ~500KB, TomSelect, Flatpickr, Swiper, etc.)
-
-Heavy UI libraries are **not** in the core bundle — they load on-demand per page to reduce initial payload. The theme (dark/light) is controlled by an Alpine.js store with localStorage persistence.
-
-### Activity Logging
-
-All `TenantAwareModel` subclasses auto-log model changes via Spatie Activity Log's trait. No manual logging is required in controllers.
-
-### Testing
-
-PHPUnit v12 with two suites: `Unit` (`tests/Unit/`) and `Feature` (`tests/Feature/`). Tests use an in-memory SQLite database configured in `phpunit.xml`. Current test coverage is minimal.

@@ -1,0 +1,109 @@
+<?php
+
+namespace Modules\Employee\Data\Requests;
+
+use App\Shared\Tenancy\TenantContext;
+use Illuminate\Validation\Rule;
+use Modules\Employee\Enums\EmployeeStatus;
+use Modules\Employee\Enums\EmploymentType;
+use Spatie\LaravelData\Attributes\Validation\Email;
+use Spatie\LaravelData\Attributes\Validation\Max;
+use Spatie\LaravelData\Attributes\Validation\Nullable;
+use Spatie\LaravelData\Attributes\Validation\Required;
+use Spatie\LaravelData\Attributes\Validation\StringType;
+use Spatie\LaravelData\Data;
+
+class StoreEmployeeData extends Data
+{
+    public function __construct(
+        #[Required, StringType, Max(255)]
+        public readonly string $full_name,
+
+        #[Required, StringType, Max(50)]
+        public readonly string $employee_code,
+
+        #[Required, Email, Max(255)]
+        public readonly string $email,
+
+        #[Required]
+        public readonly int $branch_id,
+
+        #[Required]
+        public readonly int $department_id,
+
+        public readonly EmployeeStatus $status,
+
+        public readonly EmploymentType $employment_type,
+
+        #[Nullable]
+        public readonly ?int $job_title_id,
+
+        #[Nullable]
+        public readonly ?int $manager_id,
+
+        #[Nullable]
+        public readonly ?int $user_id,
+
+        #[Nullable, StringType, Max(20)]
+        public readonly ?string $phone,
+
+        #[Nullable, StringType]
+        public readonly ?string $gender,
+
+        #[Nullable]
+        public readonly ?string $date_of_birth,
+
+        #[Nullable, StringType, Max(20)]
+        public readonly ?string $national_id,
+
+        #[Nullable, StringType, Max(20)]
+        public readonly ?string $tax_code,
+
+        #[Nullable, StringType, Max(10)]
+        public readonly ?string $locale,
+
+        #[Nullable, StringType, Max(500)]
+        public readonly ?string $avatar_url,
+
+        #[Nullable]
+        public readonly ?string $hired_at,
+
+        #[Nullable]
+        public readonly ?string $left_at,
+    ) {}
+
+    public static function rules(): array
+    {
+        $orgId = TenantContext::getOrganizationId();
+
+        return [
+            'employee_code' => [
+                'required', 'string', 'max:50',
+                Rule::unique('employees', 'employee_code')
+                    ->where('organization_id', $orgId)
+                    ->whereNull('deleted_at'),
+            ],
+            'email' => [
+                'required', 'email', 'max:255',
+                Rule::unique('employees', 'email')
+                    ->where('organization_id', $orgId)
+                    ->whereNull('deleted_at'),
+            ],
+            'user_id' => [
+                'nullable', 'integer',
+                Rule::unique('employees', 'user_id')
+                    ->where('organization_id', $orgId)
+                    ->whereNull('deleted_at'),
+                Rule::exists('users', 'id'),
+            ],
+            'branch_id'     => ['required', 'integer', Rule::exists('branches', 'id')->where('organization_id', $orgId)],
+            'department_id' => ['required', 'integer', Rule::exists('departments', 'id')->where('organization_id', $orgId)],
+            'job_title_id'  => ['nullable', 'integer', Rule::exists('job_titles', 'id')->where('organization_id', $orgId)],
+            'manager_id'    => ['nullable', 'integer', Rule::exists('employees', 'id')->where('organization_id', $orgId)],
+            'gender'        => ['nullable', 'string', 'in:male,female,other'],
+            'date_of_birth' => ['nullable', 'date'],
+            'hired_at'      => ['nullable', 'date'],
+            'left_at'       => ['nullable', 'date'],
+        ];
+    }
+}

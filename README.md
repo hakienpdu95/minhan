@@ -69,3 +69,14 @@ php artisan module:make Auth
 # > Đọc file spec/lead.md và implement theo đúng spec đó, lưu ý là lead cơ hội của ai thì khi vào tài khoản sẽ xem được lead trong phạm vi của mình. Làm chắc chắn và tối ưu từng task một, hỏi để xác nhận trước khi làm tiếp
 
 # > Đọc file docs/form-ui-spec.md và implement theo đúng spec đó, áp dụng spec này vào module Organization trước
+
+Branch
+Department
+JobTitle
+Employee
+RoleScope
+PerformanceReview
+Project
+OrgChart
+
+Hãy kiểm tra, matching và làm module RoleScope nhé, dựa trên file spec/erd.md và implement theo đúng spec cho module RoleScope, cần thiết thì đọc thêm file docs/module-list-pattern.md để tuân thủ đúng cấu trúc và nguyên tắc chuẩn khi thiết kế và triển khai module theo cấu trúc Advanced Vertical Slice (AVSA) + CQRS-lite + Laravel Modules + Laravel Actions, bổ sung ra mdenu sidebar để dùng

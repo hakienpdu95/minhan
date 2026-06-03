@@ -8,5 +8,13 @@
     "Lead": true,
     "LeadPipelineStage": true,
     "LeadSource": true,
-    "Assessment": true
+    "Assessment": true,
+    "Branch": true,
+    "Department": true,
+    "JobTitle": true,
+    "Employee": true,
+    "RoleScope": true,
+    "PerformanceReview": true,
+    "Project": true,
+    "OrgChart": true
 }

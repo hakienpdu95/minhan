@@ -75,6 +75,10 @@ const JS_OUTPUT = {
   'assessment':           'assets/modules/assessment.[hash].js',
   'activity-log':           'assets/modules/activity-log.[hash].js',
   'workflow-automation':    'assets/modules/workflow-automation.[hash].js',
+  'branch':                 'assets/modules/branch.[hash].js',
+  'department':             'assets/modules/department.[hash].js',
+  'job-title':              'assets/modules/job-title.[hash].js',
+  'employee':               'assets/modules/employee.[hash].js',
 
 };
 
@@ -102,6 +106,10 @@ const CSS_OUTPUT = {
   'assessment.css':           'assets/modules/assessment.[hash].css',
   'activity-log.css':           'assets/modules/activity-log.[hash].css',
   'workflow-automation.css':    'assets/modules/workflow-automation.[hash].css',
+  'branch.css':                 'assets/modules/branch.[hash].css',
+  'department.css':             'assets/modules/department.[hash].css',
+  'job-title.css':              'assets/modules/job-title.[hash].css',
+  'employee.css':               'assets/modules/employee.[hash].css',
 };
 
 // ─── Module input entries ─────────────────────────────────────────────
@@ -137,6 +145,18 @@ const MODULE_ENTRIES = [
   // WorkflowAutomation
   'Modules/WorkflowAutomation/resources/assets/sass/workflow-automation.scss',
   'Modules/WorkflowAutomation/resources/assets/js/workflow-automation.js',
+  // Branch
+  'Modules/Branch/resources/assets/sass/branch.scss',
+  'Modules/Branch/resources/assets/js/branch.js',
+  // Department
+  'Modules/Department/resources/assets/sass/department.scss',
+  'Modules/Department/resources/assets/js/department.js',
+  // JobTitle
+  'Modules/JobTitle/resources/assets/sass/job-title.scss',
+  'Modules/JobTitle/resources/assets/js/job-title.js',
+  // Employee
+  'Modules/Employee/resources/assets/sass/employee.scss',
+  'Modules/Employee/resources/assets/js/employee.js',
 ];
 
 // ─────────────────────────────────────────────────────────────────────

@@ -1,0 +1,210 @@
+<?php
+
+namespace Modules\Employee\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\TenantContext;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Modules\Branch\Models\Branch;
+use Modules\Department\Models\Department;
+use Modules\Employee\Actions\Backend\DestroyEmployeeAction;
+use Modules\Employee\Actions\Backend\StoreEmployeeAction;
+use Modules\Employee\Actions\Backend\UpdateEmployeeAction;
+use Modules\Employee\Data\Requests\StoreEmployeeData;
+use Modules\Employee\Data\Requests\UpdateEmployeeData;
+use Modules\Employee\Enums\EmployeeStatus;
+use Modules\Employee\Enums\EmploymentType;
+use Modules\Employee\Models\Employee;
+use Modules\JobTitle\Models\JobTitle;
+
+class EmployeeController extends Controller
+{
+    public function __construct()
+    {
+        $this->authorizeResource(Employee::class, 'employee');
+    }
+
+    public function index()
+    {
+        $orgId = TenantContext::getOrganizationId();
+
+        $counts = Employee::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->selectRaw(
+                'COUNT(*) as total_all,
+                 SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as total_active,
+                 SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as total_on_leave,
+                 SUM(CASE WHEN status IN (?,?) THEN 1 ELSE 0 END) as total_inactive',
+                [
+                    EmployeeStatus::Active->value,
+                    EmployeeStatus::OnLeave->value,
+                    EmployeeStatus::Resigned->value,
+                    EmployeeStatus::Terminated->value,
+                ]
+            )
+            ->first();
+
+        $totalAll      = (int) ($counts->total_all      ?? 0);
+        $totalActive   = (int) ($counts->total_active   ?? 0);
+        $totalOnLeave  = (int) ($counts->total_on_leave ?? 0);
+        $totalInactive = (int) ($counts->total_inactive ?? 0);
+
+        $statuses = collect(EmployeeStatus::cases())
+            ->map(fn ($s) => ['value' => $s->value, 'text' => $s->label()])
+            ->all();
+
+        $employmentTypes = collect(EmploymentType::cases())
+            ->map(fn ($t) => ['value' => $t->value, 'text' => $t->label()])
+            ->all();
+
+        $branches = Branch::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'code'])
+            ->map(fn ($b) => ['value' => $b->id, 'text' => $b->name . ' (' . $b->code . ')'])
+            ->all();
+
+        $departments = Department::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'code'])
+            ->map(fn ($d) => ['value' => $d->id, 'text' => $d->name . ' (' . $d->code . ')'])
+            ->all();
+
+        return view('employee::index', compact(
+            'totalAll', 'totalActive', 'totalOnLeave', 'totalInactive',
+            'statuses', 'employmentTypes', 'branches', 'departments'
+        ));
+    }
+
+    public function create()
+    {
+        $orgId = TenantContext::getOrganizationId();
+
+        $branches = Branch::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'code']);
+
+        $departments = Department::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'code']);
+
+        $jobTitles = JobTitle::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('is_active', true)
+            ->orderBy('level')
+            ->get(['id', 'name', 'category', 'level']);
+
+        $managers = Employee::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('status', EmployeeStatus::Active->value)
+            ->orderBy('full_name')
+            ->get(['id', 'full_name', 'employee_code']);
+
+        $statuses = collect(EmployeeStatus::cases())
+            ->map(fn ($s) => ['value' => $s->value, 'text' => $s->label()])
+            ->all();
+
+        $employmentTypes = collect(EmploymentType::cases())
+            ->map(fn ($t) => ['value' => $t->value, 'text' => $t->label()])
+            ->all();
+
+        return view('employee::create', compact(
+            'branches', 'departments', 'jobTitles', 'managers', 'statuses', 'employmentTypes'
+        ));
+    }
+
+    public function store(Request $request, StoreEmployeeAction $action): RedirectResponse
+    {
+        $data     = StoreEmployeeData::validateAndCreate($request->all());
+        $employee = $action->handle($data);
+
+        return redirect()->route('backend.employees.show', $employee)
+            ->with('success', 'Nhân viên "' . $employee->full_name . '" đã được tạo thành công.');
+    }
+
+    public function show(Employee $employee)
+    {
+        $employee->load([
+            'branch', 'department', 'jobTitle', 'manager',
+            'employeeDepartments.department',
+            'history.changedBy',
+            'createdBy', 'updatedBy',
+        ]);
+
+        return view('employee::show', compact('employee'));
+    }
+
+    public function edit(Employee $employee)
+    {
+        $orgId = TenantContext::getOrganizationId();
+
+        $branches = Branch::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'code']);
+
+        $departments = Department::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'code']);
+
+        $jobTitles = JobTitle::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('is_active', true)
+            ->orderBy('level')
+            ->get(['id', 'name', 'category', 'level']);
+
+        $managers = Employee::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('status', EmployeeStatus::Active->value)
+            ->where('id', '!=', $employee->id)
+            ->orderBy('full_name')
+            ->get(['id', 'full_name', 'employee_code']);
+
+        $statuses = collect(EmployeeStatus::cases())
+            ->map(fn ($s) => ['value' => $s->value, 'text' => $s->label()])
+            ->all();
+
+        $employmentTypes = collect(EmploymentType::cases())
+            ->map(fn ($t) => ['value' => $t->value, 'text' => $t->label()])
+            ->all();
+
+        $employee->load(['branch', 'department', 'jobTitle']);
+
+        return view('employee::edit', compact(
+            'employee', 'branches', 'departments', 'jobTitles', 'managers', 'statuses', 'employmentTypes'
+        ));
+    }
+
+    public function update(Request $request, Employee $employee, UpdateEmployeeAction $action): RedirectResponse
+    {
+        $data = UpdateEmployeeData::validateAndCreate($request->all());
+        $action->handle($employee, $data);
+
+        return redirect()->route('backend.employees.show', $employee)
+            ->with('success', 'Cập nhật nhân viên thành công.');
+    }
+
+    public function destroy(Request $request, Employee $employee, DestroyEmployeeAction $action): RedirectResponse|JsonResponse
+    {
+        $name = $action->handle($employee);
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Đã xóa nhân viên "' . $name . '".' ]);
+        }
+
+        return redirect()->route('backend.employees.index')
+            ->with('success', 'Đã xóa nhân viên "' . $name . '".');
+    }
+}

@@ -157,6 +157,86 @@
                 </div>
             </details>
 
+            @can('viewAny', \Modules\Branch\Models\Branch::class)
+            <details {{ request()->routeIs('backend.branches.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('backend.branches.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    <span class="nav-label">Chi nhánh</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('backend.branches.index') }}" class="sub-link {{ request()->routeIs('backend.branches.index') ? 'active' : '' }}">Danh sách chi nhánh</a>
+                    @can('create', \Modules\Branch\Models\Branch::class)
+                    <a href="{{ route('backend.branches.create') }}" class="sub-link {{ request()->routeIs('backend.branches.create') ? 'active' : '' }}">Thêm chi nhánh</a>
+                    @endcan
+                </div>
+            </details>
+            @endcan
+
+            @can('viewAny', \Modules\Department\Models\Department::class)
+            <details {{ request()->routeIs('backend.departments.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('backend.departments.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                    <span class="nav-label">Phòng ban</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('backend.departments.index') }}" class="sub-link {{ request()->routeIs('backend.departments.index') ? 'active' : '' }}">Danh sách phòng ban</a>
+                    @can('create', \Modules\Department\Models\Department::class)
+                    <a href="{{ route('backend.departments.create') }}" class="sub-link {{ request()->routeIs('backend.departments.create') ? 'active' : '' }}">Thêm phòng ban</a>
+                    @endcan
+                </div>
+            </details>
+            @endcan
+
+            @can('viewAny', \Modules\JobTitle\Models\JobTitle::class)
+            <details {{ request()->routeIs('backend.job-titles.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('backend.job-titles.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/></svg>
+                    <span class="nav-label">Chức danh</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('backend.job-titles.index') }}" class="sub-link {{ request()->routeIs('backend.job-titles.index') ? 'active' : '' }}">Danh sách chức danh</a>
+                    @can('create', \Modules\JobTitle\Models\JobTitle::class)
+                    <a href="{{ route('backend.job-titles.create') }}" class="sub-link {{ request()->routeIs('backend.job-titles.create') ? 'active' : '' }}">Thêm chức danh</a>
+                    @endcan
+                </div>
+            </details>
+            @endcan
+
+            @can('viewAny', \Modules\Employee\Models\Employee::class)
+            <details {{ request()->routeIs('backend.employees.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('backend.employees.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    <span class="nav-label">Nhân viên</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('backend.employees.index') }}" class="sub-link {{ request()->routeIs('backend.employees.index') ? 'active' : '' }}">Danh sách nhân viên</a>
+                    @can('create', \Modules\Employee\Models\Employee::class)
+                    <a href="{{ route('backend.employees.create') }}" class="sub-link {{ request()->routeIs('backend.employees.create') ? 'active' : '' }}">Thêm nhân viên</a>
+                    @endcan
+                </div>
+            </details>
+            @endcan
+
+            @can('viewAny', \Modules\RoleScope\Models\UserRoleScope::class)
+            <details {{ request()->routeIs('backend.role-scopes.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('backend.role-scopes.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    <span class="nav-label">Phân quyền phạm vi</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('backend.role-scopes.index') }}" class="sub-link {{ request()->routeIs('backend.role-scopes.index') ? 'active' : '' }}">Danh sách phân quyền</a>
+                    @can('create', \Modules\RoleScope\Models\UserRoleScope::class)
+                    <a href="{{ route('backend.role-scopes.create') }}" class="sub-link {{ request()->routeIs('backend.role-scopes.create') ? 'active' : '' }}">Cấp quyền mới</a>
+                    @endcan
+                </div>
+            </details>
+            @endcan
+
         </div>
 
         <p class="section-title" style="margin-top:16px;">Tài khoản</p>
