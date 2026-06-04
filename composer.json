@@ -7,7 +7,6 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
-        "barryvdh/laravel-dompdf": "^3.1",
         "laravel/fortify": "^1.36",
         "laravel/framework": "^13.7",
         "laravel/sanctum": "^4.3",
@@ -22,6 +21,7 @@
         "spatie/laravel-activitylog": "^5.0",
         "spatie/laravel-data": "^4.23",
         "spatie/laravel-medialibrary": "^11.22",
+        "spatie/laravel-pdf": "^2.11",
         "spatie/laravel-permission": "^7.4"
     },
     "require-dev": {
