@@ -2,23 +2,48 @@
 
 namespace Modules\Sop\Repositories;
 
+use Illuminate\Cache\TaggableStore;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class SopFlowchartRepository
 {
     private const CACHE_TTL = 1800; // 30 minutes
+    private const CACHE_KEY = 'sop-flowchart';
 
     public function getFlowchartData(int $sopId): array
     {
-        return Cache::remember("sop-flowchart:{$sopId}", self::CACHE_TTL, function () use ($sopId) {
-            return $this->fetchFlowchartData($sopId);
-        });
+        return $this->store($sopId)->remember(
+            self::CACHE_KEY . ":{$sopId}",
+            self::CACHE_TTL,
+            fn () => $this->fetchFlowchartData($sopId)
+        );
     }
 
     public function invalidate(int $sopId): void
     {
-        Cache::forget("sop-flowchart:{$sopId}");
+        if ($this->supportsTagging()) {
+            Cache::tags(["sop:{$sopId}"])->flush();
+        } else {
+            Cache::forget(self::CACHE_KEY . ":{$sopId}");
+        }
+    }
+
+    private function store(int $sopId): \Illuminate\Contracts\Cache\Repository
+    {
+        if ($this->supportsTagging()) {
+            return Cache::tags(["sop:{$sopId}"]);
+        }
+        return Cache::store();
+    }
+
+    private function supportsTagging(): bool
+    {
+        try {
+            return Cache::getStore() instanceof TaggableStore;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     private function fetchFlowchartData(int $sopId): array

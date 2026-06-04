@@ -165,6 +165,14 @@ class GenerateMigration extends Command
             $this->newLine();
             $this->line('<fg=cyan>Chạy migrate:fresh...</>');
 
+            // Xóa schema dump nếu có — tránh conflict khi migrate:fresh --path load
+            // cả dump lẫn generated migrations (tạo trùng bảng)
+            $schemaDump = database_path('schema/mysql-schema.sql');
+            if (File::exists($schemaDump)) {
+                File::delete($schemaDump);
+                $this->line('<fg=yellow>  Đã xóa schema dump để tránh duplicate table.</> ');
+            }
+
             $seedOption = $this->option('seed') ? ['--seed' => true] : [];
             $exitCode   = $this->call('migrate:fresh', array_merge(
                 ['--path' => [

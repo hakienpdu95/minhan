@@ -3,8 +3,10 @@
 namespace Modules\Sop\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Modules\Sop\Actions\Backend\DestroySopStepAction;
 use Modules\Sop\Actions\Backend\StoreSopStepAction;
 use Modules\Sop\Actions\Backend\UpdateSopStepAction;
@@ -26,7 +28,13 @@ class SopStepController extends Controller
             'warning_note'        => 'nullable|string',
             'duration_minutes'    => 'nullable|integer|min:1|max:32767',
             'is_mandatory'        => 'boolean',
-            'ref_sop_id'          => 'nullable|integer|exists:sop_processes,id',
+            // BR-FC-004 + BR-FC-006: ref_sop phải approved và cùng org (not trusted from client)
+            'ref_sop_id'          => [
+                'nullable', 'integer',
+                Rule::exists('sop_processes', 'id')
+                    ->where('organization_id', TenantContext::getOrganizationId())
+                    ->where('status', 'approved'),
+            ],
             'branch_yes_position' => 'nullable|integer|min:1',
             'branch_no_position'  => 'nullable|integer|min:1',
         ]);
@@ -50,7 +58,13 @@ class SopStepController extends Controller
             'warning_note'        => 'nullable|string',
             'duration_minutes'    => 'nullable|integer|min:1|max:32767',
             'is_mandatory'        => 'boolean',
-            'ref_sop_id'          => 'nullable|integer|exists:sop_processes,id',
+            // BR-FC-004 + BR-FC-006: ref_sop phải approved và cùng org (not trusted from client)
+            'ref_sop_id'          => [
+                'nullable', 'integer',
+                Rule::exists('sop_processes', 'id')
+                    ->where('organization_id', TenantContext::getOrganizationId())
+                    ->where('status', 'approved'),
+            ],
             'branch_yes_position' => 'nullable|integer|min:1',
             'branch_no_position'  => 'nullable|integer|min:1',
         ]);

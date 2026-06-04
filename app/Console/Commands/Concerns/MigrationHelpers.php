@@ -122,10 +122,20 @@ trait MigrationHelpers
         foreach (explode(';', $colMod) as $entry) {
             $entry = trim($entry);
             if ($entry === '' || $entry === '__') continue;
+
+            // Optional named index: "col1,col2|index_name"
+            $name = null;
+            if (str_contains($entry, '|')) {
+                [$entry, $name] = explode('|', $entry, 2);
+                $entry = trim($entry);
+                $name  = trim($name);
+            }
+
             $cols    = array_map(fn($c) => "'" . trim($c) . "'", explode(',', $entry));
+            $nameArg = $name ? ", '$name'" : '';
             $lines[] = count($cols) > 1
-                ? "\$table->$method([" . implode(', ', $cols) . "]);"
-                : "\$table->$method({$cols[0]});";
+                ? "\$table->$method([" . implode(', ', $cols) . "]$nameArg);"
+                : "\$table->$method({$cols[0]}$nameArg);";
         }
     }
 

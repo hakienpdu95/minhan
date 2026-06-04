@@ -71,15 +71,6 @@ php artisan module:make Auth
 # > Đọc file docs/form-ui-spec.md và implement theo đúng spec đó, áp dụng spec này vào module PerformanceReview, fix xong không cần chạy npx vite build
 # > Áp dụng tương tự cho module RoleScope
 
-Branch
-Department
-JobTitle
-Employee
-RoleScope
-PerformanceReview
-Project
-OrgChart
-
 Dựa trên file spec/sop.md và làm phase 1 trước, implement theo đúng spec, đọc thêm file docs/module-list-pattern.md để tuân thủ đúng cấu trúc và nguyên tắc chuẩn khi thiết kế và triển khai module theo cấu trúc Advanced Vertical Slice (AVSA) + CQRS-lite + Laravel Modules + Laravel Actions, bổ sung ra mdenu sidebar để dùng, phần views hãy kế thừa và làm chuẩn @extends('layouts.backend')
 
-đọc file spec/sop.md và làm tiếp phase 14, implement theo đúng spec
+- Đọc file docs/migration-pattern.md và implement theo đúng spec đó

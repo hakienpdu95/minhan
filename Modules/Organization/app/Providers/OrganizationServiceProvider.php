@@ -52,7 +52,11 @@ class OrganizationServiceProvider extends ModuleServiceProvider
                 'permission.column_names.team_foreign_key'       => 'organization_id',
             ]);
 
-            app(PermissionRegistrar::class)->forgetCachedPermissions();
+            try {
+                app(PermissionRegistrar::class)->forgetCachedPermissions();
+            } catch (\Throwable) {
+                // Cache table may not exist yet (e.g. after db:wipe before migrate)
+            }
         });
 
         // Register middleware alias

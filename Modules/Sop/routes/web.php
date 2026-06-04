@@ -27,43 +27,42 @@ Route::middleware(['auth', 'web'])->group(function () {
         Route::post('sop/{sop}/relations', [SopRelationController::class, 'store'])->name('sop.relations.store');
         Route::delete('sop/{sop}/relations/{relation}', [SopRelationController::class, 'destroy'])->name('sop.relations.destroy');
 
-        // Step CRUD — reorder must be before {step} to avoid routing conflict
-        Route::put('sop/{sop}/steps/reorder', [SopStepReorderController::class, 'update'])->name('sop.steps.reorder');
-        Route::post('sop/{sop}/steps', [SopStepController::class, 'store'])->name('sop.steps.store');
-        Route::put('sop/{sop}/steps/{step}', [SopStepController::class, 'update'])->name('sop.steps.update');
-        Route::delete('sop/{sop}/steps/{step}', [SopStepController::class, 'destroy'])->name('sop.steps.destroy');
-
-        // Connector CRUD
-        Route::post('sop/{sop}/connectors', [SopStepConnectorController::class, 'store'])->name('sop.connectors.store');
-        Route::put('sop/{sop}/connectors/{connector}', [SopStepConnectorController::class, 'update'])->name('sop.connectors.update');
-        Route::delete('sop/{sop}/connectors/{connector}', [SopStepConnectorController::class, 'destroy'])->name('sop.connectors.destroy');
-
-        // RACI (per step)
+        // Read-only
         Route::get('sop-steps/{step}/raci', [SopStepRaciController::class, 'index'])->name('sop.steps.raci.index');
-        Route::post('sop-steps/{step}/raci', [SopStepRaciController::class, 'store'])->name('sop.steps.raci.store');
-        Route::delete('sop-steps/{step}/raci/{raci}', [SopStepRaciController::class, 'destroy'])->name('sop.steps.raci.destroy');
-
-        // Attachments (per step)
         Route::get('sop-steps/{step}/attachments', [SopStepAttachmentController::class, 'index'])->name('sop.steps.attachments.index');
-        Route::post('sop-steps/{step}/attachments', [SopStepAttachmentController::class, 'store'])->name('sop.steps.attachments.store');
-        Route::delete('sop-steps/{step}/attachments/{attachment}', [SopStepAttachmentController::class, 'destroy'])->name('sop.steps.attachments.destroy');
-
-        // User & role search (for RACI assignee picker)
+        Route::get('sop/{sop}/versions/{version}/flowchart-data', [SopVersionController::class, 'flowchartData'])->name('sop.versions.flowchart-data');
         Route::get('users/search', [SopApiController::class, 'usersSearch'])->name('users.search');
         Route::get('roles', [SopApiController::class, 'roles'])->name('roles');
 
-        // Submit review
-        Route::post('sop/{sop}/submit-review', [SopApprovalController::class, 'submitReview'])->name('sop.submit-review');
+        // Editor mutation endpoints — rate-limited: 60 requests/minute per user
+        Route::middleware('throttle:60,1')->group(function () {
+            // Step CRUD — reorder must be before {step} to avoid routing conflict
+            Route::put('sop/{sop}/steps/reorder', [SopStepReorderController::class, 'update'])->name('sop.steps.reorder');
+            Route::post('sop/{sop}/steps', [SopStepController::class, 'store'])->name('sop.steps.store');
+            Route::put('sop/{sop}/steps/{step}', [SopStepController::class, 'update'])->name('sop.steps.update');
+            Route::delete('sop/{sop}/steps/{step}', [SopStepController::class, 'destroy'])->name('sop.steps.destroy');
 
-        // Approval actions
-        Route::post('sop/approval-flows/{flow}/approve', [SopApprovalController::class, 'approve'])->name('sop.approval.approve');
-        Route::post('sop/approval-flows/{flow}/reject',  [SopApprovalController::class, 'reject'])->name('sop.approval.reject');
+            // Connector CRUD
+            Route::post('sop/{sop}/connectors', [SopStepConnectorController::class, 'store'])->name('sop.connectors.store');
+            Route::put('sop/{sop}/connectors/{connector}', [SopStepConnectorController::class, 'update'])->name('sop.connectors.update');
+            Route::delete('sop/{sop}/connectors/{connector}', [SopStepConnectorController::class, 'destroy'])->name('sop.connectors.destroy');
 
-        // Version snapshot flowchart data
-        Route::get('sop/{sop}/versions/{version}/flowchart-data', [SopVersionController::class, 'flowchartData'])->name('sop.versions.flowchart-data');
+            // RACI mutations
+            Route::post('sop-steps/{step}/raci', [SopStepRaciController::class, 'store'])->name('sop.steps.raci.store');
+            Route::delete('sop-steps/{step}/raci/{raci}', [SopStepRaciController::class, 'destroy'])->name('sop.steps.raci.destroy');
 
-        // Rollback
-        Route::post('sop/{sop}/rollback/{version}', [SopVersionController::class, 'rollback'])->name('sop.rollback');
+            // Attachment mutations
+            Route::post('sop-steps/{step}/attachments', [SopStepAttachmentController::class, 'store'])->name('sop.steps.attachments.store');
+            Route::delete('sop-steps/{step}/attachments/{attachment}', [SopStepAttachmentController::class, 'destroy'])->name('sop.steps.attachments.destroy');
+
+            // Approval workflow
+            Route::post('sop/{sop}/submit-review', [SopApprovalController::class, 'submitReview'])->name('sop.submit-review');
+            Route::post('sop/approval-flows/{flow}/approve', [SopApprovalController::class, 'approve'])->name('sop.approval.approve');
+            Route::post('sop/approval-flows/{flow}/reject',  [SopApprovalController::class, 'reject'])->name('sop.approval.reject');
+
+            // Rollback
+            Route::post('sop/{sop}/rollback/{version}', [SopVersionController::class, 'rollback'])->name('sop.rollback');
+        });
     });
 
     // ── Web (Blade) ──────────────────────────────────────────────────────────

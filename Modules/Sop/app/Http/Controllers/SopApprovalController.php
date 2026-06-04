@@ -24,6 +24,8 @@ class SopApprovalController extends Controller
      */
     public function pendingList()
     {
+        $this->authorize('viewAny', SopProcess::class);
+
         $user  = auth()->user();
         $orgId = TenantContext::getOrganizationId();
 
