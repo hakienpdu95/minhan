@@ -12,6 +12,8 @@ use Modules\Employee\Observers\EmployeeObserver;
 
 class Employee extends TenantAwareModel
 {
+    public static bool $skipHistoryTracking = false;
+
     protected $fillable = [
         'uuid',
         'organization_id',
@@ -23,17 +25,33 @@ class Employee extends TenantAwareModel
         'employee_code',
         'full_name',
         'email',
+        'personal_email',
+        'address',
         'phone',
         'gender',
         'date_of_birth',
         'national_id',
+        'national_id_issued',
         'tax_code',
+        'bank_account',
+        'bank_name',
         'locale',
         'avatar_url',
         'status',
         'employment_type',
         'hired_at',
+        'probation_end_date',
+        'contract_start',
+        'contract_end',
         'left_at',
+        'salary_base',
+        'salary_currency',
+        'work_location',
+        'emergency_contact_name',
+        'emergency_contact_phone',
+        'resigned_at',
+        'resignation_reason',
+        'notes',
         'snap_branch_name',
         'snap_dept_name',
         'snap_job_title',
@@ -43,12 +61,18 @@ class Employee extends TenantAwareModel
     ];
 
     protected $casts = [
-        'status'          => EmployeeStatus::class,
-        'employment_type' => EmploymentType::class,
-        'date_of_birth'   => 'date',
-        'hired_at'        => 'date',
-        'left_at'         => 'date',
-        'snap_job_level'  => 'integer',
+        'status'             => EmployeeStatus::class,
+        'employment_type'    => EmploymentType::class,
+        'date_of_birth'      => 'date',
+        'national_id_issued' => 'date',
+        'hired_at'           => 'date',
+        'probation_end_date' => 'date',
+        'contract_start'     => 'date',
+        'contract_end'       => 'date',
+        'left_at'            => 'date',
+        'resigned_at'        => 'date',
+        'salary_base'        => 'decimal:2',
+        'snap_job_level'     => 'integer',
     ];
 
     protected static function booted(): void
@@ -113,5 +137,19 @@ class Employee extends TenantAwareModel
     public function scopeActive($query)
     {
         return $query->where('status', EmployeeStatus::Active->value);
+    }
+
+    public function scopeWorking($query)
+    {
+        return $query->whereIn('status', [
+            EmployeeStatus::Active->value,
+            EmployeeStatus::Probation->value,
+            EmployeeStatus::OnLeave->value,
+        ]);
+    }
+
+    public function hasDirectReports(): bool
+    {
+        return $this->subordinates()->working()->exists();
     }
 }

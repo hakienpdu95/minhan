@@ -69,7 +69,31 @@ class UpdateEmployeeData extends Data
         public readonly ?string $hired_at,
 
         #[Nullable]
-        public readonly ?string $left_at,
+        public readonly ?string $probation_end_date,
+
+        #[Nullable]
+        public readonly ?string $contract_start,
+
+        #[Nullable]
+        public readonly ?string $contract_end,
+
+        #[Nullable, StringType, Max(150)]
+        public readonly ?string $personal_email,
+
+        #[Nullable, StringType, Max(20)]
+        public readonly ?string $national_id_issued,
+
+        #[Nullable, StringType, Max(20)]
+        public readonly ?string $work_location,
+
+        #[Nullable]
+        public readonly ?string $address,
+
+        #[Nullable, StringType, Max(150)]
+        public readonly ?string $emergency_contact_name,
+
+        #[Nullable, StringType, Max(20)]
+        public readonly ?string $emergency_contact_phone,
     ) {}
 
     public static function rules(): array
@@ -104,10 +128,15 @@ class UpdateEmployeeData extends Data
             'department_id' => ['required', 'integer', Rule::exists('departments', 'id')->where('organization_id', $orgId)],
             'job_title_id'  => ['nullable', 'integer', Rule::exists('job_titles', 'id')->where('organization_id', $orgId)],
             'manager_id'    => ['nullable', 'integer', Rule::exists('employees', 'id')->where('organization_id', $orgId)->ignore($currentId)],
-            'gender'        => ['nullable', 'string', 'in:male,female,other'],
-            'date_of_birth' => ['nullable', 'date'],
-            'hired_at'      => ['nullable', 'date'],
-            'left_at'       => ['nullable', 'date'],
+            'gender'               => ['nullable', 'string', 'in:male,female,other'],
+            'date_of_birth'        => ['nullable', 'date'],
+            'hired_at'             => ['nullable', 'date'],
+            'probation_end_date'   => ['nullable', 'date'],
+            'contract_start'       => ['nullable', 'date'],
+            'contract_end'         => ['nullable', 'date', 'after_or_equal:contract_start'],
+            'national_id_issued'   => ['nullable', 'date'],
+            'work_location'        => ['nullable', 'string', 'in:office,remote,hybrid'],
+            'emergency_contact_phone' => ['nullable', 'string', 'max:20'],
         ];
     }
 }

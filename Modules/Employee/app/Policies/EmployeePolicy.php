@@ -31,4 +31,24 @@ class EmployeePolicy
     {
         return $user->hasRole('System_Admin');
     }
+
+    public function transfer(User $user, Employee $employee): bool
+    {
+        return $user->hasAnyRole(['System_Admin', 'HR']);
+    }
+
+    public function offboard(User $user, Employee $employee): bool
+    {
+        return $user->hasAnyRole(['System_Admin', 'HR']);
+    }
+
+    public function viewSalary(User $user, Employee $employee): bool
+    {
+        return $user->hasAnyRole(['System_Admin', 'HR']);
+    }
+
+    public function updateSalary(User $user, Employee $employee): bool
+    {
+        return $user->hasAnyRole(['System_Admin', 'HR']);
+    }
 }

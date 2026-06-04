@@ -120,5 +120,36 @@
     [
         "assessment_results///add///__///",
         "public_token///string///64///_NULL///NULL///->unique()///Token cho phép xem kết quả công khai không cần đăng nhập"
+    ],
+    [
+        "employees///add///__///",
+        "personal_email///string///150///_NULL///NULL///__///__",
+        "address///text///__///_NULL///NULL///__///__",
+        "national_id_issued///date///__///_NULL///NULL///__///__",
+        "bank_account///string///30///_NULL///NULL///__///__",
+        "bank_name///string///100///_NULL///NULL///__///__",
+        "probation_end_date///date///__///_NULL///NULL///__///__",
+        "contract_start///date///__///_NULL///NULL///__///__",
+        "contract_end///date///__///_NULL///NULL///__///__",
+        "salary_base///decimal///15,2///_NULL///NULL///__///__",
+        "salary_currency///char///3///NOT_NULL///'VND'///__///__",
+        "work_location///string///20///_NULL///NULL///__///__",
+        "emergency_contact_name///string///150///_NULL///NULL///__///__",
+        "emergency_contact_phone///string///20///_NULL///NULL///__///__",
+        "resigned_at///date///__///_NULL///NULL///__///__",
+        "resignation_reason///text///__///_NULL///NULL///__///__",
+        "notes///text///__///_NULL///NULL///__///__"
+    ],
+    [
+        "employee_history///add///__///",
+        "old_salary_base///decimal///15,2///_NULL///NULL///__///__",
+        "new_salary_base///decimal///15,2///_NULL///NULL///__///__"
+    ],
+    [
+        "job_titles///add///__///",
+        "salary_min///decimal///15,2///_NULL///NULL///__///__",
+        "salary_max///decimal///15,2///_NULL///NULL///__///__",
+        "salary_currency///char///3///NOT_NULL///'VND'///__///__",
+        "is_manager_role///tinyInteger///__///NOT_NULL///0///__///__"
     ]
 ]

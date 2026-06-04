@@ -2,13 +2,11 @@
 
 namespace Modules\Employee\Observers;
 
+use Modules\Employee\Enums\EmployeeStatus;
+use Modules\Employee\Enums\EmploymentType;
 use Modules\Employee\Models\Employee;
 use Modules\Employee\Models\EmployeeHistory;
 
-/**
- * EmployeeObserver — cập nhật snapshot columns và ghi employee_history
- * khi branch/dept/job_title/status thay đổi.
- */
 class EmployeeObserver
 {
     public function creating(Employee $employee): void
@@ -18,23 +16,27 @@ class EmployeeObserver
 
     public function updating(Employee $employee): void
     {
-        $positionChanged = $employee->isDirty(['branch_id', 'department_id', 'job_title_id', 'manager_id', 'status', 'employment_type']);
+        $tracked = ['branch_id', 'department_id', 'job_title_id', 'manager_id', 'status', 'employment_type', 'salary_base'];
 
-        if ($positionChanged) {
+        if ($employee->isDirty($tracked)) {
             $this->refreshSnapshots($employee);
         }
     }
 
     public function updated(Employee $employee): void
     {
-        $tracked = ['branch_id', 'department_id', 'job_title_id', 'manager_id', 'status', 'employment_type'];
+        // Actions như TransferEmployeeAction / OffboardEmployeeAction tự ghi history
+        if (Employee::$skipHistoryTracking) {
+            return;
+        }
+
+        $tracked = ['branch_id', 'department_id', 'job_title_id', 'manager_id', 'status', 'employment_type', 'salary_base'];
         $changed = array_intersect($tracked, array_keys($employee->getChanges()));
 
         if (empty($changed)) {
             return;
         }
 
-        // Ghi employee_history
         EmployeeHistory::create([
             'organization_id'    => $employee->organization_id,
             'employee_id'        => $employee->id,
@@ -49,17 +51,19 @@ class EmployeeObserver
             'old_manager_id'     => $employee->getOriginal('manager_id'),
             'new_manager_id'     => $employee->manager_id,
             'old_status'         => $employee->getOriginal('status'),
-            'new_status'         => $employee->status instanceof \Modules\Employee\Enums\EmployeeStatus
+            'new_status'         => $employee->status instanceof EmployeeStatus
                                         ? $employee->status->value
                                         : $employee->status,
             'old_employment_type' => $employee->getOriginal('employment_type'),
-            'new_employment_type' => $employee->employment_type instanceof \Modules\Employee\Enums\EmploymentType
+            'new_employment_type' => $employee->employment_type instanceof EmploymentType
                                         ? $employee->employment_type->value
                                         : $employee->employment_type,
+            'old_salary_base'    => $employee->getOriginal('salary_base'),
+            'new_salary_base'    => $employee->salary_base,
             'effective_date'     => now()->toDateString(),
         ]);
 
-        // Sync users.branch_id / users.department_id nếu có liên kết user
+        // Sync users.branch_id / department_id nếu liên kết user
         if ($employee->user_id && $employee->wasChanged(['branch_id', 'department_id'])) {
             \App\Models\User::where('id', $employee->user_id)->update([
                 'branch_id'     => $employee->branch_id,
@@ -69,7 +73,7 @@ class EmployeeObserver
 
         // Vô hiệu hóa user khi resigned/terminated
         if ($employee->user_id && $employee->wasChanged('status')) {
-            $newStatus = $employee->status instanceof \Modules\Employee\Enums\EmployeeStatus
+            $newStatus = $employee->status instanceof EmployeeStatus
                 ? $employee->status->value
                 : $employee->status;
             if (in_array($newStatus, ['resigned', 'terminated'], true)) {
@@ -81,36 +85,26 @@ class EmployeeObserver
 
     private function refreshSnapshots(Employee $employee): void
     {
-        $branchName = null;
-        $deptName   = null;
-        $jobTitle   = null;
-        $jobLevel   = null;
-
         if ($employee->branch_id) {
-            $branch    = \Modules\Branch\Models\Branch::withoutTenant()->find($employee->branch_id);
-            $branchName = $branch?->name;
+            $branch = \Modules\Branch\Models\Branch::withoutTenant()->find($employee->branch_id);
+            $employee->snap_branch_name = $branch?->name;
         }
 
         if ($employee->department_id) {
-            $dept    = \Modules\Department\Models\Department::withoutTenant()->find($employee->department_id);
-            $deptName = $dept?->name;
+            $dept = \Modules\Department\Models\Department::withoutTenant()->find($employee->department_id);
+            $employee->snap_dept_name = $dept?->name;
         }
 
         if ($employee->job_title_id) {
-            $jt       = \Modules\JobTitle\Models\JobTitle::withoutTenant()->find($employee->job_title_id);
-            $jobTitle = $jt?->name;
-            $jobLevel = $jt?->level;
+            $jt = \Modules\JobTitle\Models\JobTitle::withoutTenant()->find($employee->job_title_id);
+            $employee->snap_job_title = $jt?->name;
+            $employee->snap_job_level = $jt?->level;
         }
-
-        $employee->snap_branch_name = $branchName;
-        $employee->snap_dept_name   = $deptName;
-        $employee->snap_job_title   = $jobTitle;
-        $employee->snap_job_level   = $jobLevel;
     }
 
     private function resolveChangeType(Employee $employee, array $changed): string
     {
-        $newStatus = $employee->status instanceof \Modules\Employee\Enums\EmployeeStatus
+        $newStatus = $employee->status instanceof EmployeeStatus
             ? $employee->status->value
             : $employee->status;
 
@@ -118,10 +112,15 @@ class EmployeeObserver
             return match ($newStatus) {
                 'on_leave'   => 'leave',
                 'active'     => 'return_from_leave',
+                'probation'  => 'hire',
                 'resigned'   => 'resign',
                 'terminated' => 'terminate',
-                default      => 'status_change',
+                default      => 'dept_transfer',
             };
+        }
+
+        if (in_array('salary_base', $changed) && !in_array('job_title_id', $changed) && !in_array('department_id', $changed)) {
+            return 'salary_change';
         }
 
         if (in_array('department_id', $changed)) {
@@ -135,9 +134,7 @@ class EmployeeObserver
         if (in_array('job_title_id', $changed)) {
             $oldLevel = $employee->getOriginal('snap_job_level') ?? 0;
             $newLevel = $employee->snap_job_level ?? 0;
-            if ($newLevel > $oldLevel) return 'promotion';
-            if ($newLevel < $oldLevel) return 'demotion';
-            return 'promotion';
+            return $newLevel >= $oldLevel ? 'promotion' : 'demotion';
         }
 
         if (in_array('manager_id', $changed)) {

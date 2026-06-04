@@ -2,598 +2,942 @@
 
 > **Hệ thống:** SaaS SME
 > **Module:** Workforce Center
-> **Phiên bản:** 3.0.0
-> **Ngày:** 2026-06-03
-> **Stack:** Laravel 11 · MySQL 8+ / PostgreSQL 15+
+> **Phiên bản:** 2.0.0 (system-aligned)
+> **Ngày:** 2026-06-04
+> **Stack:** Laravel 13 · PHP 8.4 · SQLite (dev) / configurable prod
+> **Pattern:** AVSA + CQRS-lite (NWIDART Modules)
 
 ---
 
 ## Mục lục
 
 1. [Tổng quan](#1-tổng-quan)
-2. [Phạm vi](#2-phạm-vi)
-3. [Enum Values](#3-enum-values)
-4. [ERD](#4-erd)
-5. [Đặc tả bảng dữ liệu](#5-đặc-tả-bảng-dữ-liệu)
-6. [Luồng nghiệp vụ](#6-luồng-nghiệp-vụ)
-7. [Query Patterns](#7-query-patterns)
-8. [API Endpoints](#8-api-endpoints)
-9. [Business Rules](#9-business-rules)
-10. [Indexes & Caching](#10-indexes--caching)
-11. [Lộ trình triển khai](#11-lộ-trình-triển-khai)
+2. [So sánh spec gốc vs hệ thống](#2-so-sánh-spec-gốc-vs-hệ-thống)
+3. [Kiến trúc module](#3-kiến-trúc-module)
+4. [Enum Values](#4-enum-values)
+5. [ERD](#5-erd)
+6. [Thay đổi schema](#6-thay-đổi-schema)
+7. [Business Rules](#7-business-rules)
+8. [AVSA Module Map](#8-avsa-module-map)
+9. [Luồng nghiệp vụ](#9-luồng-nghiệp-vụ)
+10. [Query Patterns](#10-query-patterns)
+11. [API Endpoints](#11-api-endpoints)
+12. [Indexes](#12-indexes)
+13. [Lộ trình triển khai](#13-lộ-trình-triển-khai)
 
 ---
 
 ## 1. Tổng quan
 
-**Workforce Center** quản lý nhân sự trong doanh nghiệp SME gồm 3 sub-module chính, tích hợp với bảng `departments` và `users` sẵn có của hệ thống.
+**Workforce Center** quản lý nhân sự trong doanh nghiệp SME gồm 3 sub-module chính. Spec này được điều chỉnh hoàn toàn theo kiến trúc hệ thống hiện tại: BIGINT PK, TenantAwareModel, NWIDART Modules, AVSA+CQRS-lite.
 
-| Sub-module | Chức năng cốt lõi |
-|---|---|
-| **Quản lý nhân viên** | Hồ sơ, vị trí, hợp đồng, lịch sử thay đổi |
-| **Quản lý nghỉ phép** | Policy, balance, đơn xin nghỉ, duyệt |
-| **Quản lý mục tiêu KPI** | Thiết lập mục tiêu, đo lường tự động từ Project module, tính điểm |
+| Sub-module | NWIDART Module | Trạng thái | Chức năng cốt lõi |
+|---|---|---|---|
+| **Nhân viên** | `Modules/Employee` | Đã có, cần mở rộng | Hồ sơ, hợp đồng, lịch sử, salary |
+| **Nghỉ phép** | `Modules/Leave` | Tạo mới | Policy, balance, đơn xin nghỉ, duyệt |
+| **KPI Goals** | `Modules/KpiGoal` | Tạo mới | Thiết lập mục tiêu, tiến độ thủ công, snapshot cuối kỳ |
 
-### Người dùng
+### Người dùng và quyền
 
 | Vai trò | Quyền |
 |---|---|
-| **HR Admin** | Toàn quyền 3 sub-module |
-| **Manager** | Xem direct reports; duyệt nghỉ phép; đặt KPI cho nhân viên trong team |
+| **HR Admin** | Toàn quyền 3 sub-module; xem salary/bank |
+| **Manager** | Xem direct reports; duyệt nghỉ phép; đặt/duyệt KPI cho nhân viên trong team |
 | **Employee** | Xem hồ sơ bản thân; đăng ký nghỉ; xem tiến độ KPI của mình |
 
----
+### Phạm vi
 
-## 2. Phạm vi
-
-### Trong phạm vi
-
-- Hồ sơ nhân viên: thông tin cơ bản, hợp đồng, lịch sử thay đổi vị trí/lương (immutable)
-- Vị trí/chức danh với salary band, liên kết phòng ban sẵn có
-- Chính sách nghỉ phép theo org hoặc override theo vị trí
-- Balance nghỉ phép: entitled, used, pending, carried-over
-- Luồng duyệt đơn nghỉ theo manager chain
-- Mục tiêu KPI cá nhân: manual hoặc tự động từ `KPI_METRIC` / task của Project module
+**Trong phạm vi:**
+- Mở rộng hồ sơ nhân viên: hợp đồng, salary, thông tin cá nhân bổ sung, lịch sử thay đổi vị trí/lương (immutable)
+- Salary band trên `job_titles` (mở rộng bảng JobTitle có sẵn)
+- Chính sách nghỉ phép theo org hoặc override theo chức danh/phòng ban
+- Balance nghỉ phép: entitled, used, pending, carried-over, adjusted
+- Luồng duyệt đơn nghỉ theo manager chain (atomic transaction)
+- Mục tiêu KPI cá nhân thủ công (Phase 3A), auto-sync từ Project module (Phase 3B — defer)
 - Điểm KPI tổng hợp theo trọng số, snapshot bất biến cuối kỳ
 
-### Ngoài phạm vi
-
-- Payroll & bảng lương
-- Tuyển dụng
+**Ngoài phạm vi:**
+- Payroll & bảng lương chi tiết
+- Tuyển dụng / ATS
 - Chấm công / timekeeping
 - Competency framework & performance review cycle
 - Learning & Development
+- KPI auto-sync từ Project module (defer đến Phase 3B khi Project module ổn định)
 
 ---
 
-## 3. Enum Values
+## 2. So sánh spec gốc vs hệ thống
 
-### WK_EMPLOYEE
-
-| Trường | Giá trị |
-|---|---|
-| `employment_type` | `full_time` \| `part_time` \| `contractor` \| `intern` \| `probation` |
-| `status` | `active` \| `probation` \| `on_leave` \| `resigned` \| `terminated` |
-| `gender` | `male` \| `female` \| `other` |
-
-### WK_POSITION_HISTORY
-
-| Trường | Giá trị |
-|---|---|
-| `change_type` | `hire` \| `promotion` \| `transfer` \| `demotion` \| `salary_change` \| `separation` |
-
-### WK_LEAVE_POLICY
-
-| Trường | Giá trị |
-|---|---|
-| `leave_type` | `annual` \| `sick` \| `maternity` \| `paternity` \| `unpaid` \| `compensatory` \| `bereavement` \| `other` |
-
-### WK_TIMEOFF
-
-| Trường | Giá trị |
-|---|---|
-| `status` | `pending` \| `approved` \| `rejected` \| `cancelled` |
-
-### WK_KPI_GOAL
-
-| Trường | Giá trị |
-|---|---|
-| `goal_type` | `manual` \| `linked_kpi` \| `linked_tasks` |
-| `status` | `draft` \| `active` \| `completed` \| `cancelled` |
-| `aggregation_type` | `latest` \| `sum` \| `avg` \| `percentage` |
-| `direction` | `higher_better` \| `lower_better` |
+| Hạng mục | Spec gốc v3 | Hệ thống hiện tại | Quyết định |
+|---|---|---|---|
+| **PK** | UUID (`gen_random_uuid()`) | BIGINT auto-increment + cột `uuid` secondary unique | **Dùng BIGINT PK** — giữ pattern hệ thống |
+| **Bảng `wk_positions`** | Bảng riêng với `salary_min/max`, `level` 1-5 | Đã có `job_titles` với `level` 1-20, `category` | **Mở rộng `job_titles`** — thêm `salary_min/max/currency`, `is_manager_role` |
+| **`department_id` trên position** | Có trên `wk_positions` | `job_titles` là org-wide (không gắn dept) | **Bỏ** — job_title scope là org, không phải dept |
+| **`employment_type`** | `full_time/part_time/contractor/intern/probation` | `full_time/part_time/contract/intern` (thiếu `probation`, sai `contractor`) | **Đổi** `contract` → `contractor`, **thêm** `probation` |
+| **`status`** | `active/probation/on_leave/resigned/terminated` | `active/on_leave/resigned/terminated` (thiếu `probation`) | **Thêm** `probation` vào enum |
+| **History table** | `wk_position_history` mới | `employee_history` đã có với old_*/new_* pairs | **Mở rộng** `employee_history` — thêm `old_salary_base/new_salary_base`, `salary_change` change_type |
+| **`employees.salary_base`** | Có | Không có | **Thêm migration** ALTER TABLE employees |
+| **Bảng Leave** | `wk_leave_policies`, `wk_leave_balances`, `wk_timeoffs` | Không tồn tại | **Tạo mới** trong Leave module |
+| **`leave_policies.position_id`** | FK → `wk_positions` | Không có `wk_positions` | **Đổi thành `job_title_id`** FK → `job_titles` |
+| **Bảng KPI** | `wk_kpi_goals`, `wk_kpi_sources`, `wk_kpi_snapshots` | `performance_reviews` (stub), không có kpi_goals | **Tạo mới** trong KpiGoal module |
+| **KPI auto-sync** | Phase 3 — KpiEntryObserver + TaskObserver | Project module chỉ là stub | **Defer** toàn bộ auto-sync sang Phase 3B |
+| **Partial index syntax** | MySQL/PostgreSQL `WHERE` clause | SQLite dev không hỗ trợ partial index | **Dùng index tiêu chuẩn** thay thế |
+| **`wk_timeoffs.approved_by`** | FK UUID | Cần FK → `employees.id` (BIGINT) | **FK BIGINT** → `employees.id` |
+| **`kpi_snapshots` — 1 row per goal** | `UNIQUE(goal_id)` | — | **Giữ** — 1 snapshot per goal per cycle close |
+| **`FILTER` trong GROUP BY** | PostgreSQL syntax | SQLite/MySQL không hỗ trợ | **Đổi thành** `SUM(CASE WHEN ... THEN 1 ELSE 0 END)` |
 
 ---
 
-## 4. ERD
+## 3. Kiến trúc module
 
 ```
-[users] ──1:1──► WK_EMPLOYEE
-                      │
-          ┌───────────┼────────────────────┐
-          │           │                    │
-         1:N         1:N                  1:N
-          │           │                    │
-          ▼           ▼                    ▼
-  WK_POSITION_   WK_TIMEOFF          WK_KPI_GOAL
-  HISTORY        └─FK─► WK_LEAVE_    └─FK─► WK_KPI_SOURCE
-                        BALANCE      └─FK─► WK_KPI_SNAPSHOT
-                        └─FK─► WK_LEAVE_POLICY
+Modules/
+├── Employee/          ← đã có — mở rộng thêm fields + actions
+│   ├── Enums/
+│   │   ├── EmployeeStatus.php      (thêm Probation)
+│   │   └── EmploymentType.php      (thêm Probation, đổi Contract→Contractor)
+│   ├── Actions/
+│   │   ├── StoreEmployeeAction.php (đã có)
+│   │   ├── UpdateEmployeeAction.php (đã có)
+│   │   ├── TransferEmployeeAction.php  ← mới
+│   │   └── OffboardEmployeeAction.php  ← mới
+│   ├── Data/
+│   │   ├── StoreEmployeeData.php   (đã có)
+│   │   ├── UpdateEmployeeData.php  (đã có)
+│   │   └── EmployeeSalaryData.php  ← mới (HR-only fields)
+│   └── database/migrations/
+│       ├── ...alter_employees_add_contract_salary_fields.php  ← mới
+│       ├── ...alter_job_titles_add_salary_band.php            ← mới
+│       └── ...alter_employee_history_add_salary_columns.php   ← mới
+│
+├── Leave/             ← tạo mới: php artisan module:make Leave
+│   ├── Models/
+│   │   ├── LeavePolicy.php
+│   │   ├── LeaveBalance.php
+│   │   └── LeaveRequest.php
+│   ├── Enums/
+│   │   ├── LeaveType.php
+│   │   └── LeaveRequestStatus.php
+│   ├── Actions/
+│   │   ├── StoreLeavePolicyAction.php
+│   │   ├── UpdateLeavePolicyAction.php
+│   │   ├── StoreLeaveRequestAction.php   ← atomic: insert + balance.pending+=
+│   │   ├── ApproveLeaveAction.php        ← pending→approved, balance sync
+│   │   ├── RejectLeaveAction.php         ← pending−, balance hoàn
+│   │   └── CancelLeaveRequestAction.php
+│   ├── Queries/
+│   │   ├── ListLeaveRequestsQuery.php
+│   │   ├── ListLeaveRequestsHandler.php
+│   │   ├── ListPendingApprovalQuery.php
+│   │   └── ListPendingApprovalHandler.php
+│   ├── Observers/
+│   │   └── LeaveRequestObserver.php
+│   └── Policies/
+│       ├── LeavePolicyPolicy.php
+│       └── LeaveRequestPolicy.php
+│
+└── KpiGoal/           ← tạo mới: php artisan module:make KpiGoal
+    ├── Models/
+    │   ├── KpiGoal.php
+    │   ├── KpiSnapshot.php       ← Phase 3A
+    │   └── KpiSource.php         ← Phase 3B
+    ├── Enums/
+    │   ├── KpiGoalType.php       (manual | linked_source)
+    │   ├── KpiGoalStatus.php     (draft | active | completed | cancelled)
+    │   └── KpiDirection.php      (higher_better | lower_better)
+    ├── Actions/
+    │   ├── StoreKpiGoalAction.php
+    │   ├── UpdateKpiGoalAction.php
+    │   ├── ApproveKpiGoalAction.php     ← validate weight sum
+    │   ├── UpdateKpiProgressAction.php  ← manual current_value + recalc achievement_pct
+    │   └── CloseKpiCycleAction.php      ← sync + INSERT kpi_snapshots + mark completed
+    ├── Queries/
+    │   ├── ListKpiGoalsQuery.php
+    │   ├── ListKpiGoalsHandler.php
+    │   ├── KpiLeaderboardQuery.php
+    │   └── KpiLeaderboardHandler.php
+    ├── Observers/
+    │   └── KpiGoalObserver.php          ← recalc achievement_pct on current_value change
+    └── Policies/
+        └── KpiGoalPolicy.php
+```
 
+---
 
-[departments] (existing)
-      │
-     1:N
-      ▼
-WK_POSITION
-      │
-     1:N
-      ▼
-WK_EMPLOYEE
+## 4. Enum Values
 
+### Module Employee
 
-Tham chiếu cross-module (không FK cứng, dùng polymorphic):
-WK_KPI_SOURCE.source_id → kpi_metrics.id  (Project module)
-WK_KPI_SOURCE.source_id → projects.id     (Project module)
+| Trường | Giá trị hiện tại | Giá trị sau cập nhật |
+|---|---|---|
+| `employees.status` | `active / on_leave / resigned / terminated` | `active / **probation** / on_leave / resigned / terminated` |
+| `employees.employment_type` | `full_time / part_time / **contract** / intern` | `full_time / part_time / **contractor** / **probation** / intern` |
+| `employee_history.change_type` | `hire / branch_transfer / dept_transfer / promotion / demotion / manager_change / leave / return_from_leave / resign / terminate` | thêm `**salary_change** / **separation**` |
+
+### Module Leave
+
+| Enum | Giá trị |
+|---|---|
+| `LeaveType` | `annual / sick / maternity / paternity / unpaid / compensatory / bereavement / other` |
+| `LeaveRequestStatus` | `pending / approved / rejected / cancelled` |
+
+### Module KpiGoal
+
+| Enum | Giá trị |
+|---|---|
+| `KpiGoalType` | `manual` (Phase 3A) · `linked_source` (Phase 3B) |
+| `KpiGoalStatus` | `draft / active / completed / cancelled` |
+| `KpiDirection` | `higher_better / lower_better` |
+| `KpiAggregationType` *(Phase 3B)* | `latest / sum / avg / percentage` |
+| `KpiSourceType` *(Phase 3B)* | `project_tasks` (extend later) |
+| `KpiDateRangeType` *(Phase 3B)* | `cycle_period / rolling_30d / rolling_90d` |
+
+---
+
+## 5. ERD
+
+```
+[organizations] ─── 1:N ──► [branches]
+                    1:N ──► [departments]
+                    1:N ──► [job_titles]  ← mở rộng salary band
+                    1:N ──► [employees]
+                                │
+              ┌─────────────────┼────────────────────┐
+              │                 │                    │
+             1:N               1:N                  1:N
+              │                 │                    │
+              ▼                 ▼                    ▼
+     [employee_history]   [leave_requests]     [kpi_goals]
+     (immutable)          └─FK─► [leave_balances]   └─FK─► [kpi_snapshots]
+                          └─FK─► [leave_policies]   └─FK─► [kpi_sources] (Phase 3B)
+
+[employees] self-ref: manager_id → employees.id
+[kpi_goals] self-ref: parent_goal_id → kpi_goals.id (OKR)
+
+Cross-module (polymorphic — không FK cứng):
+kpi_sources.source_id → projects.id  (Project module — Phase 3B)
 ```
 
 ### Quan hệ tổng hợp
 
 | Bảng A | Quan hệ | Bảng B | Ghi chú |
 |---|---|---|---|
-| WK_EMPLOYEE | 1:1 | users | user_id — tài khoản |
-| WK_EMPLOYEE | N:1 | WK_POSITION | Vị trí hiện tại |
-| WK_EMPLOYEE | N:1 | departments | Phòng ban (bảng sẵn có) |
-| WK_EMPLOYEE | N:1 | WK_EMPLOYEE (self) | manager_id |
-| WK_EMPLOYEE | 1:N | WK_POSITION_HISTORY | Audit trail — immutable |
-| WK_EMPLOYEE | 1:N | WK_TIMEOFF | Đơn nghỉ phép |
-| WK_EMPLOYEE | 1:N | WK_KPI_GOAL | Mục tiêu KPI |
-| WK_POSITION | 1:N | WK_LEAVE_POLICY | Override policy theo vị trí |
-| WK_LEAVE_POLICY | 1:N | WK_LEAVE_BALANCE | Balance per nhân viên/năm |
-| WK_LEAVE_BALANCE | 1:N | WK_TIMEOFF | Đơn dùng balance này |
-| WK_KPI_GOAL | 1:1 | WK_KPI_SOURCE | Cấu hình nguồn đo tự động |
-| WK_KPI_GOAL | 1:N | WK_KPI_SNAPSHOT | Snapshot bất biến cuối kỳ |
+| `employees` | N:1 | `job_titles` | `job_title_id` — salary band từ job_title |
+| `employees` | N:1 | `departments` | `department_id` |
+| `employees` | N:1 | `branches` | `branch_id` |
+| `employees` | N:1 | `employees` (self) | `manager_id` |
+| `employees` | 1:N | `employee_history` | Audit trail — immutable INSERT only |
+| `employees` | 1:N | `leave_requests` | Đơn nghỉ phép |
+| `employees` | 1:N | `kpi_goals` | Mục tiêu KPI |
+| `leave_policies` | 1:N | `leave_balances` | Balance per employee/year |
+| `leave_balances` | 1:N | `leave_requests` | Đơn dùng balance này |
+| `kpi_goals` | 1:1 | `kpi_sources` | Cấu hình nguồn đo (Phase 3B) |
+| `kpi_goals` | 1:N | `kpi_snapshots` | Snapshot bất biến cuối kỳ |
 
 ---
 
-## 5. Đặc tả bảng dữ liệu
+## 6. Thay đổi schema
 
-### 5.1 WK_POSITION — Vị trí / Chức danh
+> **Quy ước:**
+> - Bảng đã có → viết dưới dạng `ALTER TABLE` (migration trong module hiện tại)
+> - Bảng mới → viết dưới dạng `CREATE TABLE` (migration trong module mới)
+> - PK: BIGINT AUTO_INCREMENT (SQLite: INTEGER PRIMARY KEY AUTOINCREMENT)
+> - Cột `uuid` secondary unique — thêm theo pattern hệ thống nếu bảng mới
 
-| Trường | Kiểu | Null | Key | Default | Mô tả |
-|---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | |
-| `org_id` | UUID | NOT NULL | FK, INDEX | | FK → organizations.id |
-| `department_id` | UUID | NULL | FK | NULL | FK → departments.id, NULL = cross-dept |
-| `name` | VARCHAR(150) | NOT NULL | | | "Senior Software Engineer" |
-| `code` | VARCHAR(30) | NOT NULL | UNIQUE(org_id) | | SSE-L4 |
-| `level` | SMALLINT | NOT NULL | | 1 | 1 (junior) → 5 (director+) |
-| `salary_min` | DECIMAL(15,2) | NULL | | NULL | |
-| `salary_max` | DECIMAL(15,2) | NULL | | NULL | |
-| `salary_currency` | CHAR(3) | NOT NULL | | `VND` | |
-| `is_manager_role` | BOOLEAN | NOT NULL | | FALSE | |
-| `is_active` | BOOLEAN | NOT NULL | | TRUE | |
-| `created_by` | UUID | NOT NULL | FK | | |
-| `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
-| `updated_at` | TIMESTAMP | NOT NULL | | NOW() | |
+---
+
+### 6.1 Mở rộng `job_titles` — salary band
 
 ```sql
-CREATE UNIQUE INDEX idx_wk_pos_code ON wk_positions(org_id, code);
-CREATE INDEX idx_wk_pos_dept       ON wk_positions(department_id, is_active);
+-- Migration: alter_job_titles_add_salary_band_and_manager_role
+ALTER TABLE job_titles
+    ADD COLUMN salary_min      DECIMAL(15,2) NULL        DEFAULT NULL,
+    ADD COLUMN salary_max      DECIMAL(15,2) NULL        DEFAULT NULL,
+    ADD COLUMN salary_currency CHAR(3)       NOT NULL    DEFAULT 'VND',
+    ADD COLUMN is_manager_role TINYINT(1)    NOT NULL    DEFAULT 0;
+```
+
+**Ràng buộc logic (app layer):** `salary_min <= salary_max` khi cả hai không NULL.
+
+---
+
+### 6.2 Mở rộng `employees` — hợp đồng, lương, thông tin cá nhân
+
+```sql
+-- Migration: alter_employees_add_contract_salary_personal_fields
+ALTER TABLE employees
+    -- Thông tin cá nhân bổ sung
+    ADD COLUMN personal_email            VARCHAR(150)   NULL DEFAULT NULL,
+    ADD COLUMN address                   TEXT           NULL DEFAULT NULL,
+    ADD COLUMN national_id_issued        DATE           NULL DEFAULT NULL,
+    ADD COLUMN bank_account              VARCHAR(30)    NULL DEFAULT NULL,
+    ADD COLUMN bank_name                 VARCHAR(100)   NULL DEFAULT NULL,
+    -- Hợp đồng / trạng thái
+    ADD COLUMN probation_end_date        DATE           NULL DEFAULT NULL,
+    ADD COLUMN contract_start            DATE           NULL DEFAULT NULL,
+    ADD COLUMN contract_end              DATE           NULL DEFAULT NULL   COMMENT 'NULL = không thời hạn',
+    -- Lương
+    ADD COLUMN salary_base               DECIMAL(15,2)  NULL DEFAULT NULL,
+    ADD COLUMN salary_currency           CHAR(3)        NOT NULL DEFAULT 'VND',
+    -- Vị trí làm việc
+    ADD COLUMN work_location             VARCHAR(20)    NULL DEFAULT NULL   COMMENT 'office | remote | hybrid',
+    -- Liên hệ khẩn cấp
+    ADD COLUMN emergency_contact_name    VARCHAR(150)   NULL DEFAULT NULL,
+    ADD COLUMN emergency_contact_phone   VARCHAR(20)    NULL DEFAULT NULL,
+    -- Thôi việc
+    ADD COLUMN resigned_at               DATE           NULL DEFAULT NULL,
+    ADD COLUMN resignation_reason        TEXT           NULL DEFAULT NULL,
+    -- Ghi chú nội bộ HR (ẩn với Employee role)
+    ADD COLUMN notes                     TEXT           NULL DEFAULT NULL;
+```
+
+**Cập nhật Enum tại app layer (PHP):**
+
+```php
+// Modules/Employee/Enums/EmployeeStatus.php
+enum EmployeeStatus: string {
+    case Active     = 'active';
+    case Probation  = 'probation';   // thêm mới
+    case OnLeave    = 'on_leave';
+    case Resigned   = 'resigned';
+    case Terminated = 'terminated';
+}
+
+// Modules/Employee/Enums/EmploymentType.php
+enum EmploymentType: string {
+    case FullTime   = 'full_time';
+    case PartTime   = 'part_time';
+    case Contractor = 'contractor';  // đổi từ 'contract'
+    case Probation  = 'probation';   // thêm mới
+    case Intern     = 'intern';
+}
+```
+
+**Index bổ sung:**
+
+```sql
+CREATE INDEX idx_employees_contract_end
+    ON employees (organization_id, contract_end, status);
+
+CREATE INDEX idx_employees_status_dept
+    ON employees (organization_id, department_id, status);
 ```
 
 ---
 
-### 5.2 WK_EMPLOYEE — Hồ sơ nhân viên
-
-Bảng trung tâm. FK sang `users` (auth), `departments` (existing), `wk_positions`.
-Thông tin nhạy cảm (lương, bank) chỉ HR Admin truy cập được — kiểm soát bằng policy.
-
-| Trường | Kiểu | Null | Key | Default | Mô tả |
-|---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | |
-| `user_id` | UUID | NOT NULL | FK, UNIQUE | | FK → users.id |
-| `org_id` | UUID | NOT NULL | FK, INDEX | | |
-| `position_id` | UUID | NOT NULL | FK | | Vị trí hiện tại |
-| `department_id` | UUID | NOT NULL | FK | | FK → departments.id |
-| `manager_id` | UUID | NULL | FK self | NULL | Manager trực tiếp |
-| `employee_code` | VARCHAR(30) | NOT NULL | UNIQUE(org_id) | | NV-001 — bất biến sau tạo |
-| `full_name` | VARCHAR(150) | NOT NULL | | | Denormalized từ users |
-| `date_of_birth` | DATE | NULL | | NULL | |
-| `gender` | ENUM | NULL | | NULL | |
-| `phone` | VARCHAR(20) | NULL | | NULL | |
-| `personal_email` | VARCHAR(150) | NULL | | NULL | |
-| `address` | TEXT | NULL | | NULL | |
-| `national_id` | VARCHAR(20) | NULL | | NULL | CMND/CCCD |
-| `national_id_issued` | DATE | NULL | | NULL | |
-| `tax_code` | VARCHAR(20) | NULL | | NULL | |
-| `bank_account` | VARCHAR(30) | NULL | | NULL | |
-| `bank_name` | VARCHAR(100) | NULL | | NULL | |
-| `join_date` | DATE | NOT NULL | INDEX | | |
-| `probation_end_date` | DATE | NULL | | NULL | |
-| `employment_type` | ENUM | NOT NULL | INDEX | `probation` | |
-| `status` | ENUM | NOT NULL | INDEX | `probation` | |
-| `contract_start` | DATE | NULL | | NULL | |
-| `contract_end` | DATE | NULL | INDEX | NULL | NULL = không thời hạn |
-| `salary_base` | DECIMAL(15,2) | NULL | | NULL | |
-| `salary_currency` | CHAR(3) | NOT NULL | | `VND` | |
-| `work_location` | VARCHAR(50) | NULL | | NULL | office \| remote \| hybrid |
-| `avatar_url` | TEXT | NULL | | NULL | |
-| `emergency_contact_name` | VARCHAR(150) | NULL | | NULL | |
-| `emergency_contact_phone` | VARCHAR(20) | NULL | | NULL | |
-| `resigned_at` | DATE | NULL | | NULL | |
-| `resignation_reason` | TEXT | NULL | | NULL | |
-| `notes` | TEXT | NULL | | NULL | Ghi chú nội bộ HR |
-| `created_by` | UUID | NOT NULL | FK | | |
-| `updated_by` | UUID | NULL | FK | NULL | |
-| `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
-| `updated_at` | TIMESTAMP | NOT NULL | | NOW() | |
+### 6.3 Mở rộng `employee_history` — salary snapshot
 
 ```sql
-CREATE UNIQUE INDEX idx_wk_emp_user       ON wk_employees(user_id);
-CREATE UNIQUE INDEX idx_wk_emp_code       ON wk_employees(org_id, employee_code);
-CREATE INDEX idx_wk_emp_dept              ON wk_employees(department_id, status);
-CREATE INDEX idx_wk_emp_manager           ON wk_employees(manager_id);
-CREATE INDEX idx_wk_emp_position          ON wk_employees(position_id, status);
-CREATE INDEX idx_wk_emp_contract_alert    ON wk_employees(org_id, contract_end, status)
-  WHERE contract_end IS NOT NULL AND status = 'active';
-CREATE FULLTEXT INDEX idx_wk_emp_search   ON wk_employees(full_name, employee_code);
+-- Migration: alter_employee_history_add_salary_columns
+ALTER TABLE employee_history
+    ADD COLUMN old_salary_base DECIMAL(15,2) NULL DEFAULT NULL,
+    ADD COLUMN new_salary_base DECIMAL(15,2) NULL DEFAULT NULL;
+```
+
+**Cập nhật Enum `change_type` tại app layer:**
+
+```php
+// Modules/Employee/Enums/EmployeeHistoryChangeType.php
+enum EmployeeHistoryChangeType: string {
+    case Hire            = 'hire';
+    case BranchTransfer  = 'branch_transfer';
+    case DeptTransfer    = 'dept_transfer';
+    case Promotion       = 'promotion';
+    case Demotion        = 'demotion';
+    case ManagerChange   = 'manager_change';
+    case SalaryChange    = 'salary_change';    // thêm mới
+    case Leave           = 'leave';
+    case ReturnFromLeave = 'return_from_leave';
+    case Resign          = 'resign';
+    case Terminate       = 'terminate';
+    case Separation      = 'separation';       // thêm mới (tổng hợp offboard)
+}
 ```
 
 ---
 
-### 5.3 WK_POSITION_HISTORY — Lịch sử vị trí (immutable)
-
-**Chỉ INSERT — không UPDATE, không DELETE.** Mọi thay đổi về vị trí, phòng ban, lương đều tạo row mới.
-
-| Trường | Kiểu | Null | Key | Default | Mô tả |
-|---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | |
-| `employee_id` | UUID | NOT NULL | FK, INDEX | | |
-| `position_id` | UUID | NOT NULL | FK | | Snapshot vị trí |
-| `department_id` | UUID | NOT NULL | FK | | Snapshot phòng ban |
-| `manager_id` | UUID | NULL | FK | NULL | Snapshot manager |
-| `change_type` | ENUM | NOT NULL | | | hire \| promotion \| transfer \| demotion \| salary_change \| separation |
-| `effective_date` | DATE | NOT NULL | INDEX | | |
-| `salary_base` | DECIMAL(15,2) | NULL | | NULL | Snapshot lương |
-| `change_reason` | TEXT | NULL | | NULL | |
-| `changed_by` | UUID | NOT NULL | FK | | |
-| `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
+### 6.4 Bảng mới: `leave_policies` — Module Leave
 
 ```sql
-CREATE INDEX idx_wk_hist_emp ON wk_position_histories(employee_id, effective_date DESC);
+CREATE TABLE leave_policies (
+    id                   INTEGER       PRIMARY KEY AUTOINCREMENT,
+    uuid                 VARCHAR(36)   NOT NULL UNIQUE,
+    organization_id      BIGINT        NOT NULL REFERENCES organizations(id),
+    leave_type           VARCHAR(20)   NOT NULL,
+        -- annual | sick | maternity | paternity | unpaid | compensatory | bereavement | other
+    name                 VARCHAR(100)  NOT NULL,
+    days_per_year        DECIMAL(5,1)  NOT NULL,
+    carry_over_days      DECIMAL(5,1)  NOT NULL DEFAULT 0,
+    min_advance_days     SMALLINT      NOT NULL DEFAULT 1,
+    max_consecutive_days SMALLINT      NULL     DEFAULT NULL,
+    requires_approval    TINYINT(1)   NOT NULL DEFAULT 1,
+    job_title_id         BIGINT        NULL     DEFAULT NULL REFERENCES job_titles(id),
+        -- NULL = áp dụng org-level; set = override cho chức danh này
+    department_id        BIGINT        NULL     DEFAULT NULL REFERENCES departments(id),
+        -- NULL = áp dụng org-level; set = override cho phòng ban này
+        -- Ưu tiên: job_title_id > department_id > (cả hai NULL = org default)
+    effective_from       DATE          NOT NULL,
+    is_active            TINYINT(1)   NOT NULL DEFAULT 1,
+    created_by           BIGINT        NOT NULL REFERENCES users(id),
+    created_at           TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at           TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Unique constraint: một loại nghỉ chỉ có 1 policy active per scope
+CREATE UNIQUE INDEX idx_leave_policies_scope
+    ON leave_policies (organization_id, leave_type, job_title_id, department_id);
+
+CREATE INDEX idx_leave_policies_org_type
+    ON leave_policies (organization_id, leave_type, is_active);
+```
+
+**Quy tắc ưu tiên policy (app layer):**
+1. `job_title_id = employee.job_title_id` → ưu tiên cao nhất
+2. `department_id = employee.department_id` AND `job_title_id IS NULL`
+3. `job_title_id IS NULL` AND `department_id IS NULL` → org default
+
+---
+
+### 6.5 Bảng mới: `leave_balances` — Module Leave
+
+```sql
+CREATE TABLE leave_balances (
+    id            INTEGER      PRIMARY KEY AUTOINCREMENT,
+    employee_id   BIGINT       NOT NULL REFERENCES employees(id),
+    policy_id     BIGINT       NOT NULL REFERENCES leave_policies(id),
+    leave_type    VARCHAR(20)  NOT NULL,   -- denormalized từ policy, tránh JOIN khi query
+    year          SMALLINT     NOT NULL,
+    entitled_days DECIMAL(5,1) NOT NULL,
+    used_days     DECIMAL(5,1) NOT NULL DEFAULT 0,
+    pending_days  DECIMAL(5,1) NOT NULL DEFAULT 0,
+    carried_over  DECIMAL(5,1) NOT NULL DEFAULT 0,
+    adjusted      DECIMAL(5,1) NOT NULL DEFAULT 0,
+        -- HR có thể điều chỉnh thủ công (cộng/trừ ngày)
+    updated_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Công thức còn lại:
+-- remaining = entitled_days + carried_over + adjusted - used_days - pending_days
+
+CREATE UNIQUE INDEX idx_leave_balances_unique
+    ON leave_balances (employee_id, policy_id, year);
+
+CREATE INDEX idx_leave_balances_emp_year
+    ON leave_balances (employee_id, year, leave_type);
 ```
 
 ---
 
-### 5.4 WK_LEAVE_POLICY — Chính sách nghỉ phép
-
-Override theo vị trí hoặc phòng ban. Mức ưu tiên: `position_id` > `department_id` > org-level.
-
-| Trường | Kiểu | Null | Key | Default | Mô tả |
-|---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | |
-| `org_id` | UUID | NOT NULL | FK, INDEX | | |
-| `leave_type` | ENUM | NOT NULL | | | Xem mục 3 |
-| `name` | VARCHAR(100) | NOT NULL | | | "Nghỉ phép năm 2024" |
-| `days_per_year` | DECIMAL(5,1) | NOT NULL | | | Số ngày/năm |
-| `carry_over_days` | DECIMAL(5,1) | NOT NULL | | 0 | Ngày chuyển sang năm sau |
-| `min_advance_days` | SMALLINT | NOT NULL | | 1 | Phải đặt trước tối thiểu N ngày |
-| `max_consecutive_days` | SMALLINT | NULL | | NULL | |
-| `requires_approval` | BOOLEAN | NOT NULL | | TRUE | |
-| `position_id` | UUID | NULL | FK | NULL | Override vị trí cụ thể |
-| `department_id` | UUID | NULL | FK | NULL | Override phòng ban cụ thể |
-| `effective_from` | DATE | NOT NULL | | | |
-| `is_active` | BOOLEAN | NOT NULL | | TRUE | |
+### 6.6 Bảng mới: `leave_requests` — Module Leave
 
 ```sql
-CREATE INDEX idx_wk_policy_org ON wk_leave_policies(org_id, leave_type, is_active);
+CREATE TABLE leave_requests (
+    id               INTEGER      PRIMARY KEY AUTOINCREMENT,
+    uuid             VARCHAR(36)  NOT NULL UNIQUE,
+    organization_id  BIGINT       NOT NULL REFERENCES organizations(id),
+    employee_id      BIGINT       NOT NULL REFERENCES employees(id),
+    balance_id       BIGINT       NOT NULL REFERENCES leave_balances(id),
+    leave_type       VARCHAR(20)  NOT NULL,   -- denormalized từ balance
+    date_from        DATE         NOT NULL,
+    date_to          DATE         NOT NULL,
+    days_count       DECIMAL(5,1) NOT NULL,   -- tính server-side, không tin client
+    status           VARCHAR(20)  NOT NULL DEFAULT 'pending',
+        -- pending | approved | rejected | cancelled
+    reason           TEXT         NULL DEFAULT NULL,
+    attachment_url   TEXT         NULL DEFAULT NULL,
+    approved_by      BIGINT       NULL DEFAULT NULL REFERENCES employees(id),
+    approved_at      TIMESTAMP    NULL DEFAULT NULL,
+    rejected_reason  TEXT         NULL DEFAULT NULL,
+    created_by       BIGINT       NOT NULL REFERENCES users(id),
+    created_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_leave_requests_emp_status
+    ON leave_requests (employee_id, status, date_from);
+
+CREATE INDEX idx_leave_requests_approver
+    ON leave_requests (approved_by, status);
+
+CREATE INDEX idx_leave_requests_org_date
+    ON leave_requests (organization_id, date_from, date_to);
 ```
 
 ---
 
-### 5.5 WK_LEAVE_BALANCE — Số dư nghỉ phép
-
-Một row per nhân viên / policy / năm. Cập nhật atomic trong cùng transaction với WK_TIMEOFF — không tính lại từ đầu mỗi query.
-
-| Trường | Kiểu | Null | Key | Default | Mô tả |
-|---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | |
-| `employee_id` | UUID | NOT NULL | FK, INDEX | | |
-| `policy_id` | UUID | NOT NULL | FK | | |
-| `leave_type` | ENUM | NOT NULL | | | Denormalized — tránh JOIN khi query balance |
-| `year` | SMALLINT | NOT NULL | | | |
-| `entitled_days` | DECIMAL(5,1) | NOT NULL | | | Ngày được phép trong năm |
-| `used_days` | DECIMAL(5,1) | NOT NULL | | 0 | Đã dùng (approved) |
-| `pending_days` | DECIMAL(5,1) | NOT NULL | | 0 | Đang chờ duyệt (tạm giữ) |
-| `carried_over` | DECIMAL(5,1) | NOT NULL | | 0 | Chuyển từ năm trước |
-| `adjusted` | DECIMAL(5,1) | NOT NULL | | 0 | Điều chỉnh thủ công bởi HR |
-| `updated_at` | TIMESTAMP | NOT NULL | | NOW() | |
-
-**Công thức:** `remaining = entitled_days + carried_over + adjusted − used_days − pending_days`
+### 6.7 Bảng mới: `kpi_goals` — Module KpiGoal
 
 ```sql
-CREATE UNIQUE INDEX idx_wk_balance_unique ON wk_leave_balances(employee_id, policy_id, year);
-CREATE INDEX idx_wk_balance_emp           ON wk_leave_balances(employee_id, year, leave_type);
+CREATE TABLE kpi_goals (
+    id               INTEGER       PRIMARY KEY AUTOINCREMENT,
+    uuid             VARCHAR(36)   NOT NULL UNIQUE,
+    organization_id  BIGINT        NOT NULL REFERENCES organizations(id),
+    employee_id      BIGINT        NOT NULL REFERENCES employees(id),
+    cycle_label      VARCHAR(30)   NOT NULL,   -- "Q3-2024" | "H1-2024" | "2024"
+    cycle_start      DATE          NOT NULL,
+    cycle_end        DATE          NOT NULL,
+    parent_goal_id   BIGINT        NULL DEFAULT NULL REFERENCES kpi_goals(id),
+        -- OKR: Objective → Key Results
+    title            VARCHAR(300)  NOT NULL,
+    description      TEXT          NULL DEFAULT NULL,
+    goal_type        VARCHAR(20)   NOT NULL DEFAULT 'manual',
+        -- manual (Phase 3A) | linked_source (Phase 3B)
+    target_value     DECIMAL(15,4) NOT NULL,
+    current_value    DECIMAL(15,4) NOT NULL DEFAULT 0,
+    unit             VARCHAR(30)   NULL DEFAULT NULL,   -- %, VND, tasks, điểm
+    direction        VARCHAR(20)   NOT NULL DEFAULT 'higher_better',
+        -- higher_better | lower_better
+    achievement_pct  DECIMAL(6,2)  NOT NULL DEFAULT 0,
+        -- tính tự động qua KpiGoalObserver khi current_value thay đổi
+    weight_percent   SMALLINT      NOT NULL DEFAULT 10,
+        -- tổng tất cả goal active+completed trong cycle/employee = 100
+    status           VARCHAR(20)   NOT NULL DEFAULT 'draft',
+        -- draft | active | completed | cancelled
+    last_synced_at   TIMESTAMP     NULL DEFAULT NULL,
+    approved_by      BIGINT        NULL DEFAULT NULL REFERENCES employees(id),
+    approved_at      TIMESTAMP     NULL DEFAULT NULL,
+    created_by       BIGINT        NOT NULL REFERENCES users(id),
+    created_at       TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_kpi_goals_emp_cycle
+    ON kpi_goals (employee_id, cycle_label, status);
+
+CREATE INDEX idx_kpi_goals_cycle_end
+    ON kpi_goals (organization_id, cycle_end, status);
 ```
 
 ---
 
-### 5.6 WK_TIMEOFF — Đơn xin nghỉ phép
+### 6.8 Bảng mới: `kpi_sources` — Module KpiGoal (Phase 3B only)
 
-| Trường | Kiểu | Null | Key | Default | Mô tả |
-|---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | |
-| `employee_id` | UUID | NOT NULL | FK, INDEX | | |
-| `balance_id` | UUID | NOT NULL | FK | | FK → WK_LEAVE_BALANCE — khóa balance khi tạo đơn |
-| `leave_type` | ENUM | NOT NULL | | | Denormalized từ balance |
-| `date_from` | DATE | NOT NULL | INDEX | | |
-| `date_to` | DATE | NOT NULL | | | |
-| `days_count` | DECIMAL(5,1) | NOT NULL | | | Tính server-side (trừ weekend / holiday) |
-| `status` | ENUM | NOT NULL | INDEX | `pending` | |
-| `reason` | TEXT | NULL | | NULL | |
-| `attachment_url` | TEXT | NULL | | NULL | Giấy tờ đính kèm |
-| `approved_by` | UUID | NULL | FK | NULL | |
-| `approved_at` | TIMESTAMP | NULL | | NULL | |
-| `rejected_reason` | TEXT | NULL | | NULL | |
-| `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
+> Bảng này chỉ tạo migration ở Phase 3B khi Project module ổn định.
 
 ```sql
-CREATE INDEX idx_wk_timeoff_emp     ON wk_timeoffs(employee_id, status, date_from);
-CREATE INDEX idx_wk_timeoff_pending ON wk_timeoffs(approved_by, status)
-  WHERE status = 'pending';
+CREATE TABLE kpi_sources (
+    id                   INTEGER      PRIMARY KEY AUTOINCREMENT,
+    goal_id              BIGINT       NOT NULL UNIQUE REFERENCES kpi_goals(id),
+    source_type          VARCHAR(30)  NOT NULL,
+        -- project_tasks (extend later khi có thêm nguồn)
+    source_id            BIGINT       NOT NULL,
+        -- Polymorphic — không FK cứng; validate ở app layer
+    aggregation_type     VARCHAR(20)  NOT NULL DEFAULT 'latest',
+        -- latest | sum | avg | percentage
+    filter_assignee_only TINYINT(1)  NOT NULL DEFAULT 1,
+    date_range_type      VARCHAR(20)  NOT NULL DEFAULT 'cycle_period',
+        -- cycle_period | rolling_30d | rolling_90d
+    multiplier           DECIMAL(8,4) NOT NULL DEFAULT 1.0,
+    last_synced_at       TIMESTAMP    NULL DEFAULT NULL
+);
+
+CREATE INDEX idx_kpi_sources_lookup
+    ON kpi_sources (source_type, source_id);
 ```
 
 ---
 
-### 5.7 WK_KPI_GOAL — Mục tiêu KPI nhân viên
-
-Hỗ trợ 2 loại: `manual` (tự nhập) và `linked_*` (tự động từ Project module).
-Cây mục tiêu OKR qua `parent_goal_id`: Objective → Key Results.
-
-| Trường | Kiểu | Null | Key | Default | Mô tả |
-|---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | |
-| `employee_id` | UUID | NOT NULL | FK, INDEX | | |
-| `cycle_label` | VARCHAR(30) | NOT NULL | INDEX | | "Q3-2024", "H1-2024", "2024" |
-| `cycle_start` | DATE | NOT NULL | | | |
-| `cycle_end` | DATE | NOT NULL | INDEX | | |
-| `parent_goal_id` | UUID | NULL | FK self | NULL | Objective cha (OKR) |
-| `title` | VARCHAR(300) | NOT NULL | | | |
-| `description` | TEXT | NULL | | NULL | |
-| `goal_type` | ENUM | NOT NULL | | `manual` | manual \| linked_kpi \| linked_tasks |
-| `target_value` | DECIMAL(15,4) | NOT NULL | | | Giá trị đích |
-| `current_value` | DECIMAL(15,4) | NOT NULL | | 0 | Tiến độ thực tế (cập nhật auto hoặc tay) |
-| `unit` | VARCHAR(30) | NULL | | NULL | %, VND, tasks, điểm |
-| `direction` | ENUM | NOT NULL | | `higher_better` | higher_better \| lower_better |
-| `achievement_pct` | DECIMAL(6,2) | NOT NULL | | 0 | Tính tự động khi current_value thay đổi |
-| `weight_percent` | SMALLINT | NOT NULL | | 10 | Trọng số (tổng = 100 per cycle per employee) |
-| `status` | ENUM | NOT NULL | INDEX | `draft` | |
-| `last_synced_at` | TIMESTAMP | NULL | | NULL | Lần sync gần nhất (nếu linked) |
-| `approved_by` | UUID | NULL | FK | NULL | Manager duyệt mục tiêu |
-| `approved_at` | TIMESTAMP | NULL | | NULL | |
-| `created_by` | UUID | NOT NULL | FK | | |
-| `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
-| `updated_at` | TIMESTAMP | NOT NULL | | NOW() | |
+### 6.9 Bảng mới: `kpi_snapshots` — Module KpiGoal
 
 ```sql
-CREATE INDEX idx_wk_kpi_emp       ON wk_kpi_goals(employee_id, cycle_label, status);
-CREATE INDEX idx_wk_kpi_cycle_end ON wk_kpi_goals(cycle_end, status)
-  WHERE status = 'active';
+CREATE TABLE kpi_snapshots (
+    id              INTEGER       PRIMARY KEY AUTOINCREMENT,
+    goal_id         BIGINT        NOT NULL REFERENCES kpi_goals(id),
+    employee_id     BIGINT        NOT NULL REFERENCES employees(id),
+        -- denormalized để query leaderboard không JOIN kpi_goals
+    cycle_label     VARCHAR(30)   NOT NULL,   -- denormalized
+    target_value    DECIMAL(15,4) NOT NULL,   -- freeze tại thời điểm chốt
+    final_value     DECIMAL(15,4) NOT NULL,   -- freeze tại thời điểm chốt
+    achievement_pct DECIMAL(6,2)  NOT NULL,
+    weight_percent  SMALLINT      NOT NULL,   -- freeze
+    weighted_score  DECIMAL(6,2)  NOT NULL,
+        -- = achievement_pct * weight_percent / 100
+    kpi_total_score DECIMAL(6,2)  NULL DEFAULT NULL,
+        -- tổng weighted_score tất cả goals trong cycle; chỉ set trên row summary
+    snapped_by      BIGINT        NOT NULL REFERENCES users(id),
+    snapped_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Một goal chỉ có 1 snapshot (immutable — không UPDATE/DELETE sau INSERT)
+CREATE UNIQUE INDEX idx_kpi_snapshots_goal
+    ON kpi_snapshots (goal_id);
+
+CREATE INDEX idx_kpi_snapshots_emp_cycle
+    ON kpi_snapshots (employee_id, cycle_label);
 ```
 
 ---
 
-### 5.8 WK_KPI_SOURCE — Cấu hình nguồn đo tự động
+## 7. Business Rules
 
-Chỉ tồn tại khi `goal_type IN ('linked_kpi', 'linked_tasks')`. 1 goal → 1 source.
-Không dùng FK cứng sang Project module — dùng `source_type + source_id` (polymorphic) để tránh circular dependency giữa module.
+### BR-WK-001: Immutable employee history
 
-| Trường | Kiểu | Null | Key | Default | Mô tả |
-|---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | |
-| `goal_id` | UUID | NOT NULL | FK, UNIQUE | | FK → WK_KPI_GOAL.id |
-| `source_type` | ENUM | NOT NULL | | | `kpi_metric` \| `project_tasks` |
-| `source_id` | UUID | NOT NULL | INDEX | | ID của KPI_METRIC hoặc PROJECT |
-| `aggregation_type` | ENUM | NOT NULL | | `latest` | latest \| sum \| avg \| percentage |
-| `filter_assignee_only` | BOOLEAN | NOT NULL | | TRUE | Chỉ tính data của nhân viên này |
-| `date_range_type` | ENUM | NOT NULL | | `cycle_period` | cycle_period \| rolling_30d \| rolling_90d |
-| `multiplier` | DECIMAL(8,4) | NOT NULL | | 1.0 | Hệ số quy đổi đơn vị |
-| `last_synced_at` | TIMESTAMP | NULL | | NULL | |
+- Mọi thay đổi `job_title_id`, `department_id`, `branch_id`, `manager_id`, `salary_base`, `status` → bắt buộc INSERT `employee_history` (thực hiện trong `TransferEmployeeAction` / `OffboardEmployeeAction`)
+- Không UPDATE/DELETE bất kỳ row nào trong `employee_history`
+- `employee_code` bất biến sau khi tạo (validate ở `UpdateEmployeeAction`)
 
-```sql
-CREATE UNIQUE INDEX idx_wk_kpisrc_goal ON wk_kpi_sources(goal_id);
-CREATE INDEX idx_wk_kpisrc_src         ON wk_kpi_sources(source_type, source_id);
+### BR-WK-002: Manager chain integrity
+
+- Không tạo vòng tròn: A → B → C → A (kiểm tra đệ quy ở app layer trước khi UPDATE)
+- Manager nên có `job_titles.is_manager_role = 1` hoặc HR override tường minh
+- Trước khi offboard manager: bắt buộc reassign direct reports (kiểm tra trong `OffboardEmployeeAction` — từ chối nếu có direct reports chưa được reassign)
+
+### BR-WK-003: Leave balance — atomic transaction
+
+- INSERT `leave_requests` và UPDATE `leave_balances.pending_days` phải trong cùng 1 DB transaction
+- `days_count` tính server-side — không tin input từ client
+- Không hủy đơn `approved` khi `date_from < NOW()` (đã qua ngày nghỉ)
+- Không tạo đơn nếu `remaining < days_count` (ngoại lệ: `sick`, `unpaid` không cần kiểm tra balance)
+- Khi approve: `pending_days -= days_count`, `used_days += days_count` — cùng transaction
+- Khi reject/cancel: `pending_days -= days_count` — cùng transaction
+
+### BR-WK-004: KPI weight sum = 100
+
+- Tổng `weight_percent` của tất cả goal `status IN ('active', 'completed')` trong cùng `cycle_label/employee_id` phải bằng 100
+- Constraint chỉ validate khi `ApproveKpiGoalAction` hoặc `CloseKpiCycleAction` — không chặn khi draft
+- Goal `draft` và `cancelled` không tính vào tổng weight
+
+### BR-WK-005: KPI snapshot — immutable
+
+- Snapshot chỉ tạo khi `CloseKpiCycleAction` — không tạo trước
+- Sau khi INSERT snapshot: không UPDATE, không DELETE (enforce ở model: override `save()` và `delete()` nếu `exists`)
+- Achievement cap: `higher_better` max 150%, `lower_better` min 0%
+- `weighted_score = achievement_pct * weight_percent / 100`
+
+### BR-WK-006: KPI source — no hard FK (Phase 3B)
+
+- `kpi_sources.source_id` không có FK cứng sang Project module (tránh circular dependency giữa module)
+- Validation khi tạo: kiểm tra `source_id` tồn tại ở app layer, không ở DB constraint
+- Nếu source bị xóa ở Project module: set `goal_type = 'manual'`, xóa `kpi_sources` row, notify HR qua activity log
+
+---
+
+## 8. AVSA Module Map
+
+### 8.1 Module Employee — extensions
+
+#### Actions mới
+
+| Action | Trách nhiệm |
+|---|---|
+| `TransferEmployeeAction` | UPDATE employees (job_title_id / department_id / branch_id / manager_id / salary_base) + INSERT employee_history với change_type phù hợp + effective_date |
+| `OffboardEmployeeAction` | Kiểm tra direct reports → nếu còn thì từ chối; UPDATE employees status=resigned/terminated + resigned_at; INSERT employee_history (change_type=separation); cancel pending leave_requests + hoàn balance; ghi activity log |
+
+#### Data (Spatie Laravel Data)
+
+```php
+// Modules/Employee/Data/EmployeeSalaryData.php
+class EmployeeSalaryData extends Data {
+    public function __construct(
+        public readonly ?float  $salary_base,
+        public readonly string  $salary_currency = 'VND',
+        public readonly ?string $bank_account,
+        public readonly ?string $bank_name,
+    ) {}
+    // Policy guard: chỉ HR Admin mới được populate trường này
+}
 ```
 
-**Enum `source_type`:**
+#### Observers — cập nhật `EmployeeObserver`
 
-| Giá trị | Source ID trỏ đến | Cách tính |
+- Khi `job_title_id` thay đổi: sync `snap_job_title`, `snap_job_level`
+- Khi `department_id` thay đổi: sync `snap_dept_name`
+- Khi `branch_id` thay đổi: sync `snap_branch_name`
+
+---
+
+### 8.2 Module Leave — mới hoàn toàn
+
+#### Models
+
+```php
+// LeavePolicy extends TenantAwareModel
+// LeaveBalance extends TenantAwareModel  (no SoftDeletes)
+// LeaveRequest extends TenantAwareModel  (no SoftDeletes — dùng status=cancelled)
+```
+
+#### Actions
+
+| Action | Input | Trách nhiệm |
 |---|---|---|
-| `kpi_metric` | `kpi_metrics.id` | Lấy `actual_value` từ `kpi_entries` mới nhất trong kỳ |
-| `project_tasks` | `projects.id` | `done_tasks / total_tasks × 100` — filter `assignee_id` nếu cần |
+| `StoreLeavePolicyAction` | `StoreLeavePolicyData` | Tạo policy + validate unique scope |
+| `UpdateLeavePolicyAction` | `UpdateLeavePolicyData` | Cập nhật policy (không thay đổi existing balances) |
+| `StoreLeaveRequestAction` | `StoreLeaveRequestData` | Lookup balance → validate remaining → DB::transaction { INSERT leave_requests + UPDATE leave_balances.pending_days += days_count } → notify manager |
+| `ApproveLeaveAction` | `leave_request_id` | Validate status=pending → DB::transaction { UPDATE status=approved + balance: pending−=N, used+=N } |
+| `RejectLeaveAction` | `leave_request_id`, `reason` | DB::transaction { UPDATE status=rejected + balance: pending−=N } |
+| `CancelLeaveRequestAction` | `leave_request_id` | Validate date_from >= today + status=pending → DB::transaction { UPDATE status=cancelled + balance: pending−=N } |
+
+#### Queries
+
+| Query | Handler | Filter params |
+|---|---|---|
+| `ListLeaveRequestsQuery` | `ListLeaveRequestsHandler` | employee_id, status, date_from, date_to, leave_type |
+| `ListPendingApprovalQuery` | `ListPendingApprovalHandler` | approved_by (manager employee_id) |
+
+#### Observer: `LeaveRequestObserver`
+
+- `updated()`: khi status → approved, log activity "leave_approved"
+- `updated()`: khi status → rejected, log activity "leave_rejected"
 
 ---
 
-### 5.9 WK_KPI_SNAPSHOT — Điểm cuối kỳ (immutable)
+### 8.3 Module KpiGoal — mới hoàn toàn
 
-Tạo khi HR/Manager chốt kỳ đánh giá. Sau khi INSERT không bao giờ UPDATE.
+#### Models
 
-| Trường | Kiểu | Null | Key | Default | Mô tả |
-|---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | |
-| `goal_id` | UUID | NOT NULL | FK, INDEX | | |
-| `employee_id` | UUID | NOT NULL | FK, INDEX | | Denormalized để query nhanh |
-| `cycle_label` | VARCHAR(30) | NOT NULL | | | Denormalized |
-| `target_value` | DECIMAL(15,4) | NOT NULL | | | Freeze tại thời điểm chốt |
-| `final_value` | DECIMAL(15,4) | NOT NULL | | | Freeze tại thời điểm chốt |
-| `achievement_pct` | DECIMAL(6,2) | NOT NULL | | | |
-| `weight_percent` | SMALLINT | NOT NULL | | | Freeze |
-| `weighted_score` | DECIMAL(6,2) | NOT NULL | | | `achievement_pct × weight_percent / 100` |
-| `kpi_total_score` | DECIMAL(6,2) | NULL | | NULL | Tổng weighted_score của tất cả goal trong cycle (chỉ set trên row tổng) |
-| `snapped_by` | UUID | NOT NULL | FK | | |
-| `snapped_at` | TIMESTAMP | NOT NULL | | NOW() | |
-
-```sql
-CREATE UNIQUE INDEX idx_wk_snap_goal   ON wk_kpi_snapshots(goal_id);
-CREATE INDEX idx_wk_snap_emp_cycle     ON wk_kpi_snapshots(employee_id, cycle_label);
+```php
+// KpiGoal extends TenantAwareModel  (SoftDeletes? No — dùng status=cancelled)
+// KpiSnapshot — no SoftDeletes, no update sau insert
+// KpiSource — Phase 3B
 ```
+
+#### Actions
+
+| Action | Input | Trách nhiệm |
+|---|---|---|
+| `StoreKpiGoalAction` | `StoreKpiGoalData` | Tạo goal với status=draft; validate cycle_start < cycle_end |
+| `UpdateKpiGoalAction` | `UpdateKpiGoalData` | Chỉ update khi status=draft/active |
+| `ApproveKpiGoalAction` | `kpi_goal_id` | Validate tổng weight_percent của active+completed goals = 100 → UPDATE status=active |
+| `UpdateKpiProgressAction` | `kpi_goal_id`, `current_value` | UPDATE current_value → Observer tự recalc achievement_pct |
+| `CloseKpiCycleAction` | `employee_id`, `cycle_label` | Validate weight sum = 100 → INSERT kpi_snapshots cho từng goal → UPDATE goals status=completed |
+
+#### Observer: `KpiGoalObserver`
+
+```php
+// updated(): nếu current_value thay đổi → recalc achievement_pct
+// higher_better: min(current_value / target_value * 100, 150)
+// lower_better:  max((2 - current_value / target_value) * 100, 0)
+// UPDATE kpi_goals.achievement_pct = calculated_pct
+```
+
+#### Queries
+
+| Query | Handler | Filter params |
+|---|---|---|
+| `ListKpiGoalsQuery` | `ListKpiGoalsHandler` | employee_id, cycle_label, status, goal_type |
+| `KpiLeaderboardQuery` | `KpiLeaderboardHandler` | cycle_label, organization_id, department_id |
 
 ---
 
-## 6. Luồng nghiệp vụ
+## 9. Luồng nghiệp vụ
 
-### 6.1 Onboarding nhân viên
-
-```
-HR tạo WK_EMPLOYEE
-  ├─ Set: position_id, department_id, manager_id, status='probation'
-  ├─ INSERT WK_POSITION_HISTORY (change_type='hire', effective_date=join_date)
-  └─ Khởi tạo WK_LEAVE_BALANCE cho năm hiện tại (per policy đang active)
-```
-
-### 6.2 Thay đổi vị trí / lương
+### 9.1 Onboarding nhân viên
 
 ```
-HR thực hiện:
-  ├─ UPDATE WK_EMPLOYEE: position_id / department_id / manager_id / salary_base
-  └─ INSERT WK_POSITION_HISTORY (change_type phù hợp, effective_date)
-       → Không UPDATE row cũ — immutable by design
+HR tạo Employee (StoreEmployeeAction)
+  ├─ Set: job_title_id, department_id, branch_id, manager_id
+  ├─ Set: status = 'probation', employment_type = 'probation'
+  ├─ Set: probation_end_date, contract_start, salary_base
+  ├─ INSERT employee_history (change_type='hire', effective_date=hired_at)
+  └─ Khởi tạo leave_balances cho năm hiện tại (per policy đang active)
+       → Lookup policy theo job_title_id → department_id → org-level
+       → INSERT leave_balance cho từng leave_type có policy active
 ```
 
-### 6.3 Đơn nghỉ phép
+### 9.2 Thay đổi vị trí / lương / phòng ban
 
 ```
-Employee tạo WK_TIMEOFF
-  ├─ Lookup WK_LEAVE_BALANCE: remaining = entitled + carried_over + adjusted − used − pending
-  ├─ Kiểm tra remaining >= days_count (ngoại lệ: sick, unpaid không cần kiểm tra)
-  ├─ INSERT WK_TIMEOFF (status='pending')
-  ├─ UPDATE WK_LEAVE_BALANCE: pending_days += days_count   ← cùng transaction
-  └─ Notify manager
-
-Manager hành động:
-  APPROVED → UPDATE timeoff.status = 'approved'
-              UPDATE balance: pending_days −= N, used_days += N
-  REJECTED → UPDATE timeoff.status = 'rejected'
-              UPDATE balance: pending_days −= N  ← hoàn lại
+HR / Manager thực hiện TransferEmployeeAction
+  ├─ Nhận: employee_id, new_job_title_id / new_department_id / new_salary_base / new_manager_id
+  ├─ Xác định change_type:
+  │     job_title thay đổi + level tăng → 'promotion'
+  │     job_title thay đổi + level giảm → 'demotion'
+  │     department thay đổi             → 'dept_transfer'
+  │     branch thay đổi                 → 'branch_transfer'
+  │     chỉ salary thay đổi            → 'salary_change'
+  │     chỉ manager thay đổi           → 'manager_change'
+  ├─ DB::transaction {
+  │     UPDATE employees (các trường thay đổi + updated_by)
+  │     INSERT employee_history (old_* / new_* pairs, change_type, effective_date, note)
+  │   }
+  └─ Observer sync snap_* columns
 ```
 
-### 6.4 KPI Goal — thiết lập
+### 9.3 Đơn nghỉ phép
 
 ```
-Manager / HR tạo WK_KPI_GOAL cho nhân viên
-  ├─ Chọn goal_type:
-  │   'manual'       → nhập target_value, không tạo WK_KPI_SOURCE
-  │   'linked_kpi'   → chọn KPI_METRIC từ Project module
-  │                    INSERT WK_KPI_SOURCE (source_type='kpi_metric', source_id=metric.id)
-  │   'linked_tasks' → chọn PROJECT
-  │                    INSERT WK_KPI_SOURCE (source_type='project_tasks', source_id=project.id)
-  ├─ Đặt weight_percent (tổng tất cả goal trong cycle = 100)
-  └─ Khi đủ điều kiện: Manager approve → status = 'active'
+Employee tạo StoreLeaveRequestAction
+  ├─ Lookup leave_balance: (employee_id, leave_type, year hiện tại)
+  ├─ Tính days_count server-side (trừ weekend; holiday list TBD)
+  ├─ Kiểm tra remaining >= days_count (trừ sick, unpaid)
+  ├─ DB::transaction {
+  │     INSERT leave_requests (status='pending')
+  │     UPDATE leave_balances: pending_days += days_count
+  │   }
+  └─ Notify manager (Event → Listener → notification)
+
+Manager ApproveLeaveAction:
+  DB::transaction {
+    UPDATE leave_requests: status = 'approved', approved_by, approved_at
+    UPDATE leave_balances: pending_days -= days_count, used_days += days_count
+  }
+
+Manager RejectLeaveAction:
+  DB::transaction {
+    UPDATE leave_requests: status = 'rejected', rejected_reason
+    UPDATE leave_balances: pending_days -= days_count   ← hoàn lại
+  }
+
+Employee CancelLeaveRequestAction (chỉ pending + date_from >= today):
+  DB::transaction {
+    UPDATE leave_requests: status = 'cancelled'
+    UPDATE leave_balances: pending_days -= days_count
+  }
 ```
 
-### 6.5 KPI Goal — đo lường tự động
+### 9.4 KPI Goals — thiết lập và duyệt (Phase 3A)
 
 ```
-Trigger: KPI_ENTRY được INSERT/UPDATE trong Project module
-  └─ KpiEntryObserver::saved()
-       └─ Tìm WK_KPI_SOURCE có source_type='kpi_metric', source_id=metric.id
-            └─ Dispatch SyncGoalProgressJob (async queue)
+Manager / HR tạo StoreKpiGoalAction cho nhân viên
+  ├─ goal_type = 'manual'
+  ├─ Nhập: title, target_value, unit, direction, weight_percent, cycle_*
+  └─ status = 'draft'
 
-SyncGoalProgressJob:
-  1. Tính new_value theo aggregation_type + date_range_type:
-       latest     → kpi_entries.actual_value mới nhất trong kỳ
-       sum        → SUM(actual_value) trong kỳ
-       avg        → AVG(actual_value) trong kỳ
-       percentage → kpi_entries.achievement_pct mới nhất
-
-  2. new_value = new_value × source.multiplier
-
-  3. Tính achievement_pct:
-       higher_better → min(new_value / target × 100, 150)   ← cap 150%
-       lower_better  → max((2 − new_value/target) × 100, 0)
-
-  4. UPDATE WK_KPI_GOAL:
-       current_value   = new_value
-       achievement_pct = achievement_pct
-       last_synced_at  = NOW()
-
-Trigger tương tự cho project_tasks:
-  TaskObserver::statusChanged() khi task → 'done'
-    → Dispatch SyncGoalProgressJob với source_type='project_tasks'
-    → Job đếm: done_tasks / total_tasks × 100
+Manager ApproveKpiGoalAction:
+  ├─ Tính tổng weight: SELECT SUM(weight_percent) FROM kpi_goals
+  │     WHERE employee_id = ? AND cycle_label = ?
+  │           AND status IN ('active', 'completed')
+  │           AND id != current_goal_id
+  │     + current weight_percent
+  ├─ Nếu tổng != 100 → từ chối với message rõ ràng
+  └─ UPDATE kpi_goals: status = 'active', approved_by, approved_at
 ```
 
-### 6.6 KPI — chốt kỳ & tính điểm
+### 9.5 KPI Goals — cập nhật tiến độ thủ công
 
 ```
-Manager / HR chốt kỳ đánh giá
-  ├─ Sync lần cuối tất cả linked goals của nhân viên
-  ├─ INSERT WK_KPI_SNAPSHOT cho từng goal:
-  │   target_value    = goal.target_value      (freeze)
-  │   final_value     = goal.current_value     (freeze)
-  │   achievement_pct = goal.achievement_pct   (freeze)
-  │   weight_percent  = goal.weight_percent    (freeze)
-  │   weighted_score  = achievement_pct × weight_percent / 100
+Employee / Manager UpdateKpiProgressAction
+  ├─ UPDATE kpi_goals: current_value = new_value
+  └─ KpiGoalObserver::updated():
+       achievement_pct = higher_better
+           ? min(current_value / target_value * 100, 150)
+           : max((2 - current_value / target_value) * 100, 0)
+       UPDATE kpi_goals: achievement_pct = calculated
+```
+
+### 9.6 KPI — chốt kỳ
+
+```
+HR / Manager CloseKpiCycleAction (employee_id, cycle_label)
+  ├─ Validate: tổng weight_percent goals active = 100
+  ├─ Lấy tất cả goals: status IN ('active') AND cycle_label = ? AND employee_id = ?
+  ├─ DB::transaction {
+  │     Foreach goal:
+  │       INSERT kpi_snapshots {
+  │           goal_id, employee_id, cycle_label (denorm),
+  │           target_value  = goal.target_value      (freeze),
+  │           final_value   = goal.current_value     (freeze),
+  │           achievement_pct = goal.achievement_pct (freeze),
+  │           weight_percent  = goal.weight_percent  (freeze),
+  │           weighted_score  = achievement_pct * weight_percent / 100,
+  │           snapped_by, snapped_at = NOW()
+  │       }
+  │       UPDATE kpi_goals: status = 'completed'
   │
-  ├─ Tính KPI tổng:
-  │   kpi_raw   = Σ(weighted_score)            → thang 100
-  │   kpi_score = kpi_raw / 100 × 5            → thang 5
-  │
-  └─ Cập nhật WK_KPI_GOAL.status = 'completed' cho tất cả goal trong cycle
+  │     kpi_total = SUM(weighted_score) của tất cả snapshots vừa INSERT
+  │     -- kpi_total là số 0-100; /100*5 → thang 5 nếu cần
+  │   }
+  └─ Log activity: cycle_closed
 ```
 
 **Ví dụ tính điểm:**
 
-| Mục tiêu | Loại | Target | Actual | Achieve% | Weight | Đóng góp |
-|---|---|---|---|---|---|---|
-| Bug fix rate | linked_kpi | 90% | 94% | 104% | 30% | 31.2 |
-| Task completion | linked_tasks | 85% | 78% | 92% | 25% | 23.0 |
-| Doanh số tháng | manual | 50tr | 48tr | 96% | 30% | 28.8 |
-| Tài liệu kỹ thuật | manual | 5 docs | 4 | 80% | 15% | 12.0 |
-| **Tổng** | | | | | **100%** | **95.0** |
+| Mục tiêu | Target | Actual | Achieve% | Weight% | Đóng góp |
+|---|---|---|---|---|---|
+| Doanh số tháng | 50tr | 52tr | 104% | 30 | 31.2 |
+| Tỉ lệ chốt lead | 20% | 18% | 90% | 25 | 22.5 |
+| Tài liệu kỹ thuật | 5 docs | 4 | 80% | 20 | 16.0 |
+| Onboarding KH | 10 | 11 | 110% → cap 150% | 25 | 27.5 |
+| **Tổng** | | | | **100** | **97.2** |
 
-`kpi_score = 95.0 / 100 × 5 = 4.75 / 5.0`
+`kpi_score_5 = 97.2 / 100 * 5 = 4.86 / 5.0`
 
-### 6.7 Offboarding
+### 9.7 Offboarding
 
 ```
-HR offboard nhân viên
-  ├─ UPDATE WK_EMPLOYEE: status = 'resigned'/'terminated', resigned_at
-  ├─ INSERT WK_POSITION_HISTORY (change_type='separation')
-  ├─ Reassign direct reports: manager_id → new_manager_id
-  └─ Hủy WK_TIMEOFF đang 'pending' → hoàn balance
+HR OffboardEmployeeAction (employee_id, separation_type, effective_date, reason)
+  ├─ Kiểm tra: có direct reports (manager_id = employee_id) không?
+  │     → Nếu có: từ chối, yêu cầu reassign trước
+  ├─ DB::transaction {
+  │     UPDATE employees:
+  │         status = 'resigned' | 'terminated'
+  │         resigned_at = effective_date
+  │         resignation_reason = reason
+  │     INSERT employee_history (change_type='separation', effective_date, note)
+  │     -- Hủy pending leave_requests
+  │     Foreach leave_request WHERE employee_id = ? AND status = 'pending':
+  │         UPDATE leave_requests: status = 'cancelled'
+  │         UPDATE leave_balances: pending_days -= leave_request.days_count
+  │   }
+  └─ Log activity: employee_offboarded
 ```
+
+### 9.8 KPI auto-sync (Phase 3B — DEFERRED)
+
+> **Trạng thái:** DEFERRED — chờ Project module đạt stable state
+>
+> Khi triển khai Phase 3B sẽ bổ sung:
+> - `SyncGoalProgressJob` (queued) — tính current_value từ kpi_sources
+> - ProjectTask Observer triggers SyncGoalProgressJob
+> - `goal_type = 'linked_source'` + bảng `kpi_sources`
+> - Endpoint `POST /kpi/goals/:id/sync` (manual trigger)
 
 ---
 
-## 7. Query Patterns
+## 10. Query Patterns
 
-### 7.1 Danh sách nhân viên với thông tin cơ bản (1 query)
+> Tất cả query dùng BIGINT JOIN — không dùng partial index syntax, không dùng `FILTER` clause (SQLite không hỗ trợ).
+
+### 10.1 Headcount theo phòng ban
+
+```sql
+SELECT
+    d.name                                                         AS department,
+    SUM(CASE WHEN e.status = 'active'     THEN 1 ELSE 0 END)      AS active,
+    SUM(CASE WHEN e.status = 'probation'  THEN 1 ELSE 0 END)      AS probation,
+    SUM(CASE WHEN e.employment_type = 'contractor' THEN 1 ELSE 0 END) AS contractors,
+    COUNT(e.id)                                                    AS total
+FROM departments d
+LEFT JOIN employees e
+       ON e.department_id = d.id
+      AND e.organization_id = :org_id
+      AND e.status NOT IN ('resigned', 'terminated')
+WHERE d.organization_id = :org_id
+GROUP BY d.id, d.name
+ORDER BY active DESC;
+```
+
+### 10.2 Danh sách nhân viên với vị trí, phòng ban, manager
 
 ```sql
 SELECT
     e.id,
+    e.uuid,
     e.employee_code,
     e.full_name,
     e.status,
     e.employment_type,
-    e.join_date,
+    e.hired_at,
     e.work_location,
-    p.name   AS position_name,
-    p.level  AS position_level,
-    d.name   AS department_name,
-    m.full_name AS manager_name
-FROM wk_employees e
-JOIN wk_positions  p  ON p.id = e.position_id
-JOIN departments   d  ON d.id = e.department_id
-LEFT JOIN wk_employees m ON m.id = e.manager_id
-WHERE e.org_id = :org_id
+    e.contract_end,
+    jt.name                AS job_title_name,
+    jt.level               AS job_level,
+    jt.category            AS job_category,
+    d.name                 AS department_name,
+    b.name                 AS branch_name,
+    m.full_name            AS manager_name
+FROM employees e
+JOIN job_titles    jt ON jt.id = e.job_title_id
+JOIN departments    d ON d.id  = e.department_id
+JOIN branches       b ON b.id  = e.branch_id
+LEFT JOIN employees m ON m.id  = e.manager_id
+WHERE e.organization_id = :org_id
+  AND e.deleted_at IS NULL
   AND e.status NOT IN ('resigned', 'terminated')
 ORDER BY d.name, e.full_name;
 ```
 
-### 7.2 Balance nghỉ phép nhân viên (không JOIN đơn)
+### 10.3 Balance nghỉ phép nhân viên (không JOIN đơn)
 
 ```sql
 SELECT
@@ -604,238 +948,261 @@ SELECT
     lb.used_days,
     lb.pending_days,
     (lb.entitled_days + lb.carried_over + lb.adjusted
-     - lb.used_days - lb.pending_days) AS remaining_days
-FROM wk_leave_balances lb
+     - lb.used_days - lb.pending_days)             AS remaining_days
+FROM leave_balances lb
 WHERE lb.employee_id = :employee_id
-  AND lb.year = YEAR(NOW())
+  AND lb.year        = :year
 ORDER BY lb.leave_type;
 ```
 
-### 7.3 Pending timeoff theo manager
+### 10.4 Pending leave requests cho manager
 
 ```sql
 SELECT
-    t.id, t.leave_type, t.date_from, t.date_to, t.days_count,
-    e.full_name AS employee_name,
+    lr.id,
+    lr.uuid,
+    lr.leave_type,
+    lr.date_from,
+    lr.date_to,
+    lr.days_count,
+    lr.reason,
+    e.full_name        AS employee_name,
     e.employee_code,
-    d.name AS department_name
-FROM wk_timeoffs t
-JOIN wk_employees e ON e.id = t.employee_id
-JOIN departments  d ON d.id = e.department_id
-WHERE t.approved_by = :manager_employee_id
-  AND t.status = 'pending'
-ORDER BY t.date_from;
+    d.name             AS department_name
+FROM leave_requests lr
+JOIN employees e ON e.id = lr.employee_id
+JOIN departments d ON d.id = e.department_id
+WHERE lr.approved_by = :manager_employee_id
+  AND lr.status      = 'pending'
+ORDER BY lr.date_from ASC;
 ```
 
-### 7.4 Dashboard KPI nhân viên — tiến độ realtime
+### 10.5 KPI goals dashboard — tiến độ realtime
 
 ```sql
 SELECT
     g.id,
+    g.uuid,
     g.title,
     g.goal_type,
     g.target_value,
     g.current_value,
+    g.unit,
+    g.direction,
     g.achievement_pct,
     g.weight_percent,
     g.status,
     g.last_synced_at,
-    s.source_type,
-    ROUND(g.achievement_pct * g.weight_percent / 100, 2) AS weighted_contribution
-FROM wk_kpi_goals g
-LEFT JOIN wk_kpi_sources s ON s.goal_id = g.id
+    ROUND(g.achievement_pct * g.weight_percent / 100.0, 2) AS weighted_contribution
+FROM kpi_goals g
 WHERE g.employee_id  = :employee_id
   AND g.cycle_label  = :cycle_label
   AND g.status NOT IN ('draft', 'cancelled')
 ORDER BY g.weight_percent DESC;
 ```
 
-### 7.5 Điểm KPI tổng kết kỳ
+### 10.6 KPI leaderboard theo cycle
 
 ```sql
 SELECT
     e.full_name,
     e.employee_code,
-    d.name AS department,
-    SUM(snap.weighted_score)                          AS kpi_raw_score,
-    ROUND(SUM(snap.weighted_score) / 100 * 5, 2)     AS kpi_score_5,
-    COUNT(snap.goal_id)                               AS goal_count
-FROM wk_kpi_snapshots snap
-JOIN wk_employees e ON e.id = snap.employee_id
-JOIN departments  d ON d.id = e.department_id
-WHERE snap.cycle_label = :cycle_label
-  AND e.org_id         = :org_id
-GROUP BY snap.employee_id, e.full_name, e.employee_code, d.name
+    d.name                                  AS department,
+    SUM(s.weighted_score)                   AS kpi_raw_score,
+    ROUND(SUM(s.weighted_score) / 100.0 * 5, 2) AS kpi_score_5,
+    COUNT(s.goal_id)                        AS goal_count
+FROM kpi_snapshots s
+JOIN employees   e ON e.id = s.employee_id
+JOIN departments d ON d.id = e.department_id
+WHERE s.cycle_label     = :cycle_label
+  AND e.organization_id = :org_id
+GROUP BY s.employee_id, e.full_name, e.employee_code, d.name
 ORDER BY kpi_raw_score DESC;
 ```
 
-### 7.6 Headcount theo phòng ban
+---
+
+## 11. API Endpoints
+
+### Module Employee
+
+| Method | Endpoint | Mô tả | Quyền |
+|---|---|---|---|
+| GET | `/employees` | Danh sách (filter: dept, status, type, search) | HR, Manager |
+| GET | `/employees/:uuid` | Hồ sơ đầy đủ | HR, Manager, self |
+| GET | `/employees/:uuid/history` | Lịch sử thay đổi vị trí/lương | HR, Manager |
+| POST | `/employees` | Tạo nhân viên | HR |
+| PUT | `/employees/:uuid` | Cập nhật hồ sơ cơ bản | HR |
+| PATCH | `/employees/:uuid/salary` | Cập nhật lương / bank (HR-only, EmployeeSalaryData) | HR |
+| POST | `/employees/:uuid/transfer` | Thay đổi vị trí / phòng ban / lương | HR |
+| POST | `/employees/:uuid/offboard` | Nghỉ việc / chấm dứt HĐ | HR |
+
+### Module Leave
+
+| Method | Endpoint | Mô tả | Quyền |
+|---|---|---|---|
+| GET | `/leave/policies` | Danh sách policy | HR |
+| POST | `/leave/policies` | Tạo policy | HR |
+| PUT | `/leave/policies/:id` | Cập nhật policy | HR |
+| GET | `/leave/balances/me` | Balance nghỉ phép của tôi | Employee |
+| GET | `/employees/:uuid/leave/balances` | Balance nhân viên cụ thể | HR, Manager |
+| POST | `/leave/requests` | Đăng ký nghỉ | Employee |
+| GET | `/leave/requests/pending` | Đơn chờ tôi duyệt | Manager |
+| GET | `/leave/requests` | Lịch sử đơn của tôi | Employee |
+| POST | `/leave/requests/:id/approve` | Duyệt đơn | Manager, HR |
+| POST | `/leave/requests/:id/reject` | Từ chối đơn | Manager, HR |
+| POST | `/leave/requests/:id/cancel` | Tự hủy đơn | Employee |
+
+### Module KpiGoal
+
+| Method | Endpoint | Mô tả | Quyền |
+|---|---|---|---|
+| GET | `/kpi/goals` | Mục tiêu của tôi theo cycle | Employee |
+| GET | `/employees/:uuid/kpi/goals` | KPI nhân viên cụ thể | Manager, HR |
+| POST | `/kpi/goals` | Tạo mục tiêu | Manager, HR |
+| PUT | `/kpi/goals/:uuid` | Cập nhật (chỉ khi draft/active) | Manager, HR |
+| PATCH | `/kpi/goals/:uuid/progress` | Cập nhật current_value (manual) | Employee, Manager |
+| POST | `/kpi/goals/:uuid/approve` | Manager duyệt mục tiêu | Manager, HR |
+| POST | `/kpi/cycles/:label/close` | Chốt kỳ — tạo snapshot | HR |
+| GET | `/kpi/snapshots` | Lịch sử điểm KPI các kỳ | Employee, Manager, HR |
+| GET | `/kpi/leaderboard` | Bảng xếp hạng KPI cycle | Manager, HR |
+
+---
+
+## 12. Indexes
 
 ```sql
-SELECT
-    d.name                                                       AS department,
-    COUNT(e.id) FILTER (WHERE e.status = 'active')              AS active,
-    COUNT(e.id) FILTER (WHERE e.status = 'probation')           AS probation,
-    COUNT(e.id) FILTER (WHERE e.employment_type = 'contractor') AS contractors
-FROM departments d
-LEFT JOIN wk_employees e
-       ON e.department_id = d.id
-      AND e.org_id        = :org_id
-      AND e.status NOT IN ('resigned', 'terminated')
-WHERE d.org_id = :org_id
-GROUP BY d.id, d.name
-ORDER BY active DESC;
+-- employees: active theo department (query phổ biến nhất)
+CREATE INDEX idx_employees_org_dept_status
+    ON employees (organization_id, department_id, status);
+
+-- employees: contract sắp hết hạn (cron job hàng ngày)
+CREATE INDEX idx_employees_contract_alert
+    ON employees (organization_id, contract_end, status);
+
+-- employees: direct reports lookup
+CREATE INDEX idx_employees_manager
+    ON employees (manager_id);
+
+-- employee_history: lịch sử theo nhân viên
+CREATE INDEX idx_employee_history_emp_date
+    ON employee_history (employee_id, effective_date);
+
+-- leave_policies: lookup theo org + type
+CREATE INDEX idx_leave_policies_org_type
+    ON leave_policies (organization_id, leave_type, is_active);
+
+-- leave_balances: lookup theo employee + năm
+CREATE INDEX idx_leave_balances_emp_year
+    ON leave_balances (employee_id, year, leave_type);
+
+-- leave_requests: đơn theo nhân viên + status
+CREATE INDEX idx_leave_requests_emp_status_date
+    ON leave_requests (employee_id, status, date_from);
+
+-- leave_requests: pending theo manager
+CREATE INDEX idx_leave_requests_approver_status
+    ON leave_requests (approved_by, status);
+
+-- kpi_goals: goal theo nhân viên + cycle + status
+CREATE INDEX idx_kpi_goals_emp_cycle_status
+    ON kpi_goals (employee_id, cycle_label, status);
+
+-- kpi_goals: cycle closing lookup
+CREATE INDEX idx_kpi_goals_org_cycle_end
+    ON kpi_goals (organization_id, cycle_end, status);
+
+-- kpi_snapshots: leaderboard theo cycle
+CREATE INDEX idx_kpi_snapshots_cycle_emp
+    ON kpi_snapshots (cycle_label, employee_id);
 ```
 
----
-
-## 8. API Endpoints
-
-### Nhân viên
-
-| Method | Endpoint | Mô tả |
-|---|---|---|
-| GET | `/api/workforce/employees` | Danh sách (filter: dept, status, type, search) |
-| GET | `/api/workforce/employees/:id` | Hồ sơ đầy đủ |
-| GET | `/api/workforce/employees/:id/history` | Lịch sử vị trí |
-| POST | `/api/workforce/employees` | Tạo nhân viên |
-| PUT | `/api/workforce/employees/:id` | Cập nhật hồ sơ |
-| POST | `/api/workforce/employees/:id/transfer` | Thay đổi vị trí/phòng ban |
-| POST | `/api/workforce/employees/:id/offboard` | Nghỉ việc |
-| GET | `/api/workforce/positions` | Danh sách vị trí |
-| POST | `/api/workforce/positions` | Tạo vị trí |
-| PUT | `/api/workforce/positions/:id` | Cập nhật vị trí |
-
-### Nghỉ phép
-
-| Method | Endpoint | Mô tả |
-|---|---|---|
-| GET | `/api/workforce/leave/policies` | Danh sách policy |
-| POST | `/api/workforce/leave/policies` | Tạo policy |
-| GET | `/api/workforce/leave/balance` | Balance của tôi |
-| GET | `/api/workforce/employees/:id/leave/balance` | Balance nhân viên cụ thể (HR/Manager) |
-| POST | `/api/workforce/leave/timeoffs` | Đăng ký nghỉ |
-| GET | `/api/workforce/leave/timeoffs/pending` | Đơn chờ tôi duyệt |
-| POST | `/api/workforce/leave/timeoffs/:id/approve` | Duyệt |
-| POST | `/api/workforce/leave/timeoffs/:id/reject` | Từ chối |
-| POST | `/api/workforce/leave/timeoffs/:id/cancel` | Tự hủy |
-
-### KPI Goals
-
-| Method | Endpoint | Mô tả |
-|---|---|---|
-| GET | `/api/workforce/kpi/goals` | Mục tiêu của tôi theo cycle |
-| GET | `/api/workforce/employees/:id/kpi/goals` | KPI nhân viên cụ thể (Manager/HR) |
-| POST | `/api/workforce/kpi/goals` | Tạo mục tiêu |
-| PUT | `/api/workforce/kpi/goals/:id` | Cập nhật (chỉ khi draft/active) |
-| PATCH | `/api/workforce/kpi/goals/:id/progress` | Cập nhật current_value (manual) |
-| POST | `/api/workforce/kpi/goals/:id/approve` | Manager duyệt mục tiêu |
-| POST | `/api/workforce/kpi/goals/:id/sync` | Sync thủ công một goal linked |
-| POST | `/api/workforce/kpi/cycles/:label/close` | Chốt kỳ — tạo snapshot |
-| GET | `/api/workforce/kpi/snapshots` | Lịch sử điểm KPI các kỳ |
-| GET | `/api/workforce/kpi/leaderboard` | Bảng xếp hạng KPI cycle (HR/Manager) |
-
----
-
-## 9. Business Rules
-
-### BR-WK-001: Immutable history
-- Mọi thay đổi `position_id`, `department_id`, `manager_id`, `salary_base` → bắt buộc INSERT `WK_POSITION_HISTORY`
-- Không UPDATE/DELETE bất kỳ row nào trong `WK_POSITION_HISTORY`
-- `employee_code` bất biến sau khi tạo
-
-### BR-WK-002: Manager chain
-- Không tạo vòng tròn: A → B → C → A (kiểm tra CTE trước khi UPDATE)
-- Manager phải có `is_manager_role = TRUE` hoặc HR override tường minh
-- Trước khi offboard manager: bắt buộc reassign direct reports
-
-### BR-WK-003: Leave balance — atomic
-- INSERT WK_TIMEOFF và UPDATE WK_LEAVE_BALANCE phải trong cùng 1 transaction
-- `days_count` tính server-side — không tin input client
-- Không hủy đơn `approved` khi `date_from < NOW()`
-- Không tạo đơn nếu `remaining < days_count` (ngoại lệ: `sick`, `unpaid`)
-
-### BR-WK-004: KPI weight
-- Tổng `weight_percent` của tất cả goal `status IN ('active', 'completed')` trong cùng cycle/employee = 100
-- Chỉ áp dụng constraint khi approve goal hoặc close cycle — không chặn khi đang draft
-- Goal `draft` và `cancelled` không tính vào tổng weight
-
-### BR-WK-005: KPI snapshot — immutable
-- Snapshot chỉ tạo khi cycle close — không tạo trước
-- Sau khi INSERT snapshot: không UPDATE, không DELETE
-- Achievement cap: `higher_better` max 150%, `lower_better` min 0%
-
-### BR-WK-006: KPI source — no hard FK
-- `WK_KPI_SOURCE.source_id` không có FK cứng sang Project module (tránh circular dependency)
-- Validation khi tạo: kiểm tra `source_id` tồn tại ở app layer, không ở DB
-- Nếu source bị xóa ở Project module: set `goal_type = 'manual'`, xóa WK_KPI_SOURCE, notify HR
-
----
-
-## 10. Indexes & Caching
-
-```sql
--- Danh sách nhân viên active (query phổ biến nhất)
-CREATE INDEX idx_wk_emp_active
-  ON wk_employees(org_id, department_id, status)
-  WHERE status IN ('active', 'probation');
-
--- Contract sắp hết hạn (cron hàng ngày)
-CREATE INDEX idx_wk_contract_alert
-  ON wk_employees(org_id, contract_end)
-  WHERE contract_end IS NOT NULL AND status = 'active';
-
--- Pending timeoff theo manager (thường check hàng ngày)
-CREATE INDEX idx_wk_leave_pending
-  ON wk_timeoffs(approved_by, status, date_from)
-  WHERE status = 'pending';
-
--- KPI goal active theo cycle (dashboard)
-CREATE INDEX idx_wk_kpi_active
-  ON wk_kpi_goals(employee_id, cycle_label, status)
-  WHERE status IN ('active', 'completed');
-
--- KPI source lookup khi sync
-CREATE INDEX idx_wk_kpisrc_lookup
-  ON wk_kpi_sources(source_type, source_id);
-
--- Leaderboard KPI theo cycle
-CREATE INDEX idx_wk_snap_leaderboard
-  ON wk_kpi_snapshots(cycle_label, employee_id);
-```
-
-### Caching
+### Cache strategy
 
 | Cache key | TTL | Invalidate khi |
 |---|---|---|
-| `workforce:org:{id}:headcount` | 10 phút | Thay đổi status/dept nhân viên |
-| `workforce:emp:{id}:balance:{year}` | Xóa ngay | Mỗi UPDATE WK_LEAVE_BALANCE |
-| `workforce:emp:{id}:kpi:{cycle}` | 5 phút | Sau mỗi SyncGoalProgressJob |
-| `workforce:kpi:leaderboard:{cycle}` | 15 phút | Sau mỗi snapshot |
+| `org:{id}:headcount` | 10 phút | Thay đổi status/department nhân viên |
+| `emp:{id}:leave_balance:{year}` | Xóa ngay | Mỗi UPDATE leave_balances |
+| `emp:{id}:kpi:{cycle}` | 5 phút | Sau mỗi UpdateKpiProgressAction |
+| `org:{id}:kpi_leaderboard:{cycle}` | 15 phút | Sau mỗi CloseKpiCycleAction |
+| `org:{id}:contract_alerts` | 60 phút | Sau mỗi cron job contract alert |
 
 ---
 
-## 11. Lộ trình triển khai
+## 13. Lộ trình triển khai
 
-### Phase 1 — Nhân viên (tuần 1–2)
-- [ ] `wk_positions` + `wk_employees` + `wk_position_history`
-- [ ] Tích hợp `users` và `departments` sẵn có
-- [ ] CRUD nhân viên + onboarding + offboarding
-- [ ] Headcount dashboard
+### Phase 1A — Employee Enhancement (tuần 1) ✅ DONE
 
-### Phase 2 — Nghỉ phép (tuần 3–4)
-- [ ] `wk_leave_policies` + `wk_leave_balances`
-- [ ] `wk_timeoffs` + luồng duyệt
-- [ ] Balance atomic transaction
-- [ ] Cron: contract alert, leave reminder
+> Extends module `Employee` đã có
 
-### Phase 3 — KPI Goals (tuần 5–7)
-- [ ] `wk_kpi_goals` + `wk_kpi_sources` + `wk_kpi_snapshots`
-- [ ] Manual goal CRUD + weight validation
-- [ ] KpiEntryObserver + TaskObserver + SyncGoalProgressJob
-- [ ] Leaderboard + close cycle + snapshot
+- [x] Migration: `alter_job_titles_add_salary_band` (salary_min/max/currency, is_manager_role)
+- [x] Migration: `alter_employees_add_contract_salary_personal_fields` (idempotent — cột đã có từ extension migrations)
+- [x] Migration: `alter_employee_history_add_salary_columns` (old/new salary_base)
+- [x] Cập nhật Enum `EmployeeStatus` (thêm `Probation`)
+- [x] Cập nhật Enum `EmploymentType` (thêm `Probation`, đổi `Contract` → `Contractor`)
+- [x] Tạo mới Enum `EmployeeHistoryChangeType` (full 12 change types incl. `SalaryChange`, `Separation`)
+- [x] Thêm `TransferEmployeeAction` + `TransferEmployeeData`
+- [x] Thêm `OffboardEmployeeAction` + `OffboardEmployeeData`
+- [x] Thêm `EmployeeSalaryData` với HR-only policy guard
+- [x] Cập nhật `EmployeeObserver`: track salary_base, skipHistoryTracking flag, fix resolveChangeType
+- [x] Cập nhật `Employee` model: fillable mới + `$skipHistoryTracking` flag + scopeWorking + hasDirectReports
+- [x] Cập nhật `EmployeeHistory` model: fillable thêm old/new salary_base
+- [x] Cập nhật `EmployeePolicy`: thêm transfer, offboard, viewSalary, updateSalary
+- [x] Cập nhật `StoreEmployeeAction`, `UpdateEmployeeAction`: thêm new fields
+- [x] Cập nhật `StoreEmployeeData`, `UpdateEmployeeData`: thêm new fields + validation
+
+### Phase 1B — Employee UI (tuần 2)
+
+- [ ] Form nhân viên: tabbed (Thông tin cá nhân / Hợp đồng & Lương / Liên hệ / Ghi chú HR)
+- [ ] Widget headcount dashboard (headcount by dept, probation count, contractor count)
+- [ ] Danh sách cảnh báo hợp đồng sắp hết hạn (contract_end trong 30/60/90 ngày)
+- [ ] View lịch sử nhân viên (employee_history timeline)
+
+### Phase 2 — Leave Management (tuần 3–4)
+
+> New module: `php artisan module:make Leave`
+
+- [ ] Migration: `create_leave_policies_table`
+- [ ] Migration: `create_leave_balances_table`
+- [ ] Migration: `create_leave_requests_table`
+- [ ] Models: `LeavePolicy`, `LeaveBalance`, `LeaveRequest` (extends `TenantAwareModel`)
+- [ ] Enums: `LeaveType`, `LeaveRequestStatus`
+- [ ] Actions: `StoreLeavePolicyAction`, `UpdateLeavePolicyAction`
+- [ ] Actions: `StoreLeaveRequestAction` (atomic), `ApproveLeaveAction`, `RejectLeaveAction`, `CancelLeaveRequestAction`
+- [ ] Queries: `ListLeaveRequestsQuery/Handler`, `ListPendingApprovalQuery/Handler`
+- [ ] Observer: `LeaveRequestObserver`
+- [ ] Policies: `LeavePolicyPolicy`, `LeaveRequestPolicy`
+- [ ] Views: Policy CRUD, form đăng ký nghỉ, hàng đợi duyệt, bảng balance
+- [ ] Test: atomic transaction (insert + balance update không bị split)
+
+### Phase 3A — KPI Goals Manual (tuần 5–6)
+
+> New module: `php artisan module:make KpiGoal`
+
+- [ ] Migration: `create_kpi_goals_table`
+- [ ] Migration: `create_kpi_snapshots_table`
+- [ ] Models: `KpiGoal`, `KpiSnapshot`
+- [ ] Enums: `KpiGoalType`, `KpiGoalStatus`, `KpiDirection`
+- [ ] Actions: `StoreKpiGoalAction`, `UpdateKpiGoalAction`, `ApproveKpiGoalAction` (weight validation), `UpdateKpiProgressAction`, `CloseKpiCycleAction`
+- [ ] Observer: `KpiGoalObserver` (recalc achievement_pct)
+- [ ] Queries: `ListKpiGoalsQuery/Handler`, `KpiLeaderboardQuery/Handler`
+- [ ] Policy: `KpiGoalPolicy`
+- [ ] Views: Goal CRUD, progress update, cycle close, leaderboard
+
+### Phase 3B — KPI Auto-sync (tuần 7+, DEFERRED)
+
+> Phụ thuộc vào Project module đạt stable state
+
+- [ ] Migration: `create_kpi_sources_table`
+- [ ] Model: `KpiSource`
+- [ ] Enum: `KpiAggregationType`, `KpiSourceType`, `KpiDateRangeType`
+- [ ] Job: `SyncGoalProgressJob` (queued)
+- [ ] Integration: ProjectTask Observer → dispatch SyncGoalProgressJob
+- [ ] Endpoint: `POST /kpi/goals/:uuid/sync` (manual trigger)
+- [ ] Cập nhật `goal_type = 'linked_source'` flow trong `StoreKpiGoalAction`
 
 ---
 
-*Version 3.0.0 — Workforce Center — Employee · Leave · KPI*
-*Stack: Laravel 11 · MySQL 8+ / PostgreSQL 15+*
+*Version 2.0.0 — Workforce Center (system-aligned)*
+*Stack: Laravel 13 · PHP 8.4 · SQLite dev / configurable prod*
+*NWIDART Modules · AVSA+CQRS-lite · TenantAwareModel · BIGINT PK*

@@ -27,6 +27,8 @@ class EmployeeHistory extends Model
         'new_status',
         'old_employment_type',
         'new_employment_type',
+        'old_salary_base',
+        'new_salary_base',
         'effective_date',
         'note',
     ];
