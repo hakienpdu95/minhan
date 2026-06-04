@@ -16,5 +16,8 @@
     "RoleScope": true,
     "PerformanceReview": true,
     "Project": true,
-    "OrgChart": true
+    "OrgChart": true,
+    "KcCategory": true,
+    "KcItem": true,
+    "Sop": true
 }

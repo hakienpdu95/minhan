@@ -80,4 +80,6 @@ PerformanceReview
 Project
 OrgChart
 
-Hãy kiểm tra, matching và làm module OrgChart nhé, dựa trên file spec/erd.md và implement theo đúng spec cho module OrgChart, đọc thêm file docs/module-list-pattern.md để tuân thủ đúng cấu trúc và nguyên tắc chuẩn khi thiết kế và triển khai module theo cấu trúc Advanced Vertical Slice (AVSA) + CQRS-lite + Laravel Modules + Laravel Actions, bổ sung ra mdenu sidebar để dùng, chú ý: Cấu hình view sơ đồ tổ chức. Sơ đồ render động từ `employees.manager_id` + `departments` — không có bảng nodes/edges riêng. Không dùng JSON cho display options — mỗi option là 1 cột boolean/int.
+Dựa trên file spec/sop.md và làm phase 1 trước, implement theo đúng spec, đọc thêm file docs/module-list-pattern.md để tuân thủ đúng cấu trúc và nguyên tắc chuẩn khi thiết kế và triển khai module theo cấu trúc Advanced Vertical Slice (AVSA) + CQRS-lite + Laravel Modules + Laravel Actions, bổ sung ra mdenu sidebar để dùng, phần views hãy kế thừa và làm chuẩn @extends('layouts.backend')
+
+đọc file spec/sop.md và làm tiếp phase 14, implement theo đúng spec

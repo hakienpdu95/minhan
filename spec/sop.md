@@ -1,1305 +1,2083 @@
-# Đặc Tả Module: SOP Center (Quản lý Quy trình Vận hành Tiêu chuẩn)
+# Đặc Tả: SOP Flowchart Engine — Relational Design (No JSON)
 
-> **Hệ thống:** SaaS SME  
-> **Module:** SOP Center  
-> **Phiên bản đặc tả:** 1.0.0  
-> **Ngày cập nhật:** 2026-06-03  
-> **Quy mô mục tiêu:** Small SME (20–100 người)  
-> **Trạng thái:** Draft
+> **Hệ thống:** SaaS SME
+> **Stack:** Laravel 13 + Alpine.js  
+> **Phiên bản:** 3.0.0 — BIGINT PK, FK aligned với hệ thống, Bổ sung bảng thiếu  
+> **Ngày:** 2026-06-03
 
 ---
 
 ## Mục lục
 
-1. [Tổng quan module](#1-tổng-quan-module)
-2. [Phân biệt SOP Center vs Knowledge Center](#2-phân-biệt-sop-center-vs-knowledge-center)
-3. [Phạm vi & mục tiêu](#3-phạm-vi--mục-tiêu)
-4. [Các sub-module](#4-các-sub-module)
-5. [Enum & Constant Values](#5-enum--constant-values)
-6. [ERD — Entity Relationship Diagram](#6-erd--entity-relationship-diagram)
-7. [Đặc tả bảng dữ liệu](#7-đặc-tả-bảng-dữ-liệu)
-   - 7.1 [SOP_CATEGORY — Danh mục quy trình](#71-sop_category--danh-mục-quy-trình)
-   - 7.2 [SOP_PROCESS — Quy trình vận hành](#72-sop_process--quy-trình-vận-hành)
-   - 7.3 [SOP_STEP — Các bước thực hiện](#73-sop_step--các-bước-thực-hiện)
-   - 7.4 [SOP_STEP_RACI — Phân công vai trò từng bước](#74-sop_step_raci--phân-công-vai-trò-từng-bước)
-   - 7.5 [SOP_STEP_ATTACHMENT — Tệp đính kèm từng bước](#75-sop_step_attachment--tệp-đính-kèm-từng-bước)
-   - 7.6 [SOP_APPROVAL_FLOW — Luồng duyệt đa cấp](#76-sop_approval_flow--luồng-duyệt-đa-cấp)
-   - 7.7 [SOP_VERSION_HISTORY — Lịch sử phiên bản](#77-sop_version_history--lịch-sử-phiên-bản)
-   - 7.8 [SOP_RELATION — Liên kết giữa các SOP](#78-sop_relation--liên-kết-giữa-các-sop)
-   - 7.9 [SOP_TAG — Nhãn tag](#79-sop_tag--nhãn-tag)
-   - 7.10 [SOP_PROCESS_TAG — Quan hệ SOP–Tag](#710-sop_process_tag--quan-hệ-soptag)
-8. [Luồng nghiệp vụ](#8-luồng-nghiệp-vụ)
-   - 8.1 [Tạo & xây dựng SOP](#81-tạo--xây-dựng-sop)
-   - 8.2 [Luồng duyệt đa cấp](#82-luồng-duyệt-đa-cấp)
-   - 8.3 [Versioning & rollback](#83-versioning--rollback)
-   - 8.4 [Liên kết SOP cha–con và SOP liên quan](#84-liên-kết-sop-chacon-và-sop-liên-quan)
-   - 8.5 [Review định kỳ & hết hiệu lực](#85-review-định-kỳ--hết-hiệu-lực)
-   - 8.6 [RACI Matrix — logic phân công](#86-raci-matrix--logic-phân-công)
-9. [Sơ đồ chuyển trạng thái (State Machine)](#9-sơ-đồ-chuyển-trạng-thái-state-machine)
-10. [API Endpoints (đề xuất)](#10-api-endpoints-đề-xuất)
-11. [Business Rules & Ràng buộc](#11-business-rules--ràng-buộc)
+1. [Tại sao không dùng JSON](#1-tại-sao-không-dùng-json)
+2. [Kiến trúc tổng thể](#2-kiến-trúc-tổng-thể)
+3. [ERD — Sơ đồ quan hệ](#3-erd--sơ-đồ-quan-hệ)
+4. [Đặc tả bảng dữ liệu](#4-đặc-tả-bảng-dữ-liệu)
+   - 4.0 [SOP_PROCESS — Quy trình SOP chính](#40-sop_process--quy-trình-sop-chính)
+   - 4.1 [SOP_STEP — Bước quy trình](#41-sop_step--bước-quy-trình-core)
+   - 4.2 [SOP_STEP_CONNECTOR — Kết nối bước](#42-sop_step_connector--kết-nối-giữa-các-bước)
+   - 4.3 [SOP_VERSION — Header phiên bản](#43-sop_version--header-phiên-bản)
+   - 4.4 [SOP_STEP_VERSION — Snapshot bước](#44-sop_step_version--snapshot-bước-immutable)
+   - 4.5 [SOP_STEP_RACI_VERSION — Snapshot RACI](#45-sop_step_raci_version--snapshot-raci-immutable)
+   - 4.6 [SOP_STEP_CONNECTOR_VERSION — Snapshot connector](#46-sop_step_connector_version--snapshot-connector-immutable)
+   - 4.7 [SOP_STEP_RACI — Phân công RACI live](#47-sop_step_raci--phân-công-raci-live)
+   - 4.8 [SOP_STEP_ATTACHMENT — File đính kèm bước](#48-sop_step_attachment--file-đính-kèm-bước)
+   - 4.9 [SOP_APPROVAL_FLOW — Luồng phê duyệt phiên bản](#49-sop_approval_flow--luồng-phê-duyệt-phiên-bản)
+   - 4.10 [SOP_RELATION — Quan hệ giữa các SOP](#410-sop_relation--quan-hệ-giữa-các-sop)
+5. [Enum Values đầy đủ](#5-enum-values-đầy-đủ)
+6. [Migration SQL (Laravel)](#6-migration-sql-laravel)
+7. [Query Patterns — Truy vấn tối ưu](#7-query-patterns--truy-vấn-tối-ưu)
+8. [Eloquent Models & Relationships](#8-eloquent-models--relationships)
+9. [Versioning Logic — Không JSON](#9-versioning-logic--không-json)
+10. [Render Flowchart — Alpine.js + SVG](#10-render-flowchart--alpinejs--svg)
+11. [Business Rules & Constraints](#11-business-rules--constraints)
 12. [Indexes & Performance](#12-indexes--performance)
-13. [Ghi chú triển khai cho SME](#13-ghi-chú-triển-khai-cho-sme)
+13. [Lộ trình triển khai](#13-lộ-trình-triển-khai)
 
 ---
 
-## 1. Tổng quan module
+## Thay đổi từ v2.0.0 → v3.0.0
 
-**SOP Center** là module chuyên biệt để **xây dựng, chuẩn hóa và quản lý vòng đời** các Quy trình Vận hành Tiêu chuẩn (Standard Operating Procedures) trong doanh nghiệp SME. Khác với Knowledge Center (lưu trữ tài liệu tĩnh), SOP Center tập trung vào **cấu trúc quy trình có thứ tự bước rõ ràng, phân công trách nhiệm theo mô hình RACI, và vòng đời duyệt chặt chẽ với versioning toàn diện**.
+| Hạng mục | v2.0.0 | v3.0.0 | Lý do |
+|---|---|---|---|
+| **PK type** | UUID làm PK trực tiếp | BIGINT AUTO_INCREMENT + cột `uuid` riêng | Khớp chuẩn toàn hệ thống (`$table->id()` + `$table->uuid()`) |
+| **FK type** | UUID FK | BIGINT FK | Khớp với `users.id`, `organizations.id`, `branches.id`, `departments.id` (tất cả đều BIGINT) |
+| **SOP_PROCESS** | **Thiếu hoàn toàn** — referenced nhưng không có spec | Thêm đầy đủ (section 4.0) | Bảng gốc, parent của toàn bộ module |
+| **SOP_APPROVAL_FLOW** | Có trong ERD nhưng không có table spec | Thêm đầy đủ (section 4.9) | Multi-step approval tracking |
+| **SOP_RELATION** | Có trong ERD nhưng không có table spec | Thêm đầy đủ (section 4.10) | SOP dependencies / references |
+| **RACI.assignee_id** | UUID | BIGINT | `users.id` và `roles.id` (Spatie) đều BIGINT |
+| **Snapshot FK refs** | UUID snapshots | BIGINT snapshots | Nhất quán với PK BIGINT của các bảng nguồn |
 
-### Mục đích chính
+---
 
-- Chuẩn hóa cách thực hiện công việc trong toàn tổ chức — mọi nhân viên đều làm đúng một cách
-- Xây dựng quy trình dạng step-by-step có cấu trúc, không phải tài liệu tự do
-- Phân công rõ ràng ai làm gì (Responsible), ai chịu trách nhiệm (Accountable), ai tư vấn (Consulted), ai được thông báo (Informed) ở từng bước
-- Kiểm soát phiên bản nghiêm ngặt — rollback hoàn chỉnh cả quy trình lẫn từng bước
-- Liên kết SOP với nhau để mô tả quy trình phức tạp dạng cha–con hoặc trigger
-- Đảm bảo SOP luôn được review và cập nhật theo chu kỳ
+## 1. Tại sao không dùng JSON
 
-### Người dùng liên quan
+### Vấn đề với JSON column
 
-| Vai trò | Quyền mặc định |
+| Vấn đề | Hệ quả thực tế |
 |---|---|
-| **Admin** | Toàn quyền: quản lý danh mục, cấu hình luồng duyệt, xem analytics, xóa |
-| **Process Owner** | Tạo, sửa, quản lý SOP mình sở hữu; gửi duyệt; xem lịch sử |
-| **Editor / Contributor** | Tạo bản nháp, sửa SOP được phân quyền, không tự duyệt |
-| **Approver** | Duyệt hoặc từ chối SOP được giao trong luồng duyệt |
-| **Reviewer** | Xem và nhận xét SOP (Consulted trong RACI) |
-| **Viewer / Staff** | Chỉ đọc SOP theo phạm vi visibility được cấp |
+| **Không index được** | Lọc `step_type = 'decision'` → full table scan toàn bộ SOP |
+| **Không JOIN được** | Lấy RACI kèm role name phải load toàn JSON → merge ở app layer → N+1 |
+| **Không có FK constraint** | `ref_sop_id` trong JSON không enforce → SOP bị xóa nhưng reference vẫn tồn tại |
+| **Version diff tốn memory** | So sánh 2 version phải deserialize JSON rồi diff ở app — SOP 50 bước = 2 JSON lớn |
+| **Analytics không khả thi** | `AVG(duration_minutes) GROUP BY step_type` → không query được từ JSON column |
+| **Cascade delete không hoạt động** | DB không biết relationship → phải xử lý thủ công ở app layer |
+| **Full-text search không hiệu quả** | MySQL JSON search dùng function-based, không dùng được FULLTEXT index |
+
+### Nguyên tắc thiết kế
+
+1. **Mọi entity là một bảng riêng** — steps, connectors, RACI, attachments đều là bảng độc lập
+2. **Connector là first-class citizen** — `sop_step_connectors` bảng riêng, không nhúng trong step
+3. **Versioning relational** — `sop_step_versions` mirror cấu trúc `sop_steps`, không JSON blob
+4. **Position thay vì step_number** — dùng `SMALLINT position` + floating point ordering để tránh renumber hàng loạt
+5. **Branch logic tách biệt** — `branch_yes_position` / `branch_no_position` là column riêng, có thể index
+6. **BIGINT PK + UUID column** — theo chuẩn toàn hệ thống; UUID expose ra API, BIGINT dùng nội bộ
 
 ---
 
-## 2. Phân biệt SOP Center vs Knowledge Center
-
-Hai module này độc lập nhau về thiết kế nhưng bổ sung cho nhau về chức năng.
-
-| Khía cạnh | Knowledge Center | SOP Center |
-|---|---|---|
-| **Đơn vị cơ bản** | Tài liệu (document) — nội dung tự do | Quy trình (process) — cấu trúc bước có thứ tự |
-| **Cấu trúc nội dung** | Free-form Markdown / Rich Text | Step Builder có `step_number`, `step_type`, điều kiện rẽ nhánh |
-| **Phân công** | Không có | RACI từng bước (R/A/C/I per step, per role) |
-| **Liên kết nội dung** | Tag, danh mục | SOP cha–con, prerequisite, triggers, replaces |
-| **Sơ đồ trực quan** | Không | Flowchart/BPMN tự sinh từ steps và step_type |
-| **Versioning** | Snapshot text nội dung | Snapshot JSON toàn bộ: process + steps + RACI |
-| **Mục tiêu sử dụng** | Đọc & tham khảo | Thực thi & tuân thủ quy trình |
-| **Vòng đời** | effective_date / expired_date | Thêm review_date — nhắc nhở review định kỳ |
-| **Loại nội dung** | 7 loại (doc, video, FAQ, form...) | 4 loại (standard, emergency, checklist, guideline) |
-
----
-
-## 3. Phạm vi & mục tiêu
-
-### Trong phạm vi (In Scope)
-
-- Quản lý cây danh mục quy trình đa cấp (tối đa 3 cấp)
-- Xây dựng SOP theo step-by-step builder với 5 loại bước: action, decision, sub_sop, notification, wait
-- Phân công RACI cho từng bước — hỗ trợ gán theo user hoặc role
-- Luồng duyệt đa cấp (sequential approval): Draft → In Review → Approved / Rejected
-- Versioning toàn diện: snapshot JSON cả process + steps + RACI, rollback về bất kỳ version nào
-- Liên kết SOP: cha–con (parent_sop_id), quan hệ chéo (SOP_RELATION) với 5 kiểu liên kết
-- File đính kèm từng bước (ảnh minh họa, video clip, PDF checklist)
-- Tag tự do (SOP_TAG / SOP_PROCESS_TAG)
-- Mã định danh SOP (`code`): SOP-HR-001, SOP-OPS-012
-- Trường `review_date` + cron nhắc nhở review định kỳ
-- Tìm kiếm full-text trên title, objective, scope, step descriptions
-
-### Ngoài phạm vi (Out of Scope)
-
-- Thực thi SOP (task execution / workflow engine) — nếu có, là module riêng
-- Ký số điện tử trên SOP
-- Tích hợp BPMN engine (Camunda, Activiti) — sơ đồ chỉ là render phía frontend từ dữ liệu step
-- Đào tạo / kiểm tra nhân viên đã đọc SOP — có thể mở rộng ở phiên bản sau
-- Analytics vi phạm SOP — phụ thuộc module Task/Execution (ngoài scope)
-
----
-
-## 4. Các sub-module
-
-### 4.1 Quản lý danh mục quy trình (Category Management)
-
-Tổ chức SOP thành cây phân cấp. Ví dụ: Vận hành → Sản xuất → QC Đầu vào.
-
-**Chức năng:**
-- Tạo / sửa / xóa mềm danh mục
-- Kéo thả sắp xếp thứ tự (`sort_order`)
-- Gán icon và màu sắc nhận diện
-- Xem tổng số SOP trong danh mục và con
-
-**Ràng buộc:**
-- Tối đa 3 cấp để tránh phức tạp UI
-- Không xóa danh mục khi còn SOP bên trong hoặc có danh mục con
-- `slug` unique per org
-
-### 4.2 Step Builder — Xây dựng quy trình
-
-Core của module. Cho phép xây dựng SOP bằng cách thêm, sắp xếp, chỉnh sửa từng bước.
-
-**Chức năng:**
-- Thêm / sửa / xóa bước
-- Kéo thả sắp xếp lại thứ tự (cập nhật `step_number` hàng loạt)
-- Chọn `step_type`: action, decision, sub_sop, notification, wait
-- Với `step_type = 'decision'`: định nghĩa 2 nhánh (Yes → step X, No → step Y)
-- Với `step_type = 'sub_sop'`: chọn SOP con từ `ref_sop_id`
-- Đặt `duration_minutes` cho từng bước → tự tính tổng thời gian SOP
-- Đánh dấu bước bắt buộc / tùy chọn (`is_mandatory`)
-- Đính kèm file minh họa từng bước (`SOP_STEP_ATTACHMENT`)
-
-### 4.3 RACI Matrix — Phân công vai trò
-
-Phân công trách nhiệm theo mô hình RACI cho từng bước của quy trình.
-
-**Chức năng:**
-- Gán R / A / C / I cho từng bước — có thể gán theo user cụ thể hoặc role
-- Xem ma trận RACI tổng hợp toàn SOP (bước × vai trò)
-- Validation: mỗi bước bắt buộc có ít nhất 1 R (Responsible) và 1 A (Accountable)
-- Export RACI matrix ra bảng
-
-**Nguyên tắc RACI:**
-
-| Ký hiệu | Tên | Ý nghĩa |
-|---|---|---|
-| **R** | Responsible | Người trực tiếp thực hiện bước này |
-| **A** | Accountable | Người chịu trách nhiệm cuối cùng về kết quả — chỉ 1 người |
-| **C** | Consulted | Người được hỏi ý kiến trước/trong khi thực hiện |
-| **I** | Informed | Người được thông báo khi bước hoàn thành |
-
-### 4.4 Approval Flow — Luồng duyệt đa cấp
-
-Cấu hình và thực hiện luồng phê duyệt SOP trước khi phát hành.
-
-**Chức năng:**
-- Cấu hình chuỗi approver theo `sequence` (duyệt tuần tự)
-- Approver có thể là user cụ thể hoặc role (ai trong role đó đều có thể duyệt)
-- Ghi lại comment khi duyệt hoặc từ chối
-- Notification tự động đến approver tiếp theo khi approver trước hoàn tất
-- Khi bất kỳ approver nào từ chối → toàn bộ luồng dừng, SOP chuyển về `rejected`
-
-### 4.5 Version Control — Quản lý phiên bản
-
-**Chức năng:**
-- Snapshot tự động khi SOP được approve: lưu JSON đầy đủ gồm process metadata + toàn bộ steps + RACI
-- Xem danh sách lịch sử phiên bản với change_summary
-- So sánh diff giữa 2 phiên bản (render ở frontend từ JSON)
-- Rollback về phiên bản cụ thể → tạo draft mới từ snapshot, cần duyệt lại
-
-### 4.6 SOP Relations — Liên kết quy trình
-
-**Chức năng:**
-- Liên kết SOP với nhau qua 5 kiểu: prerequisite, triggers, references, replaces, related
-- Hiển thị sơ đồ liên kết (dependency graph) tại trang chi tiết SOP
-- Cảnh báo khi SOP liên kết bị archived hoặc thay đổi version
-- SOP con: dùng `parent_sop_id` trên bảng `SOP_PROCESS` — quan hệ cha–con trực tiếp
-
----
-
-## 5. Enum & Constant Values
-
-### 5.1 SOP_PROCESS.type — Loại quy trình
-
-| Giá trị | Nhãn | Mô tả | Icon gợi ý |
-|---|---|---|---|
-| `standard` | Quy trình tiêu chuẩn | Quy trình vận hành thông thường, steps tuần tự | ti-list-check |
-| `emergency` | Quy trình khẩn cấp | Ưu tiên hiển thị nổi bật, cần thực hiện ngay khi sự cố | ti-alert-triangle |
-| `checklist` | Checklist | Danh sách kiểm tra tick-off, không cần thứ tự cứng | ti-checkbox |
-| `guideline` | Hướng dẫn linh hoạt | Không bắt buộc từng bước, mang tính tham khảo | ti-book |
-
-### 5.2 SOP_PROCESS.status — Trạng thái vòng đời
-
-| Giá trị | Nhãn | Mô tả | Màu gợi ý |
-|---|---|---|---|
-| `draft` | Bản nháp | Đang xây dựng, chưa gửi duyệt | Gray |
-| `in_review` | Đang duyệt | Đã gửi, đang trong luồng phê duyệt | Amber |
-| `approved` | Đang hiệu lực | SOP chính thức, hiển thị theo visibility | Teal/Green |
-| `rejected` | Bị từ chối | Approver từ chối, cần chỉnh sửa và gửi lại | Red |
-| `archived` | Lưu trữ | Hết hiệu lực, ẩn khỏi danh sách nhưng vẫn truy cập được | Gray |
-
-### 5.3 SOP_PROCESS.priority — Mức ưu tiên
-
-| Giá trị | Nhãn | Mô tả |
-|---|---|---|
-| `critical` | Nghiêm trọng | Bắt buộc tuân thủ tuyệt đối, vi phạm gây rủi ro lớn |
-| `high` | Cao | Quan trọng, cần tuân thủ chặt chẽ |
-| `medium` | Trung bình | Nên tuân thủ, có thể linh hoạt trong trường hợp đặc biệt |
-| `low` | Thấp | Hướng dẫn tham khảo |
-
-### 5.4 SOP_PROCESS.visibility — Phạm vi hiển thị
-
-| Giá trị | Mô tả |
-|---|---|
-| `public` | Tất cả user đã đăng nhập trong org |
-| `internal` | Chỉ nhân viên chính thức |
-| `restricted` | Chỉ user/role/dept được cấp quyền riêng |
-| `private` | Chỉ owner và admin |
-
-### 5.5 SOP_STEP.step_type — Loại bước
-
-| Giá trị | Nhãn | Mô tả | Render trên flowchart |
-|---|---|---|---|
-| `action` | Thực thi | Bước thực hiện thông thường | Hình chữ nhật |
-| `decision` | Quyết định | Rẽ nhánh Yes/No — cần thêm trường `branch_yes_step` và `branch_no_step` | Hình thoi |
-| `sub_sop` | Gọi SOP con | Thực hiện toàn bộ SOP khác tại đây (`ref_sop_id`) | Hình chữ nhật viền đôi |
-| `notification` | Thông báo | Gửi thông báo/email đến người liên quan, không cần chờ phản hồi | Hình bình hành |
-| `wait` | Chờ | Chờ điều kiện hoặc khoảng thời gian trước khi tiếp tục | Đồng hồ cát |
-
-### 5.6 SOP_STEP_RACI.raci_type — Loại RACI
-
-| Giá trị | Tên đầy đủ | Ý nghĩa | Ràng buộc |
-|---|---|---|---|
-| `R` | Responsible | Người trực tiếp làm | Ít nhất 1 per step |
-| `A` | Accountable | Người chịu trách nhiệm kết quả | Đúng 1 người per step |
-| `C` | Consulted | Người được hỏi ý kiến | Không giới hạn |
-| `I` | Informed | Người được thông báo kết quả | Không giới hạn |
-
-### 5.7 SOP_RELATION.relation_type — Kiểu liên kết
-
-| Giá trị | Nhãn | Ý nghĩa |
-|---|---|---|
-| `prerequisite` | Điều kiện tiên quyết | SOP kia phải hoàn thành trước khi thực hiện SOP này |
-| `triggers` | Kích hoạt | Hoàn thành SOP này sẽ kích hoạt SOP kia |
-| `references` | Tham chiếu | Tham khảo chéo, không có quan hệ thứ tự |
-| `replaces` | Thay thế | SOP này thay thế SOP cũ (SOP cũ đã archived) |
-| `related` | Liên quan | Cùng chủ đề / lĩnh vực, không có quan hệ thứ tự |
-
-### 5.8 SOP_APPROVAL_FLOW.status — Trạng thái từng bước duyệt
-
-| Giá trị | Mô tả |
-|---|---|
-| `pending` | Chờ approver này hành động |
-| `approved` | Approver đã duyệt |
-| `rejected` | Approver đã từ chối (kết thúc toàn luồng) |
-| `skipped` | Bị bỏ qua (approver không có ai nhận, hoặc auto-approve theo rule) |
-
----
-
-## 6. ERD — Entity Relationship Diagram
+## 2. Kiến trúc tổng thể
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│                              SOP CENTER ERD                                      │
-└──────────────────────────────────────────────────────────────────────────────────┘
-
-SOP_CATEGORY
-┌─────────────────────────┐
-│ id (PK)                 │
-│ parent_id (FK → self) ──┼── tự tham chiếu (cây đa cấp, tối đa 3 cấp)
-│ name                    │
-│ slug (UNIQUE per org)   │
-│ icon                    │
-│ color_hex               │
-│ sort_order              │
-│ is_active               │
-│ org_id (FK)             │
-│ created_by (FK)         │
-│ created_at              │
-└──────────┬──────────────┘
-           │ 1
-           │ contains
-           │ N
-┌──────────▼──────────────────────────────────────────────────────┐
-│                       SOP_PROCESS                               │
-│─────────────────────────────────────────────────────────────────│
-│ id (PK)                                                         │
-│ category_id (FK → SOP_CATEGORY)                                 │
-│ org_id (FK → organizations)                                     │
-│ code (UNIQUE per org)       ◄── SOP-HR-001, SOP-OPS-012         │
-│ title                                                           │
-│ slug (UNIQUE per org)                                           │
-│ objective          ◄── Mục tiêu: tại sao có SOP này            │
-│ scope              ◄── Phạm vi áp dụng                         │
-│ content_overview   ◄── Tổng quan bổ sung                       │
-│ type (ENUM)        ◄── standard|emergency|checklist|guideline   │
-│ status (ENUM)      ◄── draft|in_review|approved|rejected|       │
-│                         archived                                │
-│ priority (ENUM)    ◄── critical|high|medium|low                 │
-│ visibility (ENUM)  ◄── public|internal|restricted|private       │
-│ version (INT)      ◄── tăng mỗi lần approve                    │
-│ owner_id (FK)                                                   │
-│ approved_by (FK)                                                │
-│ approved_at                                                     │
-│ effective_date     ◄── ngày bắt đầu hiệu lực                   │
-│ review_date        ◄── ngày cần review định kỳ                  │
-│ expired_date       ◄── ngày hết hiệu lực (auto archived)       │
-│ parent_sop_id (FK → self) ◄── SOP con/sub-process              │
-│ created_by (FK)                                                 │
-│ updated_by (FK)                                                 │
-│ created_at                                                      │
-│ updated_at                                                      │
-└──┬────┬────┬────┬────┬────────────────────────────────────────-─┘
-   │    │    │    │    │
-   │1   │1   │1   │1   │1
-   │    │    │    │    │
-   ▼N   ▼N   ▼N   ▼N   ▼N
-┌──────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐
-│SOP_  │ │SOP_      │ │SOP_      │ │SOP_      │ │SOP_       │
-│STEP  │ │APPROVAL_ │ │VERSION_  │ │RELATION  │ │PROCESS_   │
-│      │ │FLOW      │ │HISTORY   │ │          │ │TAG        │
-│──────│ │──────────│ │──────────│ │──────────│ │───────────│
-│id(PK)│ │id (PK)   │ │id (PK)   │ │id (PK)   │ │sop_id(FK) │
-│sop_id│ │sop_id(FK)│ │sop_id(FK)│ │sop_id(FK)│ │tag_id(FK) │
-│step_ │ │sequence  │ │version_  │ │related_  │ └──┬────────┘
-│number│ │approver  │ │number    │ │sop_id(FK)│    │N
-│title │ │_id (FK)  │ │snapshot_ │ │relation_ │    │
-│descr │ │approver  │ │json      │ │type      │    │1
-│expec │ │_type     │ │change_   │ │notes     │ ┌──▼────────┐
-│_outp │ │status    │ │summary   │ │created_by│ │ SOP_TAG   │
-│warni │ │comment   │ │changed_by│ │created_at│ │───────────│
-│ng    │ │actioned  │ │changed_at│ └──────────┘ │id (PK)    │
-│step_ │ │_at       │ └──────────┘              │org_id(FK) │
-│type  │ └──────────┘                           │name       │
-│ref_  │                                        │slug       │
-│sop_id│                                        │color_hex  │
-│(FK)  │                                        └───────────┘
-│dur_  │
-│min   │
-│is_   │
-│mand  │
-└──┬───┘
-   │ 1
-   │
-   ├──────────────────────────┐
-   │N                         │N
-   ▼                          ▼
-┌─────────────────┐  ┌──────────────────────┐
-│ SOP_STEP_RACI   │  │ SOP_STEP_ATTACHMENT  │
-│─────────────────│  │──────────────────────│
-│ id (PK)         │  │ id (PK)              │
-│ step_id (FK)    │  │ step_id (FK)         │
-│ role_id (FK)    │  │ file_name            │
-│ raci_type (ENUM)│  │ file_url             │
-│ notes           │  │ file_type            │
-└─────────────────┘  │ file_size_kb         │
- R|A|C|I per step    │ storage_provider     │
-                     │ sort_order           │
-                     │ uploaded_by (FK)     │
-                     │ uploaded_at          │
-                     └──────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    SOP FLOWCHART ENGINE                 │
+├─────────────────────────┬───────────────────────────────┤
+│     LIVE (Active)       │      VERSIONED (History)      │
+├─────────────────────────┼───────────────────────────────┤
+│ SOP_PROCESS             │ SOP_VERSION                   │
+│   └─ SOP_STEP           │   └─ SOP_STEP_VERSION         │
+│       ├─ SOP_STEP_      │       └─ SOP_STEP_RACI_       │
+│       │   CONNECTOR     │           VERSION             │
+│       ├─ SOP_STEP_RACI  │   └─ SOP_STEP_CONNECTOR_      │
+│       └─ SOP_STEP_      │           VERSION             │
+│           ATTACHMENT    │   └─ SOP_APPROVAL_FLOW        │
+│   └─ SOP_RELATION       │                               │
+└─────────────────────────┴───────────────────────────────┘
+         │                              │
+         │ snapshot on approve          │ rollback creates new draft
+         └──────────────────────────────┘
 ```
 
-### Quan hệ tổng hợp
+### Hai vùng dữ liệu
 
-| Bảng A | Quan hệ | Bảng B | Ghi chú |
-|---|---|---|---|
-| SOP_CATEGORY | 1 → N | SOP_CATEGORY | Tự tham chiếu — cây danh mục đa cấp |
-| SOP_CATEGORY | 1 → N | SOP_PROCESS | Mỗi SOP thuộc 1 danh mục |
-| SOP_PROCESS | 1 → N | SOP_PROCESS | Self-ref: parent_sop_id — SOP cha–con |
-| SOP_PROCESS | 1 → N | SOP_STEP | Nhiều bước trong một quy trình |
-| SOP_STEP | 1 → N | SOP_STEP_RACI | RACI assignments cho bước |
-| SOP_STEP | 1 → N | SOP_STEP_ATTACHMENT | File đính kèm minh họa bước |
-| SOP_PROCESS | 1 → N | SOP_APPROVAL_FLOW | Chuỗi người duyệt |
-| SOP_PROCESS | 1 → N | SOP_VERSION_HISTORY | Lịch sử snapshot phiên bản |
-| SOP_PROCESS | 1 → N | SOP_RELATION | Liên kết với SOP khác (nguồn) |
-| SOP_PROCESS | N → M | SOP_TAG | Qua bảng SOP_PROCESS_TAG |
+**LIVE zone** — dữ liệu đang active, luôn được query khi render flowchart:
+- `sop_steps` — bước hiện tại (is_active = TRUE)
+- `sop_step_connectors` — kết nối hiện tại
+- `sop_step_raci` — phân công hiện tại
+
+**VERSION zone** — bất biến (immutable) sau khi tạo, không bao giờ UPDATE:
+- `sop_versions` — header phiên bản
+- `sop_step_versions` — snapshot bước tại thời điểm approve
+- `sop_step_raci_versions` — snapshot RACI
+- `sop_step_connector_versions` — snapshot connector
+- `sop_approval_flows` — lịch sử phê duyệt từng bước
 
 ---
 
-## 7. Đặc tả bảng dữ liệu
+## 3. ERD — Sơ đồ quan hệ
 
-### 7.1 SOP_CATEGORY — Danh mục quy trình
+```
+organizations (BIGINT PK — hệ thống hiện có)
+    │
+    │ 1:N
+    ▼
+SOP_PROCESS (BIGINT PK + uuid)
+  ├─ branch_id (FK → branches, BIGINT)
+  ├─ department_id (FK → departments, BIGINT)
+  ├─ owner_id (FK → users, BIGINT)
+  │
+  ├─1:N─► SOP_STEP ──────────────────────────────────────┐
+  │           ├─1:N─► SOP_STEP_RACI                      │
+  │           ├─1:N─► SOP_STEP_ATTACHMENT                 │
+  │           └─ (ref_sop_id → SOP_PROCESS, BIGINT FK)    │
+  │                                                       │
+  ├─1:N─► SOP_STEP_CONNECTOR ◄──(from/to step_id BIGINT)─┘
+  │
+  ├─1:N─► SOP_VERSION
+  │           ├─1:N─► SOP_STEP_VERSION
+  │           │           └─1:N─► SOP_STEP_RACI_VERSION
+  │           ├─1:N─► SOP_STEP_CONNECTOR_VERSION
+  │           └─1:N─► SOP_APPROVAL_FLOW
+  │
+  └─1:N─► SOP_RELATION (sop_id + related_sop_id → SOP_PROCESS)
 
-**Mục đích:** Tổ chức SOP thành cấu trúc cây (tối đa 3 cấp). Ví dụ: Nhân sự → Tuyển dụng → Onboarding.
+Quan hệ đặc biệt (tất cả FK đều BIGINT):
+  sop_steps.sop_id                   → sop_processes.id (CASCADE DELETE)
+  sop_steps.ref_sop_id               → sop_processes.id (SET NULL on delete)
+  sop_step_connectors.from_step_id   → sop_steps.id (CASCADE DELETE)
+  sop_step_connectors.to_step_id     → sop_steps.id (CASCADE DELETE)
+  sop_step_versions.original_step_id → sop_steps.id (SET NULL — giữ history)
+  sop_step_raci.assignee_id          → users.id hoặc roles.id (BIGINT, polymorphic)
+```
 
-| Trường | Kiểu dữ liệu | Null | Key | Default | Mô tả |
+---
+
+## 4. Đặc tả bảng dữ liệu
+
+> **Quy ước chung — Chuẩn dự án:**
+> ```php
+> $table->id();  // BIGINT UNSIGNED AUTO_INCREMENT — PK nội bộ
+> $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+> ```
+
+---
+
+### 4.0 SOP_PROCESS — Quy trình SOP chính
+
+**Mục đích:** Bảng gốc của toàn bộ module SOP. Mỗi SOP là một quy trình chuẩn vận hành của tổ chức, được định danh bằng `code` duy nhất trong org.
+
+> **Lưu ý v3.0.0:** Bảng này thiếu hoàn toàn trong spec trước nhưng được reference khắp nơi trong code. Spec này bổ sung đầy đủ.
+
+| Trường | Kiểu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | Khóa chính |
-| `parent_id` | UUID | NULL | FK (self) | NULL | Danh mục cha — NULL nếu là cấp gốc |
-| `org_id` | UUID | NOT NULL | FK (organizations) | | Tổ chức sở hữu |
-| `name` | VARCHAR(150) | NOT NULL | | | Tên danh mục hiển thị |
-| `slug` | VARCHAR(160) | NOT NULL | UNIQUE(org_id) | | Định danh URL-friendly, tự sinh |
-| `description` | TEXT | NULL | | NULL | Mô tả ngắn về loại quy trình trong danh mục |
-| `icon` | VARCHAR(80) | NULL | | NULL | Tên Tabler Icon, vd: `ti-settings`, `ti-users` |
-| `color_hex` | CHAR(7) | NULL | | NULL | Mã màu nhận diện, vd: `#1D9E75` |
-| `sort_order` | INT | NOT NULL | | 0 | Thứ tự hiển thị trong cùng cấp |
-| `is_active` | BOOLEAN | NOT NULL | | TRUE | FALSE = ẩn danh mục (soft disable) |
-| `created_by` | UUID | NOT NULL | FK (users) | | Người tạo |
-| `updated_by` | UUID | NULL | FK (users) | NULL | Người cập nhật lần cuối |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID — expose ra API, không phải PK |
+| `organization_id` | BIGINT UNSIGNED | NOT NULL | FK (organizations), INDEX | | Tenant isolation |
+| `branch_id` | BIGINT UNSIGNED | NULL | FK (branches) | NULL | Chi nhánh áp dụng — NULL = toàn org |
+| `department_id` | BIGINT UNSIGNED | NULL | FK (departments) | NULL | Phòng ban áp dụng |
+| `owner_id` | BIGINT UNSIGNED | NOT NULL | FK (users) | | Người chịu trách nhiệm SOP |
+| `code` | VARCHAR(50) | NOT NULL | UNIQUE(org, code) | | Mã SOP duy nhất trong org, vd: `SOP-HR-001` |
+| `title` | VARCHAR(300) | NOT NULL | | | Tiêu đề quy trình |
+| `description` | TEXT | NULL | | NULL | Mô tả tổng quan quy trình |
+| `type` | ENUM | NOT NULL | INDEX | `internal` | Xem mục 5.4 |
+| `status` | ENUM | NOT NULL | INDEX | `draft` | draft / pending_review / approved / rejected / archived |
+| `version` | SMALLINT UNSIGNED | NOT NULL | | 0 | Số phiên bản đã approved hiện tại (0 = chưa có version nào được approve) |
+| `approved_by` | BIGINT UNSIGNED | NULL | FK (users) | NULL | Người approve version hiện tại |
+| `approved_at` | TIMESTAMP | NULL | | NULL | Thời điểm approve version hiện tại |
+| `effective_date` | DATE | NULL | | NULL | Ngày SOP bắt đầu có hiệu lực |
+| `expired_date` | DATE | NULL | INDEX | NULL | Ngày SOP hết hiệu lực — cron tự chuyển archived |
+| `created_by` | BIGINT UNSIGNED | NOT NULL | FK (users) | | |
+| `updated_by` | BIGINT UNSIGNED | NULL | FK (users) | NULL | |
+| `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
+| `updated_at` | TIMESTAMP | NOT NULL | | NOW() | |
+| `deleted_at` | TIMESTAMP | NULL | | NULL | Soft delete |
+
+**Indexes:**
+
+```sql
+CREATE UNIQUE INDEX idx_sop_proc_code ON sop_processes(organization_id, code);
+CREATE INDEX idx_sop_proc_status ON sop_processes(organization_id, status);
+CREATE INDEX idx_sop_proc_dept ON sop_processes(organization_id, department_id) WHERE department_id IS NOT NULL;
+CREATE INDEX idx_sop_proc_expired ON sop_processes(expired_date) WHERE expired_date IS NOT NULL;
+```
+
+---
+
+### 4.1 SOP_STEP — Bước quy trình (core)
+
+**Thay đổi quan trọng so với thiết kế cũ:**
+- `id` đổi từ UUID PK sang BIGINT AUTO_INCREMENT PK + cột `uuid` riêng
+- Tất cả FK (sop_id, ref_sop_id, created_by, updated_by) đổi sang BIGINT
+- `step_number` → đổi thành `position SMALLINT`
+- Thêm `is_active` — soft delete từng bước mà không ảnh hưởng version history
+
+| Trường | Kiểu | Null | Key | Default | Mô tả |
+|---|---|---|---|---|---|
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID — expose ra ngoài |
+| `sop_id` | BIGINT UNSIGNED | NOT NULL | FK (sop_processes), INDEX | | CASCADE DELETE |
+| `position` | SMALLINT UNSIGNED | NOT NULL | INDEX | | Vị trí trong flow (1, 2, 3...) |
+| `title` | VARCHAR(200) | NOT NULL | | | Tên bước ngắn gọn |
+| `description` | TEXT | NULL | | NULL | Hướng dẫn chi tiết |
+| `expected_output` | TEXT | NULL | | NULL | Kết quả đầu ra mong đợi |
+| `warning_note` | TEXT | NULL | | NULL | Cảnh báo đặc biệt |
+| `step_type` | ENUM | NOT NULL | INDEX | `action` | Xem mục 5.1 |
+| `ref_sop_id` | BIGINT UNSIGNED | NULL | FK (sop_processes) | NULL | SET NULL on delete. Dùng khi step_type = sub_sop |
+| `branch_yes_position` | SMALLINT UNSIGNED | NULL | | NULL | Nếu decision: position của bước khi Yes |
+| `branch_no_position` | SMALLINT UNSIGNED | NULL | | NULL | Nếu decision: position của bước khi No |
+| `duration_minutes` | SMALLINT UNSIGNED | NULL | | NULL | Thời gian ước tính |
+| `is_mandatory` | BOOLEAN | NOT NULL | | TRUE | FALSE = bước tùy chọn |
+| `is_active` | BOOLEAN | NOT NULL | INDEX | TRUE | FALSE = soft delete — bước đã xóa khỏi flow active |
+| `created_by` | BIGINT UNSIGNED | NOT NULL | FK (users) | | |
+| `updated_by` | BIGINT UNSIGNED | NULL | FK (users) | NULL | |
 | `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
 | `updated_at` | TIMESTAMP | NOT NULL | | NOW() | |
 
 **Indexes:**
 
 ```sql
-CREATE UNIQUE INDEX idx_sop_cat_slug_org ON SOP_CATEGORY(org_id, slug);
-CREATE INDEX idx_sop_cat_parent ON SOP_CATEGORY(parent_id);
-CREATE INDEX idx_sop_cat_sort ON SOP_CATEGORY(parent_id, sort_order);
+CREATE UNIQUE INDEX idx_sop_step_position ON sop_steps(sop_id, position)
+  WHERE is_active = TRUE;
+CREATE INDEX idx_sop_step_render ON sop_steps(sop_id, is_active, position);
+CREATE INDEX idx_sop_step_type ON sop_steps(sop_id, step_type, is_active);
+CREATE INDEX idx_sop_step_ref ON sop_steps(ref_sop_id)
+  WHERE ref_sop_id IS NOT NULL;
 ```
 
-**Ràng buộc:**
-- Không xóa khi còn `SOP_PROCESS` trỏ vào hoặc có danh mục con
-- `parent_id` không được tạo chu kỳ (không trỏ về con cháu của chính nó)
-- Tối đa 3 cấp — kiểm tra tại application layer
+**Tại sao `position` thay vì `step_number`:**
+
+```
+Kịch bản: Insert bước mới giữa bước 3 và bước 4.
+
+  Với step_number INT:
+    UPDATE sop_steps SET step_number = step_number + 1
+    WHERE sop_id = X AND step_number >= 4;
+    → Lock nhiều row, tốn I/O
+
+  Với position SMALLINT + bulk update (approach chọn ở đây):
+    Batch update toàn bộ trong 1 transaction khi drag & drop
+    → Predictable, dễ debug, dễ hiểu
+```
 
 ---
 
-### 7.2 SOP_PROCESS — Quy trình vận hành
+### 4.2 SOP_STEP_CONNECTOR — Kết nối giữa các bước
 
-**Mục đích:** Bảng trung tâm lưu trữ metadata của quy trình, trạng thái vòng đời, và các thông tin điều phối (owner, approver, effective/review/expired date). Nội dung chi tiết được tổ chức trong `SOP_STEP`.
+**Đây là bảng first-class citizen** — không nhúng trong step. Tách connector ra bảng riêng cho phép:
+- Query tất cả connector của 1 SOP trong 1 query
+- Thêm custom label và màu sắc cho từng connector
+- Version snapshot connector độc lập với step
+- Analytics: bước nào có nhiều connector nhất (hub trong flow)
 
-| Trường | Kiểu dữ liệu | Null | Key | Default | Mô tả |
+| Trường | Kiểu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | Khóa chính |
-| `category_id` | UUID | NOT NULL | FK (SOP_CATEGORY) | | Danh mục chứa SOP |
-| `org_id` | UUID | NOT NULL | FK (organizations) | | Tổ chức sở hữu — multi-tenant |
-| `code` | VARCHAR(30) | NOT NULL | UNIQUE(org_id) | | Mã định danh: `SOP-HR-001`, `SOP-OPS-012` |
-| `title` | VARCHAR(300) | NOT NULL | | | Tiêu đề đầy đủ của quy trình |
-| `slug` | VARCHAR(320) | NOT NULL | UNIQUE(org_id) | | URL-friendly, tự sinh từ title |
-| `objective` | TEXT | NULL | | NULL | Mục tiêu — trả lời "tại sao có SOP này" |
-| `scope` | TEXT | NULL | | NULL | Phạm vi áp dụng: đối tượng, bộ phận, tình huống |
-| `content_overview` | TEXT | NULL | | NULL | Mô tả tổng quan hoặc ghi chú bổ sung |
-| `type` | ENUM | NOT NULL | INDEX | `standard` | standard \| emergency \| checklist \| guideline |
-| `status` | ENUM | NOT NULL | INDEX | `draft` | draft \| in_review \| approved \| rejected \| archived |
-| `priority` | ENUM | NOT NULL | | `medium` | critical \| high \| medium \| low |
-| `visibility` | ENUM | NOT NULL | | `internal` | public \| internal \| restricted \| private |
-| `version` | INT | NOT NULL | | 1 | Số phiên bản hiện tại — tăng khi approve |
-| `owner_id` | UUID | NOT NULL | FK (users) | | Người chịu trách nhiệm sở hữu SOP |
-| `approved_by` | UUID | NULL | FK (users) | NULL | Người duyệt cuối cùng |
-| `approved_at` | TIMESTAMP | NULL | | NULL | Thời điểm được duyệt |
-| `effective_date` | TIMESTAMP | NULL | | NULL | Ngày SOP bắt đầu có hiệu lực |
-| `review_date` | TIMESTAMP | NULL | INDEX | NULL | Ngày cần review định kỳ — cron nhắc owner |
-| `expired_date` | TIMESTAMP | NULL | INDEX | NULL | Ngày hết hiệu lực — cron tự chuyển archived |
-| `parent_sop_id` | UUID | NULL | FK (self) | NULL | SOP cha nếu đây là sub-process / SOP con |
-| `created_by` | UUID | NOT NULL | FK (users) | | Người tạo |
-| `updated_by` | UUID | NULL | FK (users) | NULL | Người cập nhật lần cuối |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `sop_id` | BIGINT UNSIGNED | NOT NULL | FK (sop_processes), INDEX | | để query 1 lần lấy hết connector |
+| `from_step_id` | BIGINT UNSIGNED | NOT NULL | FK (sop_steps), INDEX | | CASCADE DELETE |
+| `to_step_id` | BIGINT UNSIGNED | NOT NULL | FK (sop_steps), INDEX | | CASCADE DELETE |
+| `connector_type` | ENUM | NOT NULL | INDEX | `sequence` | Xem mục 5.2 |
+| `label` | VARCHAR(60) | NULL | | NULL | Nhãn trên mũi tên: "Có", "Không", "Lỗi" |
+| `color_hex` | CHAR(7) | NULL | | NULL | Override màu, nếu NULL thì dùng màu default |
+| `sort_order` | SMALLINT | NOT NULL | | 0 | Thứ tự render khi nhiều connector cùng source |
+
+**Indexes:**
+
+```sql
+CREATE UNIQUE INDEX idx_connector_unique
+  ON sop_step_connectors(from_step_id, to_step_id, connector_type);
+CREATE INDEX idx_connector_sop ON sop_step_connectors(sop_id);
+CREATE INDEX idx_connector_from ON sop_step_connectors(from_step_id);
+CREATE INDEX idx_connector_to ON sop_step_connectors(to_step_id);
+```
+
+---
+
+### 4.3 SOP_VERSION — Header phiên bản
+
+| Trường | Kiểu | Null | Key | Default | Mô tả |
+|---|---|---|---|---|---|
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `sop_id` | BIGINT UNSIGNED | NOT NULL | FK (sop_processes), INDEX | | CASCADE DELETE |
+| `version_number` | INT UNSIGNED | NOT NULL | | | Tăng dần: 1, 2, 3... |
+| `status` | ENUM | NOT NULL | INDEX | `draft` | draft / submitted / approved / rejected |
+| `change_summary` | TEXT | NULL | | NULL | Mô tả thay đổi so với version trước |
+| `total_steps` | SMALLINT UNSIGNED | NOT NULL | | 0 | Denormalized — tổng số bước tại snapshot |
+| `total_duration_minutes` | INT UNSIGNED | NOT NULL | | 0 | Denormalized — tổng thời gian tại snapshot |
+| `created_by` | BIGINT UNSIGNED | NOT NULL | FK (users) | | Người tạo/sửa version |
+| `approved_by` | BIGINT UNSIGNED | NULL | FK (users) | NULL | Người approve version này |
 | `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
-| `updated_at` | TIMESTAMP | NOT NULL | | NOW() | |
-
-**Indexes:**
+| `approved_at` | TIMESTAMP | NULL | | NULL | |
 
 ```sql
-CREATE UNIQUE INDEX idx_sop_code_org ON SOP_PROCESS(org_id, code);
-CREATE UNIQUE INDEX idx_sop_slug_org ON SOP_PROCESS(org_id, slug);
-CREATE INDEX idx_sop_category ON SOP_PROCESS(category_id);
-CREATE INDEX idx_sop_status ON SOP_PROCESS(status);
-CREATE INDEX idx_sop_type ON SOP_PROCESS(type);
-CREATE INDEX idx_sop_owner ON SOP_PROCESS(owner_id);
-CREATE INDEX idx_sop_parent ON SOP_PROCESS(parent_sop_id);
-CREATE INDEX idx_sop_review ON SOP_PROCESS(review_date) WHERE review_date IS NOT NULL;
-CREATE INDEX idx_sop_expired ON SOP_PROCESS(expired_date) WHERE expired_date IS NOT NULL;
-CREATE FULLTEXT INDEX idx_sop_search ON SOP_PROCESS(title, objective, scope, content_overview);
-```
-
-**Ghi chú thiết kế:**
-- `code` được sinh tự động theo pattern `SOP-{CATEGORY_CODE}-{SEQUENCE}`, ví dụ `SOP-HR-001`
-- Khi SOP `approved` được sửa đổi, tạo draft mới — SOP cũ vẫn ở trạng thái `approved` cho đến khi bản sửa được approve xong
-- `parent_sop_id` dùng cho quan hệ cha–con trực tiếp (sub-process). Quan hệ chéo phức tạp hơn dùng bảng `SOP_RELATION`
-
----
-
-### 7.3 SOP_STEP — Các bước thực hiện
-
-**Mục đích:** Lưu từng bước của quy trình theo thứ tự. Đây là nội dung chính của SOP — mỗi bước mô tả một hành động cụ thể, kết quả mong đợi và cảnh báo nếu có.
-
-| Trường | Kiểu dữ liệu | Null | Key | Default | Mô tả |
-|---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | Khóa chính |
-| `sop_id` | UUID | NOT NULL | FK (SOP_PROCESS) | | SOP chứa bước này |
-| `step_number` | INT | NOT NULL | INDEX | | Số thứ tự — hỗ trợ sắp xếp lại (update hàng loạt khi drag & drop) |
-| `title` | VARCHAR(200) | NOT NULL | | | Tên bước ngắn gọn, vd: "Kiểm tra tài liệu đầu vào" |
-| `description` | TEXT | NULL | | NULL | Hướng dẫn chi tiết từng thao tác cần thực hiện |
-| `expected_output` | TEXT | NULL | | NULL | Kết quả / đầu ra mong đợi sau khi hoàn thành bước |
-| `warning_note` | TEXT | NULL | | NULL | Cảnh báo, lưu ý đặc biệt — hiển thị nổi bật màu vàng/đỏ |
-| `step_type` | ENUM | NOT NULL | | `action` | action \| decision \| sub_sop \| notification \| wait |
-| `branch_yes_step` | INT | NULL | | NULL | Nếu step_type=decision: số bước tiếp theo nếu Yes |
-| `branch_no_step` | INT | NULL | | NULL | Nếu step_type=decision: số bước tiếp theo nếu No |
-| `ref_sop_id` | UUID | NULL | FK (SOP_PROCESS) | NULL | Nếu step_type=sub_sop: ID của SOP con cần thực hiện |
-| `duration_minutes` | INT | NULL | | NULL | Thời gian ước tính (phút) — dùng tính tổng thời gian SOP |
-| `is_mandatory` | BOOLEAN | NOT NULL | | TRUE | FALSE = bước tùy chọn, có thể bỏ qua |
-| `created_by` | UUID | NOT NULL | FK (users) | | Người tạo bước |
-| `updated_by` | UUID | NULL | FK (users) | NULL | Người cập nhật bước |
-| `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
-| `updated_at` | TIMESTAMP | NOT NULL | | NOW() | |
-
-**Indexes:**
-
-```sql
-CREATE INDEX idx_sop_step_sop ON SOP_STEP(sop_id);
-CREATE UNIQUE INDEX idx_sop_step_order ON SOP_STEP(sop_id, step_number);
-```
-
-**Tính năng tổng thời gian:**
-
-```sql
--- Tổng thời gian ước tính của một SOP
-SELECT SUM(duration_minutes) AS total_duration_minutes
-FROM SOP_STEP
-WHERE sop_id = :sop_id
-  AND is_mandatory = TRUE;
-```
-
-**Ghi chú thiết kế:**
-- Khi kéo thả sắp xếp lại: update hàng loạt `step_number` của tất cả bước trong cùng SOP
-- `branch_yes_step` / `branch_no_step` lưu giá trị `step_number` (không phải UUID) để dễ render flowchart
-- `step_type = 'sub_sop'` + `ref_sop_id`: khi hiển thị, render như một bước đặc biệt với link đến SOP con
-
----
-
-### 7.4 SOP_STEP_RACI — Phân công vai trò từng bước
-
-**Mục đích:** Lưu phân công RACI (Responsible / Accountable / Consulted / Informed) cho từng bước của quy trình. Thiết kế per-step để đủ linh hoạt — mỗi bước có thể do bộ phận khác nhau thực hiện.
-
-| Trường | Kiểu dữ liệu | Null | Key | Default | Mô tả |
-|---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | Khóa chính |
-| `step_id` | UUID | NOT NULL | FK (SOP_STEP) | | Bước được phân công |
-| `assignee_type` | ENUM | NOT NULL | | `role` | `user` hoặc `role` — xác định assignee_id là gì |
-| `assignee_id` | UUID | NOT NULL | | | FK tới `users.id` hoặc `roles.id` tùy `assignee_type` |
-| `raci_type` | ENUM | NOT NULL | | | R \| A \| C \| I |
-| `notes` | TEXT | NULL | | NULL | Ghi chú bổ sung cho vai trò này trong bước này |
-
-**Indexes:**
-
-```sql
-CREATE INDEX idx_raci_step ON SOP_STEP_RACI(step_id);
-CREATE INDEX idx_raci_assignee ON SOP_STEP_RACI(assignee_type, assignee_id);
-CREATE UNIQUE INDEX idx_raci_unique ON SOP_STEP_RACI(step_id, assignee_type, assignee_id, raci_type);
-```
-
-**Business rules RACI (validation tại application layer):**
-
-```
-Trước khi lưu / submit duyệt, kiểm tra với mỗi bước IS MANDATORY:
-1. Phải có ít nhất 1 record raci_type = 'R' (Responsible)
-2. Phải có đúng 1 record raci_type = 'A' (Accountable)
-   → Nếu > 1 record A: báo lỗi "Một bước chỉ được có 1 Accountable"
-3. Số lượng C và I không giới hạn
-```
-
-**Ví dụ RACI matrix cho SOP Onboarding nhân viên mới:**
-
-```
-Bước                     | HR Manager | IT Support | Direct Manager | Admin
-─────────────────────────┼────────────┼────────────┼────────────────┼──────
-1. Chuẩn bị hợp đồng     |    R, A    |     I      |       I        |   C
-2. Tạo tài khoản hệ thống|     I      |    R, A    |       I        |   I
-3. Cung cấp thiết bị     |     C      |    R, A    |       I        |   I
-4. Giới thiệu team       |     I      |     I      |      R, A      |   I
-5. Đào tạo nội quy       |    R, A    |     I      |       C        |   I
+CREATE UNIQUE INDEX idx_sop_version_num ON sop_versions(sop_id, version_number);
+CREATE INDEX idx_sop_version_status ON sop_versions(sop_id, status);
 ```
 
 ---
 
-### 7.5 SOP_STEP_ATTACHMENT — Tệp đính kèm từng bước
+### 4.4 SOP_STEP_VERSION — Snapshot bước (immutable)
 
-**Mục đích:** Lưu file minh họa cho từng bước — ảnh chụp màn hình, hình ảnh thao tác, video clip ngắn, PDF checklist con. File thực tế lưu trên object storage.
+**Nguyên tắc:** Sau khi INSERT, bảng này KHÔNG BAO GIỜ được UPDATE. Immutable by design.
 
-| Trường | Kiểu dữ liệu | Null | Key | Default | Mô tả |
+| Trường | Kiểu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | Khóa chính |
-| `step_id` | UUID | NOT NULL | FK (SOP_STEP) | | Bước chứa file này |
-| `file_name` | VARCHAR(255) | NOT NULL | | | Tên file gốc khi upload |
-| `file_url` | TEXT | NOT NULL | | | URL đầy đủ để xem/tải |
-| `file_type` | VARCHAR(50) | NOT NULL | | | MIME type: `image/png`, `video/mp4`, `application/pdf` |
-| `file_size_kb` | INT | NOT NULL | | | Kích thước tính bằng KB |
-| `storage_provider` | VARCHAR(20) | NOT NULL | | `s3` | `s3`, `gcs`, `local` |
-| `storage_key` | VARCHAR(500) | NOT NULL | | | Object key nội bộ trên storage |
-| `alt_text` | VARCHAR(300) | NULL | | NULL | Mô tả ngắn file (accessibility + tooltip) |
-| `sort_order` | INT | NOT NULL | | 0 | Thứ tự hiển thị file trong bước |
-| `uploaded_by` | UUID | NOT NULL | FK (users) | | Người upload |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `sop_version_id` | BIGINT UNSIGNED | NOT NULL | FK (sop_versions), INDEX | | CASCADE DELETE |
+| `original_step_id` | BIGINT UNSIGNED | NULL | FK (sop_steps) | NULL | SET NULL khi step bị xóa. Dùng để trace "đây là snapshot của bước nào" khi rollback |
+| `position` | SMALLINT UNSIGNED | NOT NULL | | | Vị trí bước tại thời điểm snapshot |
+| `title` | VARCHAR(200) | NOT NULL | | | |
+| `description` | TEXT | NULL | | NULL | |
+| `expected_output` | TEXT | NULL | | NULL | |
+| `warning_note` | TEXT | NULL | | NULL | |
+| `step_type` | ENUM | NOT NULL | | | |
+| `ref_sop_id` | BIGINT UNSIGNED | NULL | | NULL | Snapshot BIGINT — không có FK constraint (SOP đích có thể bị xóa sau) |
+| `ref_sop_code` | VARCHAR(50) | NULL | | NULL | Snapshot code của SOP đích — hiển thị ngay cả khi SOP đích bị xóa |
+| `branch_yes_position` | SMALLINT UNSIGNED | NULL | | NULL | |
+| `branch_no_position` | SMALLINT UNSIGNED | NULL | | NULL | |
+| `duration_minutes` | SMALLINT UNSIGNED | NULL | | NULL | |
+| `is_mandatory` | BOOLEAN | NOT NULL | | TRUE | |
+| `change_type` | ENUM | NOT NULL | | `unchanged` | added / modified / deleted / unchanged |
+
+```sql
+CREATE INDEX idx_step_ver_version ON sop_step_versions(sop_version_id, position);
+CREATE INDEX idx_step_ver_original ON sop_step_versions(original_step_id)
+  WHERE original_step_id IS NOT NULL;
+CREATE INDEX idx_step_ver_change ON sop_step_versions(sop_version_id, change_type)
+  WHERE change_type != 'unchanged';
+```
+
+---
+
+### 4.5 SOP_STEP_RACI_VERSION — Snapshot RACI (immutable)
+
+| Trường | Kiểu | Null | Key | Mô tả |
+|---|---|---|---|---|
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | Public UUID |
+| `sop_version_id` | BIGINT UNSIGNED | NOT NULL | FK (sop_versions), INDEX | CASCADE DELETE |
+| `step_version_id` | BIGINT UNSIGNED | NOT NULL | FK (sop_step_versions) | CASCADE DELETE |
+| `step_position` | SMALLINT UNSIGNED | NOT NULL | | Denormalized position — tránh JOIN thêm khi query RACI matrix |
+| `assignee_type` | ENUM | NOT NULL | | user / role |
+| `assignee_id` | BIGINT UNSIGNED | NOT NULL | | Snapshot BIGINT — không FK. Khớp với `users.id` hoặc `roles.id` (Spatie, đều BIGINT) |
+| `assignee_name` | VARCHAR(150) | NOT NULL | | Snapshot tên — hiển thị ngay cả khi user/role bị xóa |
+| `raci_type` | ENUM | NOT NULL | | R / A / C / I |
+
+```sql
+CREATE INDEX idx_raci_ver_version ON sop_step_raci_versions(sop_version_id);
+CREATE INDEX idx_raci_ver_step ON sop_step_raci_versions(step_version_id);
+```
+
+---
+
+### 4.6 SOP_STEP_CONNECTOR_VERSION — Snapshot connector (immutable)
+
+| Trường | Kiểu | Null | Key | Mô tả |
+|---|---|---|---|---|
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | Public UUID |
+| `sop_version_id` | BIGINT UNSIGNED | NOT NULL | FK (sop_versions), INDEX | CASCADE DELETE |
+| `from_position` | SMALLINT UNSIGNED | NOT NULL | | Position bước nguồn tại thời điểm snapshot |
+| `to_position` | SMALLINT UNSIGNED | NOT NULL | | Position bước đích tại thời điểm snapshot |
+| `connector_type` | ENUM | NOT NULL | | |
+| `label` | VARCHAR(60) | NULL | | |
+| `color_hex` | CHAR(7) | NULL | | |
+
+```sql
+CREATE INDEX idx_conn_ver_version ON sop_step_connector_versions(sop_version_id);
+```
+
+**Lý do dùng `from_position` / `to_position` thay vì FK:**
+
+Version connector chỉ cần biết "bước số mấy nối với bước số mấy" để render lại flowchart. Dùng position đơn giản hơn và không cần JOIN thêm.
+
+---
+
+### 4.7 SOP_STEP_RACI — Phân công RACI live
+
+| Trường | Kiểu | Null | Key | Default | Mô tả |
+|---|---|---|---|---|---|
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `step_id` | BIGINT UNSIGNED | NOT NULL | FK (sop_steps), INDEX | | CASCADE DELETE |
+| `assignee_type` | ENUM | NOT NULL | | `role` | user / role |
+| `assignee_id` | BIGINT UNSIGNED | NOT NULL | INDEX | | FK tới `users.id` hoặc `roles.id` — đều BIGINT trong hệ thống hiện có |
+| `raci_type` | ENUM | NOT NULL | | | R / A / C / I |
+| `notes` | TEXT | NULL | | NULL | Ghi chú bổ sung |
+
+```sql
+CREATE UNIQUE INDEX idx_raci_unique
+  ON sop_step_raci(step_id, assignee_type, assignee_id, raci_type);
+CREATE INDEX idx_raci_assignee
+  ON sop_step_raci(assignee_type, assignee_id);
+```
+
+---
+
+### 4.8 SOP_STEP_ATTACHMENT — File đính kèm bước
+
+| Trường | Kiểu | Null | Key | Default | Mô tả |
+|---|---|---|---|---|---|
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `step_id` | BIGINT UNSIGNED | NOT NULL | FK (sop_steps), INDEX | | CASCADE DELETE |
+| `file_name` | VARCHAR(255) | NOT NULL | | | Tên file gốc |
+| `file_url` | TEXT | NOT NULL | | | URL đầy đủ |
+| `file_type` | VARCHAR(50) | NOT NULL | | | MIME type |
+| `file_size_kb` | INT UNSIGNED | NOT NULL | | | |
+| `storage_provider` | VARCHAR(20) | NOT NULL | | `s3` | s3 / gcs / local |
+| `storage_key` | VARCHAR(500) | NOT NULL | | | Object key nội bộ |
+| `alt_text` | VARCHAR(300) | NULL | | NULL | Mô tả file (accessibility) |
+| `sort_order` | SMALLINT | NOT NULL | | 0 | |
+| `uploaded_by` | BIGINT UNSIGNED | NOT NULL | FK (users) | | |
 | `uploaded_at` | TIMESTAMP | NOT NULL | | NOW() | |
 
-**Indexes:**
-
 ```sql
-CREATE INDEX idx_sop_attach_step ON SOP_STEP_ATTACHMENT(step_id);
-CREATE INDEX idx_sop_attach_sort ON SOP_STEP_ATTACHMENT(step_id, sort_order);
+CREATE INDEX idx_attachment_step ON sop_step_attachments(step_id, sort_order);
 ```
 
 ---
 
-### 7.6 SOP_APPROVAL_FLOW — Luồng duyệt đa cấp
+### 4.9 SOP_APPROVAL_FLOW — Luồng phê duyệt phiên bản
 
-**Mục đích:** Lưu chuỗi người duyệt theo thứ tự (`sequence`) cho một SOP. Khi SOP được gửi duyệt, hệ thống tuần tự gửi thông báo cho từng approver theo `sequence` tăng dần.
+**Mục đích:** Track từng bước trong luồng phê duyệt multi-level của một phiên bản SOP. Cho phép cấu hình flow duyệt nhiều cấp (Trưởng phòng → Giám đốc → CEO).
 
-| Trường | Kiểu dữ liệu | Null | Key | Default | Mô tả |
+> **Lưu ý v3.0.0:** Bảng này có trong ERD nhưng thiếu table spec trong v2.0.0. Được bổ sung đầy đủ ở đây.
+
+| Trường | Kiểu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | Khóa chính |
-| `sop_id` | UUID | NOT NULL | FK (SOP_PROCESS) | | SOP trong luồng duyệt |
-| `sequence` | INT | NOT NULL | | | Thứ tự duyệt: 1 = duyệt trước, 2 = duyệt sau, ... |
-| `approver_id` | UUID | NOT NULL | | | FK tới `users.id` hoặc `roles.id` |
-| `approver_type` | ENUM | NOT NULL | | `user` | `user` \| `role` |
-| `status` | ENUM | NOT NULL | | `pending` | pending \| approved \| rejected \| skipped |
-| `comment` | TEXT | NULL | | NULL | Nhận xét khi duyệt hoặc lý do từ chối |
-| `actioned_at` | TIMESTAMP | NULL | | NULL | Thời điểm approver hành động |
-| `notified_at` | TIMESTAMP | NULL | | NULL | Thời điểm gửi notification đến approver này |
-
-**Indexes:**
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `sop_version_id` | BIGINT UNSIGNED | NOT NULL | FK (sop_versions), INDEX | | CASCADE DELETE |
+| `step_order` | TINYINT UNSIGNED | NOT NULL | | 1 | Bước trong flow duyệt (1, 2, 3...) |
+| `required_role` | VARCHAR(100) | NULL | | NULL | Role được yêu cầu duyệt tại bước này (tên Spatie role) |
+| `approver_id` | BIGINT UNSIGNED | NULL | FK (users) | NULL | Người thực tế thực hiện hành động tại bước này |
+| `action` | ENUM | NULL | | NULL | `approved` / `rejected` / `forwarded` |
+| `comment` | TEXT | NULL | | NULL | Ghi chú khi duyệt / từ chối / chuyển tiếp |
+| `acted_at` | TIMESTAMP | NULL | | NULL | Thời điểm hành động |
+| `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
+| `updated_at` | TIMESTAMP | NOT NULL | | NOW() | |
 
 ```sql
-CREATE INDEX idx_sop_approval_sop ON SOP_APPROVAL_FLOW(sop_id);
-CREATE INDEX idx_sop_approval_approver ON SOP_APPROVAL_FLOW(approver_type, approver_id);
-CREATE UNIQUE INDEX idx_sop_approval_seq ON SOP_APPROVAL_FLOW(sop_id, sequence);
+CREATE INDEX idx_approval_version ON sop_approval_flows(sop_version_id, step_order);
+CREATE INDEX idx_approval_approver ON sop_approval_flows(approver_id) WHERE approver_id IS NOT NULL;
 ```
 
-**Logic luồng duyệt tuần tự:**
+**Logic:**
 
 ```
-Khi SOP được submit (status → 'in_review'):
-  1. Lấy tất cả SOP_APPROVAL_FLOW của sop_id, sắp xếp theo sequence ASC
-  2. Set status = 'pending' cho record sequence = 1
-  3. Gửi notification đến approver sequence = 1
+Khi submit phiên bản SOP:
+  1. INSERT sop_approval_flows records theo cấu hình org
+     (step_order = 1: Trưởng phòng, step_order = 2: Giám đốc)
+  2. Gửi notification cho approver ở step_order = 1
 
-Khi approver tại sequence N hành động:
-  APPROVED:
-    - Cập nhật record N: status = 'approved', actioned_at = NOW()
-    - Kiểm tra có record sequence = N+1 không?
-      + Có: set status = 'pending', gửi notification đến approver N+1
-      + Không (đây là approver cuối): SOP.status → 'approved'
-                                      tạo SOP_VERSION_HISTORY snapshot
-                                      SOP.version += 1
-                                      SOP.approved_by = approver cuối
-                                      SOP.approved_at = NOW()
-  REJECTED:
-    - Cập nhật record N: status = 'rejected', comment = ..., actioned_at = NOW()
-    - SOP.status → 'rejected'
-    - Set tất cả record còn pending → 'skipped'
-    - Gửi notification đến SOP.owner_id với lý do từ chối
+Khi Approver hành động:
+  - Approve → UPDATE action='approved', acted_at=NOW()
+              → Nếu còn step tiếp theo: gửi notification cho step kế
+              → Nếu là step cuối: update sop_versions.status = 'approved'
+  - Reject   → UPDATE action='rejected', comment=...
+              → update sop_versions.status = 'rejected'
+              → Gửi notification về cho creator
 ```
 
 ---
 
-### 7.7 SOP_VERSION_HISTORY — Lịch sử phiên bản
+### 4.10 SOP_RELATION — Quan hệ giữa các SOP
 
-**Mục đích:** Lưu snapshot đầy đủ của SOP tại mỗi thời điểm được approve — bao gồm cả process metadata, toàn bộ steps và RACI assignments. Cho phép rollback hoàn chỉnh.
+**Mục đích:** Track dependencies và relationships giữa các SOP. Cho phép biết SOP nào là tiền điều kiện, SOP nào được thay thế bởi SOP nào.
 
-| Trường | Kiểu dữ liệu | Null | Key | Default | Mô tả |
+> **Lưu ý v3.0.0:** Bảng này có trong ERD nhưng thiếu table spec trong v2.0.0. Được bổ sung đầy đủ ở đây.
+
+| Trường | Kiểu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | Khóa chính |
-| `sop_id` | UUID | NOT NULL | FK (SOP_PROCESS) | | SOP được snapshot |
-| `version_number` | INT | NOT NULL | | | Số phiên bản — bằng SOP_PROCESS.version tại thời điểm snapshot |
-| `snapshot_json` | LONGTEXT | NOT NULL | | | JSON đầy đủ: `{process: {...}, steps: [...], raci: [...]}` |
-| `change_summary` | TEXT | NULL | | NULL | Tóm tắt nội dung thay đổi so với version trước |
-| `changed_by` | UUID | NOT NULL | FK (users) | | Người thực hiện approve (approver cuối trong luồng) |
-| `changed_at` | TIMESTAMP | NOT NULL | | NOW() | Thời điểm snapshot được tạo |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `sop_id` | BIGINT UNSIGNED | NOT NULL | FK (sop_processes), INDEX | | SOP gốc — RESTRICT ON DELETE |
+| `related_sop_id` | BIGINT UNSIGNED | NOT NULL | FK (sop_processes) | | SOP liên quan — RESTRICT ON DELETE |
+| `relation_type` | ENUM | NOT NULL | INDEX | | Xem bên dưới |
+| `note` | TEXT | NULL | | NULL | Ghi chú về mối quan hệ |
+| `created_by` | BIGINT UNSIGNED | NOT NULL | FK (users) | | |
+| `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
 
-**Indexes:**
+**relation_type values:**
+
+| Giá trị | Mô tả |
+|---|---|
+| `prerequisite` | `sop_id` cần hoàn thành TRƯỚC khi thực hiện `related_sop_id` |
+| `related` | Hai SOP liên quan chủ đề, nên đọc kèm nhau |
+| `replaces` | `sop_id` thay thế `related_sop_id` (version mới hơn) |
+| `replaced_by` | `sop_id` đã bị thay thế bởi `related_sop_id` |
 
 ```sql
-CREATE INDEX idx_sop_version_sop ON SOP_VERSION_HISTORY(sop_id);
-CREATE UNIQUE INDEX idx_sop_version_unique ON SOP_VERSION_HISTORY(sop_id, version_number);
+CREATE UNIQUE INDEX idx_sop_relation_unique
+  ON sop_relations(sop_id, related_sop_id, relation_type);
+CREATE INDEX idx_sop_relation_related
+  ON sop_relations(related_sop_id);
 ```
 
-**Cấu trúc `snapshot_json`:**
+**Ràng buộc:** `sop_id <> related_sop_id` — không cho phép SOP tự tham chiếu chính nó.
 
-```json
+---
+
+## 5. Enum Values đầy đủ
+
+### 5.1 SOP_STEP.step_type
+
+| Giá trị | Shape trên flowchart | Mô tả |
+|---|---|---|
+| `start` | Hình tròn / oval | Điểm bắt đầu quy trình |
+| `end` | Hình tròn / oval viền đôi | Điểm kết thúc quy trình |
+| `action` | Hình chữ nhật | Bước thực hiện thông thường |
+| `decision` | Hình thoi | Rẽ nhánh Yes/No hoặc nhiều điều kiện |
+| `sub_sop` | Hình chữ nhật viền đôi | Gọi đến SOP khác (ref_sop_id) |
+| `notification` | Hình bình hành | Gửi thông báo/email, không chờ phản hồi |
+| `wait` | Hình chữ nhật bo góc mạnh | Chờ điều kiện hoặc khoảng thời gian |
+
+### 5.2 SOP_STEP_CONNECTOR.connector_type
+
+| Giá trị | Màu default | Style | Mô tả |
+|---|---|---|---|
+| `sequence` | #B4B2A9 | Mũi tên liền | Luồng tuần tự thông thường |
+| `yes_branch` | #639922 | Mũi tên liền xanh | Nhánh Yes từ decision |
+| `no_branch` | #E24B4A | Mũi tên liền đỏ | Nhánh No từ decision |
+| `trigger` | #7F77DD | Mũi tên đứt | Kích hoạt bước không tuần tự |
+| `return` | #EF9F27 | Mũi tên cong quay về | Vòng lặp quay về bước trước |
+| `exception` | #E24B4A | Mũi tên đứt đỏ | Luồng xử lý lỗi / exception |
+
+### 5.3 SOP_STEP_VERSION.change_type
+
+| Giá trị | Màu diff | Mô tả |
+|---|---|---|
+| `unchanged` | — | Bước không thay đổi so với version trước |
+| `added` | #639922 (xanh) | Bước mới được thêm vào version này |
+| `modified` | #EF9F27 (vàng) | Bước đã được chỉnh sửa |
+| `deleted` | #E24B4A (đỏ) | Bước đã bị xóa trong version này |
+
+### 5.4 SOP_PROCESS.type
+
+| Giá trị | Mô tả |
+|---|---|
+| `internal` | Quy trình vận hành nội bộ thông thường |
+| `regulatory` | Quy trình tuân thủ quy định pháp luật / ISO |
+| `training` | Quy trình đào tạo nhân viên mới |
+| `emergency` | Quy trình xử lý sự cố / khẩn cấp |
+
+### 5.5 SOP_APPROVAL_FLOW.action
+
+| Giá trị | Mô tả |
+|---|---|
+| `approved` | Người duyệt chấp thuận tại bước này |
+| `rejected` | Người duyệt từ chối — dừng toàn bộ flow |
+| `forwarded` | Chuyển tiếp sang người khác cùng bước |
+
+---
+
+## 6. Migration SQL (Laravel)
+
+### 6.0 SOP_PROCESS
+
+```php
+Schema::create('sop_processes', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('organization_id')->constrained('organizations')->restrictOnDelete();
+    $table->foreignId('branch_id')->nullable()->constrained('branches')->nullOnDelete();
+    $table->foreignId('department_id')->nullable()->constrained('departments')->nullOnDelete();
+    $table->foreignId('owner_id')->constrained('users')->restrictOnDelete();
+    $table->string('code', 50);
+    $table->string('title', 300);
+    $table->text('description')->nullable();
+    $table->enum('type', ['internal', 'regulatory', 'training', 'emergency'])->default('internal')->index();
+    $table->enum('status', ['draft', 'pending_review', 'approved', 'rejected', 'archived'])
+          ->default('draft')->index();
+    $table->smallInteger('version')->unsigned()->default(0);
+    $table->foreignId('approved_by')->nullable()->constrained('users')->nullOnDelete();
+    $table->timestamp('approved_at')->nullable();
+    $table->date('effective_date')->nullable();
+    $table->date('expired_date')->nullable();
+    $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+    $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+    $table->timestamps();
+    $table->softDeletes();
+
+    $table->unique(['organization_id', 'code'], 'idx_sop_proc_code');
+    $table->index(['organization_id', 'status'], 'idx_sop_proc_status');
+    $table->index('expired_date', 'idx_sop_proc_expired');
+});
+```
+
+### 6.1 SOP_STEP
+
+```php
+Schema::create('sop_steps', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('sop_id')->constrained('sop_processes')->cascadeOnDelete();
+    $table->smallInteger('position')->unsigned();
+    $table->string('title', 200);
+    $table->text('description')->nullable();
+    $table->text('expected_output')->nullable();
+    $table->text('warning_note')->nullable();
+    $table->enum('step_type', [
+        'start', 'end', 'action', 'decision',
+        'sub_sop', 'notification', 'wait'
+    ])->default('action')->index();
+    $table->foreignId('ref_sop_id')
+          ->nullable()
+          ->constrained('sop_processes')
+          ->nullOnDelete();
+    $table->smallInteger('branch_yes_position')->unsigned()->nullable();
+    $table->smallInteger('branch_no_position')->unsigned()->nullable();
+    $table->smallInteger('duration_minutes')->unsigned()->nullable();
+    $table->boolean('is_mandatory')->default(true);
+    $table->boolean('is_active')->default(true)->index();
+    $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+    $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+    $table->timestamps();
+
+    $table->unique(['sop_id', 'position'], 'idx_sop_step_pos_unique');
+    $table->index(['sop_id', 'is_active', 'position'], 'idx_step_render');
+    $table->index(['sop_id', 'step_type', 'is_active'], 'idx_step_type_filter');
+    $table->index('ref_sop_id', 'idx_step_ref_sop');
+});
+```
+
+### 6.2 SOP_STEP_CONNECTOR
+
+```php
+Schema::create('sop_step_connectors', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('sop_id')->constrained('sop_processes')->cascadeOnDelete();
+    $table->foreignId('from_step_id')->constrained('sop_steps')->cascadeOnDelete();
+    $table->foreignId('to_step_id')->constrained('sop_steps')->cascadeOnDelete();
+    $table->enum('connector_type', [
+        'sequence', 'yes_branch', 'no_branch',
+        'trigger', 'return', 'exception'
+    ])->default('sequence')->index();
+    $table->string('label', 60)->nullable();
+    $table->char('color_hex', 7)->nullable();
+    $table->smallInteger('sort_order')->default(0);
+
+    $table->unique(['from_step_id', 'to_step_id', 'connector_type'], 'idx_conn_unique');
+    $table->index('sop_id', 'idx_conn_sop');
+    $table->index('from_step_id', 'idx_conn_from');
+    $table->index('to_step_id', 'idx_conn_to');
+});
+```
+
+### 6.3 SOP_VERSION
+
+```php
+Schema::create('sop_versions', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('sop_id')->constrained('sop_processes')->cascadeOnDelete();
+    $table->unsignedInteger('version_number');
+    $table->enum('status', ['draft', 'submitted', 'approved', 'rejected'])->default('draft')->index();
+    $table->text('change_summary')->nullable();
+    $table->smallInteger('total_steps')->unsigned()->default(0);
+    $table->unsignedInteger('total_duration_minutes')->default(0);
+    $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+    $table->foreignId('approved_by')->nullable()->constrained('users')->nullOnDelete();
+    $table->timestamp('approved_at')->nullable();
+    $table->timestamp('created_at')->useCurrent();
+
+    $table->unique(['sop_id', 'version_number'], 'idx_version_num');
+    $table->index(['sop_id', 'status'], 'idx_version_status');
+});
+```
+
+### 6.4 SOP_STEP_VERSION
+
+```php
+Schema::create('sop_step_versions', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('sop_version_id')->constrained('sop_versions')->cascadeOnDelete();
+    $table->foreignId('original_step_id')
+          ->nullable()
+          ->constrained('sop_steps')
+          ->nullOnDelete(); // SET NULL — giữ history kể cả khi bước gốc bị xóa
+    $table->smallInteger('position')->unsigned();
+    $table->string('title', 200);
+    $table->text('description')->nullable();
+    $table->text('expected_output')->nullable();
+    $table->text('warning_note')->nullable();
+    $table->enum('step_type', [
+        'start', 'end', 'action', 'decision',
+        'sub_sop', 'notification', 'wait'
+    ]);
+    // Snapshot — không có FK constraint, SOP đích có thể bị xóa sau khi snapshot
+    $table->unsignedBigInteger('ref_sop_id')->nullable();
+    $table->string('ref_sop_code', 50)->nullable(); // Snapshot code để hiển thị
+    $table->smallInteger('branch_yes_position')->unsigned()->nullable();
+    $table->smallInteger('branch_no_position')->unsigned()->nullable();
+    $table->smallInteger('duration_minutes')->unsigned()->nullable();
+    $table->boolean('is_mandatory')->default(true);
+    $table->enum('change_type', ['added', 'modified', 'deleted', 'unchanged'])->default('unchanged');
+
+    $table->index(['sop_version_id', 'position'], 'idx_step_ver_pos');
+    $table->index('original_step_id', 'idx_step_ver_orig');
+    $table->index(['sop_version_id', 'change_type'], 'idx_step_ver_diff');
+});
+```
+
+### 6.5 SOP_STEP_RACI_VERSION
+
+```php
+Schema::create('sop_step_raci_versions', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('sop_version_id')->constrained('sop_versions')->cascadeOnDelete();
+    $table->foreignId('step_version_id')->constrained('sop_step_versions')->cascadeOnDelete();
+    $table->smallInteger('step_position')->unsigned();
+    $table->enum('assignee_type', ['user', 'role']);
+    $table->unsignedBigInteger('assignee_id'); // Snapshot BIGINT — không FK
+    $table->string('assignee_name', 150);       // Snapshot tên — hiển thị khi user/role bị xóa
+    $table->enum('raci_type', ['R', 'A', 'C', 'I']);
+
+    $table->index('sop_version_id', 'idx_raci_ver_version');
+    $table->index('step_version_id', 'idx_raci_ver_step');
+});
+```
+
+### 6.6 SOP_STEP_CONNECTOR_VERSION
+
+```php
+Schema::create('sop_step_connector_versions', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('sop_version_id')->constrained('sop_versions')->cascadeOnDelete();
+    $table->smallInteger('from_position')->unsigned();
+    $table->smallInteger('to_position')->unsigned();
+    $table->enum('connector_type', [
+        'sequence', 'yes_branch', 'no_branch', 'trigger', 'return', 'exception'
+    ]);
+    $table->string('label', 60)->nullable();
+    $table->char('color_hex', 7)->nullable();
+
+    $table->index('sop_version_id', 'idx_conn_ver_version');
+});
+```
+
+### 6.7 SOP_STEP_RACI
+
+```php
+Schema::create('sop_step_raci', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('step_id')->constrained('sop_steps')->cascadeOnDelete();
+    $table->enum('assignee_type', ['user', 'role'])->default('role');
+    // Polymorphic — tới users.id hoặc roles.id, đều là BIGINT
+    $table->unsignedBigInteger('assignee_id')->index();
+    $table->enum('raci_type', ['R', 'A', 'C', 'I']);
+    $table->text('notes')->nullable();
+
+    $table->unique(['step_id', 'assignee_type', 'assignee_id', 'raci_type'], 'idx_raci_unique');
+    $table->index(['assignee_type', 'assignee_id'], 'idx_raci_assignee');
+});
+```
+
+### 6.8 SOP_STEP_ATTACHMENT
+
+```php
+Schema::create('sop_step_attachments', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('step_id')->constrained('sop_steps')->cascadeOnDelete();
+    $table->string('file_name', 255);
+    $table->text('file_url');
+    $table->string('file_type', 50);
+    $table->unsignedInteger('file_size_kb');
+    $table->string('storage_provider', 20)->default('s3');
+    $table->string('storage_key', 500);
+    $table->string('alt_text', 300)->nullable();
+    $table->smallInteger('sort_order')->default(0);
+    $table->foreignId('uploaded_by')->constrained('users')->restrictOnDelete();
+    $table->timestamp('uploaded_at')->useCurrent();
+
+    $table->index(['step_id', 'sort_order'], 'idx_attachment_step');
+});
+```
+
+### 6.9 SOP_APPROVAL_FLOW
+
+```php
+Schema::create('sop_approval_flows', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('sop_version_id')->constrained('sop_versions')->cascadeOnDelete();
+    $table->tinyInteger('step_order')->unsigned()->default(1);
+    $table->string('required_role', 100)->nullable();
+    $table->foreignId('approver_id')->nullable()->constrained('users')->nullOnDelete();
+    $table->enum('action', ['approved', 'rejected', 'forwarded'])->nullable();
+    $table->text('comment')->nullable();
+    $table->timestamp('acted_at')->nullable();
+    $table->timestamps();
+
+    $table->index(['sop_version_id', 'step_order'], 'idx_approval_version');
+    $table->index('approver_id', 'idx_approval_approver');
+});
+```
+
+### 6.10 SOP_RELATION
+
+```php
+Schema::create('sop_relations', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('sop_id')->constrained('sop_processes')->restrictOnDelete();
+    $table->foreignId('related_sop_id')->constrained('sop_processes')->restrictOnDelete();
+    $table->enum('relation_type', ['prerequisite', 'related', 'replaces', 'replaced_by'])->index();
+    $table->text('note')->nullable();
+    $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+    $table->timestamp('created_at')->useCurrent();
+
+    $table->unique(['sop_id', 'related_sop_id', 'relation_type'], 'idx_sop_rel_unique');
+    $table->index('related_sop_id', 'idx_sop_rel_related');
+});
+```
+
+---
+
+## 7. Query Patterns — Truy vấn tối ưu
+
+### 7.1 Render toàn bộ flowchart — 4 queries
+
+```php
+public function getFlowchartData(int $sopId): array
 {
-  "process": {
-    "id": "uuid",
-    "code": "SOP-HR-001",
-    "title": "Quy trình onboarding nhân viên mới",
-    "objective": "...",
-    "scope": "...",
-    "type": "standard",
-    "priority": "high",
-    "version": 3
-  },
-  "steps": [
-    {
-      "step_number": 1,
-      "title": "Chuẩn bị hợp đồng",
-      "description": "...",
-      "expected_output": "...",
-      "step_type": "action",
-      "duration_minutes": 30,
-      "is_mandatory": true,
-      "warning_note": null
-    }
-  ],
-  "raci": [
-    {
-      "step_number": 1,
-      "assignee_type": "role",
-      "assignee_id": "uuid-hr-manager",
-      "raci_type": "R"
-    }
-  ]
+    // Query 1: Steps (chỉ lấy active) — dùng BIGINT id
+    $steps = DB::table('sop_steps as s')
+        ->leftJoin('sop_processes as ref', 'ref.id', '=', 's.ref_sop_id')
+        ->where('s.sop_id', $sopId)
+        ->where('s.is_active', true)
+        ->orderBy('s.position')
+        ->select([
+            's.id', 's.uuid', 's.position', 's.title', 's.description',
+            's.expected_output', 's.warning_note',
+            's.step_type', 's.duration_minutes', 's.is_mandatory',
+            's.branch_yes_position', 's.branch_no_position',
+            'ref.code as ref_sop_code',
+            'ref.title as ref_sop_title',
+        ])
+        ->get();
+
+    // Query 2: Connectors — from/to dùng BIGINT step id
+    $connectors = DB::table('sop_step_connectors')
+        ->where('sop_id', $sopId)
+        ->orderBy('sort_order')
+        ->select(['id', 'uuid', 'from_step_id', 'to_step_id',
+                  'connector_type', 'label', 'color_hex'])
+        ->get();
+
+    // Query 3: RACI — 1 query, không N+1
+    $stepIds = $steps->pluck('id');
+    $raci = DB::table('sop_step_raci as r')
+        ->whereIn('r.step_id', $stepIds)
+        ->leftJoin('users as u',
+            fn($j) => $j->on('u.id', '=', 'r.assignee_id')
+                        ->where('r.assignee_type', 'user'))
+        ->leftJoin('roles as ro',
+            fn($j) => $j->on('ro.id', '=', 'r.assignee_id')
+                        ->where('r.assignee_type', 'role'))
+        ->select([
+            'r.step_id', 'r.raci_type', 'r.assignee_type',
+            DB::raw("COALESCE(u.name, ro.name) as assignee_name"),
+        ])
+        ->get()
+        ->groupBy('step_id');
+
+    // Query 4: Attachment count per step
+    $attachmentCounts = DB::table('sop_step_attachments')
+        ->whereIn('step_id', $stepIds)
+        ->select('step_id', DB::raw('COUNT(*) as count'))
+        ->groupBy('step_id')
+        ->pluck('count', 'step_id');
+
+    $stepsWithData = $steps->map(fn($step) => [
+        ...(array) $step,
+        'raci'             => $raci->get($step->id, collect())->values(),
+        'attachment_count' => $attachmentCounts->get($step->id, 0),
+    ]);
+
+    return [
+        'steps'      => $stepsWithData,
+        'connectors' => $connectors,
+        'total_duration'  => $steps->sum('duration_minutes'),
+        'mandatory_count' => $steps->where('is_mandatory', true)->count(),
+    ];
 }
 ```
 
-**Ghi chú:**
-- Snapshot toàn bộ JSON (không chỉ text) để rollback có thể phục hồi cả cấu trúc steps và RACI
-- Với SME 20–100 người, giới hạn giữ tối đa **20 version gần nhất** / SOP; version cũ hơn xóa bằng cron
-- Rollback logic: tạo draft mới từ `snapshot_json`, không xóa lịch sử
+**Kết quả: 4 queries, không N+1.**
 
 ---
 
-### 7.8 SOP_RELATION — Liên kết giữa các SOP
+### 7.2 Reorder bước khi drag & drop
 
-**Mục đích:** Quản lý quan hệ chéo giữa các SOP với 5 kiểu liên kết. Dùng cho các quan hệ không phải cha–con trực tiếp (đã có `parent_sop_id` trong `SOP_PROCESS`).
+```php
+public function reorderSteps(int $sopId, array $orderedIds): void
+{
+    // orderedIds = [3, 1, 2] (BIGINT ids theo thứ tự mới)
+    DB::transaction(function () use ($sopId, $orderedIds) {
+        $cases = collect($orderedIds)
+            ->map(fn($id, $i) => "WHEN $id THEN " . ($i + 1))
+            ->implode(' ');
 
-| Trường | Kiểu dữ liệu | Null | Key | Default | Mô tả |
-|---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | Khóa chính |
-| `sop_id` | UUID | NOT NULL | FK (SOP_PROCESS) | | SOP nguồn (đang liên kết đến) |
-| `related_sop_id` | UUID | NOT NULL | FK (SOP_PROCESS) | | SOP đích (được liên kết tới) |
-| `relation_type` | ENUM | NOT NULL | | | prerequisite \| triggers \| references \| replaces \| related |
-| `notes` | TEXT | NULL | | NULL | Ghi chú mô tả quan hệ cụ thể |
-| `created_by` | UUID | NOT NULL | FK (users) | | Người tạo liên kết |
-| `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
+        DB::statement("
+            UPDATE sop_steps
+            SET position = CASE id $cases END,
+                updated_at = NOW()
+            WHERE sop_id = ?
+              AND id IN (?" . str_repeat(', ?', count($orderedIds) - 1) . ")",
+            [$sopId, ...$orderedIds]
+        );
+    });
+}
+```
 
-**Indexes:**
+---
+
+### 7.3 Lấy SOP có bước sub_sop trỏ đến 1 SOP cụ thể
 
 ```sql
-CREATE UNIQUE INDEX idx_sop_rel_unique ON SOP_RELATION(sop_id, related_sop_id, relation_type);
-CREATE INDEX idx_sop_rel_source ON SOP_RELATION(sop_id);
-CREATE INDEX idx_sop_rel_target ON SOP_RELATION(related_sop_id);
+SELECT DISTINCT
+    sp.code,
+    sp.title,
+    sp.status,
+    ss.position,
+    ss.title AS step_title
+FROM sop_steps ss
+JOIN sop_processes sp ON sp.id = ss.sop_id
+WHERE ss.ref_sop_id = :target_sop_id   -- BIGINT FK
+  AND ss.step_type = 'sub_sop'
+  AND ss.is_active = TRUE
+  AND sp.status = 'approved';
 ```
-
-**Ràng buộc:**
-- `sop_id` không được bằng `related_sop_id` (không tự liên kết)
-- Khi SOP liên kết bị archived: cảnh báo owner SOP nguồn để cập nhật liên kết
-- `relation_type = 'replaces'`: kiểm tra `related_sop_id` phải có status = `archived`
 
 ---
 
-### 7.9 SOP_TAG — Nhãn tag
-
-**Mục đích:** Tag tự do của tổ chức dùng để gắn vào SOP, tăng khả năng tìm kiếm và phân nhóm chéo danh mục.
-
-| Trường | Kiểu dữ liệu | Null | Key | Default | Mô tả |
-|---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | Khóa chính |
-| `org_id` | UUID | NOT NULL | FK (organizations) | | Tag thuộc org nào |
-| `name` | VARCHAR(80) | NOT NULL | | | Tên tag hiển thị, vd: "ISO 9001", "An toàn lao động" |
-| `slug` | VARCHAR(90) | NOT NULL | UNIQUE(org_id) | | Định danh URL-friendly |
-| `color_hex` | CHAR(7) | NULL | | NULL | Màu badge hiển thị |
-| `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
+### 7.4 Analytics — Bước nào mất nhiều thời gian nhất
 
 ```sql
-CREATE UNIQUE INDEX idx_sop_tag_slug_org ON SOP_TAG(org_id, slug);
-```
-
----
-
-### 7.10 SOP_PROCESS_TAG — Quan hệ SOP–Tag
-
-**Mục đích:** Bảng pivot nhiều–nhiều giữa `SOP_PROCESS` và `SOP_TAG`.
-
-| Trường | Kiểu dữ liệu | Null | Key | Mô tả |
-|---|---|---|---|---|
-| `sop_id` | UUID | NOT NULL | PK, FK (SOP_PROCESS) | SOP |
-| `tag_id` | UUID | NOT NULL | PK, FK (SOP_TAG) | Tag được gắn |
-
-```sql
-ALTER TABLE SOP_PROCESS_TAG ADD PRIMARY KEY (sop_id, tag_id);
-CREATE INDEX idx_sop_ptag_tag ON SOP_PROCESS_TAG(tag_id);
-```
-
----
-
-## 8. Luồng nghiệp vụ
-
-### 8.1 Tạo & xây dựng SOP
-
-```
-[Process Owner / Editor]
-       │
-       ▼
-  Tạo SOP mới
-  ├── Điền metadata: title, code, category, type, priority, visibility
-  ├── Viết objective và scope
-  └── status = 'draft'
-       │
-       ▼
-  Xây dựng steps (Step Builder)
-  ├── Thêm bước lần lượt (step_number tự tăng)
-  ├── Với mỗi bước:
-  │   ├── Đặt title, description, expected_output, warning_note
-  │   ├── Chọn step_type (action/decision/sub_sop/notification/wait)
-  │   ├── Nếu decision: đặt branch_yes_step và branch_no_step
-  │   ├── Nếu sub_sop: chọn ref_sop_id
-  │   ├── Đặt duration_minutes, is_mandatory
-  │   └── Upload file minh họa → SOP_STEP_ATTACHMENT
-  ├── Kéo thả sắp xếp lại thứ tự
-  └── Lưu nháp bất kỳ lúc nào
-       │
-       ▼
-  Phân công RACI (RACI Matrix)
-  ├── Với mỗi bước is_mandatory:
-  │   ├── Gán R: ai thực hiện (user hoặc role)
-  │   ├── Gán A: ai chịu trách nhiệm (đúng 1 người)
-  │   ├── Gán C: ai được hỏi ý kiến (tùy chọn)
-  │   └── Gán I: ai được thông báo (tùy chọn)
-  └── Validation: tất cả bước mandatory đều có R và A
-       │
-       ▼
-  Gửi duyệt → Xem mục 8.2
-```
-
-**Điều kiện gửi duyệt (validation):**
-- `title` không trống
-- `category_id` hợp lệ
-- Có ít nhất 1 bước (`SOP_STEP`)
-- Tất cả bước `is_mandatory = TRUE` phải có ít nhất 1 RACI record (R) và đúng 1 (A)
-- `code` không trùng trong org
-
----
-
-### 8.2 Luồng duyệt đa cấp
-
-```
-[Process Owner]
-       │
-       ▼
-  Submit duyệt
-  ├── SOP.status → 'in_review'
-  ├── Lấy danh sách SOP_APPROVAL_FLOW theo sequence ASC
-  └── Set record sequence=1: status='pending', gửi notification
-
-[Approver 1]
-       │
-       ├── APPROVE
-       │   ├── Record 1: status='approved', actioned_at=NOW()
-       │   └── Còn approver tiếp theo?
-       │       ├── CÓ: Set sequence=2 → 'pending', gửi notification
-       │       └── KHÔNG (approver cuối):
-       │           ├── SOP.status → 'approved'
-       │           ├── SOP.version += 1
-       │           ├── SOP.approved_by = approver_id
-       │           ├── SOP.approved_at = NOW()
-       │           └── Tạo SOP_VERSION_HISTORY snapshot
-       │
-       └── REJECT (kèm comment)
-           ├── Record 1: status='rejected'
-           ├── Set tất cả record còn pending → 'skipped'
-           ├── SOP.status → 'rejected'
-           └── Gửi notification đến owner: "Bị từ chối bởi [approver] — [lý do]"
-
-[Process Owner sau khi bị Reject]
-       │
-       ▼
-  Chỉnh sửa SOP (SOP.status vẫn là 'rejected', có thể edit)
-       │
-       ▼
-  Submit lại → Reset tất cả SOP_APPROVAL_FLOW về 'pending'
-             → SOP.status → 'in_review'
-             → Bắt đầu lại từ sequence = 1
-```
-
----
-
-### 8.3 Versioning & rollback
-
-```
-Khi SOP được Approve (approver cuối):
-  1. SOP.version += 1 (ví dụ: 2 → 3)
-  2. INSERT INTO SOP_VERSION_HISTORY:
-     - version_number = SOP.version (mới)
-     - snapshot_json = serialize({
-         process: SOP_PROCESS record hiện tại,
-         steps: tất cả SOP_STEP của SOP này,
-         raci: tất cả SOP_STEP_RACI của các step này
-       })
-     - change_summary = [nhập khi submit hoặc tự động detect diff]
-     - changed_by = approver cuối
-
-Khi muốn Rollback về version V:
-  1. Lấy SOP_VERSION_HISTORY với sop_id = X, version_number = V
-  2. Parse snapshot_json
-  3. Tạo draft mới:
-     a. Cập nhật SOP_PROCESS fields từ snapshot.process (giữ nguyên id, org_id, owner_id)
-     b. Xóa tất cả SOP_STEP hiện tại của SOP này
-     c. INSERT lại từ snapshot.steps
-     d. Xóa tất cả SOP_STEP_RACI liên quan
-     e. INSERT lại từ snapshot.raci
-     f. SOP.status = 'draft' (cần duyệt lại)
-     g. SOP.version giữ nguyên (KHÔNG đặt lại về V)
-     h. change_summary mới: "Rolled back to version V"
-  4. Lịch sử không bị xóa — tất cả version vẫn tồn tại
-```
-
----
-
-### 8.4 Liên kết SOP cha–con và SOP liên quan
-
-**SOP cha–con (parent_sop_id):**
-
-```
-SOP-OPS-001: Quy trình tiếp nhận khách hàng mới
-  ├── SOP-OPS-001a: Kiểm tra thông tin KYC (parent_sop_id = SOP-OPS-001)
-  ├── SOP-OPS-001b: Tạo hồ sơ hệ thống (parent_sop_id = SOP-OPS-001)
-  └── SOP-OPS-001c: Gửi welcome package (parent_sop_id = SOP-OPS-001)
-```
-
-- SOP con được liên kết trong SOP_STEP qua `step_type = 'sub_sop'` + `ref_sop_id`
-- Danh sách SOP con cũng có thể truy vấn trực tiếp qua `parent_sop_id`
-
-**SOP liên quan (SOP_RELATION):**
-
-```sql
--- Lấy tất cả SOP liên quan đến SOP X
-SELECT r.relation_type, p.code, p.title, p.status
-FROM SOP_RELATION r
-JOIN SOP_PROCESS p ON p.id = r.related_sop_id
-WHERE r.sop_id = :sop_id
-
-UNION
-
-SELECT r.relation_type, p.code, p.title, p.status
-FROM SOP_RELATION r
-JOIN SOP_PROCESS p ON p.id = r.sop_id
-WHERE r.related_sop_id = :sop_id;
-```
-
----
-
-### 8.5 Review định kỳ & hết hiệu lực
-
-```
-[Cron Job — chạy mỗi ngày lúc 07:00]
-
-NHẮC NHỞ REVIEW:
-  SELECT * FROM SOP_PROCESS
-  WHERE status = 'approved'
-    AND review_date IS NOT NULL
-    AND review_date <= NOW() + INTERVAL 30 DAY
-    AND review_date > NOW()
-  → Gửi notification đến owner_id:
-    "SOP {code} — {title} sẽ đến hạn review vào {review_date}"
-
-REVIEW QUÁ HẠN:
-  SELECT * FROM SOP_PROCESS
-  WHERE status = 'approved'
-    AND review_date IS NOT NULL
-    AND review_date < NOW()
-  → Gửi notification nhắc nhở cấp 2 đến owner_id + admin:
-    "SOP {code} — {title} đã quá hạn review từ {review_date}"
-
-HẾT HIỆU LỰC:
-  SELECT * FROM SOP_PROCESS
-  WHERE status = 'approved'
-    AND expired_date IS NOT NULL
-    AND expired_date <= NOW()
-  → UPDATE status = 'archived'
-  → INSERT notification đến owner_id:
-    "SOP {code} đã hết hiệu lực và được chuyển sang Archived"
-```
-
----
-
-### 8.6 RACI Matrix — logic phân công
-
-**Tổng hợp ma trận cho toàn SOP:**
-
-```sql
--- Lấy RACI matrix đầy đủ cho một SOP
 SELECT
-  s.step_number,
-  s.title AS step_title,
-  r.raci_type,
-  r.assignee_type,
-  CASE
-    WHEN r.assignee_type = 'user' THEN u.full_name
-    WHEN r.assignee_type = 'role' THEN ro.name
-  END AS assignee_name
-FROM SOP_STEP s
-LEFT JOIN SOP_STEP_RACI r ON r.step_id = s.id
-LEFT JOIN users u ON r.assignee_type = 'user' AND u.id = r.assignee_id
-LEFT JOIN roles ro ON r.assignee_type = 'role' AND ro.id = r.assignee_id
-WHERE s.sop_id = :sop_id
-ORDER BY s.step_number, r.raci_type;
+    s.step_type,
+    COUNT(*) as step_count,
+    AVG(s.duration_minutes) as avg_duration,
+    MAX(s.duration_minutes) as max_duration
+FROM sop_steps s
+JOIN sop_processes sp ON sp.id = s.sop_id
+WHERE sp.organization_id = :org_id    -- BIGINT FK
+  AND sp.status = 'approved'
+  AND s.is_active = TRUE
+  AND s.duration_minutes IS NOT NULL
+GROUP BY s.step_type
+ORDER BY avg_duration DESC;
 ```
 
 ---
 
-## 9. Sơ đồ chuyển trạng thái (State Machine)
+### 7.5 Diff 2 phiên bản — chỉ lấy bước thay đổi
 
+```php
+public function getDiff(int $sopId, int $fromVersion, int $toVersion): array
+{
+    $changed = DB::table('sop_step_versions as sv')
+        ->join('sop_versions as v', 'v.id', '=', 'sv.sop_version_id')
+        ->where('v.sop_id', $sopId)
+        ->where('v.version_number', $toVersion)
+        ->where('sv.change_type', '!=', 'unchanged')
+        ->select(['sv.*'])
+        ->orderBy('sv.position')
+        ->get();
+
+    $originalPositions = $changed->pluck('position');
+    $originals = DB::table('sop_step_versions as sv')
+        ->join('sop_versions as v', 'v.id', '=', 'sv.sop_version_id')
+        ->where('v.sop_id', $sopId)
+        ->where('v.version_number', $fromVersion)
+        ->whereIn('sv.position', $originalPositions)
+        ->select(['sv.position', 'sv.title', 'sv.description',
+                  'sv.step_type', 'sv.duration_minutes'])
+        ->get()
+        ->keyBy('position');
+
+    return $changed->map(fn($step) => [
+        'position'    => $step->position,
+        'change_type' => $step->change_type,
+        'new'         => $step,
+        'old'         => $originals->get($step->position),
+    ])->all();
+}
 ```
-                    ┌─────────┐
-                    │  DRAFT  │◄──────────────────────────┐
-                    └────┬────┘                           │
-                         │ submit()                       │ sửa & gửi lại
-                         ▼                                │
-                  ┌─────────────┐    reject()    ┌────────┴──────┐
-                  │  IN_REVIEW  │───────────────►│   REJECTED    │
-                  └──────┬──────┘                └───────────────┘
-                         │ approve() [approver cuối]
-                         ▼
-                  ┌─────────────┐
-                  │  APPROVED   │
-                  └──────┬──────┘
-                         │
-              ┌──────────┴───────────┐
-              │ manual archive()     │ auto: expired_date <= NOW()
-              │ hoặc có version mới  │ (cron job)
-              ▼                      ▼
-       ┌─────────────────────────────────┐
-       │            ARCHIVED             │
-       └─────────────────────────────────┘
-
-Đặc biệt: APPROVED → [chỉnh sửa] → tạo DRAFT mới
-          APPROVED cũ vẫn có hiệu lực cho đến khi DRAFT mới được APPROVED
-```
-
-**Các hành động hợp lệ theo trạng thái:**
-
-| Từ trạng thái | Hành động | Đến trạng thái | Điều kiện |
-|---|---|---|---|
-| `draft` | `submit()` | `in_review` | Qua validation đầy đủ |
-| `draft` | `delete()` | — | Chỉ owner hoặc admin |
-| `in_review` | `approve()` | `in_review` hoặc `approved` | Approver trong luồng |
-| `in_review` | `reject()` | `rejected` | Approver trong luồng, kèm comment |
-| `in_review` | `withdraw()` | `draft` | Chỉ owner — rút lại trước khi ai duyệt |
-| `rejected` | `submit()` | `in_review` | Sau khi chỉnh sửa |
-| `approved` | `archive()` | `archived` | Admin hoặc owner |
-| `approved` | `edit()` | `draft` (bản mới) | Tạo draft mới, bản cũ vẫn approved |
-| `archived` | `restore()` | `draft` | Admin — tạo draft mới từ archived |
 
 ---
 
-## 10. API Endpoints (đề xuất)
+### 7.6 Rollback về version cũ
 
-### Danh mục (Category)
+```php
+public function rollbackToVersion(int $sopId, int $targetVersion): void
+{
+    DB::transaction(function () use ($sopId, $targetVersion) {
+        $version = SopVersion::where('sop_id', $sopId)
+                             ->where('version_number', $targetVersion)
+                             ->firstOrFail();
 
-| Method | Endpoint | Mô tả |
-|---|---|---|
-| GET | `/api/sop/categories` | Lấy cây danh mục |
-| GET | `/api/sop/categories/:id` | Chi tiết danh mục + số SOP |
-| POST | `/api/sop/categories` | Tạo danh mục |
-| PUT | `/api/sop/categories/:id` | Cập nhật |
-| DELETE | `/api/sop/categories/:id` | Xóa (kiểm tra ràng buộc) |
-| PUT | `/api/sop/categories/reorder` | Cập nhật sort_order hàng loạt |
+        $stepVersions = SopStepVersion::where('sop_version_id', $version->id)
+                                       ->orderBy('position')
+                                       ->get();
 
-### Quy trình SOP
+        // 1. Soft delete tất cả bước active hiện tại
+        SopStep::where('sop_id', $sopId)
+               ->where('is_active', true)
+               ->update(['is_active' => false, 'updated_at' => now()]);
 
-| Method | Endpoint | Mô tả |
-|---|---|---|
-| GET | `/api/sop/processes` | Danh sách SOP (filter: type, status, priority, category, tag) |
-| GET | `/api/sop/processes/:id` | Chi tiết SOP đầy đủ (kèm steps, RACI, relations) |
-| GET | `/api/sop/processes/:id/steps` | Danh sách bước của SOP |
-| GET | `/api/sop/processes/:id/raci` | RACI matrix tổng hợp |
-| GET | `/api/sop/processes/:id/versions` | Lịch sử phiên bản |
-| GET | `/api/sop/processes/:id/versions/:v` | Nội dung tại version V |
-| GET | `/api/sop/processes/:id/relations` | SOP liên quan |
-| GET | `/api/sop/processes/:id/children` | Các SOP con |
-| POST | `/api/sop/processes` | Tạo SOP mới (status = draft) |
-| PUT | `/api/sop/processes/:id` | Cập nhật metadata SOP |
-| DELETE | `/api/sop/processes/:id` | Xóa mềm (chỉ draft) |
-| POST | `/api/sop/processes/:id/submit` | Gửi duyệt |
-| POST | `/api/sop/processes/:id/withdraw` | Rút lại khỏi luồng duyệt |
-| POST | `/api/sop/processes/:id/archive` | Lưu trữ |
-| POST | `/api/sop/processes/:id/rollback/:version` | Rollback về version cụ thể |
+        // 2. Xóa connector hiện tại
+        SopStepConnector::where('sop_id', $sopId)->delete();
 
-### Bước (Steps)
+        // 3. Insert lại bước từ snapshot
+        $newStepMap = []; // old_position => new_step id (BIGINT)
+        foreach ($stepVersions as $sv) {
+            $newStep = SopStep::create([
+                'sop_id'               => $sopId,
+                'position'             => $sv->position,
+                'title'                => $sv->title,
+                'description'          => $sv->description,
+                'expected_output'      => $sv->expected_output,
+                'warning_note'         => $sv->warning_note,
+                'step_type'            => $sv->step_type,
+                'ref_sop_id'           => $sv->ref_sop_id,   // BIGINT snapshot
+                'branch_yes_position'  => $sv->branch_yes_position,
+                'branch_no_position'   => $sv->branch_no_position,
+                'duration_minutes'     => $sv->duration_minutes,
+                'is_mandatory'         => $sv->is_mandatory,
+                'is_active'            => true,
+                'created_by'           => auth()->id(), // BIGINT
+            ]);
+            $newStepMap[$sv->position] = $newStep->id; // BIGINT
+        }
 
-| Method | Endpoint | Mô tả |
-|---|---|---|
-| POST | `/api/sop/processes/:id/steps` | Thêm bước mới |
-| PUT | `/api/sop/processes/:id/steps/:stepId` | Cập nhật bước |
-| DELETE | `/api/sop/processes/:id/steps/:stepId` | Xóa bước |
-| PUT | `/api/sop/processes/:id/steps/reorder` | Sắp xếp lại thứ tự (bulk update step_number) |
-| POST | `/api/sop/processes/:id/steps/:stepId/attachments` | Upload file đính kèm bước |
-| DELETE | `/api/sop/processes/:id/steps/:stepId/attachments/:aid` | Xóa file |
+        // 4. Rebuild connectors từ snapshot version
+        $connVersions = SopStepConnectorVersion::where('sop_version_id', $version->id)->get();
+        foreach ($connVersions as $cv) {
+            $fromId = $newStepMap[$cv->from_position] ?? null;
+            $toId   = $newStepMap[$cv->to_position] ?? null;
+            if ($fromId && $toId) {
+                SopStepConnector::create([
+                    'sop_id'         => $sopId,
+                    'from_step_id'   => $fromId,   // BIGINT
+                    'to_step_id'     => $toId,     // BIGINT
+                    'connector_type' => $cv->connector_type,
+                    'label'          => $cv->label,
+                    'color_hex'      => $cv->color_hex,
+                ]);
+            }
+        }
 
-### RACI
+        // 5. Rebuild RACI từ snapshot
+        $raciVersions = SopStepRaciVersion::where('sop_version_id', $version->id)->get();
+        foreach ($raciVersions as $rv) {
+            $newStepId = $newStepMap[$rv->step_position] ?? null;
+            if ($newStepId) {
+                SopStepRaci::create([
+                    'step_id'       => $newStepId,        // BIGINT
+                    'assignee_type' => $rv->assignee_type,
+                    'assignee_id'   => $rv->assignee_id,  // BIGINT snapshot
+                    'raci_type'     => $rv->raci_type,
+                ]);
+            }
+        }
 
-| Method | Endpoint | Mô tả |
-|---|---|---|
-| GET | `/api/sop/processes/:id/raci` | RACI matrix toàn SOP |
-| POST | `/api/sop/steps/:stepId/raci` | Thêm phân công RACI |
-| PUT | `/api/sop/steps/:stepId/raci/:raciId` | Cập nhật |
-| DELETE | `/api/sop/steps/:stepId/raci/:raciId` | Xóa |
-
-### Luồng duyệt
-
-| Method | Endpoint | Mô tả |
-|---|---|---|
-| GET | `/api/sop/processes/:id/approval-flow` | Danh sách approver và trạng thái |
-| POST | `/api/sop/processes/:id/approval-flow` | Cấu hình luồng duyệt |
-| POST | `/api/sop/processes/:id/approve` | Duyệt (approver action) |
-| POST | `/api/sop/processes/:id/reject` | Từ chối (kèm comment) |
-
-### Liên kết SOP
-
-| Method | Endpoint | Mô tả |
-|---|---|---|
-| GET | `/api/sop/processes/:id/relations` | Lấy tất cả liên kết |
-| POST | `/api/sop/processes/:id/relations` | Tạo liên kết mới |
-| DELETE | `/api/sop/processes/:id/relations/:rid` | Xóa liên kết |
-
-### Tag
-
-| Method | Endpoint | Mô tả |
-|---|---|---|
-| GET | `/api/sop/tags` | Danh sách tag của org |
-| POST | `/api/sop/tags` | Tạo tag |
-| PUT | `/api/sop/tags/:id` | Cập nhật |
-| DELETE | `/api/sop/tags/:id` | Xóa |
+        // 6. Đặt SOP về draft để duyệt lại
+        SopProcess::where('id', $sopId)->update([
+            'status'     => 'draft',
+            'updated_at' => now(),
+        ]);
+    });
+}
+```
 
 ---
 
-## 11. Business Rules & Ràng buộc
+## 8. Eloquent Models & Relationships
 
-### BR-SOP-001: Mã SOP (code)
+```php
+// Modules/Sop/app/Models/SopProcess.php
+class SopProcess extends Model
+{
+    use SoftDeletes;
 
-- `code` unique trong phạm vi org, format gợi ý: `SOP-{DEPT}-{SEQ}` (vd: `SOP-HR-001`)
-- Không cho phép thay đổi `code` sau khi SOP đã được approve lần đầu
-- Sequence tự tăng theo category, do application layer quản lý
+    protected $casts = [
+        'status'         => SopStatus::class,
+        'type'           => SopType::class,
+        'effective_date' => 'date',
+        'expired_date'   => 'date',
+    ];
 
-### BR-SOP-002: Cấu trúc bước
+    // Route model binding dùng UUID (không expose BIGINT id)
+    public function getRouteKeyName(): string { return 'uuid'; }
 
-- Mỗi SOP phải có ít nhất 1 bước (`SOP_STEP`) trước khi gửi duyệt
-- `step_number` phải liên tục từ 1, không có khoảng trống (đảm bảo bằng trigger hoặc application layer)
-- Khi xóa một bước: tự động renumber các bước phía sau
-- `step_type = 'decision'`: bắt buộc có `branch_yes_step` và `branch_no_step` hợp lệ
-- `step_type = 'sub_sop'`: bắt buộc có `ref_sop_id` trỏ đến SOP có status = `approved`
+    public function organization(): BelongsTo
+    {
+        return $this->belongsTo(Organization::class);
+    }
 
-### BR-SOP-003: RACI validation
+    public function steps(): HasMany
+    {
+        return $this->hasMany(SopStep::class, 'sop_id')->orderBy('position');
+    }
 
-- Mỗi bước `is_mandatory = TRUE` bắt buộc có ít nhất 1 R (Responsible)
-- Mỗi bước `is_mandatory = TRUE` bắt buộc có đúng 1 A (Accountable) — nếu nhiều hơn 1: báo lỗi
-- Một người/role có thể có nhiều vai trò trong cùng bước (vd: vừa R vừa A)
-- Bước `is_mandatory = FALSE` không bắt buộc có RACI
+    public function activeSteps(): HasMany
+    {
+        return $this->steps()->where('is_active', true);
+    }
 
-### BR-SOP-004: Luồng duyệt
+    public function versions(): HasMany
+    {
+        return $this->hasMany(SopVersion::class, 'sop_id');
+    }
 
-- Tác giả (owner) không được tự duyệt SOP của mình — trừ admin
-- Mỗi SOP cần có ít nhất 1 approver trước khi submit
-- Không cho phép thay đổi danh sách approver khi SOP đang `in_review`
-- Khi rút lại (withdraw): chỉ được phép nếu chưa có approver nào hành động
+    public function relations(): HasMany
+    {
+        return $this->hasMany(SopRelation::class, 'sop_id');
+    }
+}
 
-### BR-SOP-005: Versioning
+// Modules/Sop/app/Models/SopStep.php
+class SopStep extends Model
+{
+    protected $casts = [
+        'step_type'    => StepType::class,
+        'is_mandatory' => 'boolean',
+        'is_active'    => 'boolean',
+    ];
 
-- Snapshot được tạo tự động khi SOP chuyển sang `approved` — không thể tắt
-- Giữ tối đa **20 versions** gần nhất / SOP; xóa version cũ bằng cron hàng tuần
-- Rollback luôn tạo `draft` mới — không bao giờ ghi đè trực tiếp version hiện tại
-- `version` chỉ tăng — không bao giờ giảm dù rollback
+    public function getRouteKeyName(): string { return 'uuid'; }
 
-### BR-SOP-006: Liên kết SOP
+    public function sop(): BelongsTo
+    {
+        return $this->belongsTo(SopProcess::class, 'sop_id');
+    }
 
-- Không tạo liên kết tự tham chiếu (`sop_id = related_sop_id`)
-- `relation_type = 'prerequisite'`: kiểm tra không tạo chu kỳ (A prerequisite B, B prerequisite A)
-- Khi archive SOP: kiểm tra SOP khác có `relation_type = 'prerequisite'` trỏ vào không, nếu có thì cảnh báo
-- Một cặp SOP chỉ được có 1 relation của mỗi `relation_type`
+    public function refSop(): BelongsTo
+    {
+        return $this->belongsTo(SopProcess::class, 'ref_sop_id');
+    }
 
-### BR-SOP-007: Xóa dữ liệu
+    public function raci(): HasMany
+    {
+        return $this->hasMany(SopStepRaci::class, 'step_id');
+    }
 
-- Chỉ xóa cứng SOP ở trạng thái `draft` và `rejected` — các trạng thái còn lại chỉ archive
-- Xóa SOP sẽ cascade: xóa tất cả SOP_STEP, SOP_STEP_RACI, SOP_STEP_ATTACHMENT, SOP_APPROVAL_FLOW
-- Không xóa SOP_VERSION_HISTORY khi xóa SOP (giữ audit trail)
-- Xóa danh mục chỉ khi không còn SOP nào (kể cả archived)
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(SopStepAttachment::class, 'step_id')
+                    ->orderBy('sort_order');
+    }
 
-### BR-SOP-008: Review định kỳ
+    public function outgoingConnectors(): HasMany
+    {
+        return $this->hasMany(SopStepConnector::class, 'from_step_id');
+    }
 
-- Khi `review_date` đến (cron): gửi notification cho `owner_id`, không tự động thay đổi status
-- Sau 30 ngày kể từ `review_date` mà chưa có action: gửi thêm notification cấp 2 cho admin
-- Owner cập nhật `review_date` mới sau khi hoàn tất review (kể cả không thay đổi nội dung)
+    public function incomingConnectors(): HasMany
+    {
+        return $this->hasMany(SopStepConnector::class, 'to_step_id');
+    }
+
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_active', true);
+    }
+}
+
+// Modules/Sop/app/Models/SopStepConnector.php
+class SopStepConnector extends Model
+{
+    public $timestamps = false;
+
+    protected $casts = [
+        'connector_type' => ConnectorType::class,
+    ];
+
+    public function fromStep(): BelongsTo
+    {
+        return $this->belongsTo(SopStep::class, 'from_step_id');
+    }
+
+    public function toStep(): BelongsTo
+    {
+        return $this->belongsTo(SopStep::class, 'to_step_id');
+    }
+
+    public function getDisplayColorAttribute(): string
+    {
+        if ($this->color_hex) return $this->color_hex;
+        return match($this->connector_type) {
+            ConnectorType::YesBranch  => '#639922',
+            ConnectorType::NoBranch   => '#E24B4A',
+            ConnectorType::Trigger    => '#7F77DD',
+            ConnectorType::Return     => '#EF9F27',
+            ConnectorType::Exception  => '#E24B4A',
+            default                   => '#B4B2A9',
+        };
+    }
+}
+```
+
+---
+
+## 9. Versioning Logic — Không JSON
+
+### Snapshot khi Approve
+
+```php
+public function createSnapshot(int $sopId, int $approverId): SopVersion
+{
+    return DB::transaction(function () use ($sopId, $approverId) {
+        $steps = SopStep::where('sop_id', $sopId)
+                        ->active()
+                        ->orderBy('position')
+                        ->with(['raci'])
+                        ->get();
+
+        $connectors = SopStepConnector::where('sop_id', $sopId)->get();
+
+        $prevVersion = SopVersion::where('sop_id', $sopId)
+                                  ->where('status', 'approved')
+                                  ->latest('version_number')
+                                  ->first();
+
+        $newVersionNum = ($prevVersion?->version_number ?? 0) + 1;
+
+        $version = SopVersion::create([
+            'sop_id'                  => $sopId,
+            'version_number'          => $newVersionNum,
+            'status'                  => 'approved',
+            'total_steps'             => $steps->count(),
+            'total_duration_minutes'  => $steps->sum('duration_minutes'),
+            'approved_by'             => $approverId, // BIGINT
+            'approved_at'             => now(),
+            'created_by'              => auth()->id(), // BIGINT
+        ]);
+
+        $prevStepsByPos = $prevVersion
+            ? SopStepVersion::where('sop_version_id', $prevVersion->id)
+                             ->get()->keyBy('position')
+            : collect();
+
+        $stepVersionMap = []; // position => step_version id (BIGINT)
+        foreach ($steps as $step) {
+            $prev = $prevStepsByPos->get($step->position);
+            $changeType = $this->detectChangeType($step, $prev);
+
+            $sv = SopStepVersion::create([
+                'sop_version_id'       => $version->id,
+                'original_step_id'     => $step->id,      // BIGINT FK
+                'position'             => $step->position,
+                'title'                => $step->title,
+                'description'          => $step->description,
+                'expected_output'      => $step->expected_output,
+                'warning_note'         => $step->warning_note,
+                'step_type'            => $step->step_type,
+                'ref_sop_id'           => $step->ref_sop_id,   // BIGINT snapshot
+                'ref_sop_code'         => $step->refSop?->code,
+                'branch_yes_position'  => $step->branch_yes_position,
+                'branch_no_position'   => $step->branch_no_position,
+                'duration_minutes'     => $step->duration_minutes,
+                'is_mandatory'         => $step->is_mandatory,
+                'change_type'          => $changeType,
+            ]);
+            $stepVersionMap[$step->position] = $sv->id;
+
+            foreach ($step->raci as $r) {
+                SopStepRaciVersion::create([
+                    'sop_version_id'  => $version->id,
+                    'step_version_id' => $sv->id,
+                    'step_position'   => $step->position,
+                    'assignee_type'   => $r->assignee_type,
+                    'assignee_id'     => $r->assignee_id,  // BIGINT snapshot
+                    'assignee_name'   => $r->assigneeName(),
+                    'raci_type'       => $r->raci_type,
+                ]);
+            }
+        }
+
+        // Snapshot connectors — dùng position, không step id
+        $stepPositionMap = $steps->pluck('position', 'id'); // BIGINT id => position
+        foreach ($connectors as $conn) {
+            SopStepConnectorVersion::create([
+                'sop_version_id' => $version->id,
+                'from_position'  => $stepPositionMap[$conn->from_step_id],
+                'to_position'    => $stepPositionMap[$conn->to_step_id],
+                'connector_type' => $conn->connector_type,
+                'label'          => $conn->label,
+                'color_hex'      => $conn->color_hex,
+            ]);
+        }
+
+        SopProcess::where('id', $sopId)->update([
+            'status'      => 'approved',
+            'version'     => $newVersionNum,
+            'approved_by' => $approverId,
+            'approved_at' => now(),
+        ]);
+
+        return $version;
+    });
+}
+
+private function detectChangeType(SopStep $step, ?SopStepVersion $prev): string
+{
+    if (!$prev) return 'added';
+    $fields = ['title', 'description', 'expected_output', 'step_type',
+               'duration_minutes', 'is_mandatory', 'warning_note'];
+    foreach ($fields as $f) {
+        if ($step->$f !== $prev->$f) return 'modified';
+    }
+    return 'unchanged';
+}
+```
+
+---
+
+## 10. Render Flowchart — Alpine.js + SVG
+
+### Controller endpoint
+
+```php
+// Modules/Sop/app/Http/Controllers/SopFlowchartController.php
+public function data(SopProcess $sop): JsonResponse
+{
+    // Route model binding dùng uuid — SopProcess::getRouteKeyName() = 'uuid'
+    $this->authorize('view', $sop);
+
+    $data = app(SopFlowchartRepository::class)->getFlowchartData($sop->id);
+
+    $shapeMap = [
+        'start'        => ['shape' => 'oval',         'color' => '#1D9E75', 'fill' => '#E1F5EE'],
+        'end'          => ['shape' => 'oval_double',   'color' => '#1D9E75', 'fill' => '#E1F5EE'],
+        'action'       => ['shape' => 'rect',          'color' => '#378ADD', 'fill' => '#E6F1FB'],
+        'decision'     => ['shape' => 'diamond',       'color' => '#EF9F27', 'fill' => '#FAEEDA'],
+        'sub_sop'      => ['shape' => 'rect_double',   'color' => '#1D9E75', 'fill' => '#E1F5EE'],
+        'notification' => ['shape' => 'parallelogram', 'color' => '#7F77DD', 'fill' => '#EEEDFE'],
+        'wait'         => ['shape' => 'rounded_rect',  'color' => '#888780', 'fill' => '#F1EFE8'],
+    ];
+
+    $data['steps'] = $data['steps']->map(fn($step) => array_merge(
+        (array) $step,
+        $shapeMap[$step['step_type']] ?? $shapeMap['action']
+    ));
+
+    return response()->json($data);
+}
+```
+
+### Alpine.js component (tích hợp vào Blade)
+
+```html
+{{-- Modules/Sop/resources/views/partials/flowchart.blade.php --}}
+<div
+    x-data="sopFlowchart('{{ route('sop.flowchart.data', $sop->uuid) }}')"
+    x-init="load()"
+    class="relative"
+>
+    {{-- Toolbar --}}
+    <div class="flex items-center gap-3 mb-3 text-sm">
+        <span class="text-gray-400" x-text="`${meta.step_count} bước · ${meta.total_duration} phút`"></span>
+        <button @click="zoomIn()" class="btn-icon" title="Phóng to">+</button>
+        <button @click="zoomOut()" class="btn-icon" title="Thu nhỏ">−</button>
+        <button @click="fitToScreen()" class="btn-icon" title="Vừa màn hình">⊡</button>
+        <label class="flex items-center gap-1 text-gray-400 cursor-pointer">
+            <input type="checkbox" x-model="showDuration" class="rounded">
+            Hiện thời gian
+        </label>
+    </div>
+
+    {{-- SVG Canvas --}}
+    <div class="overflow-auto border rounded-lg bg-gray-50" style="max-height: 420px">
+        <svg
+            :width="canvas.width"
+            :height="canvas.height"
+            :viewBox="`0 0 ${canvas.width} ${canvas.height}`"
+            x-ref="svg"
+        >
+            <defs>
+                <marker id="arr-gray" viewBox="0 0 10 10" refX="8" refY="5"
+                    markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                    <path d="M2 1L8 5L2 9" fill="none" stroke="#B4B2A9" stroke-width="1.5" stroke-linecap="round"/>
+                </marker>
+                <marker id="arr-green" viewBox="0 0 10 10" refX="8" refY="5"
+                    markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                    <path d="M2 1L8 5L2 9" fill="none" stroke="#639922" stroke-width="1.5" stroke-linecap="round"/>
+                </marker>
+                <marker id="arr-red" viewBox="0 0 10 10" refX="8" refY="5"
+                    markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                    <path d="M2 1L8 5L2 9" fill="none" stroke="#E24B4A" stroke-width="1.5" stroke-linecap="round"/>
+                </marker>
+            </defs>
+
+            {{-- Connectors --}}
+            <template x-for="conn in layout.connectors" :key="conn.id">
+                <g>
+                    <path :d="conn.path" fill="none" :stroke="conn.color"
+                          stroke-width="1.2" :stroke-dasharray="conn.dashed ? '5 3' : 'none'"
+                          :marker-end="`url(#arr-${conn.markerColor})`"/>
+                    <text x-show="conn.label" :x="conn.labelX" :y="conn.labelY"
+                          text-anchor="middle" font-size="10" :fill="conn.color"
+                          font-family="sans-serif" x-text="conn.label"/>
+                </g>
+            </template>
+
+            {{-- Nodes --}}
+            <template x-for="node in layout.nodes" :key="node.id">
+                <g class="cursor-pointer" @click="selectStep(node)"
+                   :opacity="selected && selected.id !== node.id ? 0.55 : 1"
+                   style="transition: opacity 0.15s">
+                    <template x-if="node.shape === 'rect' || node.shape === 'rect_double' || node.shape === 'rounded_rect'">
+                        <g>
+                            <rect :x="node.x" :y="node.y" :width="node.w" :height="node.h"
+                                  :rx="node.shape === 'rounded_rect' ? 16 : 6"
+                                  :fill="node.fill" :stroke="node.color"
+                                  :stroke-width="selected?.id === node.id ? 2 : 0.8"/>
+                            <template x-if="node.shape === 'rect_double'">
+                                <rect :x="node.x + 3" :y="node.y + 3"
+                                      :width="node.w - 6" :height="node.h - 6"
+                                      rx="3" fill="none" :stroke="node.color" stroke-width="0.5"/>
+                            </template>
+                        </g>
+                    </template>
+                    <template x-if="node.shape === 'diamond'">
+                        <path :d="`M${node.cx},${node.y} L${node.x+node.w},${node.cy} L${node.cx},${node.y+node.h} L${node.x},${node.cy} Z`"
+                              :fill="node.fill" :stroke="node.color"
+                              :stroke-width="selected?.id === node.id ? 2 : 0.8"/>
+                    </template>
+                    <template x-if="node.shape === 'oval' || node.shape === 'oval_double'">
+                        <ellipse :cx="node.cx" :cy="node.cy" :rx="node.w / 2" :ry="node.h / 2"
+                                 :fill="node.fill" :stroke="node.color"
+                                 :stroke-width="selected?.id === node.id ? 2 : 1"/>
+                    </template>
+                    <text :x="node.cx"
+                          :y="node.cy - (showDuration && node.duration_minutes ? 7 : 0)"
+                          text-anchor="middle" dominant-baseline="central"
+                          font-size="10" font-weight="500" :fill="node.color"
+                          font-family="sans-serif" x-text="node.shortTitle"/>
+                    <text x-show="showDuration && node.duration_minutes"
+                          :x="node.cx" :y="node.cy + 10"
+                          text-anchor="middle" dominant-baseline="central"
+                          font-size="9" :fill="node.color" font-family="sans-serif"
+                          opacity="0.7" x-text="`${node.duration_minutes} ph`"/>
+                </g>
+            </template>
+        </svg>
+    </div>
+
+    {{-- Step Detail Panel --}}
+    <div x-show="selected"
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:enter-start="opacity-0 translate-y-1"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         class="mt-3 p-3 rounded-lg border-l-2 bg-gray-50"
+         :style="`border-color: ${selected?.color}`">
+        <template x-if="selected">
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <span class="font-medium text-sm"
+                          x-text="`Bước ${selected.position}: ${selected.title}`"></span>
+                    <button @click="selected = null" class="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
+                </div>
+                <p class="text-xs text-gray-500 leading-relaxed mb-2" x-text="selected.description"></p>
+                <div x-show="selected.expected_output" class="text-xs text-gray-400 mb-2"
+                     x-text="`→ ${selected.expected_output}`"></div>
+                <div x-show="selected.warning_note"
+                     class="text-xs text-amber-600 bg-amber-50 p-2 rounded mb-2"
+                     x-text="`⚠ ${selected.warning_note}`"></div>
+                <div class="flex gap-1 flex-wrap">
+                    <template x-for="r in selected.raci" :key="r.raci_type + r.assignee_name">
+                        <span class="text-xs px-2 py-0.5 rounded font-medium"
+                              :class="{
+                                'bg-blue-50 text-blue-700': r.raci_type === 'R',
+                                'bg-amber-50 text-amber-700': r.raci_type === 'A',
+                                'bg-teal-50 text-teal-700': r.raci_type === 'C',
+                                'bg-gray-100 text-gray-600': r.raci_type === 'I',
+                              }"
+                              x-text="`${r.raci_type}: ${r.assignee_name}`"/>
+                    </template>
+                </div>
+                <div x-show="selected.step_type === 'sub_sop' && selected.ref_sop_code" class="mt-2">
+                    <a :href="`/sop/${selected.ref_sop_code}`"
+                       class="text-xs text-blue-600 hover:underline"
+                       x-text="`↗ Xem SOP con: ${selected.ref_sop_code} — ${selected.ref_sop_title}`">
+                    </a>
+                </div>
+            </div>
+        </template>
+    </div>
+</div>
+```
+
+### Alpine.js Layout Engine
+
+```js
+// Modules/Sop/resources/js/components/sop-flowchart.js
+document.addEventListener('alpine:init', () => {
+    Alpine.data('sopFlowchart', (dataUrl) => ({
+        steps: [], connectors: [], meta: {},
+        layout: { nodes: [], connectors: [] },
+        canvas: { width: 800, height: 200 },
+        selected: null, showDuration: false, loading: true,
+
+        NODE_W: 96, NODE_H: 64, DIA_W: 90, DIA_H: 58,
+        OVAL_W: 72, OVAL_H: 44, GAP_X: 40,
+        START_X: 24, START_Y: 28, BRANCH_DROP: 86,
+
+        async load() {
+            const res = await fetch(dataUrl);
+            const data = await res.json();
+            this.steps = data.steps;
+            this.connectors = data.connectors;
+            this.meta = { step_count: data.steps.length, total_duration: data.total_duration };
+            this.buildLayout();
+            this.loading = false;
+        },
+
+        buildLayout() {
+            const nodes = this.computeNodes();
+            const connLines = this.computeConnectors(nodes);
+            const maxX = Math.max(...nodes.map(n => n.x + n.w)) + this.START_X;
+            const maxY = Math.max(...nodes.map(n => n.y + n.h)) + this.BRANCH_DROP + 40;
+            this.canvas = { width: maxX, height: maxY };
+            this.layout = { nodes, connectors: connLines };
+        },
+
+        computeNodes() {
+            const nodes = [];
+            let cx = this.START_X;
+            this.steps.forEach(step => {
+                const isDec  = step.step_type === 'decision';
+                const isOval = ['start', 'end'].includes(step.step_type);
+                const w = isDec ? this.DIA_W : isOval ? this.OVAL_W : this.NODE_W;
+                const h = isDec ? this.DIA_H : isOval ? this.OVAL_H : this.NODE_H;
+                const x = cx, y = this.START_Y;
+                nodes.push({
+                    ...step, x, y, w, h,
+                    cx: x + w / 2, cy: y + h / 2,
+                    shortTitle: step.title.length > 14 ? step.title.slice(0, 13) + '…' : step.title,
+                });
+                cx += w + this.GAP_X;
+            });
+            return nodes;
+        },
+
+        computeConnectors(nodes) {
+            // from_step_id / to_step_id đều là BIGINT, map bằng id số nguyên
+            const nodeById = Object.fromEntries(nodes.map(n => [n.id, n]));
+            const lines = [];
+            this.connectors.forEach(conn => {
+                const from = nodeById[conn.from_step_id];
+                const to   = nodeById[conn.to_step_id];
+                if (!from || !to) return;
+                const colorMap = {
+                    sequence: '#B4B2A9', yes_branch: '#639922', no_branch: '#E24B4A',
+                    trigger: '#7F77DD', return: '#EF9F27', exception: '#E24B4A',
+                };
+                const color = conn.color_hex || colorMap[conn.connector_type] || '#B4B2A9';
+                const dashed = ['trigger', 'exception'].includes(conn.connector_type);
+                const markerColor = { yes_branch: 'green', no_branch: 'red', exception: 'red' }[conn.connector_type] || 'gray';
+                let path, labelX, labelY;
+                if (conn.connector_type === 'no_branch') {
+                    const dropY = from.y + from.h + this.BRANCH_DROP;
+                    path = `M${from.cx},${from.y + from.h} L${from.cx},${dropY}`;
+                    labelX = from.cx + 12; labelY = from.y + from.h + 14;
+                } else if (to.x > from.x + from.w) {
+                    path = `M${from.x + from.w},${from.cy} L${to.x},${to.cy}`;
+                    labelX = (from.x + from.w + to.x) / 2; labelY = from.cy - 8;
+                } else {
+                    const midY = from.cy - 30;
+                    path = `M${from.cx},${from.y} L${from.cx},${midY} L${to.cx},${midY} L${to.cx},${to.y}`;
+                    labelX = (from.cx + to.cx) / 2; labelY = midY - 6;
+                }
+                lines.push({ ...conn, path, color, dashed, markerColor, labelX, labelY });
+            });
+            return lines;
+        },
+
+        selectStep(node) { this.selected = this.selected?.id === node.id ? null : node; },
+        zoomIn()  {},
+        zoomOut() {},
+        fitToScreen() {},
+    }));
+});
+```
+
+---
+
+## 11. Business Rules & Constraints
+
+### BR-FC-001: Tính toàn vẹn connector
+
+```sql
+-- Trigger: Không cho phép connector trỏ đến bước đã soft-delete
+CREATE TRIGGER trg_connector_check_active
+BEFORE INSERT ON sop_step_connectors
+FOR EACH ROW
+BEGIN
+    IF (SELECT is_active FROM sop_steps WHERE id = NEW.from_step_id) = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'from_step is inactive';
+    END IF;
+    IF (SELECT is_active FROM sop_steps WHERE id = NEW.to_step_id) = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'to_step is inactive';
+    END IF;
+END;
+```
+
+### BR-FC-002: Decision step phải có đúng 2 connector (Yes + No)
+
+```php
+public function validateDecisionSteps(int $sopId): array
+{
+    $errors = [];
+    $decisionSteps = SopStep::where('sop_id', $sopId)
+                             ->where('step_type', 'decision')
+                             ->where('is_active', true)
+                             ->with('outgoingConnectors')
+                             ->get();
+
+    foreach ($decisionSteps as $step) {
+        $connTypes = $step->outgoingConnectors->pluck('connector_type');
+        if (!$connTypes->contains('yes_branch')) {
+            $errors[] = "Bước '{$step->title}' (pos {$step->position}) thiếu nhánh Yes";
+        }
+        if (!$connTypes->contains('no_branch')) {
+            $errors[] = "Bước '{$step->title}' (pos {$step->position}) thiếu nhánh No";
+        }
+    }
+    return $errors;
+}
+```
+
+### BR-FC-003: Flow phải có start và end
+
+```php
+public function validateFlowStructure(int $sopId): array
+{
+    $types = SopStep::where('sop_id', $sopId)
+                    ->where('is_active', true)
+                    ->pluck('step_type');
+    $errors = [];
+    if (!$types->contains('start')) $errors[] = 'Flow chưa có bước Start';
+    if (!$types->contains('end'))   $errors[] = 'Flow chưa có bước End';
+    return $errors;
+}
+```
+
+### BR-FC-004: ref_sop_id chỉ trỏ đến SOP đã Approved
+
+```php
+// Validation rule khi save step có step_type = sub_sop
+Rule::exists('sop_processes', 'id')
+    ->where('status', 'approved')
+    ->where('organization_id', $currentOrgId),
+```
+
+### BR-FC-005: SOP_RELATION không được tự tham chiếu
+
+```php
+// Trong FormRequest validation
+'related_sop_id' => [
+    'required',
+    'exists:sop_processes,id',
+    Rule::notIn([$request->route('sop')->id]), // sop_id !== related_sop_id
+],
+```
+
+### BR-FC-006: Multi-tenancy
+
+- Tất cả query SOP phải có điều kiện `organization_id = :current_org_id` (BIGINT)
+- `ref_sop_id` trong sub_sop step chỉ được trỏ đến SOP trong cùng org
 
 ---
 
 ## 12. Indexes & Performance
 
-### Index quan trọng
-
 ```sql
--- Trang danh sách SOP: lọc theo org + status + type
-CREATE INDEX idx_sop_list
-  ON SOP_PROCESS(org_id, status, type, priority, updated_at DESC);
+-- Index tổng hợp cho render flowchart (query quan trọng nhất)
+CREATE INDEX idx_step_render_full
+  ON sop_steps(sop_id, is_active, position)
+  INCLUDE (title, step_type, duration_minutes, branch_yes_position, branch_no_position);
 
--- SOP nổi bật / khẩn cấp
-CREATE INDEX idx_sop_emergency
-  ON SOP_PROCESS(org_id, type, status)
-  WHERE type = 'emergency' AND status = 'approved';
+-- Index cho connector lookup
+CREATE INDEX idx_conn_full
+  ON sop_step_connectors(sop_id)
+  INCLUDE (from_step_id, to_step_id, connector_type, label, color_hex);
 
--- Cây SOP cha–con
-CREATE INDEX idx_sop_children
-  ON SOP_PROCESS(parent_sop_id)
-  WHERE parent_sop_id IS NOT NULL;
+-- Index diff view — chỉ lấy bước đã thay đổi
+CREATE INDEX idx_step_ver_changed
+  ON sop_step_versions(sop_version_id, change_type)
+  WHERE change_type != 'unchanged';
 
--- RACI lookup nhanh theo bước
-CREATE INDEX idx_raci_step_type
-  ON SOP_STEP_RACI(step_id, raci_type);
+-- Index RACI bulk fetch
+CREATE INDEX idx_raci_bulk
+  ON sop_step_raci(step_id, raci_type)
+  INCLUDE (assignee_type, assignee_id);
 
--- Tìm toàn bộ SOP có assignee là user/role X
-CREATE INDEX idx_raci_assignee_lookup
-  ON SOP_STEP_RACI(assignee_type, assignee_id, raci_type);
+-- Index analytics (step_type phổ biến, duration)
+CREATE INDEX idx_step_analytics
+  ON sop_steps(step_type, is_active, duration_minutes)
+  WHERE is_active = TRUE AND duration_minutes IS NOT NULL;
 
--- Approval flow: tìm approval pending của một approver
-CREATE INDEX idx_approval_pending
-  ON SOP_APPROVAL_FLOW(approver_type, approver_id, status)
-  WHERE status = 'pending';
-
--- Version history: lấy version mới nhất
-CREATE INDEX idx_version_latest
-  ON SOP_VERSION_HISTORY(sop_id, version_number DESC);
-
--- Cron: SOP cần review hoặc sắp hết hạn
-CREATE INDEX idx_sop_cron_review
-  ON SOP_PROCESS(review_date, status)
-  WHERE review_date IS NOT NULL AND status = 'approved';
+-- Index SOP list per org
+CREATE INDEX idx_sop_proc_org_status
+  ON sop_processes(organization_id, status, created_at DESC);
 ```
 
-### Ghi chú hiệu năng
+### Caching strategy
 
-| Vấn đề | Giải pháp đề xuất |
-|---|---|
-| `snapshot_json` có thể rất lớn nếu SOP nhiều bước | Nén gzip trước khi lưu; hoặc lưu vào S3 và chỉ lưu S3 URL trong bảng |
-| Full-text search chậm khi data lớn | Elasticsearch / OpenSearch cho org có > 500 SOP |
-| RACI matrix render nhiều record | Cache JSON aggregate per SOP, invalidate khi SOP_STEP_RACI thay đổi |
-| Approval flow query N+1 | JOIN toàn bộ approval flow trong 1 query kèm thông tin approver |
-| `step_number` reorder tốn nhiều UPDATE | Dùng floating point step_number (1.0, 2.0, 2.5 nếu chèn giữa) hoặc batch update trong transaction |
+```php
+// Cache flowchart data — invalidate khi SOP thay đổi
+Cache::tags(["sop:{$sopId}"])->remember(
+    "flowchart:{$sopId}",
+    now()->addMinutes(30),
+    fn() => $this->getFlowchartData($sopId)
+);
 
----
-
-## 13. Ghi chú triển khai cho SME
-
-### Lộ trình theo giai đoạn
-
-**Giai đoạn 1 — MVP (tháng 1–2): Core SOP Builder**
-- [ ] `SOP_CATEGORY` + `SOP_PROCESS` + `SOP_STEP`
-- [ ] Step Builder cơ bản (action, decision) — chưa cần sub_sop, notification, wait
-- [ ] `SOP_STEP_RACI` + validation R và A
-- [ ] Luồng duyệt đơn giản (1 approver, không cần sequence)
-- [ ] `SOP_STEP_ATTACHMENT` — upload ảnh minh họa
-- [ ] Tìm kiếm full-text cơ bản
-
-**Giai đoạn 2 — Mở rộng (tháng 3–4)**
-- [ ] `SOP_VERSION_HISTORY` + Rollback
-- [ ] Luồng duyệt đa cấp theo `sequence`
-- [ ] `SOP_RELATION` — liên kết SOP
-- [ ] Step type đầy đủ (sub_sop, notification, wait)
-- [ ] `SOP_TAG` + tìm kiếm theo tag
-- [ ] Render flowchart từ steps (frontend)
-
-**Giai đoạn 3 — Hoàn thiện (tháng 5+)**
-- [ ] Cron job: review nhắc nhở + hết hiệu lực tự động
-- [ ] RACI matrix view dạng bảng export
-- [ ] Dashboard analytics: SOP sắp hết hạn, phân bố theo type/priority
-- [ ] Notification system hoàn chỉnh
-
-### Khuyến nghị cấu hình cho SME 20–100 người
-
-| Thông số | Khuyến nghị |
-|---|---|
-| Cấp danh mục | 2 cấp là đủ (Lĩnh vực → Nhóm quy trình) |
-| Số approver | 1–2 cấp duyệt; tránh > 3 cấp gây chậm trễ |
-| Giới hạn số bước / SOP | Gợi ý tối đa 20 bước; SOP phức tạp hơn → chia SOP con |
-| File đính kèm / bước | Tối đa 5 file, 10MB/file |
-| Giữ version history | 10–15 version gần nhất là đủ |
-| Review cycle mặc định | 6 tháng cho standard SOP; 3 tháng cho emergency |
-| Format code SOP | `SOP-{3 ký tự phòng ban}-{3 số}`: SOP-HR-001, SOP-IT-012 |
-
-### Ví dụ danh mục cho SME phổ biến
-
-```
-SOP Center
-├── Nhân sự (HR)
-│   ├── Tuyển dụng
-│   └── Onboarding & Offboarding
-├── Vận hành (Operations)
-│   ├── Sản xuất / Dịch vụ
-│   └── Chất lượng (QC/QA)
-├── Tài chính - Kế toán
-│   ├── Thu - Chi
-│   └── Báo cáo & Kiểm toán
-├── Công nghệ thông tin (IT)
-│   ├── Hạ tầng & Bảo mật
-│   └── Hỗ trợ người dùng
-└── Kinh doanh & Khách hàng
-    ├── Bán hàng
-    └── Chăm sóc khách hàng
+// Invalidate khi step, connector, raci thay đổi
+Cache::tags(["sop:{$sopId}"])->flush();
 ```
 
 ---
 
-*Tài liệu này được tạo bởi AI Assistant và cần được review bởi Technical Lead / Product Owner trước khi đưa vào triển khai chính thức.*
+## 13. Lộ trình triển khai
 
-*Version 1.0.0 — SOP Center Module Specification — SME SaaS Platform*
+> **Nguyên tắc thứ tự:** Data layer → Service layer → API/Controller → UI → Validation → Test.  
+> Mỗi phase phải hoàn thiện và test được trước khi sang phase tiếp theo.  
+> Module Sop chưa tồn tại — cần scaffold trước Phase 1.
+
+---
+
+### Phase 0 — Module Scaffold & RBAC (tiên quyết)
+
+**Mục tiêu:** Tạo xương sống module, đăng ký permissions, tích hợp sidebar — không có phase này thì không phase nào chạy được.
+
+- [ ] `php artisan module:make Sop` — scaffold cấu trúc NWIDART
+- [ ] Đăng ký `SopServiceProvider` trong `config/app.php` (hoặc auto-discover)
+- [ ] Định nghĩa permissions trong `config/permissions.php`:
+  - `sop.view`, `sop.create`, `sop.edit`, `sop.delete`
+  - `sop.submit_review`, `sop.approve`, `sop.reject`
+  - `sop.manage_raci`, `sop.manage_attachment`
+- [ ] Gán permissions cho roles: CEO (full), Ops/Sales (view + submit), System_Admin (full), Viewer (view only)
+- [ ] Seeder: `SopPermissionSeeder` — chạy sau `AuthDatabaseSeeder`
+- [ ] `SopPolicy` — map abilities sang permissions Spatie
+- [ ] Sidebar entry trong `config/permissions.php` (module `sop`) với icon + route
+- [ ] Routes stub: `GET /dashboard/sop` → 503 placeholder (giống các module chưa active)
+- [ ] Module status: đánh dấu `enabled: false` trong `modules_statuses.json` đến khi Phase 1 xong
+
+---
+
+### Phase 1 — Database Foundation (tuần 1)
+
+**Mục tiêu:** Toàn bộ schema live-layer lên DB, test migration up/down.
+
+- [ ] Migration `2026_XX_XX_create_sop_processes_table` (section 6.0)
+- [ ] Migration `2026_XX_XX_create_sop_steps_table` (section 6.1)
+- [ ] Migration `2026_XX_XX_create_sop_step_connectors_table` (section 6.2)
+- [ ] Migration `2026_XX_XX_create_sop_step_raci_table` (section 6.7)
+- [ ] Migration `2026_XX_XX_create_sop_step_attachments_table` (section 6.8)
+- [ ] Migration `2026_XX_XX_create_sop_relations_table` (section 6.10)
+- [ ] Enum PHP: `SopStatus`, `SopType`, `StepType`, `ConnectorType` (backed enum, `string`)
+- [ ] Eloquent models: `SopProcess`, `SopStep`, `SopStepConnector`, `SopStepRaci`, `SopStepAttachment`, `SopRelation` với đầy đủ relationships (section 8)
+- [ ] `SopProcess` extend `TenantAwareModel` — global scope `organization_id`
+- [ ] `SopProcess::getRouteKeyName()` trả về `'uuid'` (không expose BIGINT)
+- [ ] Test: `php artisan migrate --path=Modules/Sop/Database/Migrations` + rollback
+- [ ] Test: factory + `SopProcess::create()` với org scope hoạt động đúng
+
+---
+
+### Phase 2 — SOP Process CRUD (tuần 1–2)
+
+**Mục tiêu:** Người dùng có thể tạo/xem/sửa/xóa SOP. Đây là entry point cho toàn module.
+
+**Controllers & Actions:**
+- [ ] `SopProcessController` — resourceful: `index`, `create`, `store`, `show`, `edit`, `update`, `destroy`
+- [ ] `StoreSopProcessAction` — validate code unique trong org, gán `created_by`, `organization_id`
+- [ ] `UpdateSopProcessAction` — không cho sửa code khi status = approved
+- [ ] `ArchiveSopProcessAction` — chuyển `status = archived`, soft delete
+- [ ] `ListSopProcessesQuery` — filter: status, type, department_id, branch_id, owner_id, keyword
+
+**Validation:**
+- [ ] `StoreSopProcessRequest` + `UpdateSopProcessRequest` — unique code trong org, date logic (`effective_date < expired_date`)
+- [ ] Policy gate: `create`, `update`, `delete`, `view` ánh xạ đúng permissions
+
+**Views (Blade + Alpine.js):**
+- [ ] `sop/index.blade.php` — danh sách SOP: table với filter bar (status, type, search), pagination, badge status, nút tạo mới
+- [ ] `sop/create.blade.php` / `sop/edit.blade.php` — form: code, title, description, type, department, branch, owner, effective_date, expired_date
+- [ ] `sop/show.blade.php` — layout 2 cột: meta SOP (trái) + flowchart placeholder (phải), tab: Overview / Flowchart / Versions / Relations
+- [ ] Xóa mềm + restore (nếu System_Admin)
+
+**Routes:**
+- [ ] `GET/POST /dashboard/sop` → index + store
+- [ ] `GET /dashboard/sop/create` → create form
+- [ ] `GET/PUT/DELETE /dashboard/sop/{sop:uuid}` → show + update + destroy
+
+---
+
+### Phase 3 — Flowchart View (Read-only) (tuần 2)
+
+**Mục tiêu:** Render flowchart SVG từ dữ liệu DB — không cần editor trước.
+
+- [ ] `SopFlowchartRepository::getFlowchartData(int $sopId): array` — 4 queries (section 7.1), không N+1
+- [ ] `SopFlowchartController::data(SopProcess $sop): JsonResponse` — endpoint JSON (section 10)
+- [ ] Route: `GET /dashboard/sop/{sop:uuid}/flowchart/data`
+- [ ] Alpine.js component `sopFlowchart` (section 10) — `computeNodes()` + `computeConnectors()` + `buildLayout()`
+- [ ] Render: rect, diamond, oval, parallelogram, rounded_rect, rect_double
+- [ ] Render connectors: sequence, yes_branch, no_branch — với màu đúng theo `connector_type`
+- [ ] Step detail panel (click node): title, description, expected_output, warning_note, RACI badges, attachment count
+- [ ] Toolbar: zoom in/out, fit to screen (stub OK cho phase này), show/hide duration
+- [ ] Cache: `Cache::tags(["sop:{$sopId}"])->remember("flowchart:{$sopId}", 30min, ...)`
+- [ ] Tích hợp vào tab "Flowchart" của `sop/show.blade.php`
+
+---
+
+### Phase 4 — Flowchart Editor (tuần 3–4)
+
+**Mục tiêu:** Người dùng có thể xây dựng flowchart qua UI — thêm/sửa/xóa bước, kéo thả thứ tự, quản lý connector.
+
+**Step CRUD:**
+- [ ] `SopStepController` — `store`, `update`, `destroy` (no index/show — flowchart là UI)
+- [ ] `StoreSopStepAction` — gán position tự động (max + 1), tạo uuid
+- [ ] `UpdateSopStepAction` — không cho sửa position trực tiếp (dùng reorder)
+- [ ] `DestroySopStepAction` — soft delete (`is_active = false`), xóa connector liên quan
+- [ ] API: `POST /backend/api/sop/{sop}/steps`, `PUT .../steps/{step:uuid}`, `DELETE .../steps/{step:uuid}`
+- [ ] `SopStepReorderController::update` — nhận mảng `[id, ...]` theo thứ tự mới, bulk UPDATE (section 7.2)
+- [ ] API: `PUT /backend/api/sop/{sop}/steps/reorder`
+
+**Connector CRUD:**
+- [ ] `SopStepConnectorController` — `store`, `update`, `destroy`
+- [ ] `StoreSopStepConnectorAction` — validate: from_step + to_step thuộc cùng sop_id
+- [ ] Validate: unique constraint `(from_step_id, to_step_id, connector_type)` tại DB + app layer
+- [ ] API: `POST/PUT/DELETE /backend/api/sop/{sop}/connectors`
+
+**Editor UI (Alpine.js):**
+- [ ] Component `sopEditor` — extend `sopFlowchart` với mode `edit`
+- [ ] Panel thêm bước: chọn step_type (icon palette), nhập title/description/etc.
+- [ ] Click step → edit panel (drawer phải): sửa title, description, expected_output, warning_note, step_type, duration_minutes, is_mandatory
+- [ ] Drag & drop reorder bước (horizontal sort — dùng SortableJS hoặc Alpine drag, cái nào tối ưu nhất thì triển khai)
+- [ ] Nút xóa bước (với confirm dialog)
+- [ ] Add connector: click source → click target → chọn connector_type + label
+- [ ] Xóa connector: click connector → nút delete
+- [ ] Validation inline: quy tắc BR-FC-002 (decision cần Yes+No), BR-FC-003 (start+end)
+- [ ] Auto-invalidate cache khi lưu bước/connector: `Cache::tags(["sop:{$sopId}"])->flush()`
+- [ ] Lock editor khi SOP status = `approved` (chỉ được sửa khi `draft`)
+
+**Decision & Sub-SOP:**
+- [ ] Render diamond shape cho `step_type = decision`
+- [ ] yes_branch / no_branch connector render với màu xanh/đỏ
+- [ ] Sub-SOP step: dropdown chọn `ref_sop_id` từ danh sách SOP đã approved trong cùng org (TomSelect async)
+- [ ] Click sub-SOP node → link "Xem SOP con" trong detail panel
+
+---
+
+### Phase 5 — RACI & Attachments (tuần 4)
+
+**Mục tiêu:** Phân công trách nhiệm và đính kèm tài liệu tham chiếu cho từng bước.
+
+**RACI:**
+- [ ] `SopStepRaciController` — `store`, `destroy` (per step)
+- [ ] `StoreSopStepRaciAction` — validate unique `(step_id, assignee_type, assignee_id, raci_type)`
+- [ ] API: `POST /backend/api/sop-steps/{step:uuid}/raci`, `DELETE .../raci/{raci:uuid}`
+- [ ] API: `GET /backend/api/users/search?q=` + `GET /backend/api/roles` — để TomSelect chọn assignee
+- [ ] UI: RACI panel trong step edit drawer — 4 cột R/A/C/I, mỗi cột là multi-select user/role
+- [ ] RACI matrix view: `GET /dashboard/sop/{sop:uuid}/raci` — bảng bước × (R/A/C/I) per person/role
+- [ ] Validate BR-RACI: mỗi bước action/decision phải có ít nhất 1 R (cảnh báo, không block)
+
+**Attachments:**
+- [ ] `config/sop.php` — max file size (20MB), allowed MIME types, storage driver
+- [ ] `SopStepAttachmentController` — `store`, `destroy`
+- [ ] `StoreSopStepAttachmentAction` — validate MIME + size + upload to storage + ghi DB
+- [ ] `DestroySopStepAttachmentAction` — xóa file trên storage + xóa record
+- [ ] API: `POST /backend/api/sop-steps/{step:uuid}/attachments`, `DELETE .../attachments/{attachment:uuid}`
+- [ ] UI: attachment panel trong step detail — danh sách file (tên, size, download), nút upload, nút xóa
+- [ ] Drag & drop upload zone trong step edit drawer
+
+---
+
+### Phase 6 — SOP Relations (tuần 4–5)
+
+**Mục tiêu:** Track dependencies giữa các SOP — prerequisite, replaces, related.
+
+- [ ] `SopRelationController` — `store`, `destroy`
+- [ ] `StoreSopRelationAction` — validate: `sop_id <> related_sop_id` (BR-FC-005), không duplicate relation
+- [ ] API: `POST /backend/api/sop/{sop:uuid}/relations`, `DELETE .../relations/{relation:uuid}`
+- [ ] UI: tab "Quan hệ SOP" trong `sop/show.blade.php` — danh sách relations theo type, form thêm mới (chọn SOP liên quan + relation_type)
+- [ ] Hiển thị SOP nào là prerequisite khi viewer xem SOP (warning banner)
+- [ ] Hiển thị "Đã được thay thế bởi" khi SOP có relation_type = `replaced_by`
+
+---
+
+### Phase 7 — Versioning Database (tuần 5)
+
+**Mục tiêu:** Tạo version-layer schema — bất biến sau khi insert.
+
+- [ ] Migration `sop_versions` (section 6.3)
+- [ ] Migration `sop_step_versions` (section 6.4)
+- [ ] Migration `sop_step_raci_versions` (section 6.5)
+- [ ] Migration `sop_step_connector_versions` (section 6.6)
+- [ ] Migration `sop_approval_flows` (section 6.9)
+- [ ] Models: `SopVersion`, `SopStepVersion`, `SopStepRaciVersion`, `SopStepConnectorVersion`, `SopApprovalFlow` với đầy đủ relationships
+- [ ] Đảm bảo không có `UPDATE` nào trên bảng `sop_step_versions` / `sop_step_raci_versions` / `sop_step_connector_versions` (immutable by convention — thêm comment vào model)
+
+---
+
+### Phase 8 — Versioning Logic & Approval Flow (tuần 5–6)
+
+**Mục tiêu:** Submit SOP để duyệt, multi-level approval, snapshot khi approve, rollback.
+
+**Services:**
+- [ ] `SopVersioningService::createSnapshot(int $sopId, int $approverId): SopVersion` — đầy đủ per section 9
+- [ ] `SopVersioningService::rollbackToVersion(int $sopId, int $targetVersion): void` — rebuild live data từ snapshot (section 7.6)
+- [ ] `SopVersioningService::detectChangeType(SopStep, ?SopStepVersion): string` — diff logic
+- [ ] `SopApprovalService::submitForReview(SopProcess $sop, User $submitter): SopVersion` — tạo `sop_versions` + insert `sop_approval_flows` theo cấu hình org
+- [ ] `SopApprovalService::approve(SopApprovalFlow $flow, User $approver, ?string $comment)` — UPDATE action + kiểm tra step tiếp theo hoặc finalize
+- [ ] `SopApprovalService::reject(SopApprovalFlow $flow, User $approver, string $comment)` — UPDATE status = rejected
+
+**Controllers:**
+- [ ] `SopVersionController` — `index` (lịch sử), `show` (xem snapshot version)
+- [ ] `SopApprovalController` — `store` (submit review), `approve`, `reject`
+- [ ] Routes: `POST .../sop/{sop}/submit-review`, `POST .../approval-flows/{flow}/approve`, `POST .../approval-flows/{flow}/reject`
+
+**UI:**
+- [ ] Nút "Gửi duyệt" (khi status = draft, user có `sop.submit_review`) — confirm modal với change summary
+- [ ] Tab "Phiên bản" trong `sop/show.blade.php` — timeline versions (version_number, status badge, total_steps, approved_at, change_summary)
+- [ ] Trang duyệt SOP: `GET /dashboard/sop/{sop}/versions/{version}/review` — xem snapshot flowchart + form approve/reject
+- [ ] Diff view: render flowchart version với màu change_type (added=xanh, modified=vàng, deleted=đỏ, unchanged=xám)
+- [ ] Nút "Rollback về version này" trong timeline (chỉ System_Admin / owner)
+- [ ] Approval pending list: `GET /dashboard/sop/pending-approvals` — danh sách SOP cần duyệt của user hiện tại (theo `required_role`)
+
+---
+
+### Phase 9 — Notifications (tuần 6)
+
+**Mục tiêu:** Thông báo in-app và email khi có hành động trong approval flow.
+
+- [ ] `SopSubmittedNotification` — gửi cho approver ở `step_order = 1` khi submit
+- [ ] `SopApprovedNotification` — gửi cho creator khi version được approve hoàn toàn
+- [ ] `SopRejectedNotification` — gửi cho creator kèm comment người reject
+- [ ] `SopNextApproverNotification` — gửi cho approver bước tiếp theo khi bước trước approved
+- [ ] Channels: `database` (in-app) + `mail`
+- [ ] Tích hợp với notification bell hiện có trong sidebar (nếu có) hoặc dùng `database` channel + badge
+- [ ] Queue: tất cả notification dispatch qua queue (`implements ShouldQueue`)
+- [ ] `SopJob extends TenantAwareJob` — đảm bảo tenant context restore trong worker
+
+---
+
+### Phase 10 — Cron & Automation (tuần 7)
+
+**Mục tiêu:** Tự động hóa trạng thái SOP theo thời gian.
+
+- [ ] `ArchiveExpiredSopCommand` (`sop:archive-expired`) — query `sop_processes` có `expired_date < today AND status = approved`, chuyển `status = archived`, ghi log
+- [ ] Đăng ký trong `routes/console.php`: `Schedule::command('sop:archive-expired')->daily()`
+- [ ] `SopExpiryWarningCommand` (`sop:expiry-warning`) — gửi notification cho owner những SOP sắp hết hạn trong 7 ngày
+- [ ] Đăng ký: `Schedule::command('sop:expiry-warning')->weeklyOn(1)`
+
+---
+
+### Phase 11 — Analytics & Reporting (tuần 7–8)
+
+**Mục tiêu:** Dashboard thống kê và RACI matrix cross-SOP.
+
+- [ ] `SopAnalyticsController::dashboard` — stats: tổng SOP theo status, SOP hết hạn sắp tới, avg steps per SOP, avg duration per step_type
+- [ ] Query analytics: `AVG(duration_minutes) GROUP BY step_type` per org (section 7.4)
+- [ ] UI: `sop/analytics.blade.php` — cards stats + bar chart (Alpine.js + Chart.js hoặc inline SVG)
+- [ ] RACI matrix view: `GET /dashboard/sop/{sop}/raci` — bảng bước × người/role, highlight R/A/C/I
+- [ ] Version history timeline: visual timeline trong tab Versions của `sop/show.blade.php`
+- [ ] Route: `GET /dashboard/sop/analytics`
+
+---
+
+### Phase 12 — Export & Print (tuần 8–9)
+
+**Mục tiêu:** Xuất SOP ra file để in, chia sẻ ngoài hệ thống.
+
+- [ ] `SopExportController` — `exportPdf`, `exportPng`
+- [ ] Export PDF: server-side render Blade view `sop/export/pdf.blade.php` (text-based, không SVG) → dùng `barryvdh/laravel-dompdf` hoặc Browsershot
+- [ ] Export PNG: render SVG flowchart → convert sang PNG via Browsershot (headless Chrome) — queue job `ExportSopFlowchartJob`
+- [ ] Print-friendly view: `GET /dashboard/sop/{sop}/print` — Blade full-page không sidebar, `@media print` CSS
+- [ ] Routes: `GET /dashboard/sop/{sop}/export/pdf`, `GET /dashboard/sop/{sop}/export/png`
+- [ ] UI: nút Export trong `sop/show.blade.php` toolbar (dropdown: PDF / PNG / Print)
+
+---
+
+### Phase 13 — SVG Editor Enhancement (tuần 9)
+
+**Mục tiêu:** Nâng cao trải nghiệm flowchart — pan/zoom, layout tự động.
+
+- [ ] Zoom in/out: implement `zoomIn()` / `zoomOut()` / `fitToScreen()` trong Alpine.js (dùng SVG `viewBox` manipulation)
+- [ ] Pan: drag canvas khi giữ space + click (mouse event handler)
+- [ ] Auto-layout: vertical layout option (top-down thay vì left-right)
+- [ ] Minimap: thumbnail overview khi SOP có nhiều bước (> 10 bước)
+- [ ] Keyboard shortcuts: `Delete` xóa selected step, `Escape` deselect
+- [ ] Touch support: pinch-to-zoom trên mobile
+
+---
+
+### Phase 14 — Performance & Hardening (tuần 10)
+
+**Mục tiêu:** Đảm bảo hệ thống chịu tải và bảo mật ở mức production.
+
+- [ ] Review và bổ sung tất cả indexes theo section 12
+- [ ] Cache strategy hoàn chỉnh: cache flowchart + invalidate đúng chỗ (step/connector/raci changes)
+- [ ] DB trigger `trg_connector_check_active` (BR-FC-001 — section 11) — SQLite skip, MySQL apply
+- [ ] Multi-tenancy audit: mọi query SOP đều có `organization_id` scope — không thể cross-tenant
+- [ ] Authorization audit: mọi controller action đều có `$this->authorize()` hoặc Policy gate
+- [ ] Rate limiting: API endpoints editor (store/update/delete) — `throttle:60,1`
+- [ ] Input validation: tất cả FormRequest đầy đủ rule, không trust client về `sop_id` (lấy từ route)
+- [ ] `BR-FC-006` enforcement: `ref_sop_id` trong sub_sop chỉ trỏ SOP cùng org (section 11)
+
+---
+
+### Phase 15 — Testing (song song từ Phase 2)
+
+**Mục tiêu:** Đảm bảo correctness — feature tests phủ các business rule quan trọng.
+
+- [ ] `SopProcessCrudTest` — create/update/delete/soft-delete với các role khác nhau
+- [ ] `SopStepEditorTest` — thêm/sửa/xóa/reorder bước, validate position uniqueness
+- [ ] `SopFlowchartRepositoryTest` — `getFlowchartData()` không N+1, đúng output shape
+- [ ] `SopVersioningTest` — `createSnapshot()` tạo đúng records immutable, `rollbackToVersion()` rebuild đúng
+- [ ] `SopApprovalFlowTest` — submit → multi-step approve → finalize; reject flow; forward flow
+- [ ] `SopPolicyTest` — từng role chỉ làm được đúng action được phép
+- [ ] `SopTenancyTest` — không thể query/modify SOP của org khác dù biết UUID
+- [ ] `SopBusinessRulesTest` — BR-FC-002 (decision branches), BR-FC-003 (start/end), BR-FC-005 (no self-relation)
+- [ ] `SopCacheInvalidationTest` — cache flush đúng lúc khi step/connector thay đổi
+
+---
+
+### Dependency Map
+
+```
+Phase 0 (Scaffold)
+  └─► Phase 1 (DB)
+        └─► Phase 2 (SOP CRUD)
+              ├─► Phase 3 (Flowchart View)
+              │     └─► Phase 4 (Flowchart Editor)
+              │           ├─► Phase 5 (RACI & Attachments)
+              │           ├─► Phase 6 (SOP Relations)
+              │           └─► Phase 7 (Versioning DB)
+              │                 └─► Phase 8 (Approval Flow)
+              │                       └─► Phase 9 (Notifications)
+              └─► Phase 10 (Cron) ← sau Phase 8
+Phase 8 ──────► Phase 11 (Analytics)
+Phase 3 ──────► Phase 12 (Export)
+Phase 4 ──────► Phase 13 (SVG Enhancement)
+Phase 1–14 ──► Phase 14 (Hardening)
+Phase 2+ ────► Phase 15 (Testing — chạy song song)
+```
+
+---
+
+*Version 3.0.0 — SOP Flowchart Engine Specification*  
+*Stack: Laravel 13 · MySQL 8+ / SQLite (dev) · Alpine.js 3*  
+*PK Convention: BIGINT AUTO_INCREMENT (id) + CHAR(36) UUID (uuid) — theo chuẩn toàn hệ thống*  
+*FK Convention: BIGINT — khớp với users.id, organizations.id, branches.id, departments.id, roles.id*

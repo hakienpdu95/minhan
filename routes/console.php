@@ -17,3 +17,21 @@ Schedule::call(\Modules\WorkflowAutomation\Actions\PurgeOldExecutionsAction::mak
     ->name('workflow:purge-executions')
     ->dailyAt('02:00')
     ->onOneServer();
+
+// KC: auto-archive expired documents
+Schedule::command('kc:expire-items')
+    ->name('kc:expire-items')
+    ->dailyAt('01:00')
+    ->onOneServer();
+
+// SOP: auto-archive SOPs past their expired_date
+Schedule::command('sop:archive-expired')
+    ->name('sop:archive-expired')
+    ->dailyAt('01:30')
+    ->onOneServer();
+
+// SOP: warn owners of SOPs expiring within 7 days (every Monday)
+Schedule::command('sop:expiry-warning')
+    ->name('sop:expiry-warning')
+    ->weeklyOn(1, '08:00')
+    ->onOneServer();

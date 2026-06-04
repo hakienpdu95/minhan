@@ -2,9 +2,9 @@
 
 > **Hệ thống:** SaaS SME  
 > **Module:** Knowledge Center  
-> **Phiên bản đặc tả:** 1.0.0  
+> **Phiên bản đặc tả:** 2.0.0  
 > **Ngày cập nhật:** 2026-06-03  
-> **Trạng thái:** Draft
+> **Trạng thái:** Draft — Đã tối ưu cấu trúc (BIGINT PK, FK align với hệ thống hiện có)
 
 ---
 
@@ -35,6 +35,19 @@
 9. [Business Rules & Ràng buộc](#9-business-rules--ràng-buộc)
 10. [Indexes & Performance](#10-indexes--performance)
 11. [Ghi chú triển khai cho SME](#11-ghi-chú-triển-khai-cho-sme)
+
+---
+
+## Thay đổi từ v1.0.0 → v2.0.0
+
+| Hạng mục | v1.0.0 | v2.0.0 | Lý do |
+|---|---|---|---|
+| **PK type** | UUID làm PK | BIGINT AUTO_INCREMENT PK + cột `uuid` riêng | Khớp chuẩn toàn hệ thống (`$table->id()` + `$table->uuid()`) |
+| **FK type** | UUID FK | BIGINT FK | Khớp với `users.id`, `organizations.id`, `departments.id` (tất cả đều BIGINT) |
+| **KC_CATEGORY** | Thiếu `org_id`, `slug` UNIQUE toàn hệ | Thêm `org_id` FK, `slug` UNIQUE per org | Đây là resource per-org; slug global unique sẽ xung đột cross-org |
+| **KC_ITEM_TAG** | Chỉ composite PK (item_id, tag_id) | Thêm `id` BIGINT + `uuid` | Chuẩn dự án yêu cầu mọi bảng đều có id + uuid |
+| **KC_TAG** | Thiếu `updated_at` | Thêm `updated_at` | Nhất quán với các bảng khác |
+| **KC_ACCESS_CONTROL.target_id** | UUID | BIGINT | `users.id`, `roles.id`, `departments.id` đều BIGINT |
 
 ---
 
@@ -102,7 +115,7 @@ Cho phép tổ chức tài liệu thành cây phân cấp. Mỗi danh mục có 
 
 - Không xóa danh mục khi còn tài liệu bên trong
 - Cây danh mục tối đa 3 cấp
-- `slug` là duy nhất trong toàn hệ thống (per org)
+- `slug` là duy nhất trong phạm vi org (per org, không global)
 
 ### 3.2 Quản lý tài liệu / tri thức (Knowledge Item Management)
 
@@ -192,162 +205,157 @@ draft ──► pending_review ──► approved ──► archived
 
 ### 4.5 KC_ACCESS_CONTROL.target_type — Đối tượng phân quyền
 
-| Giá trị | Mô tả |
-|---|---|
-| `user` | Một user cụ thể |
-| `role` | Tất cả user có role này |
-| `dept` | Tất cả user thuộc phòng ban này |
+| Giá trị | Bảng tham chiếu | PK type | Mô tả |
+|---|---|---|---|
+| `user` | `users` | BIGINT | Một user cụ thể |
+| `role` | `roles` (Spatie) | BIGINT | Tất cả user có role này |
+| `dept` | `departments` | BIGINT | Tất cả user thuộc phòng ban này |
+
+> **Ghi chú:** `target_id` là BIGINT để khớp với PK của các bảng `users`, `roles`, `departments` trong hệ thống.
 
 ---
 
 ## 5. ERD — Entity Relationship Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         KNOWLEDGE CENTER ERD                                │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                      KNOWLEDGE CENTER ERD                         │
+│                  (Tất cả PK = BIGINT AUTO_INCREMENT)              │
+└──────────────────────────────────────────────────────────────────┘
 
-KC_CATEGORY
+organizations (bảng có sẵn, BIGINT PK)
+    │ 1
+    │ has many
+    │ N
+KC_CATEGORY ──(parent_id FK → self)──► KC_CATEGORY (cây đa cấp)
 ┌──────────────────────────┐
-│ id (PK)                  │
-│ parent_id (FK → self) ───┼─── tự tham chiếu (cây đa cấp)
-│ name                     │
-│ slug (UNIQUE)            │
-│ description              │
-│ icon                     │
-│ color_hex                │
-│ sort_order               │
-│ is_active                │
-│ created_by (FK → users)  │
-│ updated_by (FK → users)  │
-│ created_at               │
-│ updated_at               │
+│ id (BIGINT PK)           │
+│ uuid (CHAR 36, UNIQUE)   │
+│ org_id (FK → orgs)       │◄── BIGINT FK — tenant isolation
+│ parent_id (FK → self)    │
+│ name, slug (UNIQUE/org)  │
+│ icon, color_hex          │
+│ sort_order, is_active    │
+│ created_by, updated_by   │◄── BIGINT FK → users
 └──────────┬───────────────┘
-           │ 1
-           │ has many
-           │ N
-┌──────────▼───────────────────────────────┐
-│                KC_ITEM                   │
-│──────────────────────────────────────────│
-│ id (PK)                                  │
-│ category_id (FK → KC_CATEGORY)           │
-│ org_id (FK → organizations)              │
-│ title                                    │
-│ slug (UNIQUE per org)                    │
-│ summary                                  │
-│ content (LONGTEXT)                       │
-│ type (ENUM)                              │◄── document|sop|video|form|
-│ status (ENUM)                            │    faq|case_study|policy
-│ visibility (ENUM)                        │
-│ language                                 │◄── draft|pending_review|
-│ view_count                               │    approved|rejected|archived
-│ download_count                           │
-│ is_featured                              │
-│ is_pinned                                │
-│ owner_id (FK → users)                    │
-│ approved_by (FK → users)                 │
-│ approved_at                              │
-│ version                                  │
-│ effective_date                           │
-│ expired_date                             │
-│ created_by (FK → users)                  │
-│ updated_by (FK → users)                  │
-│ created_at                               │
-│ updated_at                               │
-└────┬──────┬──────┬──────┬──────┬─────────┘
-     │      │      │      │      │
-     │1     │1     │1     │1     │1
-     │      │      │      │      │
-     ▼N     ▼N     ▼N     ▼N     ▼N
-┌────────┐ ┌──────┐ ┌──────────┐ ┌──────────────┐ ┌──────────┐
-│KC_ITEM │ │KC_   │ │KC_       │ │KC_ACCESS_    │ │KC_VIEW_  │
-│_ATTACH │ │ITEM  │ │VERSION_  │ │CONTROL       │ │LOG       │
-│MENT    │ │_TAG  │ │HISTORY   │ │              │ │          │
-│────────│ │──────│ │──────────│ │──────────────│ │──────────│
-│id (PK) │ │item  │ │id (PK)   │ │id (PK)       │ │id (PK)   │
-│item_id │ │_id   │ │item_id   │ │item_id       │ │item_id   │
-│file_   │ │(FK)  │ │version_  │ │target_type   │ │user_id   │
-│name    │ │tag_id│ │number    │ │target_id     │ │ip_addr   │
-│file_url│ │(FK)  │ │content_  │ │permission    │ │user_agent│
-│file_   │ └──┬───┘ │snapshot  │ │granted_at    │ │viewed_at │
-│type    │    │     │change_   │ │granted_by    │ └──────────┘
-│file_   │    │N    │summary   │ └──────────────┘
-│size_kb │    │     │changed_by│
-│storage │    │     │changed_at│
-│_provid │    │     └──────────┘
-│sort_   │    │
-│order   │  ┌─▼──────────┐
-│upload  │  │  KC_TAG    │
-│_by     │  │────────────│
-│upload  │  │id (PK)     │
-│_at     │  │org_id (FK) │
-└────────┘  │name        │
-            │slug        │
-            │color_hex   │
-            └────────────┘
+           │ 1:N
+           ▼
+┌──────────────────────────────────────────────────────┐
+│                      KC_ITEM                          │
+│ id (BIGINT PK), uuid (UNIQUE)                        │
+│ org_id (BIGINT FK → organizations)                   │
+│ category_id (BIGINT FK → kc_categories)              │
+│ owner_id, approved_by, created_by, updated_by        │◄── BIGINT FK → users
+│ title, slug (UNIQUE/org), summary, content (LONGTEXT)│
+│ type, status, visibility, language                   │
+│ view_count, download_count                           │
+│ is_featured, is_pinned                               │
+│ version, effective_date, expired_date                │
+│ approved_at, created_at, updated_at                  │
+└──┬────┬────┬────┬────┬───────────────────────────────┘
+   │    │    │    │    │
+   │1   │1   │1   │1   │1
+   ▼N   ▼N   ▼N   ▼N   ▼N
+┌──────┐ ┌──────┐ ┌──────────┐ ┌──────────────┐ ┌──────────┐
+│KC_   │ │KC_   │ │KC_       │ │KC_ACCESS_    │ │KC_VIEW_  │
+│ITEM_ │ │ITEM_ │ │VERSION_  │ │CONTROL       │ │LOG       │
+│ATTACH│ │TAG   │ │HISTORY   │ │              │ │          │
+│MENT  │ │(pivot│ │          │ │target_id     │ │          │
+│      │ │+id)  │ │          │ │(BIGINT —     │ │          │
+│      │ └──┬───┘ │          │ │users/roles/  │ │          │
+│      │    │N    │          │ │departments)  │ │          │
+└──────┘    │     └──────────┘ └──────────────┘ └──────────┘
+            │
+          ┌─▼──────────┐
+          │  KC_TAG     │
+          │ id (BIGINT) │
+          │ uuid        │
+          │ org_id (FK) │◄── BIGINT FK
+          └─────────────┘
 
-KC_FEEDBACK (1 item → N feedbacks)
-┌──────────────────────┐
-│ id (PK)              │
-│ item_id (FK)         │
-│ user_id (FK)         │
-│ rating (1–5)         │
-│ comment              │
-│ is_helpful           │
-│ created_at           │
-└──────────────────────┘
+KC_FEEDBACK (1 item → N feedbacks, user_id BIGINT FK)
 ```
 
 ### Quan hệ tổng hợp
 
-| Bảng A | Quan hệ | Bảng B | Ghi chú |
-|---|---|---|---|
-| KC_CATEGORY | 1 → N | KC_CATEGORY | Tự tham chiếu — cây danh mục |
-| KC_CATEGORY | 1 → N | KC_ITEM | Mỗi tài liệu thuộc 1 danh mục |
-| KC_ITEM | 1 → N | KC_ITEM_ATTACHMENT | Nhiều tệp đính kèm |
-| KC_ITEM | N → M | KC_TAG | Qua bảng KC_ITEM_TAG |
-| KC_ITEM | 1 → N | KC_VERSION_HISTORY | Lịch sử phiên bản |
-| KC_ITEM | 1 → N | KC_ACCESS_CONTROL | Phân quyền chi tiết |
-| KC_ITEM | 1 → N | KC_FEEDBACK | Đánh giá từ người dùng |
-| KC_ITEM | 1 → N | KC_VIEW_LOG | Tracking lượt xem |
+| Bảng A | Quan hệ | Bảng B | FK type | Ghi chú |
+|---|---|---|---|---|
+| `organizations` | 1 → N | `kc_categories` | BIGINT | Tenant isolation |
+| `kc_categories` | 1 → N | `kc_categories` | BIGINT | Tự tham chiếu — cây danh mục |
+| `kc_categories` | 1 → N | `kc_items` | BIGINT | Mỗi tài liệu thuộc 1 danh mục |
+| `kc_items` | 1 → N | `kc_item_attachments` | BIGINT | Nhiều tệp đính kèm |
+| `kc_items` | N → M | `kc_tags` | BIGINT | Qua bảng `kc_item_tags` |
+| `kc_items` | 1 → N | `kc_version_histories` | BIGINT | Lịch sử phiên bản |
+| `kc_items` | 1 → N | `kc_access_controls` | BIGINT | Phân quyền chi tiết |
+| `kc_items` | 1 → N | `kc_feedbacks` | BIGINT | Đánh giá từ người dùng |
+| `kc_items` | 1 → N | `kc_view_logs` | BIGINT | Tracking lượt xem |
 
 ---
 
 ## 6. Đặc tả bảng dữ liệu
 
+> **Quy ước chung:** Mọi bảng đều tuân theo chuẩn dự án:
+> ```php
+> $table->id();  // BIGINT AUTO_INCREMENT — PK nội bộ
+> $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+> ```
+
+---
+
 ### 6.1 KC_CATEGORY — Danh mục tài liệu
 
 **Mục đích:** Tổ chức tài liệu thành cấu trúc cây phân cấp (tối đa 3 cấp). Hỗ trợ icon và màu sắc nhận diện.
 
+**Thay đổi từ v1:** Thêm `org_id` (bắt buộc, FK BIGINT → organizations), đổi `slug` từ UNIQUE global sang UNIQUE per org.
+
 | Trường | Kiểu dữ liệu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | Khóa chính |
-| `parent_id` | UUID | NULL | FK (self) | NULL | Danh mục cha — NULL nếu là cấp gốc |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID — expose ra API, không phải PK |
+| `org_id` | BIGINT UNSIGNED | NOT NULL | FK (organizations), INDEX | | Tenant isolation — danh mục thuộc org nào |
+| `parent_id` | BIGINT UNSIGNED | NULL | FK (self), INDEX | NULL | Danh mục cha — NULL nếu là cấp gốc |
 | `name` | VARCHAR(150) | NOT NULL | | | Tên danh mục hiển thị |
-| `slug` | VARCHAR(160) | NOT NULL | UNIQUE | | Định danh URL-friendly, tự sinh từ name |
+| `slug` | VARCHAR(160) | NOT NULL | UNIQUE(org_id, slug) | | Định danh URL-friendly, unique trong org |
 | `description` | TEXT | NULL | | NULL | Mô tả ngắn về nội dung danh mục |
 | `icon` | VARCHAR(80) | NULL | | NULL | Tên Tabler Icon, vd: `ti-folder`, `ti-book` |
 | `color_hex` | CHAR(7) | NULL | | NULL | Mã màu hex, vd: `#534AB7` |
 | `sort_order` | INT | NOT NULL | | 0 | Thứ tự hiển thị trong cùng cấp cha |
 | `is_active` | BOOLEAN | NOT NULL | | TRUE | FALSE = ẩn danh mục (soft disable) |
-| `created_by` | UUID | NOT NULL | FK (users) | | Người tạo |
-| `updated_by` | UUID | NULL | FK (users) | NULL | Người cập nhật lần cuối |
-| `created_at` | TIMESTAMP | NOT NULL | | NOW() | Thời điểm tạo |
-| `updated_at` | TIMESTAMP | NOT NULL | | NOW() | Thời điểm cập nhật |
+| `created_by` | BIGINT UNSIGNED | NOT NULL | FK (users) | | Người tạo |
+| `updated_by` | BIGINT UNSIGNED | NULL | FK (users) | NULL | Người cập nhật lần cuối |
+| `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
+| `updated_at` | TIMESTAMP | NOT NULL | | NOW() | |
 
-**Indexes:**
+**Migration:**
 
-```sql
-CREATE UNIQUE INDEX idx_kc_category_slug ON KC_CATEGORY(slug);
-CREATE INDEX idx_kc_category_parent ON KC_CATEGORY(parent_id);
-CREATE INDEX idx_kc_category_sort ON KC_CATEGORY(parent_id, sort_order);
+```php
+Schema::create('kc_categories', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('org_id')->constrained('organizations')->restrictOnDelete();
+    $table->foreignId('parent_id')->nullable()->constrained('kc_categories')->restrictOnDelete();
+    $table->string('name', 150);
+    $table->string('slug', 160);
+    $table->text('description')->nullable();
+    $table->string('icon', 80)->nullable();
+    $table->char('color_hex', 7)->nullable();
+    $table->integer('sort_order')->default(0);
+    $table->boolean('is_active')->default(true);
+    $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+    $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+    $table->timestamps();
+
+    $table->unique(['org_id', 'slug']);
+    $table->index(['org_id', 'parent_id', 'sort_order'], 'idx_kc_cat_sort');
+    $table->index(['org_id', 'is_active'], 'idx_kc_cat_active');
+});
 ```
 
 **Ràng buộc:**
 
-- `slug` phải là lowercase, alphanumeric và dấu gạch ngang (`-`), không chứa ký tự đặc biệt
+- `slug` phải là lowercase, alphanumeric và dấu gạch ngang (`-`)
 - Không được đặt `parent_id` trỏ về chính mình (`id <> parent_id`)
-- Trước khi xóa: kiểm tra không còn `KC_ITEM` nào có `category_id` trỏ vào
+- Trước khi xóa: kiểm tra không còn `kc_items` nào có `category_id` trỏ vào
 - Trước khi xóa: kiểm tra không có danh mục con (`parent_id`) trỏ vào
 
 ---
@@ -356,11 +364,14 @@ CREATE INDEX idx_kc_category_sort ON KC_CATEGORY(parent_id, sort_order);
 
 **Mục đích:** Bảng trung tâm lưu trữ toàn bộ nội dung tri thức với đầy đủ metadata, trạng thái duyệt và kiểm soát vòng đời.
 
+**Thay đổi từ v1:** Đổi UUID PK → BIGINT + uuid; tất cả FK user/org sang BIGINT.
+
 | Trường | Kiểu dữ liệu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | Khóa chính |
-| `category_id` | UUID | NOT NULL | FK (KC_CATEGORY) | | Danh mục chứa tài liệu |
-| `org_id` | UUID | NOT NULL | FK (organizations) | | Tổ chức sở hữu — multi-tenant isolation |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID — expose ra API |
+| `category_id` | BIGINT UNSIGNED | NOT NULL | FK (kc_categories), INDEX | | Danh mục chứa tài liệu |
+| `org_id` | BIGINT UNSIGNED | NOT NULL | FK (organizations), INDEX | | Tổ chức sở hữu — multi-tenant isolation |
 | `title` | VARCHAR(300) | NOT NULL | | | Tiêu đề tài liệu |
 | `slug` | VARCHAR(320) | NOT NULL | UNIQUE(org_id, slug) | | Định danh URL, unique trong org |
 | `summary` | TEXT | NULL | | NULL | Tóm tắt ngắn — dùng cho danh sách, preview |
@@ -368,67 +379,108 @@ CREATE INDEX idx_kc_category_sort ON KC_CATEGORY(parent_id, sort_order);
 | `type` | ENUM | NOT NULL | INDEX | | Xem mục 4.1 |
 | `status` | ENUM | NOT NULL | INDEX | `draft` | Xem mục 4.2 |
 | `visibility` | ENUM | NOT NULL | | `internal` | Xem mục 4.3 |
-| `language` | CHAR(5) | NULL | | `vi` | Ngôn ngữ nội dung theo BCP 47: `vi`, `en`, `ja` |
-| `view_count` | INT | NOT NULL | | 0 | Tổng lượt xem (denormalized từ KC_VIEW_LOG) |
-| `download_count` | INT | NOT NULL | | 0 | Tổng lượt tải về |
+| `language` | CHAR(5) | NULL | | `vi` | BCP 47: `vi`, `en`, `ja` |
+| `view_count` | INT UNSIGNED | NOT NULL | | 0 | Denormalized từ kc_view_logs |
+| `download_count` | INT UNSIGNED | NOT NULL | | 0 | Tổng lượt tải về |
 | `is_featured` | BOOLEAN | NOT NULL | | FALSE | Hiển thị nổi bật trên trang chủ KC |
 | `is_pinned` | BOOLEAN | NOT NULL | | FALSE | Ghim lên đầu trong danh mục |
-| `owner_id` | UUID | NOT NULL | FK (users) | | Người chịu trách nhiệm nội dung |
-| `approved_by` | UUID | NULL | FK (users) | NULL | Người đã duyệt tài liệu |
+| `owner_id` | BIGINT UNSIGNED | NOT NULL | FK (users) | | Người chịu trách nhiệm nội dung |
+| `approved_by` | BIGINT UNSIGNED | NULL | FK (users) | NULL | Người đã duyệt tài liệu |
 | `approved_at` | TIMESTAMP | NULL | | NULL | Thời điểm được duyệt |
-| `version` | INT | NOT NULL | | 1 | Số phiên bản hiện tại, tăng dần khi approve |
+| `version` | INT UNSIGNED | NOT NULL | | 1 | Số phiên bản hiện tại, tăng dần khi approve |
 | `effective_date` | TIMESTAMP | NULL | | NULL | Ngày tài liệu bắt đầu có hiệu lực |
 | `expired_date` | TIMESTAMP | NULL | INDEX | NULL | Ngày hết hiệu lực — cron tự chuyển archived |
-| `created_by` | UUID | NOT NULL | FK (users) | | Người tạo |
-| `updated_by` | UUID | NULL | FK (users) | NULL | Người cập nhật lần cuối |
-| `created_at` | TIMESTAMP | NOT NULL | | NOW() | Thời điểm tạo |
-| `updated_at` | TIMESTAMP | NOT NULL | | NOW() | Thời điểm cập nhật |
+| `created_by` | BIGINT UNSIGNED | NOT NULL | FK (users) | | Người tạo |
+| `updated_by` | BIGINT UNSIGNED | NULL | FK (users) | NULL | Người cập nhật lần cuối |
+| `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
+| `updated_at` | TIMESTAMP | NOT NULL | | NOW() | |
 
-**Indexes:**
+**Migration:**
 
-```sql
-CREATE INDEX idx_kc_item_org_category ON KC_ITEM(org_id, category_id);
-CREATE INDEX idx_kc_item_type ON KC_ITEM(type);
-CREATE INDEX idx_kc_item_status ON KC_ITEM(status);
-CREATE INDEX idx_kc_item_owner ON KC_ITEM(owner_id);
-CREATE INDEX idx_kc_item_expired ON KC_ITEM(expired_date) WHERE expired_date IS NOT NULL;
-CREATE INDEX idx_kc_item_featured ON KC_ITEM(org_id, is_featured) WHERE is_featured = TRUE;
-CREATE UNIQUE INDEX idx_kc_item_slug_org ON KC_ITEM(org_id, slug);
-FULLTEXT INDEX idx_kc_item_search ON KC_ITEM(title, summary, content);
+```php
+Schema::create('kc_items', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('category_id')->constrained('kc_categories')->restrictOnDelete();
+    $table->foreignId('org_id')->constrained('organizations')->restrictOnDelete();
+    $table->string('title', 300);
+    $table->string('slug', 320);
+    $table->text('summary')->nullable();
+    $table->longText('content')->nullable();
+    $table->enum('type', ['document', 'sop', 'video', 'form', 'faq', 'case_study', 'policy'])->index();
+    $table->enum('status', ['draft', 'pending_review', 'approved', 'rejected', 'archived'])
+          ->default('draft')->index();
+    $table->enum('visibility', ['public', 'internal', 'restricted', 'private'])->default('internal');
+    $table->char('language', 5)->nullable()->default('vi');
+    $table->unsignedInteger('view_count')->default(0);
+    $table->unsignedInteger('download_count')->default(0);
+    $table->boolean('is_featured')->default(false);
+    $table->boolean('is_pinned')->default(false);
+    $table->foreignId('owner_id')->constrained('users')->restrictOnDelete();
+    $table->foreignId('approved_by')->nullable()->constrained('users')->nullOnDelete();
+    $table->timestamp('approved_at')->nullable();
+    $table->unsignedInteger('version')->default(1);
+    $table->timestamp('effective_date')->nullable();
+    $table->timestamp('expired_date')->nullable();
+    $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+    $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+    $table->timestamps();
+
+    $table->unique(['org_id', 'slug']);
+    $table->index(['org_id', 'category_id'], 'idx_kc_item_org_cat');
+    $table->index(['org_id', 'status', 'is_featured'], 'idx_kc_item_homepage');
+    $table->index(['org_id', 'expired_date', 'status'], 'idx_kc_item_expiry');
+    $table->fullText(['title', 'summary', 'content'], 'idx_kc_item_search');
+});
 ```
 
 **Ghi chú đặc biệt:**
 
-- Trường `type = 'video'`: `content` lưu embed URL hoặc video ID; file thực tế đặt trong `KC_ITEM_ATTACHMENT`
-- Trường `type = 'faq'`: `content` nên theo cấu trúc JSON array `[{ "q": "...", "a": "..." }]` để render accordion
-- Trường `type = 'form'`: `content` chứa template biểu mẫu; file `.docx`/`.xlsx` đặt trong `KC_ITEM_ATTACHMENT`
-- `view_count` là denormalized counter — cập nhật async từ `KC_VIEW_LOG` để tránh lock tranh chấp
+- `type = 'video'`: `content` lưu embed URL hoặc video ID; file thực tế đặt trong `kc_item_attachments`
+- `type = 'faq'`: `content` lưu nội dung dạng Markdown với cú pháp Q&A, **không dùng JSON column**
+- `type = 'form'`: `content` chứa template biểu mẫu dạng Markdown/HTML; file `.docx`/`.xlsx` đặt trong `kc_item_attachments`
+- `view_count` là denormalized counter — cập nhật async từ `kc_view_logs` để tránh lock tranh chấp
 
 ---
 
 ### 6.3 KC_ITEM_ATTACHMENT — Tệp đính kèm
 
-**Mục đích:** Lưu trữ metadata của tất cả tệp đính kèm liên quan đến một tài liệu. File thực tế lưu trên object storage.
+**Mục đích:** Lưu trữ metadata của tất cả tệp đính kèm liên quan đến một tài liệu.
 
 | Trường | Kiểu dữ liệu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | Khóa chính |
-| `item_id` | UUID | NOT NULL | FK (KC_ITEM) | | Tài liệu chứa file này |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `item_id` | BIGINT UNSIGNED | NOT NULL | FK (kc_items), INDEX | | Tài liệu chứa file này |
 | `file_name` | VARCHAR(255) | NOT NULL | | | Tên file gốc khi upload |
 | `file_url` | TEXT | NOT NULL | | | URL đầy đủ để tải/xem file |
 | `file_type` | VARCHAR(50) | NOT NULL | | | MIME type: `application/pdf`, `video/mp4`, ... |
-| `file_size_kb` | INT | NOT NULL | | | Kích thước file tính bằng KB |
+| `file_size_kb` | INT UNSIGNED | NOT NULL | | | Kích thước file tính bằng KB |
 | `storage_provider` | VARCHAR(20) | NOT NULL | | `s3` | Nơi lưu: `s3`, `gcs`, `local` |
 | `storage_key` | VARCHAR(500) | NOT NULL | | | Object key / đường dẫn nội bộ trên storage |
-| `sort_order` | INT | NOT NULL | | 0 | Thứ tự hiển thị file trong danh sách đính kèm |
-| `uploaded_by` | UUID | NOT NULL | FK (users) | | Người upload |
+| `sort_order` | INT | NOT NULL | | 0 | Thứ tự hiển thị file trong danh sách |
+| `uploaded_by` | BIGINT UNSIGNED | NOT NULL | FK (users) | | Người upload |
 | `uploaded_at` | TIMESTAMP | NOT NULL | | NOW() | Thời điểm upload |
 
-**Indexes:**
+**Migration:**
 
-```sql
-CREATE INDEX idx_kc_attachment_item ON KC_ITEM_ATTACHMENT(item_id);
-CREATE INDEX idx_kc_attachment_sort ON KC_ITEM_ATTACHMENT(item_id, sort_order);
+```php
+Schema::create('kc_item_attachments', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('item_id')->constrained('kc_items')->cascadeOnDelete();
+    $table->string('file_name', 255);
+    $table->text('file_url');
+    $table->string('file_type', 50);
+    $table->unsignedInteger('file_size_kb');
+    $table->string('storage_provider', 20)->default('s3');
+    $table->string('storage_key', 500);
+    $table->integer('sort_order')->default(0);
+    $table->foreignId('uploaded_by')->constrained('users')->restrictOnDelete();
+    $table->timestamp('uploaded_at')->useCurrent();
+
+    $table->index(['item_id', 'sort_order'], 'idx_kc_attach_sort');
+});
 ```
 
 ---
@@ -437,36 +489,63 @@ CREATE INDEX idx_kc_attachment_sort ON KC_ITEM_ATTACHMENT(item_id, sort_order);
 
 **Mục đích:** Danh sách tag/nhãn tự do của tổ chức, dùng để gắn vào tài liệu nhằm tăng khả năng tìm kiếm chéo danh mục.
 
+**Thay đổi từ v1:** Đổi UUID PK → BIGINT + uuid; thêm `updated_at`.
+
 | Trường | Kiểu dữ liệu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | Khóa chính |
-| `org_id` | UUID | NOT NULL | FK (organizations) | | Tổ chức sở hữu tag |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `org_id` | BIGINT UNSIGNED | NOT NULL | FK (organizations), INDEX | | Tổ chức sở hữu tag |
 | `name` | VARCHAR(80) | NOT NULL | | | Tên tag hiển thị, vd: "ISO 9001", "Onboarding" |
-| `slug` | VARCHAR(90) | NOT NULL | UNIQUE(org_id) | | Định danh, vd: `iso-9001` |
+| `slug` | VARCHAR(90) | NOT NULL | UNIQUE(org_id, slug) | | Định danh, vd: `iso-9001` |
 | `color_hex` | CHAR(7) | NULL | | NULL | Màu hiển thị badge tag |
-| `created_at` | TIMESTAMP | NOT NULL | | NOW() | Thời điểm tạo |
+| `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
+| `updated_at` | TIMESTAMP | NOT NULL | | NOW() | |
 
-**Indexes:**
+**Migration:**
 
-```sql
-CREATE UNIQUE INDEX idx_kc_tag_slug_org ON KC_TAG(org_id, slug);
-CREATE INDEX idx_kc_tag_org ON KC_TAG(org_id);
+```php
+Schema::create('kc_tags', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('org_id')->constrained('organizations')->restrictOnDelete();
+    $table->string('name', 80);
+    $table->string('slug', 90);
+    $table->char('color_hex', 7)->nullable();
+    $table->timestamps();
+
+    $table->unique(['org_id', 'slug']);
+    $table->index('org_id', 'idx_kc_tag_org');
+});
 ```
 
 ---
 
 ### 6.5 KC_ITEM_TAG — Quan hệ Item–Tag
 
-**Mục đích:** Bảng pivot nhiều–nhiều giữa `KC_ITEM` và `KC_TAG`.
+**Mục đích:** Bảng pivot nhiều–nhiều giữa `kc_items` và `kc_tags`.
+
+**Thay đổi từ v1:** Thêm `id` BIGINT và `uuid` theo chuẩn dự án. Ràng buộc unique (item_id, tag_id) đảm bảo không trùng lặp.
 
 | Trường | Kiểu dữ liệu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `item_id` | UUID | NOT NULL | PK, FK (KC_ITEM) | | Tài liệu |
-| `tag_id` | UUID | NOT NULL | PK, FK (KC_TAG) | | Tag được gắn |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | | Khóa chính — theo chuẩn dự án |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `item_id` | BIGINT UNSIGNED | NOT NULL | FK (kc_items), INDEX | | Tài liệu |
+| `tag_id` | BIGINT UNSIGNED | NOT NULL | FK (kc_tags), INDEX | | Tag được gắn |
 
-```sql
-ALTER TABLE KC_ITEM_TAG ADD PRIMARY KEY (item_id, tag_id);
-CREATE INDEX idx_kc_item_tag_tag ON KC_ITEM_TAG(tag_id);
+**Migration:**
+
+```php
+Schema::create('kc_item_tags', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('item_id')->constrained('kc_items')->cascadeOnDelete();
+    $table->foreignId('tag_id')->constrained('kc_tags')->cascadeOnDelete();
+
+    $table->unique(['item_id', 'tag_id'], 'idx_kc_item_tag_unique');
+    $table->index('tag_id', 'idx_kc_item_tag_tag');
+});
 ```
 
 ---
@@ -477,20 +556,33 @@ CREATE INDEX idx_kc_item_tag_tag ON KC_ITEM_TAG(tag_id);
 
 | Trường | Kiểu dữ liệu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | Khóa chính |
-| `item_id` | UUID | NOT NULL | FK (KC_ITEM) | | Tài liệu |
-| `version_number` | INT | NOT NULL | | | Số phiên bản (bằng KC_ITEM.version tại thời điểm snapshot) |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `item_id` | BIGINT UNSIGNED | NOT NULL | FK (kc_items), INDEX | | Tài liệu |
+| `version_number` | INT UNSIGNED | NOT NULL | | | Số phiên bản (bằng KC_ITEM.version tại thời điểm snapshot) |
 | `title_snapshot` | VARCHAR(300) | NOT NULL | | | Tiêu đề tại thời điểm snapshot |
 | `content_snapshot` | LONGTEXT | NOT NULL | | | Toàn bộ nội dung tại thời điểm snapshot |
 | `change_summary` | TEXT | NULL | | NULL | Ghi chú thay đổi so với version trước |
-| `changed_by` | UUID | NOT NULL | FK (users) | | Người thực hiện thay đổi |
+| `changed_by` | BIGINT UNSIGNED | NOT NULL | FK (users) | | Người thực hiện thay đổi |
 | `changed_at` | TIMESTAMP | NOT NULL | | NOW() | Thời điểm snapshot được tạo |
 
-**Indexes:**
+**Migration:**
 
-```sql
-CREATE INDEX idx_kc_version_item ON KC_VERSION_HISTORY(item_id);
-CREATE UNIQUE INDEX idx_kc_version_unique ON KC_VERSION_HISTORY(item_id, version_number);
+```php
+Schema::create('kc_version_histories', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('item_id')->constrained('kc_items')->cascadeOnDelete();
+    $table->unsignedInteger('version_number');
+    $table->string('title_snapshot', 300);
+    $table->longText('content_snapshot');
+    $table->text('change_summary')->nullable();
+    $table->foreignId('changed_by')->constrained('users')->restrictOnDelete();
+    $table->timestamp('changed_at')->useCurrent();
+
+    $table->unique(['item_id', 'version_number'], 'idx_kc_ver_unique');
+    $table->index('item_id', 'idx_kc_ver_item');
+});
 ```
 
 **Ghi chú:**
@@ -503,25 +595,40 @@ CREATE UNIQUE INDEX idx_kc_version_unique ON KC_VERSION_HISTORY(item_id, version
 
 ### 6.7 KC_ACCESS_CONTROL — Phân quyền truy cập
 
-**Mục đích:** Quản lý quyền truy cập chi tiết từng tài liệu khi `visibility = 'restricted'`. Cho phép cấp quyền cho user cụ thể, vai trò hoặc phòng ban.
+**Mục đích:** Quản lý quyền truy cập chi tiết từng tài liệu khi `visibility = 'restricted'`.
+
+**Thay đổi từ v1:** `target_id` đổi thành BIGINT (khớp với `users.id`, `roles.id`, `departments.id` — tất cả đều BIGINT trong hệ thống hiện có).
 
 | Trường | Kiểu dữ liệu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | Khóa chính |
-| `item_id` | UUID | NOT NULL | FK (KC_ITEM) | | Tài liệu được phân quyền |
-| `target_type` | ENUM | NOT NULL | | | `user` / `role` / `dept` |
-| `target_id` | UUID | NOT NULL | | | ID của user / role / dept tương ứng |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `item_id` | BIGINT UNSIGNED | NOT NULL | FK (kc_items), INDEX | | Tài liệu được phân quyền |
+| `target_type` | ENUM | NOT NULL | INDEX | | `user` / `role` / `dept` |
+| `target_id` | BIGINT UNSIGNED | NOT NULL | INDEX | | ID của user / role / dept — BIGINT khớp PK bảng tương ứng |
 | `permission` | ENUM | NOT NULL | | `view` | `view` / `edit` / `manage` |
 | `granted_at` | TIMESTAMP | NOT NULL | | NOW() | Thời điểm cấp quyền |
-| `granted_by` | UUID | NOT NULL | FK (users) | | Người cấp quyền |
+| `granted_by` | BIGINT UNSIGNED | NOT NULL | FK (users) | | Người cấp quyền |
 | `expired_at` | TIMESTAMP | NULL | | NULL | Quyền hết hạn tự động (nếu có) |
 
-**Indexes:**
+**Migration:**
 
-```sql
-CREATE INDEX idx_kc_access_item ON KC_ACCESS_CONTROL(item_id);
-CREATE INDEX idx_kc_access_target ON KC_ACCESS_CONTROL(target_type, target_id);
-CREATE UNIQUE INDEX idx_kc_access_unique ON KC_ACCESS_CONTROL(item_id, target_type, target_id);
+```php
+Schema::create('kc_access_controls', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('item_id')->constrained('kc_items')->cascadeOnDelete();
+    $table->enum('target_type', ['user', 'role', 'dept']);
+    $table->unsignedBigInteger('target_id'); // Không dùng foreignId vì polymorphic
+    $table->enum('permission', ['view', 'edit', 'manage'])->default('view');
+    $table->timestamp('granted_at')->useCurrent();
+    $table->foreignId('granted_by')->constrained('users')->restrictOnDelete();
+    $table->timestamp('expired_at')->nullable();
+
+    $table->unique(['item_id', 'target_type', 'target_id'], 'idx_kc_access_unique');
+    $table->index(['target_type', 'target_id'], 'idx_kc_access_target');
+    $table->index('item_id', 'idx_kc_access_item');
+});
 ```
 
 **Logic kiểm tra quyền (Permission Resolution):**
@@ -533,10 +640,10 @@ Khi user U truy cập item I:
 3. Nếu I.visibility = 'private' → chỉ owner hoặc admin
 4. Nếu I.visibility = 'internal' → kiểm tra U có role nhân viên không
 5. Nếu I.visibility = 'restricted':
-   a. Tìm record trong KC_ACCESS_CONTROL với:
-      - target_type='user' AND target_id=U.id, OR
-      - target_type='role' AND target_id IN (U.roles), OR
-      - target_type='dept' AND target_id = U.dept_id
+   a. Tìm record trong kc_access_controls với:
+      - target_type='user' AND target_id = U.id (BIGINT), OR
+      - target_type='role' AND target_id IN (U.role_ids — BIGINT), OR
+      - target_type='dept' AND target_id = U.department_id (BIGINT)
    b. Lấy permission cao nhất trong kết quả trả về
    c. Kiểm tra expired_at chưa quá hạn
 6. Nếu không khớp → DENY
@@ -550,20 +657,32 @@ Khi user U truy cập item I:
 
 | Trường | Kiểu dữ liệu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | Khóa chính |
-| `item_id` | UUID | NOT NULL | FK (KC_ITEM) | | Tài liệu được đánh giá |
-| `user_id` | UUID | NOT NULL | FK (users) | | Người đánh giá |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `item_id` | BIGINT UNSIGNED | NOT NULL | FK (kc_items), INDEX | | Tài liệu được đánh giá |
+| `user_id` | BIGINT UNSIGNED | NOT NULL | FK (users), INDEX | | Người đánh giá |
 | `rating` | SMALLINT | NULL | | NULL | Điểm 1–5 sao (nullable nếu chỉ vote helpful) |
 | `comment` | TEXT | NULL | | NULL | Nhận xét chi tiết |
 | `is_helpful` | BOOLEAN | NULL | | NULL | Nhanh: "Tài liệu này có hữu ích không?" |
-| `created_at` | TIMESTAMP | NOT NULL | | NOW() | Thời điểm tạo |
-| `updated_at` | TIMESTAMP | NOT NULL | | NOW() | Thời điểm cập nhật |
+| `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
+| `updated_at` | TIMESTAMP | NOT NULL | | NOW() | |
 
-**Indexes:**
+**Migration:**
 
-```sql
-CREATE UNIQUE INDEX idx_kc_feedback_unique ON KC_FEEDBACK(item_id, user_id);
-CREATE INDEX idx_kc_feedback_item ON KC_FEEDBACK(item_id);
+```php
+Schema::create('kc_feedbacks', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('item_id')->constrained('kc_items')->cascadeOnDelete();
+    $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+    $table->smallInteger('rating')->nullable();
+    $table->text('comment')->nullable();
+    $table->boolean('is_helpful')->nullable();
+    $table->timestamps();
+
+    $table->unique(['item_id', 'user_id'], 'idx_kc_feedback_unique');
+    $table->index('item_id', 'idx_kc_feedback_item');
+});
 ```
 
 ---
@@ -574,30 +693,43 @@ CREATE INDEX idx_kc_feedback_item ON KC_FEEDBACK(item_id);
 
 | Trường | Kiểu dữ liệu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | Khóa chính |
-| `item_id` | UUID | NOT NULL | FK (KC_ITEM) | | Tài liệu được xem |
-| `user_id` | UUID | NULL | FK (users) | NULL | User xem (NULL nếu anonymous/public) |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK AUTO_INCREMENT | | Khóa chính nội bộ |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `item_id` | BIGINT UNSIGNED | NOT NULL | FK (kc_items), INDEX | | Tài liệu được xem |
+| `user_id` | BIGINT UNSIGNED | NULL | FK (users), INDEX | NULL | User xem (NULL nếu anonymous/public) |
 | `session_id` | VARCHAR(100) | NULL | | NULL | Session ID để dedup lượt xem |
 | `ip_address` | VARCHAR(45) | NULL | | NULL | IP (IPv4 hoặc IPv6) |
 | `user_agent` | TEXT | NULL | | NULL | Browser / device info |
 | `viewed_at` | TIMESTAMP | NOT NULL | INDEX | NOW() | Thời điểm xem |
 
-**Partitioning (khuyến nghị):**
+**Migration:**
+
+```php
+Schema::create('kc_view_logs', function (Blueprint $table) {
+    $table->id();
+    $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+    $table->foreignId('item_id')->constrained('kc_items')->cascadeOnDelete();
+    $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+    $table->string('session_id', 100)->nullable();
+    $table->string('ip_address', 45)->nullable();
+    $table->text('user_agent')->nullable();
+    $table->timestamp('viewed_at')->useCurrent();
+
+    $table->index(['item_id', 'viewed_at'], 'idx_kc_viewlog_item');
+    $table->index(['user_id', 'viewed_at'], 'idx_kc_viewlog_user');
+});
+```
+
+**Partitioning (khuyến nghị cho production):**
 
 ```sql
--- Partition by month để quản lý size
+-- Partition by month để quản lý size (MySQL 8+)
+ALTER TABLE kc_view_logs
 PARTITION BY RANGE (YEAR(viewed_at) * 100 + MONTH(viewed_at)) (
   PARTITION p202601 VALUES LESS THAN (202602),
   PARTITION p202602 VALUES LESS THAN (202603),
   ...
 );
-```
-
-**Indexes:**
-
-```sql
-CREATE INDEX idx_kc_viewlog_item ON KC_VIEW_LOG(item_id, viewed_at);
-CREATE INDEX idx_kc_viewlog_user ON KC_VIEW_LOG(user_id, viewed_at);
 ```
 
 ---
@@ -627,16 +759,16 @@ CREATE INDEX idx_kc_viewlog_user ON KC_VIEW_LOG(user_id, viewed_at);
        │
        └─► Duyệt (status → 'approved')
                  ├─► version += 1
-                 ├─► approved_by = approver.id
+                 ├─► approved_by = approver.id (BIGINT)
                  ├─► approved_at = NOW()
-                 └─► Tạo bản ghi KC_VERSION_HISTORY
+                 └─► Tạo bản ghi kc_version_histories
                            └─► Tài liệu hiển thị theo visibility
 ```
 
 **Điều kiện gửi duyệt:**
 
 - `title` không được để trống
-- `category_id` phải hợp lệ
+- `category_id` phải hợp lệ và thuộc cùng org
 - `type` phải được chọn
 - Nếu `type = 'sop'` hoặc `type = 'policy'`: yêu cầu có `summary`
 
@@ -644,21 +776,21 @@ CREATE INDEX idx_kc_viewlog_user ON KC_VIEW_LOG(user_id, viewed_at);
 
 ```
 Khi Approve:
-  1. Tăng KC_ITEM.version += 1
-  2. INSERT INTO KC_VERSION_HISTORY:
-     - version_number = KC_ITEM.version (mới)
-     - content_snapshot = KC_ITEM.content (bản được duyệt)
-     - title_snapshot = KC_ITEM.title
-     - changed_by = approver.id
-  3. Cập nhật KC_ITEM (approved_by, approved_at, status)
+  1. Tăng kc_items.version += 1
+  2. INSERT INTO kc_version_histories:
+     - version_number = kc_items.version (mới)
+     - content_snapshot = kc_items.content (bản được duyệt)
+     - title_snapshot = kc_items.title
+     - changed_by = approver.id (BIGINT)
+  3. Cập nhật kc_items (approved_by, approved_at, status)
 
 Khi Rollback về version V:
-  1. Tìm bản ghi KC_VERSION_HISTORY với version_number = V
+  1. Tìm bản ghi kc_version_histories với version_number = V
   2. Tạo version mới từ snapshot:
-     KC_ITEM.content = snapshot.content_snapshot
-     KC_ITEM.title = snapshot.title_snapshot
-     KC_ITEM.version += 1 (không đặt lại về V)
-     KC_ITEM.status = 'draft' (cần duyệt lại)
+     kc_items.content = snapshot.content_snapshot
+     kc_items.title = snapshot.title_snapshot
+     kc_items.version += 1 (không đặt lại về V)
+     kc_items.status = 'draft' (cần duyệt lại)
   3. Ghi lại change_summary: "Rolled back to version V"
 ```
 
@@ -671,7 +803,7 @@ Xem chi tiết tại mục **6.7 KC_ACCESS_CONTROL — Logic kiểm tra quyền*
 | Tình huống | Cấu hình |
 |---|---|
 | Tài liệu dùng chung toàn công ty | `visibility = 'internal'` |
-| Quy trình chỉ dành cho phòng Kỹ thuật | `visibility = 'restricted'` + cấp quyền `dept = Engineering` |
+| Quy trình chỉ dành cho phòng Kỹ thuật | `visibility = 'restricted'` + cấp quyền `target_type='dept', target_id = departments.id` |
 | Tài liệu nhạy cảm HR | `visibility = 'restricted'` + cấp quyền cho 2–3 user cụ thể |
 | SOP cho team mới onboard | `visibility = 'public'` (trong org) |
 | Bản nháp chưa muốn ai thấy | `visibility = 'private'` |
@@ -680,7 +812,7 @@ Xem chi tiết tại mục **6.7 KC_ACCESS_CONTROL — Logic kiểm tra quyền*
 
 ```
 [Cron Job — chạy mỗi ngày lúc 01:00]
-  1. SELECT * FROM KC_ITEM
+  1. SELECT * FROM kc_items
      WHERE status = 'approved'
        AND expired_date IS NOT NULL
        AND expired_date <= NOW()
@@ -688,7 +820,6 @@ Xem chi tiết tại mục **6.7 KC_ACCESS_CONTROL — Logic kiểm tra quyền*
   2. Với mỗi tài liệu tìm thấy:
      a. UPDATE status = 'archived'
      b. INSERT notification → owner_id: "Tài liệu X đã hết hiệu lực"
-     c. Nếu có người theo dõi: gửi thêm notification
 
   3. Với tài liệu SOP/Policy sắp hết hạn trong 30 ngày:
      a. Gửi cảnh báo trước cho owner_id
@@ -701,32 +832,29 @@ Xem chi tiết tại mục **6.7 KC_ACCESS_CONTROL — Logic kiểm tra quyền*
 
 ```sql
 SELECT i.*
-FROM KC_ITEM i
-JOIN KC_CATEGORY c ON i.category_id = c.id
+FROM kc_items i
+JOIN kc_categories c ON i.category_id = c.id
 WHERE
-  i.org_id = :org_id
+  i.org_id = :org_id        -- BIGINT FK
   AND i.status = 'approved'
-  -- Visibility check
   AND (
     i.visibility = 'public'
     OR i.visibility = 'internal'
     OR (i.visibility = 'restricted' AND EXISTS (
-      SELECT 1 FROM KC_ACCESS_CONTROL ac
+      SELECT 1 FROM kc_access_controls ac
       WHERE ac.item_id = i.id
         AND (
-          (ac.target_type = 'user' AND ac.target_id = :user_id)
-          OR (ac.target_type = 'role' AND ac.target_id IN (:user_roles))
-          OR (ac.target_type = 'dept' AND ac.target_id = :user_dept_id)
+          (ac.target_type = 'user' AND ac.target_id = :user_id)        -- BIGINT
+          OR (ac.target_type = 'role' AND ac.target_id IN (:user_role_ids))  -- BIGINT[]
+          OR (ac.target_type = 'dept' AND ac.target_id = :user_dept_id)    -- BIGINT
         )
         AND (ac.expired_at IS NULL OR ac.expired_at > NOW())
     ))
   )
-  -- Full-text search (nếu có từ khóa)
   AND (
     :keyword IS NULL
     OR MATCH(i.title, i.summary, i.content) AGAINST(:keyword IN BOOLEAN MODE)
   )
-  -- Filter
   AND (:type IS NULL OR i.type = :type)
   AND (:category_id IS NULL OR i.category_id = :category_id)
 ORDER BY
@@ -740,41 +868,43 @@ ORDER BY
 
 ## 8. API Endpoints (đề xuất)
 
+> **Ghi chú:** Tất cả endpoint dùng `{uuid}` thay vì `{id}` khi trả về resource — expose UUID ra ngoài, không expose BIGINT nội bộ.
+
 ### Danh mục (Category)
 
 | Method | Endpoint | Mô tả |
 |---|---|---|
 | GET | `/api/kc/categories` | Lấy toàn bộ cây danh mục |
-| GET | `/api/kc/categories/:id` | Lấy chi tiết 1 danh mục + danh mục con |
+| GET | `/api/kc/categories/{uuid}` | Lấy chi tiết 1 danh mục + danh mục con |
 | POST | `/api/kc/categories` | Tạo danh mục mới |
-| PUT | `/api/kc/categories/:id` | Cập nhật danh mục |
-| DELETE | `/api/kc/categories/:id` | Xóa danh mục (có kiểm tra ràng buộc) |
+| PUT | `/api/kc/categories/{uuid}` | Cập nhật danh mục |
+| DELETE | `/api/kc/categories/{uuid}` | Xóa danh mục (có kiểm tra ràng buộc) |
 | PUT | `/api/kc/categories/reorder` | Cập nhật thứ tự sắp xếp |
 
 ### Tài liệu (Items)
 
 | Method | Endpoint | Mô tả |
 |---|---|---|
-| GET | `/api/kc/items` | Danh sách tài liệu (hỗ trợ filter, search, sort, paging) |
-| GET | `/api/kc/items/:id` | Chi tiết tài liệu + track view |
-| GET | `/api/kc/items/:id/versions` | Lịch sử phiên bản |
-| GET | `/api/kc/items/:id/versions/:v` | Nội dung tại version V |
+| GET | `/api/kc/items` | Danh sách tài liệu (filter, search, sort, paging) |
+| GET | `/api/kc/items/{uuid}` | Chi tiết tài liệu + track view |
+| GET | `/api/kc/items/{uuid}/versions` | Lịch sử phiên bản |
+| GET | `/api/kc/items/{uuid}/versions/{v}` | Nội dung tại version V |
 | POST | `/api/kc/items` | Tạo tài liệu mới (status = draft) |
-| PUT | `/api/kc/items/:id` | Cập nhật tài liệu |
-| POST | `/api/kc/items/:id/submit` | Gửi duyệt |
-| POST | `/api/kc/items/:id/approve` | Duyệt tài liệu |
-| POST | `/api/kc/items/:id/reject` | Từ chối duyệt (kèm lý do) |
-| POST | `/api/kc/items/:id/archive` | Lưu trữ tài liệu |
-| POST | `/api/kc/items/:id/rollback/:version` | Rollback về phiên bản cũ |
-| DELETE | `/api/kc/items/:id` | Xóa mềm tài liệu |
+| PUT | `/api/kc/items/{uuid}` | Cập nhật tài liệu |
+| POST | `/api/kc/items/{uuid}/submit` | Gửi duyệt |
+| POST | `/api/kc/items/{uuid}/approve` | Duyệt tài liệu |
+| POST | `/api/kc/items/{uuid}/reject` | Từ chối duyệt (kèm lý do) |
+| POST | `/api/kc/items/{uuid}/archive` | Lưu trữ tài liệu |
+| POST | `/api/kc/items/{uuid}/rollback/{version}` | Rollback về phiên bản cũ |
+| DELETE | `/api/kc/items/{uuid}` | Xóa mềm tài liệu |
 
 ### Tệp đính kèm (Attachments)
 
 | Method | Endpoint | Mô tả |
 |---|---|---|
-| GET | `/api/kc/items/:id/attachments` | Danh sách file đính kèm |
-| POST | `/api/kc/items/:id/attachments` | Upload file đính kèm |
-| DELETE | `/api/kc/items/:id/attachments/:aid` | Xóa file đính kèm |
+| GET | `/api/kc/items/{uuid}/attachments` | Danh sách file đính kèm |
+| POST | `/api/kc/items/{uuid}/attachments` | Upload file đính kèm |
+| DELETE | `/api/kc/items/{uuid}/attachments/{auuid}` | Xóa file đính kèm |
 
 ### Tags
 
@@ -782,24 +912,24 @@ ORDER BY
 |---|---|---|
 | GET | `/api/kc/tags` | Danh sách tag của org |
 | POST | `/api/kc/tags` | Tạo tag mới |
-| PUT | `/api/kc/tags/:id` | Cập nhật tag |
-| DELETE | `/api/kc/tags/:id` | Xóa tag |
+| PUT | `/api/kc/tags/{uuid}` | Cập nhật tag |
+| DELETE | `/api/kc/tags/{uuid}` | Xóa tag |
 
 ### Phân quyền
 
 | Method | Endpoint | Mô tả |
 |---|---|---|
-| GET | `/api/kc/items/:id/permissions` | Danh sách phân quyền của tài liệu |
-| POST | `/api/kc/items/:id/permissions` | Cấp quyền cho user/role/dept |
-| DELETE | `/api/kc/items/:id/permissions/:pid` | Thu hồi quyền |
+| GET | `/api/kc/items/{uuid}/permissions` | Danh sách phân quyền của tài liệu |
+| POST | `/api/kc/items/{uuid}/permissions` | Cấp quyền cho user/role/dept |
+| DELETE | `/api/kc/items/{uuid}/permissions/{puuid}` | Thu hồi quyền |
 
 ### Feedback
 
 | Method | Endpoint | Mô tả |
 |---|---|---|
-| POST | `/api/kc/items/:id/feedback` | Gửi đánh giá |
-| PUT | `/api/kc/items/:id/feedback` | Cập nhật đánh giá |
-| GET | `/api/kc/items/:id/feedback/summary` | Tổng hợp rating của tài liệu |
+| POST | `/api/kc/items/{uuid}/feedback` | Gửi đánh giá |
+| PUT | `/api/kc/items/{uuid}/feedback` | Cập nhật đánh giá |
+| GET | `/api/kc/items/{uuid}/feedback/summary` | Tổng hợp rating của tài liệu |
 
 ### Analytics
 
@@ -819,6 +949,7 @@ ORDER BY
 - Cây danh mục tối đa **3 cấp** (root → level 1 → level 2)
 - Không cho phép di chuyển danh mục tạo ra chu kỳ (`parent_id` không được trỏ về con cháu của chính nó)
 - Xóa danh mục chỉ được phép khi: không có tài liệu và không có danh mục con
+- Danh mục thuộc về org — không chia sẻ cross-org
 
 ### BR-KC-002: Luồng duyệt
 
@@ -829,7 +960,7 @@ ORDER BY
 
 ### BR-KC-003: Versioning
 
-- Mỗi lần `approved`: bắt buộc tạo snapshot vào `KC_VERSION_HISTORY`
+- Mỗi lần `approved`: bắt buộc tạo snapshot vào `kc_version_histories`
 - Giữ tối đa **20 versions** gần nhất / tài liệu; version cũ hơn xóa tự động (cron)
 - Rollback chỉ tạo version mới từ snapshot cũ, không xóa lịch sử
 
@@ -841,18 +972,18 @@ ORDER BY
 
 ### BR-KC-005: Feedback
 
-- Mỗi user chỉ có **1 feedback record / tài liệu** (upsert)
+- Mỗi user chỉ có **1 feedback record / tài liệu** (upsert — unique constraint trên item_id + user_id)
 - Không cho phép feedback tài liệu ở trạng thái `draft` hoặc `rejected`
 
 ### BR-KC-006: Counting & Analytics
 
 - `view_count` chỉ tăng **1 lần / user / session / 24h** / tài liệu (dedup bằng `session_id` hoặc `user_id + item_id + ngày`)
 - Cập nhật `view_count` bất đồng bộ (queue-based) để không block request đọc tài liệu
-- `download_count` tăng mỗi khi user click download file từ `KC_ITEM_ATTACHMENT`
+- `download_count` tăng mỗi khi user click download file từ `kc_item_attachments`
 
 ### BR-KC-007: Multi-tenancy
 
-- Tất cả query đều phải có điều kiện `org_id = :current_org_id`
+- Tất cả query đều phải có điều kiện `org_id = :current_org_id` (BIGINT)
 - Tag và danh mục cũng là per-org (không chia sẻ giữa các org)
 - Slug unique trong phạm vi từng org, không cần global unique
 
@@ -865,21 +996,21 @@ ORDER BY
 ```sql
 -- Trang chủ Knowledge Center: lấy tài liệu nổi bật, mới nhất
 CREATE INDEX idx_kc_item_homepage
-  ON KC_ITEM(org_id, status, is_featured, created_at DESC)
+  ON kc_items(org_id, status, is_featured, created_at DESC)
   WHERE status = 'approved';
 
 -- Lọc theo danh mục + type (thường dùng nhất)
 CREATE INDEX idx_kc_item_category_type
-  ON KC_ITEM(org_id, category_id, type, status);
+  ON kc_items(org_id, category_id, type, status);
 
 -- Tìm tài liệu sắp hết hạn (cron + alert dashboard)
 CREATE INDEX idx_kc_item_expiry
-  ON KC_ITEM(org_id, expired_date, status)
+  ON kc_items(org_id, expired_date, status)
   WHERE expired_date IS NOT NULL AND status = 'approved';
 
 -- Phân quyền: lookup nhanh theo target
 CREATE INDEX idx_kc_access_lookup
-  ON KC_ACCESS_CONTROL(item_id, target_type, target_id, permission)
+  ON kc_access_controls(item_id, target_type, target_id, permission)
   WHERE expired_at IS NULL OR expired_at > NOW();
 ```
 
@@ -887,7 +1018,7 @@ CREATE INDEX idx_kc_access_lookup
 
 | Vấn đề | Giải pháp đề xuất |
 |---|---|
-| `KC_VIEW_LOG` tăng trưởng vô hạn | Partition by month; chỉ giữ raw log 6 tháng, aggregate hàng ngày vào bảng stats riêng |
+| `kc_view_logs` tăng trưởng vô hạn | Partition by month; chỉ giữ raw log 6 tháng, aggregate hàng ngày vào bảng stats riêng |
 | Full-text search chậm khi data lớn | Kết hợp Elasticsearch / OpenSearch cho search; MySQL FULLTEXT dùng cho SME nhỏ |
 | Visibility check phức tạp trong mỗi query | Cache danh sách `item_id` user có quyền xem vào Redis (TTL 5 phút) |
 | `view_count` update gây lock | Dùng message queue (Redis + worker) để async update |
@@ -899,25 +1030,23 @@ CREATE INDEX idx_kc_access_lookup
 
 ### Giai đoạn 1 — MVP (1–2 tháng)
 
-Triển khai đủ để đưa vào sử dụng cơ bản:
-
-- [ ] `KC_CATEGORY` + `KC_ITEM` + `KC_ITEM_ATTACHMENT`
-- [ ] `KC_TAG` + `KC_ITEM_TAG`
+- [ ] `kc_categories` + `kc_items` + `kc_item_attachments`
+- [ ] `kc_tags` + `kc_item_tags`
 - [ ] Luồng Draft → Approved (không cần Pending Review nếu org nhỏ)
 - [ ] Tìm kiếm full-text cơ bản
 - [ ] `visibility`: chỉ `public` và `internal`
 
 ### Giai đoạn 2 — Mở rộng (tháng 3–4)
 
-- [ ] `KC_VERSION_HISTORY` + Rollback
-- [ ] `KC_ACCESS_CONTROL` + `visibility = 'restricted'`
-- [ ] `KC_FEEDBACK` + Rating
+- [ ] `kc_version_histories` + Rollback
+- [ ] `kc_access_controls` + `visibility = 'restricted'`
+- [ ] `kc_feedbacks` + Rating
 - [ ] Luồng duyệt đầy đủ (Pending Review → Approve/Reject)
 - [ ] Cron job hết hiệu lực tự động
 
 ### Giai đoạn 3 — Analytics & tối ưu (tháng 5+)
 
-- [ ] `KC_VIEW_LOG` + Dashboard analytics
+- [ ] `kc_view_logs` + Dashboard analytics
 - [ ] Notification (sắp hết hạn, tài liệu mới, bị từ chối)
 - [ ] Tích hợp Elasticsearch nếu data lớn
 - [ ] Export tài liệu ra PDF/Word
@@ -932,6 +1061,6 @@ Triển khai đủ để đưa vào sử dụng cơ bản:
 
 ---
 
-*Tài liệu này được tạo bởi AI Assistant và cần được review bởi Technical Lead / Product Owner trước khi đưa vào triển khai chính thức.*
-
-*Version 1.0.0 — Knowledge Center Module Specification*
+*Version 2.0.0 — Knowledge Center Module Specification*  
+*Stack: Laravel 13 · MySQL 8+ / SQLite (dev) · Alpine.js 3*  
+*PK Convention: BIGINT AUTO_INCREMENT (id) + CHAR(36) UUID (uuid) — theo chuẩn toàn hệ thống*

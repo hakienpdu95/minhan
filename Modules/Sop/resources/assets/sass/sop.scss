@@ -1,0 +1,11 @@
+// SOP module styles — minimal for Phase 3
+
+.sop-flowchart-canvas {
+    min-height: 180px;
+    background: var(--color-base-50, #fafaf9);
+}
+
+.sop-flowchart-canvas text {
+    pointer-events: none;
+    user-select: none;
+}
