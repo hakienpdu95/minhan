@@ -10,66 +10,11 @@
     <nav class="nav-wrap">
         <p class="section-title">Chính</p>
         <div class="nav-group">
-
             <a href="{{ route('backend.dashboard') }}"
                class="nav-link {{ request()->routeIs('backend.dashboard') ? 'active' : '' }}">
                 <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
                 <span class="nav-label">Dashboard</span>
             </a>
-
-            <details {{ request()->routeIs('backend.products.*') ? 'open' : '' }}>
-                <summary class="nav-summary {{ request()->routeIs('backend.products.*') ? 'active' : '' }}">
-                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 10V7"/></svg>
-                    <span class="nav-label">Sản phẩm</span>
-                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
-                </summary>
-                <div class="sub-menu">
-                    <a href="{{ route('backend.products.index') }}" class="sub-link {{ request()->routeIs('backend.products.index') ? 'active' : '' }}">Danh sách sản phẩm</a>
-                    <a href="{{ route('backend.products.create') }}" class="sub-link {{ request()->routeIs('backend.products.create') ? 'active' : '' }}">Thêm sản phẩm</a>
-                    <a href="#" class="sub-link">Thùng rác</a>
-                </div>
-            </details>
-
-            <details {{ request()->routeIs('backend.orders.*') ? 'open' : '' }}>
-                <summary class="nav-summary {{ request()->routeIs('backend.orders.*') ? 'active' : '' }}">
-                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-                    <span class="nav-label">Đơn hàng</span>
-                    <span class="nav-badge">12</span>
-                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
-                </summary>
-                <div class="sub-menu">
-                    <a href="{{ route('backend.orders.index') }}" class="sub-link {{ request()->routeIs('backend.orders.index') ? 'active' : '' }}">Tất cả đơn hàng</a>
-                    <a href="#" class="sub-link">Chờ xử lý <span class="sub-badge">5</span></a>
-                    <a href="#" class="sub-link">Đang giao hàng</a>
-                    <a href="#" class="sub-link">Hoàn thành</a>
-                </div>
-            </details>
-
-            <details {{ request()->routeIs('backend.customers.*') ? 'open' : '' }}>
-                <summary class="nav-summary {{ request()->routeIs('backend.customers.*') ? 'active' : '' }}">
-                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    <span class="nav-label">Khách hàng</span>
-                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
-                </summary>
-                <div class="sub-menu">
-                    <a href="{{ route('backend.customers.index') }}" class="sub-link {{ request()->routeIs('backend.customers.index') ? 'active' : '' }}">Danh sách khách hàng</a>
-                    <a href="{{ route('backend.customers.create') }}" class="sub-link {{ request()->routeIs('backend.customers.create') ? 'active' : '' }}">Thêm khách hàng</a>
-                    <a href="#" class="sub-link">Nhóm khách hàng</a>
-                </div>
-            </details>
-
-            <details {{ request()->routeIs('backend.categories.*') ? 'open' : '' }}>
-                <summary class="nav-summary {{ request()->routeIs('backend.categories.*') ? 'active' : '' }}">
-                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/></svg>
-                    <span class="nav-label">Danh mục</span>
-                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
-                </summary>
-                <div class="sub-menu">
-                    <a href="{{ route('backend.categories.index') }}" class="sub-link {{ request()->routeIs('backend.categories.index') ? 'active' : '' }}">Danh sách danh mục</a>
-                    <a href="{{ route('backend.categories.create') }}" class="sub-link {{ request()->routeIs('backend.categories.create') ? 'active' : '' }}">Thêm danh mục</a>
-                </div>
-            </details>
-
         </div>
 
         @can('survey.view')
@@ -321,19 +266,39 @@
             @endcan
 
             @can('marketplace.view')
+            @php
+                $mktSyncCount = 0;
+                try {
+                    if (\App\Shared\Tenancy\TenantContext::isSet()) {
+                        $mktSyncCount = \Illuminate\Support\Facades\Cache::remember(
+                            'mkt:org:' . \App\Shared\Tenancy\TenantContext::getOrganizationId() . ':sync-count',
+                            60,
+                            fn() => \Modules\Marketplace\Models\MktListing::withoutGlobalScope('tenant')
+                                ->where('org_id', \App\Shared\Tenancy\TenantContext::getOrganizationId())
+                                ->where('jp_sync_status', 'out_of_sync')
+                                ->count()
+                        );
+                    }
+                } catch (\Throwable $e) { $mktSyncCount = 0; }
+            @endphp
             <details {{ request()->routeIs('backend.marketplace.*') ? 'open' : '' }}>
                 <summary class="nav-summary {{ request()->routeIs('backend.marketplace.*') ? 'active' : '' }}">
                     <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                     <span class="nav-label">Marketplace Center</span>
+                    @if($mktSyncCount > 0)
+                    <span class="badge badge-warning badge-xs ml-auto">{{ $mktSyncCount }}</span>
+                    @endif
                     <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
                 </summary>
                 <div class="sub-menu">
                     <a href="{{ route('backend.marketplace.listings.index') }}"
-                       class="sub-link {{ request()->routeIs('backend.marketplace.listings.*') ? 'active' : '' }}">Tin đăng</a>
+                       class="sub-link {{ request()->routeIs('backend.marketplace.listings.index') || (request()->routeIs('backend.marketplace.listings.*') && !request()->routeIs('backend.marketplace.listings.create')) ? 'active' : '' }}">Tin đăng</a>
                     @can('marketplace.create')
                     <a href="{{ route('backend.marketplace.listings.create') }}"
                        class="sub-link {{ request()->routeIs('backend.marketplace.listings.create') ? 'active' : '' }}">Đăng tin mới</a>
                     @endcan
+                    <a href="{{ route('backend.marketplace.analytics.index') }}"
+                       class="sub-link {{ request()->routeIs('backend.marketplace.analytics.*') ? 'active' : '' }}">Analytics</a>
                     @can('marketplace.manage')
                     <a href="{{ route('backend.marketplace.org-approvals.index') }}"
                        class="sub-link {{ request()->routeIs('backend.marketplace.org-approvals.*') ? 'active' : '' }}">Duyệt tổ chức</a>

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use Modules\Marketplace\Enums\ExperienceLevel;
 use Modules\Marketplace\Enums\EmploymentType;
@@ -102,6 +103,21 @@ class MktListing extends Model
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(MktTag::class, 'mkt_listing_tags', 'listing_id', 'tag_id');
+    }
+
+    public function applications(): HasMany
+    {
+        return $this->hasMany(MktApplication::class, 'listing_id');
+    }
+
+    public function bookmarks(): HasMany
+    {
+        return $this->hasMany(MktListingBookmark::class, 'listing_id');
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(MktReview::class, 'listing_id');
     }
 
     // ── Helpers ──────────────────────────────────────────────────────

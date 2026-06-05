@@ -42,6 +42,11 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        'marketplace' => [
+            'driver' => 'session',
+            'provider' => 'mkt_applicants',
+        ],
     ],
 
     /*
@@ -65,6 +70,11 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
+        ],
+
+        'mkt_applicants' => [
+            'driver' => 'eloquent',
+            'model' => \Modules\Marketplace\Models\MktApplicant::class,
         ],
 
         // 'users' => [
@@ -96,6 +106,13 @@ return [
         'users' => [
             'provider' => 'users',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+
+        'mkt_applicants' => [
+            'provider' => 'mkt_applicants',
+            'table' => 'mkt_applicant_password_resets',
             'expire' => 60,
             'throttle' => 60,
         ],

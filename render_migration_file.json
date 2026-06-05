@@ -2057,5 +2057,19 @@
         "__index///index///__///__///__///expire_at,status|idx_rc_offer_expire///__",
         "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
         "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật"
+    ],
+    [
+        "mkt_tags///__///__///",
+        "name///string///80///NOT_NULL///__///->unique()///__",
+        "slug///string///90///NOT_NULL///__///->unique()///__",
+        "listing_type///string///20///_NULL///NULL///->index()///__",
+        "use_count///integer///__///NOT_NULL///0///__///__",
+        "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
+        "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật"
+    ],
+    [
+        "mkt_listing_tags///__///__///",
+        "listing_id///unsignedBigInteger///__///NOT_NULL///__///__///__",
+        "tag_id///unsignedBigInteger///__///NOT_NULL///__///__///__"
     ]
 ]

@@ -17,7 +17,10 @@
         "ward_code///char///5///_NULL///NULL///->references('ward_code')->constrained('wards')->nullOnDelete()///Phường/xã — FK tới wards.ward_code",
         "full_address///text///__///_NULL///NULL///__///Địa chỉ đầy đủ kết hợp (số nhà + phường/xã + tỉnh)",
         "__index///index///__///__///__///province_code,ward_code,status,created_at///Index cho column",
-        "lead_assessment_code///string///64///_NULL///NULL///__///Assessment code dùng để chấm điểm lead sâu. NULL = tắt."
+        "lead_assessment_code///string///64///_NULL///NULL///__///Assessment code dùng để chấm điểm lead sâu. NULL = tắt.",
+        "source///string///50///_NULL///NULL///__///marketplace_signup | admin_created | etc.",
+        "approved_by///unsignedBigInteger///__///_NULL///NULL///__///__",
+        "approved_at///timestamp///__///_NULL///NULL///__///__"
     ],
     [
         "users///add///email///Thêm organization_id và các trường bổ sung vào bảng users",
@@ -181,5 +184,22 @@
         "__index///index///__///__///__///current_stage_id,status|idx_rc_app_stage///__",
         "__index///index///__///__///__///assigned_to,status|idx_rc_app_assigned///__",
         "__index///index///__///__///__///org_id,is_disqualified,created_at|idx_rc_app_disq///__"
+    ],
+    [
+        "mkt_listings///add///__///",
+        "posted_by///unsignedBigInteger///__///NOT_NULL///0///__///__",
+        "slug///string///320///_NULL///NULL///->unique()///__",
+        "benefits///text///__///_NULL///NULL///__///__",
+        "visibility///string///20///NOT_NULL///'public'///__///__",
+        "salary_is_negotiable///boolean///__///NOT_NULL///false///__///__",
+        "salary_is_visible///boolean///__///NOT_NULL///true///__///__",
+        "budget_min///decimal///15,2///_NULL///NULL///__///__",
+        "budget_max///decimal///15,2///_NULL///NULL///__///__",
+        "duration_days///integer///__///_NULL///NULL///__///__",
+        "department_id///unsignedBigInteger///__///_NULL///NULL///__///__",
+        "position_id///unsignedBigInteger///__///_NULL///NULL///__///__",
+        "bookmark_count///integer///__///NOT_NULL///0///__///__",
+        "jp_sync_status///string///20///_NULL///NULL///__///__",
+        "auto_close_on_jp///boolean///__///NOT_NULL///true///__///__"
     ]
 ]

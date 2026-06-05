@@ -18,14 +18,15 @@ class JpJobPostObserver
     {
         if ($jpPost->wasChanged('status')) {
             $this->handleStatusChange($jpPost);
+            return;  // status change is handled separately, not out_of_sync
         }
 
-        // If content changed after publish, mark out_of_sync
-        if ($jpPost->status?->value === 'published' && $jpPost->isDirty()) {
+        // Content changed after publish → mark out_of_sync
+        if ($jpPost->status?->value === 'published') {
             MktListing::withoutTenant()
                 ->where('jp_job_post_id', $jpPost->uuid)
-                ->whereNotIn('status', [ListingStatus::CLOSED->value])
-                ->update(['jp_sync_status' => JpSyncStatus::OUT_OF_SYNC->value]);
+                ->whereNotIn('status', [\Modules\Marketplace\Enums\ListingStatus::CLOSED->value])
+                ->update(['jp_sync_status' => \Modules\Marketplace\Enums\JpSyncStatus::OUT_OF_SYNC->value]);
         }
     }
 

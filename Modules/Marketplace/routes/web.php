@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Modules\Marketplace\Http\Controllers\Backend\EmployerRegistrationController;
 use Modules\Marketplace\Http\Controllers\Backend\ListingController;
+use Modules\Marketplace\Http\Controllers\Backend\MarketplaceAnalyticsController;
 use Modules\Marketplace\Http\Controllers\Backend\OrgApprovalController;
 use Modules\Marketplace\Http\Controllers\Api\MktListingApiController;
 
@@ -31,6 +32,9 @@ Route::middleware(['auth'])->prefix('dashboard/marketplace')->name('backend.mark
     Route::put('listings/{listing}', [ListingController::class, 'update'])->name('listings.update');
     Route::post('listings/{listing}/close', [ListingController::class, 'close'])->name('listings.close');
     Route::delete('listings/{listing}', [ListingController::class, 'destroy'])->name('listings.destroy');
+
+    // Analytics
+    Route::get('analytics', [MarketplaceAnalyticsController::class, 'index'])->name('analytics.index');
 
     // Admin: org approval queue
     Route::get('org-approvals', [OrgApprovalController::class, 'index'])->name('org-approvals.index');

@@ -24,10 +24,21 @@ class MarketplaceServiceProvider extends ModuleServiceProvider
         parent::boot();
 
         Gate::policy(MktListing::class, MktListingPolicy::class);
+        Gate::policy(\Modules\Marketplace\Models\MktApplication::class, \Modules\Marketplace\Policies\MktApplicationPolicy::class);
 
         // Register JP observer for marketplace sync
         if (class_exists(JpJobPost::class)) {
             JpJobPost::observe(JpJobPostObserver::class);
         }
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \Modules\Marketplace\Console\Commands\ExpireListingsCommand::class,
+            ]);
+        }
+
+        $this->callAfterResolving(\Illuminate\Console\Scheduling\Schedule::class, function ($schedule) {
+            $schedule->command('marketplace:expire-listings')->hourly()->withoutOverlapping();
+        });
     }
 }

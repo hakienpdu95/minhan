@@ -92,6 +92,19 @@ class RolePermissionSeeder extends Seeder
                 // Assessment: view + results
                 P::ASSESSMENT_VIEW->value,
                 P::ASSESSMENT_RESULTS->value,
+
+                // Job Posting: full
+                P::JOB_POSTING_VIEW->value,
+                P::JOB_POSTING_CREATE->value,
+                P::JOB_POSTING_EDIT->value,
+                P::JOB_POSTING_DELETE->value,
+                P::JOB_POSTING_PUBLISH->value,
+
+                // Recruitment: view
+                P::RECRUITMENT_VIEW->value,
+
+                // Marketplace: view
+                P::MARKETPLACE_VIEW->value,
             ],
 
             // ─────────────────────────────────────────────────────────
@@ -163,6 +176,9 @@ class RolePermissionSeeder extends Seeder
                 P::WORKFLOW_VIEW_LIMITED->value,
 
                 P::REPORTS_MARKETING->value,
+
+                // Marketplace: view (monitor public listings)
+                P::MARKETPLACE_VIEW->value,
             ],
 
             // ─────────────────────────────────────────────────────────
@@ -180,6 +196,23 @@ class RolePermissionSeeder extends Seeder
                 P::USERS_HR->value,
 
                 P::REPORTS_HR->value,
+
+                // Job Posting: full
+                P::JOB_POSTING_VIEW->value,
+                P::JOB_POSTING_CREATE->value,
+                P::JOB_POSTING_EDIT->value,
+                P::JOB_POSTING_PUBLISH->value,
+
+                // Recruitment: full
+                P::RECRUITMENT_VIEW->value,
+                P::RECRUITMENT_CREATE->value,
+                P::RECRUITMENT_EDIT->value,
+                P::RECRUITMENT_MANAGE->value,
+
+                // Marketplace: full (manage listings + review applicants)
+                P::MARKETPLACE_VIEW->value,
+                P::MARKETPLACE_CREATE->value,
+                P::MARKETPLACE_EDIT->value,
             ],
 
             // ─────────────────────────────────────────────────────────
@@ -252,6 +285,26 @@ class RolePermissionSeeder extends Seeder
                 P::ASSESSMENT_CONFIG->value,
                 P::ASSESSMENT_RESULTS->value,
                 P::ASSESSMENT_REPROCESS->value,
+
+                // Job Posting: full manage
+                P::JOB_POSTING_VIEW->value,
+                P::JOB_POSTING_CREATE->value,
+                P::JOB_POSTING_EDIT->value,
+                P::JOB_POSTING_DELETE->value,
+                P::JOB_POSTING_PUBLISH->value,
+                P::JOB_POSTING_MANAGE->value,
+
+                // Recruitment: full manage
+                P::RECRUITMENT_VIEW->value,
+                P::RECRUITMENT_CREATE->value,
+                P::RECRUITMENT_EDIT->value,
+                P::RECRUITMENT_MANAGE->value,
+
+                // Marketplace: full manage (approve orgs, global view)
+                P::MARKETPLACE_VIEW->value,
+                P::MARKETPLACE_CREATE->value,
+                P::MARKETPLACE_EDIT->value,
+                P::MARKETPLACE_MANAGE->value,
             ],
 
             // ─────────────────────────────────────────────────────────

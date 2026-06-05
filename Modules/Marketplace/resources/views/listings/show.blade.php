@@ -72,6 +72,124 @@
         </div>
     </div>
 
+    {{-- ── Applicants panel (HR/Manage only) ──────────────────────── --}}
+    @can('marketplace.edit')
+    @if($listing->application_count > 0)
+    <div class="card bg-base-100 shadow-sm"
+         x-data="applicantsPanel('{{ $listing->id }}')"
+         x-init="load()">
+
+        <div class="card-body">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-semibold">Ứng viên ({{ $listing->application_count }})</h3>
+                <span x-show="loading" class="loading loading-spinner loading-xs"></span>
+            </div>
+
+            <div x-show="!loading && applications.length === 0" class="text-sm opacity-50 py-2">
+                Chưa có ứng viên.
+            </div>
+
+            <div x-show="!loading && applications.length > 0" class="overflow-x-auto">
+                <table class="table table-sm">
+                    <thead>
+                        <tr class="text-xs opacity-60">
+                            <th>Ứng viên</th>
+                            <th>Ngày nộp</th>
+                            <th>Trạng thái</th>
+                            <th>Import RC</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="a in applications" :key="a.id">
+                            <tr class="hover">
+                                <td>
+                                    <div class="font-medium text-sm" x-text="a.applicant?.display_name ?? '—'"></div>
+                                    <div class="text-xs opacity-50" x-text="a.applicant?.headline ?? ''"></div>
+                                </td>
+                                <td class="text-xs" x-text="a.applied_at ? new Date(a.applied_at).toLocaleDateString('vi-VN') : '—'"></td>
+                                <td>
+                                    <span class="badge badge-sm"
+                                          :class="{
+                                              'badge-info':    a.status === 'submitted',
+                                              'badge-warning': a.status === 'viewed',
+                                              'badge-success': a.status === 'shortlisted' || a.status === 'hired',
+                                              'badge-error':   a.status === 'rejected',
+                                              'badge-ghost':   a.status === 'withdrawn',
+                                          }"
+                                          x-text="a.status_label ?? a.status"></span>
+                                </td>
+                                <td>
+                                    <span class="badge badge-xs"
+                                          :class="a.import_status === 'imported' ? 'badge-success' : 'badge-ghost'"
+                                          x-text="a.import_status === 'imported' ? 'Đã import' : '—'"></span>
+                                </td>
+                                <td class="flex gap-1">
+                                    <button x-show="a.status !== 'shortlisted' && a.status !== 'hired' && a.status !== 'rejected' && a.status !== 'withdrawn'"
+                                            @click="shortlist(a)"
+                                            class="btn btn-ghost btn-xs text-success">Shortlist</button>
+                                    <button x-show="a.status !== 'rejected' && a.status !== 'hired' && a.status !== 'withdrawn'"
+                                            @click="reject(a)"
+                                            class="btn btn-ghost btn-xs text-error">Từ chối</button>
+                                    @if($listing->jp_job_post_id)
+                                    <button x-show="a.import_status !== 'imported'"
+                                            @click="importRc(a)"
+                                            class="btn btn-ghost btn-xs text-primary">Import RC</button>
+                                    @endif
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function applicantsPanel(listingId) {
+        return {
+            loading: true,
+            applications: [],
+            async load() {
+                try {
+                    const res = await fetch(`/api/marketplace/org/listings/${listingId}/applicants`, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+                    });
+                    const json = await res.json();
+                    this.applications = json.data ?? [];
+                } catch (e) { console.error(e); }
+                finally { this.loading = false; }
+            },
+            async shortlist(app) {
+                await fetch(`/api/marketplace/org/applications/${app.id}/shortlist`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' }
+                });
+                app.status = 'shortlisted'; app.status_label = 'Shortlist';
+            },
+            async reject(app) {
+                if (!confirm('Từ chối ứng viên này?')) return;
+                await fetch(`/api/marketplace/org/applications/${app.id}/reject`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' }
+                });
+                app.status = 'rejected'; app.status_label = 'Từ chối';
+            },
+            async importRc(app) {
+                const res = await fetch(`/api/marketplace/org/applications/${app.id}/import`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' }
+                });
+                const json = await res.json();
+                if (res.ok) { app.import_status = 'imported'; }
+                else { alert(json.message); }
+            },
+        }
+    }
+    </script>
+    @endif
+    @endcan
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         {{-- ── Main content ─────────────────────────────────────── --}}

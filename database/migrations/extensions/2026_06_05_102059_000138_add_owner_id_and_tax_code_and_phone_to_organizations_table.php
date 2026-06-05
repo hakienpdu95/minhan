@@ -30,6 +30,9 @@ return new class extends Migration {
             $table->text('full_address')->nullable()->after('ward_code')->comment('Địa chỉ đầy đủ kết hợp (số nhà + phường/xã + tỉnh)');
             $table->index(['province_code', 'ward_code', 'status', 'created_at']);
             $table->string('lead_assessment_code', 64)->nullable()->after('full_address')->comment('Assessment code dùng để chấm điểm lead sâu. NULL = tắt.');
+            $table->string('source', 50)->nullable()->after('lead_assessment_code')->comment('marketplace_signup | admin_created | etc.');
+            $table->unsignedBigInteger('approved_by')->nullable()->after('source');
+            $table->timestamp('approved_at')->nullable()->after('approved_by');
         });
     }
 
@@ -38,7 +41,7 @@ return new class extends Migration {
         Schema::table('organizations', function (Blueprint $table) {
             $table->dropForeign(['province_code']);
             $table->dropForeign(['ward_code']);
-            $table->dropColumn(['owner_id', 'tax_code', 'phone', 'email', 'website', 'industry', 'address', 'city', 'country', 'postal_code', 'description', 'logo_path', 'province_code', 'ward_code', 'full_address', 'lead_assessment_code']);
+            $table->dropColumn(['owner_id', 'tax_code', 'phone', 'email', 'website', 'industry', 'address', 'city', 'country', 'postal_code', 'description', 'logo_path', 'province_code', 'ward_code', 'full_address', 'lead_assessment_code', 'source', 'approved_by', 'approved_at']);
         });
     }
 };
