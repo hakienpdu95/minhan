@@ -23,5 +23,6 @@
     "Leave": true,
     "KpiGoal": true,
     "JobPosting": true,
-    "Recruitment": true
+    "Recruitment": true,
+    "Marketplace": true
 }

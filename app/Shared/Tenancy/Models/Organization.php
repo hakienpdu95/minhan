@@ -22,6 +22,12 @@ class Organization extends Model
         'status',
         'owner_id',
         'settings',
+        // Marketplace employer registration fields
+        'email',
+        'website',
+        'source',
+        'approved_by',
+        'approved_at',
     ];
 
     protected function casts(): array

@@ -48,6 +48,8 @@ return [
         P::JOB_POSTING_PUBLISH->value,
         // Recruitment: View
         P::RECRUITMENT_VIEW->value,
+        // Marketplace: View
+        P::MARKETPLACE_VIEW->value,
     ],
 
     R::SALES->value => [
@@ -114,6 +116,8 @@ return [
         P::WORKFLOW_VIEW_LIMITED->value,
         // Reports: Marketing scope
         P::REPORTS_MARKETING->value,
+        // Marketplace: View (Marketing monitors public listings)
+        P::MARKETPLACE_VIEW->value,
     ],
 
     R::HR->value => [
@@ -139,6 +143,10 @@ return [
         P::RECRUITMENT_CREATE->value,
         P::RECRUITMENT_EDIT->value,
         P::RECRUITMENT_MANAGE->value,
+        // Marketplace: Full (HR manages listings + reviews applicants)
+        P::MARKETPLACE_VIEW->value,
+        P::MARKETPLACE_CREATE->value,
+        P::MARKETPLACE_EDIT->value,
     ],
 
     R::AI_OP->value => [
@@ -205,6 +213,11 @@ return [
         P::RECRUITMENT_CREATE->value,
         P::RECRUITMENT_EDIT->value,
         P::RECRUITMENT_MANAGE->value,
+        // Marketplace: Full manage (approve orgs, global view)
+        P::MARKETPLACE_VIEW->value,
+        P::MARKETPLACE_CREATE->value,
+        P::MARKETPLACE_EDIT->value,
+        P::MARKETPLACE_MANAGE->value,
     ],
 
     R::VIEWER->value => [

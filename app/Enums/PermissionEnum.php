@@ -118,6 +118,13 @@ enum PermissionEnum: string
     case RECRUITMENT_EDIT    = 'recruitment.edit';    // HR Admin, Recruiter
     case RECRUITMENT_MANAGE  = 'recruitment.manage';  // HR Admin — config pipeline, delete
 
+    // ══ MARKETPLACE CENTER ═════════════════════════════════════════
+    // CEO=View | HR=Full | Marketing=View | Admin=Manage (approve orgs, global)
+    case MARKETPLACE_VIEW   = 'marketplace.view';   // CEO, HR, Marketing — xem listings của org
+    case MARKETPLACE_CREATE = 'marketplace.create'; // HR — tạo listing mới
+    case MARKETPLACE_EDIT   = 'marketplace.edit';   // HR — sửa/đóng listing
+    case MARKETPLACE_MANAGE = 'marketplace.manage'; // System Admin — duyệt org, xem tất cả
+
     // ══ SYSTEM ═════════════════════════════════════════════════════
     case INTEGRATION_MANAGE = 'integration.manage';
     case AUDIT_VIEW         = 'audit.view';
