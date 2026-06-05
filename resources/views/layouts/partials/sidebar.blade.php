@@ -304,6 +304,43 @@
             </details>
             @endcan
 
+            @can('viewAny', \Modules\JobPosting\Models\JpJobPost::class)
+            <details {{ request()->routeIs('backend.job-posts.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('backend.job-posts.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    <span class="nav-label">Tin tuyển dụng</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('backend.job-posts.index') }}" class="sub-link {{ request()->routeIs('backend.job-posts.index') ? 'active' : '' }}">Danh sách tin</a>
+                    @can('create', \Modules\JobPosting\Models\JpJobPost::class)
+                    <a href="{{ route('backend.job-posts.create') }}" class="sub-link {{ request()->routeIs('backend.job-posts.create') ? 'active' : '' }}">Tạo tin mới</a>
+                    @endcan
+                </div>
+            </details>
+            @endcan
+
+            @can('recruitment.view')
+            <details {{ request()->routeIs('backend.recruitment.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('backend.recruitment.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    <span class="nav-label">Tuyển dụng (ATS)</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('backend.recruitment.candidates.index') }}" class="sub-link {{ request()->routeIs('backend.recruitment.candidates.*') ? 'active' : '' }}">Danh sách ứng viên</a>
+                    @can('recruitment.create')
+                    <a href="{{ route('backend.recruitment.candidates.create') }}" class="sub-link {{ request()->routeIs('backend.recruitment.candidates.create') ? 'active' : '' }}">Thêm ứng viên</a>
+                    @endcan
+                    <a href="{{ route('backend.recruitment.interviews.my-schedule') }}" class="sub-link {{ request()->routeIs('backend.recruitment.interviews.my-schedule') ? 'active' : '' }}">Lịch phỏng vấn của tôi</a>
+                    @can('recruitment.manage')
+                    <a href="{{ route('backend.recruitment.analytics.index') }}" class="sub-link {{ request()->routeIs('backend.recruitment.analytics.*') ? 'active' : '' }}">Analytics</a>
+                    <a href="{{ route('backend.recruitment.pipeline-stages.index') }}" class="sub-link {{ request()->routeIs('backend.recruitment.pipeline-stages.*') ? 'active' : '' }}">Pipeline Stages</a>
+                    @endcan
+                </div>
+            </details>
+            @endcan
+
             @can('viewAny', \Modules\RoleScope\Models\UserRoleScope::class)
             <details {{ request()->routeIs('backend.role-scopes.*') ? 'open' : '' }}>
                 <summary class="nav-summary {{ request()->routeIs('backend.role-scopes.*') ? 'active' : '' }}">

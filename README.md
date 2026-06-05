@@ -68,9 +68,8 @@ php artisan module:make Auth
 
 # > Đọc file spec/lead.md và implement theo đúng spec đó, lưu ý là lead cơ hội của ai thì khi vào tài khoản sẽ xem được lead trong phạm vi của mình. Làm chắc chắn và tối ưu từng task một, hỏi để xác nhận trước khi làm tiếp
 
-# > Đọc file docs/form-ui-spec.md và implement theo đúng spec đó, áp dụng spec này vào module PerformanceReview, fix xong không cần chạy npx vite build
-# > Áp dụng tương tự cho module RoleScope
+# > Đọc file spec/prompt.md và implement theo đúng spec đó
 
-Dựa trên file spec/sop.md và làm phase 1 trước, implement theo đúng spec, đọc thêm file docs/module-list-pattern.md để tuân thủ đúng cấu trúc và nguyên tắc chuẩn khi thiết kế và triển khai module theo cấu trúc Advanced Vertical Slice (AVSA) + CQRS-lite + Laravel Modules + Laravel Actions, bổ sung ra mdenu sidebar để dùng, phần views hãy kế thừa và làm chuẩn @extends('layouts.backend')
+Đọc file spec/recruitment.md và làm phase 1 trước, implement theo đúng spec, đọc thêm file docs/module-list-pattern.md để tuân thủ đúng cấu trúc và nguyên tắc chuẩn khi thiết kế và triển khai module theo cấu trúc Advanced Vertical Slice (AVSA) + CQRS-lite + Laravel Modules + Laravel Actions, bổ sung ra mdenu sidebar để dùng, phần views hãy kế thừa và làm chuẩn @extends('layouts.backend')
 
-- Đọc file docs/workforce.md và làm tiếp phase 2, implement theo đúng spec đó
+- Đọc file spec/recruitment.md và làm phase 1, implement theo đúng spec đó

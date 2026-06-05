@@ -40,6 +40,14 @@ return [
         // Assessment: View + Results
         P::ASSESSMENT_VIEW->value,
         P::ASSESSMENT_RESULTS->value,
+        // Job Posting: Full
+        P::JOB_POSTING_VIEW->value,
+        P::JOB_POSTING_CREATE->value,
+        P::JOB_POSTING_EDIT->value,
+        P::JOB_POSTING_DELETE->value,
+        P::JOB_POSTING_PUBLISH->value,
+        // Recruitment: View
+        P::RECRUITMENT_VIEW->value,
     ],
 
     R::SALES->value => [
@@ -88,6 +96,8 @@ return [
         // Assessment: View + Results
         P::ASSESSMENT_VIEW->value,
         P::ASSESSMENT_RESULTS->value,
+        // Job Posting: View only
+        P::JOB_POSTING_VIEW->value,
     ],
 
     R::MARKETING->value => [
@@ -119,6 +129,16 @@ return [
         P::USERS_HR->value,
         // Reports: HR scope
         P::REPORTS_HR->value,
+        // Job Posting: Full (HR manages hiring)
+        P::JOB_POSTING_VIEW->value,
+        P::JOB_POSTING_CREATE->value,
+        P::JOB_POSTING_EDIT->value,
+        P::JOB_POSTING_PUBLISH->value,
+        // Recruitment: Full (HR Admin = manage, HR = edit+create)
+        P::RECRUITMENT_VIEW->value,
+        P::RECRUITMENT_CREATE->value,
+        P::RECRUITMENT_EDIT->value,
+        P::RECRUITMENT_MANAGE->value,
     ],
 
     R::AI_OP->value => [
@@ -177,6 +197,14 @@ return [
         P::ASSESSMENT_CONFIG->value,
         P::ASSESSMENT_RESULTS->value,
         P::ASSESSMENT_REPROCESS->value,
+        // Job Posting: Manage (system admin)
+        P::JOB_POSTING_VIEW->value,
+        P::JOB_POSTING_MANAGE->value,
+        // Recruitment: Full manage
+        P::RECRUITMENT_VIEW->value,
+        P::RECRUITMENT_CREATE->value,
+        P::RECRUITMENT_EDIT->value,
+        P::RECRUITMENT_MANAGE->value,
     ],
 
     R::VIEWER->value => [

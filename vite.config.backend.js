@@ -86,6 +86,7 @@ const JS_OUTPUT = {
   'kc-category':            'assets/modules/kc-category.[hash].js',
   'kc-item':                'assets/modules/kc-item.[hash].js',
   'sop':                    'assets/modules/sop.[hash].js',
+  'job-posting':            'assets/modules/job-posting.[hash].js',
 
 };
 
@@ -124,6 +125,7 @@ const CSS_OUTPUT = {
   'kc-category.css':            'assets/modules/kc-category.[hash].css',
   'kc-item.css':                'assets/modules/kc-item.[hash].css',
   'sop.css':                    'assets/modules/sop.[hash].css',
+  'job-posting.css':            'assets/modules/job-posting.[hash].css',
 };
 
 // ─── Module input entries ─────────────────────────────────────────────
@@ -192,6 +194,9 @@ const MODULE_ENTRIES = [
   // Sop
   'Modules/Sop/resources/assets/sass/sop.scss',
   'Modules/Sop/resources/assets/js/sop.js',
+  // JobPosting
+  'Modules/JobPosting/resources/assets/sass/job-posting.scss',
+  'Modules/JobPosting/resources/assets/js/job-posting.js',
 ];
 
 // ─────────────────────────────────────────────────────────────────────

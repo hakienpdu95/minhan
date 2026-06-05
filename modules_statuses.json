@@ -21,5 +21,7 @@
     "KcItem": true,
     "Sop": true,
     "Leave": true,
-    "KpiGoal": true
+    "KpiGoal": true,
+    "JobPosting": true,
+    "Recruitment": true
 }

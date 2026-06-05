@@ -102,6 +102,22 @@ enum PermissionEnum: string
     case ASSESSMENT_RESULTS   = 'assessment.results';   // CEO, Ops, AI_OP — xem kết quả
     case ASSESSMENT_REPROCESS = 'assessment.reprocess'; // AI_OP, Admin — force recalculate
 
+    // ══ JOB POSTING ════════════════════════════════════════════════
+    // CEO=Full | HR=Full | Ops=View | Admin=Config | Viewer=No
+    case JOB_POSTING_VIEW    = 'job_posting.view';    // CEO, HR, Ops
+    case JOB_POSTING_CREATE  = 'job_posting.create';  // CEO, HR
+    case JOB_POSTING_EDIT    = 'job_posting.edit';    // CEO, HR
+    case JOB_POSTING_DELETE  = 'job_posting.delete';  // CEO only
+    case JOB_POSTING_PUBLISH = 'job_posting.publish'; // CEO, HR
+    case JOB_POSTING_MANAGE  = 'job_posting.manage';  // System Admin
+
+    // ══ RECRUITMENT (ATS) ══════════════════════════════════════════
+    // HR_Admin=Full | Recruiter=Process | Hiring_Manager=View own | Interviewer=View+Eval
+    case RECRUITMENT_VIEW    = 'recruitment.view';    // All HR roles, Hiring Manager, Interviewer
+    case RECRUITMENT_CREATE  = 'recruitment.create';  // HR Admin, Recruiter
+    case RECRUITMENT_EDIT    = 'recruitment.edit';    // HR Admin, Recruiter
+    case RECRUITMENT_MANAGE  = 'recruitment.manage';  // HR Admin — config pipeline, delete
+
     // ══ SYSTEM ═════════════════════════════════════════════════════
     case INTEGRATION_MANAGE = 'integration.manage';
     case AUDIT_VIEW         = 'audit.view';

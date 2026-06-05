@@ -2,18 +2,18 @@
 
 > **Hệ thống:** SaaS SME
 > **Module:** Marketplace Center
-> **Phiên bản:** 1.3.0
+> **Phiên bản:** 2.1.0
 > **Ngày:** 2026-06-05
 > **Stack:** Laravel 13 · SQLite (dev) / MySQL 8+ / PostgreSQL 15+
-> **Liên module:** Recruitment Center (upstream, optional — qua nullable FK + Observer)
+> **Liên module:** Job Posting Center (upstream — nguồn tin tuyển dụng), Recruitment Center (downstream — import ứng viên vào pipeline)
 
 ---
 
 ## Mục lục
 
-1. [Tổng quan & Triết lý thiết kế](#1-tổng-quan--triết-lý-thiết-kế)
+1. [Tổng quan & Bản chất module](#1-tổng-quan--bản-chất-module)
 2. [Phạm vi](#2-phạm-vi)
-3. [Kiến trúc liên thông Recruitment ↔ Marketplace](#3-kiến-trúc-liên-thông-recruitment--marketplace)
+3. [Kiến trúc & luồng liên thông](#3-kiến-trúc--luồng-liên-thông)
 4. [Enum Values](#4-enum-values)
 5. [ERD — Quan hệ bảng](#5-erd--quan-hệ-bảng)
 6. [Đặc tả bảng dữ liệu](#6-đặc-tả-bảng-dữ-liệu)
@@ -26,38 +26,38 @@
 
 ---
 
-## 1. Tổng quan & Triết lý thiết kế
+## 1. Tổng quan & Bản chất module
 
-**Marketplace Center** là cổng thông tin công khai của hệ sinh thái SME — nơi các doanh nghiệp đăng tin tuyển dụng, tìm kiếm nguồn lực freelance, và kết nối dự án ra bên ngoài tổ chức. Module này phục vụ **2 chiều**: org đăng nhu cầu, cá nhân/tổ chức bên ngoài đáp ứng.
+**Marketplace Center** là **cổng thông tin công khai** của hệ sinh thái SME — nơi doanh nghiệp đăng tin tuyển dụng/dự án, và người tìm việc/freelancer tìm cơ hội. Module phục vụ **2 chiều** hoàn toàn rõ ràng.
 
-### Triết lý thiết kế quan trọng nhất
+### Bản chất đúng trong hệ thống SME
 
-**Marketplace KHÔNG phải extension của Recruitment.** Đây là 2 hệ thống độc lập với mục đích khác nhau:
+Marketplace KHÔNG phải extension của Recruitment. Recruitment là ATS nội bộ. Marketplace là **cổng công khai**:
 
 | Khía cạnh | Recruitment Center | Marketplace Center |
 |---|---|---|
-| Đối tượng | Nội bộ tổ chức | Công khai — bất kỳ ai |
-| Ứng viên | RC_CANDIDATE (private) | MKT_APPLICANT (public profile) |
-| Tin đăng | RC_JOB_POSTING (draft/internal) | MKT_LISTING (public, multi-type) |
-| Mục đích | Quản lý quy trình tuyển dụng | Kết nối & khám phá hệ sinh thái |
-| Data flow | Source of truth | Consumer + contributor |
+| Người dùng | HR, Interviewer — có `users` account trong org | MKT_APPLICANT (auth guard riêng) + Org HR |
+| Dữ liệu ứng viên | `rc_candidates` — private, per org | `mkt_applicants` — public profile, tách `users` |
+| Tin đăng | Nội bộ, không public | `mkt_listings` — hiển thị công khai |
+| Org đăng tin | Không cần — chỉ nội bộ | **Có 3 loại người đăng** (xem bên dưới) |
 
-**Kết nối RC → Marketplace qua nullable FK:** Khi org đăng job từ Recruitment ra Marketplace, hệ thống copy data vào `mkt_listings` và ghi `rc_job_posting_id` (nullable FK). Sau đó 2 bản ghi hoạt động độc lập — Observer tự đồng bộ trạng thái đóng. Không cần bảng bridge trung gian riêng.
+### Ba loại người đăng tin (`poster_type`)
 
-**Ba loại người đăng tin (poster_type):**
-- `org`: Tổ chức đã đăng ký tenant trong hệ thống — có `org_id`
-- `guest_company`: Doanh nghiệp chưa xác thực — chỉ cần email, không cần là tenant
-- `individual`: Cá nhân / freelancer đăng profile tìm dự án
+| poster_type | Mô tả | org_id | Duyệt? |
+|---|---|---|---|
+| `org` | Tenant đã xác thực trong hệ thống — `organization.status='active'` | NOT NULL | Active ngay |
+| `pending_org` | Doanh nghiệp vừa đăng ký, chờ admin duyệt — lưu vào `organizations` với `status='pending'` | NOT NULL (pending) | Sau khi org được duyệt |
+| `individual` | Cá nhân / freelancer đăng profile tìm dự án | NULL | Active ngay |
 
-### Người dùng
+> **Thay đổi so với v1:** `guest_company` bị bỏ. Doanh nghiệp muốn đăng tin phải đăng ký Organization — dữ liệu lưu vào `organizations` sẵn có với `status='pending'`, chờ admin hệ thống duyệt. Sau khi duyệt (`status='active'`), `poster_type` tự động chuyển thành `org`.
 
-| Loại | poster_type | Mô tả |
-|---|---|---|
-| **Org (Tenant)** | `org` | Tổ chức đã đăng ký hệ thống — đăng job/project, xem ứng viên |
-| **Guest Company** | `guest_company` | Doanh nghiệp chưa xác thực — đăng tin bằng email, không cần tenant |
-| **Individual / Freelancer** | `individual` | Đăng profile năng lực (resource listing), nhận dự án |
-| **Applicant** | — | Tạo profile MKT_APPLICANT, ứng tuyển, nhận tin nhắn |
-| **Visitor** | — | Browse tin đăng, không apply |
+### MKT_APPLICANT — người tìm việc (tách users)
+
+`mkt_applicants` là bảng riêng, **không phải extension của `users`**. Lý do:
+- Người tìm việc đến từ bên ngoài hệ thống — không có `users` account
+- Auth riêng qua Laravel Guard `marketplace` (email/password riêng biệt)
+- Public profile — có thể xem mà không cần đăng nhập
+- Phân quyền rõ ràng: applicant chỉ thấy job `status='active'`, chỉ xem đơn mình đã nộp
 
 ---
 
@@ -66,105 +66,100 @@
 ### Trong phạm vi
 
 - Listing đa loại: `job` (việc làm), `project` (dự án outsource), `resource` (freelancer tìm việc)
-- Profile ứng viên/freelancer công khai (MKT_APPLICANT)
+- **Luồng đăng ký doanh nghiệp** → lưu vào `organizations` (`status='pending'`) → admin duyệt → active
+- **MKT_APPLICANT**: auth riêng (marketplace guard), profile công khai, tách `users` table
+- Phân quyền applicant: chỉ xem listing active, chỉ thấy đơn mình nộp
 - Apply và track đơn ứng tuyển qua Marketplace
-- Save/bookmark listing
-- Review & rating sau khi hoàn thành hợp tác
-- Hỗ trợ 3 loại người đăng: tenant org, guest company (chưa xác thực), individual freelancer
-- Publish job từ Recruitment ra Marketplace qua nullable FK + Observer, import ứng viên ngược lại
+- Bookmark listing
+- Review & rating sau hợp tác
+- Publish job từ Job Posting Center ra Marketplace (jp_job_post_id soft ref + Observer)
+- Import ứng viên ngược lại vào Recruitment
 - Analytics: view count, apply count, conversion per listing
 
 ### Ngoài phạm vi
 
-- Payment / hợp đồng thuê freelancer (module riêng)
-- Video interview tích hợp
-- **Messaging / Chat real-time** — `mkt_conversations` + `mkt_messages` bị loại khỏi scope hiện tại. Giao tiếp giữa org và ứng viên thực hiện qua email (ngoài hệ thống). Có thể bổ sung sau khi các tính năng cốt lõi ổn định.
-- AI matching / recommendation engine (có thể mở rộng sau)
-- Background check / verification bên thứ ba
+- Messaging / Chat real-time — deferred (giao tiếp qua email ngoài hệ thống)
+- Payment / hợp đồng thuê freelancer — module riêng
+- AI matching / recommendation engine — mở rộng sau
 
 ---
 
-## 3. Kiến trúc liên thông Recruitment ↔ Marketplace
+## 3. Kiến trúc & luồng liên thông
 
-### 3.1 Luồng publish: Recruitment → Marketplace
+### 3.1 Luồng đăng ký doanh nghiệp (pending_org)
 
 ```
-RC_JOB_POSTING (status='open', is_public=TRUE)
-       │
-       ▼ HR click "Đăng ra Marketplace"
-INSERT mkt_listings:
-  poster_type       = 'org'
-  org_id            = job.org_id
-  rc_job_posting_id = job.id          ← nullable CHAR(36) ref (UUID, ON DELETE SET NULL)
-  rc_sync_status    = 'synced'
-  auto_close_on_rc  = TRUE
-  title, description, requirements,
-  benefits, salary_*, employment_type,
-  headcount, expire_at               ← copy tại thời điểm publish
-  status            = 'active'
+Doanh nghiệp chưa là tenant trên hệ thống:
+  1. Truy cập Marketplace → "Đăng tin tuyển dụng"
+  2. Điền thông tin doanh nghiệp (tên, địa chỉ, website, email liên hệ)
+  3. Hệ thống:
+       INSERT organizations (name, email, status='pending', source='marketplace_signup')
+       INSERT users (org_id=org.id, role='org_admin', email=submitted_email)
+       INSERT mkt_listings (poster_type='pending_org', org_id=org.id, status='pending_review')
+  4. Admin hệ thống nhận thông báo → xem xét
+  5. Admin duyệt:
+       UPDATE organizations SET status='active'
+       UPDATE mkt_listings SET poster_type='org', status='active'
+         WHERE org_id = org.id AND poster_type='pending_org'
+  6. Doanh nghiệp nhận email xác nhận → đăng nhập vào hệ thống như tenant bình thường
+     (tiếp tục dùng Marketplace hoặc khám phá các module khác)
+```
 
-Sau khi publish — 2 bản ghi hoạt động độc lập:
-  RC_JOB_POSTING thay đổi
-    → RcJobPostingObserver::updated()
-    → UPDATE mkt_listings SET rc_sync_status='out_of_sync'
-       WHERE rc_job_posting_id = job.id AND rc_sync_status='synced'
+> **Lý do không dùng guest_company_name trên mkt_listings:** Lưu thông tin DN vào `organizations` đảm bảo single source of truth. Khi duyệt, không cần migrate data — chỉ cập nhật status.
+
+### 3.2 Luồng publish: Job Posting Center → Marketplace
+
+```
+JP_JOB_POST (status='published' và publish_to_marketplace=TRUE)
+       │
+       ▼ JpJobPostObserver::updated() — tự động khi status → 'published'
+INSERT mkt_listings:
+  poster_type             = 'org'
+  org_id                  = job_post.org_id (BIGINT)
+  posted_by               = current_user.id (BIGINT)
+  jp_job_post_id          = job_post.uuid  (CHAR(36) — soft ref, không FK)
+  jp_sync_status          = 'synced'
+  auto_close_on_jp        = TRUE
+  listing_type            = 'job'
+  title, description, requirements, salary_*, employment_type, headcount
+  work_type               = job_post.work_arrangement
+  experience_level        = job_post.experience_level
+  expire_at               = job_post.expire_at
+  status                  = 'active'
+
+Sau đó 2 bản ghi độc lập:
+  JP_JOB_POST thay đổi nội dung sau khi đã publish
+    → JpJobPostObserver::updated()
+    → UPDATE mkt_listings SET jp_sync_status='out_of_sync'
+       WHERE jp_job_post_id = job_post.uuid
 
   HR click "Re-sync":
-    → Overwrite lại các trường nội dung từ RC_JOB_POSTING
-    → UPDATE rc_sync_status='synced'
+    → Overwrite trường nội dung từ JP_JOB_POST
+    → UPDATE jp_sync_status = 'synced'
 
-  RC_JOB_POSTING đóng (status → 'closed'/'cancelled')
-    → RcJobPostingObserver::updated() khi auto_close_on_rc=TRUE
+  JP_JOB_POST status → 'closed'/'archived' và auto_close_on_jp=TRUE:
     → UPDATE mkt_listings SET status='closed', closed_at=NOW()
+       WHERE jp_job_post_id = job_post.uuid
 ```
 
-> **Không cần bảng `mkt_listing_syncs` riêng.** Monolith NWIDART, cùng DB — Observer đủ xử lý. 3 cột trên `mkt_listings` thay thế hoàn toàn.
-
-### 3.2 Luồng import: Marketplace → Recruitment
+### 3.3 Luồng import: Marketplace → Recruitment
 
 ```
-MKT_APPLICATION (status='submitted')
-       │ org quan tâm ứng viên
-       ▼ HR click "Import vào Recruitment"
+MKT_APPLICATION (status='submitted' hoặc 'shortlisted')
+       │ HR quan tâm
+       ▼ "Import vào Recruitment pipeline"
 
-Hệ thống kiểm tra:
-  ├─ RC_CANDIDATE tồn tại với email này? → tái sử dụng
-  └─ Chưa có → INSERT RC_CANDIDATE từ MKT_APPLICANT data
+Điều kiện: mkt_listing.jp_job_post_id IS NOT NULL
 
-INSERT RC_APPLICATION:
-  job_id             = mkt_listings.rc_job_posting_id  ← lấy từ FK trên mkt_listing
-  candidate_id       = rc_candidate.id
-  apply_source       = 'marketplace'
-  mkt_application_id = mkt_application.id              ← soft ref, không FK
-
-Điều kiện: chỉ import được khi mkt_listing.rc_job_posting_id IS NOT NULL
-(listing phải đến từ Recruitment — không thể import vào RC từ listing độc lập)
-
-Sau import:
-  UPDATE mkt_applications SET import_status='imported', imported_at=NOW()
+  1. Tìm rc_candidates theo email + org_id → reuse hoặc INSERT mới
+     (ghi mkt_applicant_id = mkt_applicant.uuid như soft ref)
+  2. INSERT rc_applications:
+       jp_job_post_id      = mkt_listing.jp_job_post_id  (CHAR(36), soft ref)
+       candidate_id        = rc_candidate.id
+       apply_source        = 'marketplace'
+       mkt_application_id  = mkt_application.uuid  (CHAR(36), không FK)
+  3. UPDATE mkt_applications SET import_status='imported'
 ```
-
-### 3.3 Luồng đăng tin cho Guest Company (doanh nghiệp chưa xác thực)
-
-```
-Doanh nghiệp chưa đăng ký tenant:
-  1. Đăng ký tài khoản Marketplace bằng email → INSERT users (không có organization_id)
-  2. INSERT mkt_listings:
-       poster_type        = 'guest_company'
-       org_id             = NULL
-       posted_by          = user.id
-       guest_company_name = "Công ty ABC"
-       guest_company_email= "hr@abc.com"
-       listing_type       = 'job' | 'project'
-       status             = 'draft' → pending_review → 'active' (sau khi admin duyệt)
-
-  3. Nếu sau này doanh nghiệp đăng ký thành tenant:
-       UPDATE mkt_listings SET org_id=org.id, poster_type='org'
-       WHERE posted_by = user.id AND poster_type='guest_company'
-```
-
-> Guest company listings cần duyệt trước khi active (`pending_review`) để tránh spam.
-> Tenant org listings active ngay.
 
 ---
 
@@ -172,34 +167,30 @@ Doanh nghiệp chưa đăng ký tenant:
 
 ### MKT_LISTING
 
-| Trường | Giá trị | Mô tả |
-|---|---|---|
-| `listing_type` | `job` | Tuyển dụng nhân sự full/part time |
-| | `project` | Dự án outsource, cần nhà thầu/team |
-| | `resource` | Cá nhân/team chào dịch vụ, tìm dự án |
-| `poster_type` | `org` | Tenant đã đăng ký — org_id NOT NULL |
-| | `guest_company` | Doanh nghiệp chưa xác thực — org_id NULL |
-| | `individual` | Cá nhân freelancer — listing_type='resource' |
-| `status` | `draft` \| `pending_review` \| `active` \| `paused` \| `closed` \| `expired` | `pending_review` dành cho guest_company |
-| `work_type` | `onsite` \| `remote` \| `hybrid` \| `flexible` | |
-| `employment_type` | `full_time` \| `part_time` \| `contractor` \| `freelance` \| `intern` | `contractor`/`intern` khớp Employee module |
-| `experience_level` | `entry` \| `junior` \| `mid` \| `senior` \| `lead` \| `any` | |
-| `visibility` | `public` \| `unlisted` \| `members_only` | |
-| `rc_sync_status` | `synced` \| `out_of_sync` \| NULL | NULL = listing không đến từ RC |
+| Trường | Giá trị |
+|---|---|
+| `listing_type` | `job` \| `project` \| `resource` |
+| `poster_type` | `org` \| `pending_org` \| `individual` |
+| `status` | `draft` \| `pending_review` \| `active` \| `paused` \| `closed` \| `expired` |
+| `work_type` | `onsite` \| `remote` \| `hybrid` \| `flexible` |
+| `employment_type` | `full_time` \| `part_time` \| `contractor` \| `freelance` \| `intern` |
+| `experience_level` | `entry` \| `junior` \| `mid` \| `senior` \| `lead` \| `any` |
+| `visibility` | `public` \| `unlisted` \| `members_only` |
+| `jp_sync_status` | `synced` \| `out_of_sync` \| NULL |
 
 ### MKT_APPLICANT
 
 | Trường | Giá trị |
 |---|---|
 | `account_type` | `individual` \| `team` \| `agency` |
-| `status` | `active` \| `inactive` \| `suspended` \| `open_to_work` \| `not_available` |
+| `status` | `active` \| `inactive` \| `suspended` |
 | `availability` | `immediate` \| `2_weeks` \| `1_month` \| `negotiable` \| `not_available` |
 
 ### MKT_APPLICATION
 
 | Trường | Giá trị |
 |---|---|
-| `status` | `draft` \| `submitted` \| `viewed` \| `shortlisted` \| `rejected` \| `hired` \| `withdrawn` |
+| `status` | `submitted` \| `viewed` \| `shortlisted` \| `rejected` \| `hired` \| `withdrawn` |
 | `import_status` | `not_imported` \| `imported` \| `skipped` |
 
 ### MKT_REVIEW
@@ -214,202 +205,215 @@ Doanh nghiệp chưa đăng ký tenant:
 ## 5. ERD — Quan hệ bảng
 
 ```
-[organizations] (existing)           [rc_job_postings] (RC module)
-       │  0:N                                │ 0:1 nullable FK
-       │  (NULL: guest/individual)           │
-       └─────────────┬───────────────────────┘
-                     ▼
-              MKT_LISTING
-   (poster_type: org | guest_company | individual)
-                     │
-    ┌────────────────┼────────────────────┐
-    │                │                    │
-   1:N              1:N                  1:N
-    ▼                ▼                    ▼
-MKT_APPLICATION  MKT_CONVERSATION  MKT_LISTING_BOOKMARK
-    │                │
-   N:1              1:N
-    ▼                ▼
-MKT_APPLICANT    MKT_MESSAGE
+[organizations] (existing — bao gồm cả pending_org)
+       │ 0:N (NULL khi individual)
+       ▼
+MKT_LISTING ◄──── jp_job_post_id (CHAR(36), soft ref → jp_job_posts.uuid)
     │
-   1:N──► MKT_APPLICANT_SKILL
-   1:N──► MKT_APPLICANT_EXPERIENCE
-   1:N──► MKT_APPLICANT_PORTFOLIO
+    ├─1:N──► MKT_APPLICATION ◄──── MKT_APPLICANT
+    │                                    │
+    │                                   1:N──► MKT_APPLICANT_SKILL
+    │                                   1:N──► MKT_APPLICANT_EXPERIENCE
+    │                                   1:N──► MKT_APPLICANT_PORTFOLIO
+    │
+    ├─N:M──► MKT_TAG (qua MKT_LISTING_TAG)
+    │
+    ├─1:N──► MKT_LISTING_BOOKMARK
+    │
+    └─1:N──► MKT_REVIEW
 
-MKT_APPLICATION └─ import_status → rc_candidates (soft ref, no FK)
-
-MKT_LISTING ──N:M──► MKT_TAG  (qua MKT_LISTING_TAG)
-MKT_LISTING ──1:N──► MKT_REVIEW
+MKT_APPLICATION.import_status → rc_candidates (soft ref CHAR(36) → rc_candidates.uuid)
 ```
 
 ### Quan hệ tổng hợp
 
 | Bảng A | Quan hệ | Bảng B | Ghi chú |
 |---|---|---|---|
-| organizations | 0:N | MKT_LISTING | NULL khi poster_type='guest_company'/'individual' |
-| rc_job_postings | 0:1 | MKT_LISTING | Nullable FK — NULL khi listing độc lập |
+| organizations | 0:N | MKT_LISTING | BIGINT FK — NULL khi poster_type='individual' |
+| jp_job_posts | 0:1 | MKT_LISTING | CHAR(36) soft ref → jp_job_posts.uuid (không FK) |
 | MKT_LISTING | 1:N | MKT_APPLICATION | Đơn ứng tuyển |
 | MKT_APPLICANT | 1:N | MKT_APPLICATION | Ứng viên apply |
 | MKT_APPLICANT | 1:N | MKT_APPLICANT_SKILL | Kỹ năng |
 | MKT_APPLICANT | 1:N | MKT_APPLICANT_EXPERIENCE | Kinh nghiệm |
 | MKT_APPLICANT | 1:N | MKT_APPLICANT_PORTFOLIO | Portfolio |
-| MKT_LISTING | 1:N | MKT_CONVERSATION | Thread chat |
-| MKT_CONVERSATION | 1:N | MKT_MESSAGE | Tin nhắn |
 | MKT_LISTING | N:M | MKT_TAG | Qua MKT_LISTING_TAG |
-| MKT_LISTING | 1:N | MKT_LISTING_BOOKMARK | Lưu bookmark |
-| MKT_LISTING | 1:N | MKT_REVIEW | Đánh giá sau hợp tác |
+| MKT_LISTING | 1:N | MKT_LISTING_BOOKMARK | Bookmark |
+| MKT_LISTING | 1:N | MKT_REVIEW | Review sau hợp tác |
 
 ---
 
 ## 6. Đặc tả bảng dữ liệu
 
-> **Ghi chú kiểu FK liên module:**
-> - FK trỏ sang bảng **hiện có** (`organizations`, `users`, `departments`, `job_titles`) dùng `UNSIGNED BIGINT`
-> - `rc_job_posting_id` trỏ sang `rc_job_postings.id` — bảng RC dùng **UUID** làm PK, nên kiểu cột là `CHAR(36)` nullable, không phải BIGINT. Dùng `ON DELETE SET NULL`.
-> - `department_id` và `position_id` trỏ sang bảng tenant hiện có (`departments`, `job_titles`) — dùng `UNSIGNED BIGINT` nullable, `ON DELETE SET NULL`
-> - Ref lỏng sang RC (`imported_rc_candidate_id`, `imported_rc_application_id`) là `CHAR(36)` thuần, không FK constraint — validate ở app layer khi cần
-> - Nội bộ `mkt_*` ↔ `mkt_*` dùng UUID
+> **Quy ước FK:**
+> - FK → bảng hệ thống sẵn có (`organizations`, `users`, `departments`, `job_titles`): `UNSIGNED BIGINT`
+> - `jp_job_post_id`: `CHAR(36)` soft ref → `jp_job_posts.uuid` — không FK constraint, không ON DELETE
+> - Nội bộ `mkt_*` ↔ `mkt_*`: `UNSIGNED BIGINT` (FK → `id` cột BIGINT PK)
+> - Ref lỏng sang RC (`imported_rc_candidate_id`, `mkt_application_id`): CHAR(36) tham chiếu `.uuid`, không FK
+>
+> **Quy ước PK:** Mọi bảng đều có:
+> ```php
+> $table->id();                                          // BIGINT PK
+> $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+> ```
 
 ---
 
 ### 6.1 MKT_LISTING — Tin đăng công khai
 
-Bảng trung tâm của Marketplace. Hỗ trợ 3 loại: `job`, `project`, `resource`. Trường `listing_type` quyết định ngữ nghĩa của các trường khác.
-
 | Trường | Kiểu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | |
-| `org_id` | UNSIGNED BIGINT | NULL | FK, INDEX | NULL | FK → organizations.id — NULL khi guest_company hoặc individual |
-| `posted_by` | UNSIGNED BIGINT | NOT NULL | FK | | FK → users.id |
-| `poster_type` | ENUM | NOT NULL | INDEX | `org` | org \| guest_company \| individual |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK | AUTO_INCREMENT | |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `org_id` | UNSIGNED BIGINT | NULL | FK, INDEX | NULL | FK → organizations.id — NULL chỉ khi poster_type='individual' |
+| `posted_by` | UNSIGNED BIGINT | NOT NULL | FK | | FK → users.id — người tạo listing |
+| `poster_type` | ENUM | NOT NULL | INDEX | `org` | org \| pending_org \| individual |
 | `listing_type` | ENUM | NOT NULL | INDEX | `job` | job \| project \| resource |
 | `title` | VARCHAR(300) | NOT NULL | | | |
-| `slug` | VARCHAR(320) | NOT NULL | UNIQUE | | URL-friendly, globally unique |
-| `description` | TEXT | NOT NULL | | | Mô tả đầy đủ |
-| `requirements` | TEXT | NULL | | NULL | Yêu cầu (cho job/project) |
-| `benefits` | TEXT | NULL | | NULL | Quyền lợi (cho job) |
-| `status` | ENUM | NOT NULL | INDEX | `draft` | Xem enum — thêm `pending_review` |
+| `slug` | VARCHAR(320) | NOT NULL | UNIQUE | | Globally unique, URL-friendly |
+| `description` | TEXT | NOT NULL | | | |
+| `requirements` | TEXT | NULL | | NULL | |
+| `benefits` | TEXT | NULL | | NULL | |
+| `status` | ENUM | NOT NULL | INDEX | `draft` | |
 | `visibility` | ENUM | NOT NULL | | `public` | |
 | `work_type` | ENUM | NOT NULL | | `flexible` | |
-| `employment_type` | ENUM | NULL | | NULL | Dùng cho listing_type=job |
+| `employment_type` | ENUM | NULL | | NULL | Chỉ dùng khi listing_type='job' |
 | `experience_level` | ENUM | NOT NULL | | `any` | |
 | `salary_min` | DECIMAL(15,2) | NULL | | NULL | |
 | `salary_max` | DECIMAL(15,2) | NULL | | NULL | |
 | `salary_currency` | CHAR(3) | NOT NULL | | `VND` | |
 | `salary_is_negotiable` | BOOLEAN | NOT NULL | | FALSE | |
-| `salary_is_visible` | BOOLEAN | NOT NULL | | TRUE | FALSE = ẩn mức lương |
-| `budget_min` | DECIMAL(15,2) | NULL | | NULL | Ngân sách (cho listing_type=project) |
+| `salary_is_visible` | BOOLEAN | NOT NULL | | TRUE | |
+| `budget_min` | DECIMAL(15,2) | NULL | | NULL | Ngân sách (listing_type='project') |
 | `budget_max` | DECIMAL(15,2) | NULL | | NULL | |
-| `duration_days` | INT | NULL | | NULL | Thời gian dự án (ngày) |
+| `duration_days` | INT | NULL | | NULL | Thời gian dự án |
 | `location` | VARCHAR(200) | NULL | | NULL | |
-| `department_id` | UNSIGNED BIGINT | NULL | FK, INDEX | NULL | FK → departments.id ON DELETE SET NULL — phòng ban tuyển (chỉ dùng khi poster_type='org') |
-| `position_id` | UNSIGNED BIGINT | NULL | FK, INDEX | NULL | FK → job_titles.id ON DELETE SET NULL — vị trí cần tuyển (chỉ dùng khi poster_type='org') |
-| `headcount` | SMALLINT | NOT NULL | | 1 | Số lượng cần |
-| `application_count` | INT | NOT NULL | | 0 | Denormalized counter |
-| `view_count` | INT | NOT NULL | | 0 | Denormalized counter |
-| `bookmark_count` | INT | NOT NULL | | 0 | Denormalized counter |
-| `rc_job_posting_id` | CHAR(36) | NULL | INDEX | NULL | Ref → rc_job_postings.id (UUID) ON DELETE SET NULL — NULL nếu listing không đến từ RC |
-| `rc_sync_status` | ENUM | NULL | | NULL | synced \| out_of_sync — NULL khi không đến từ RC |
-| `auto_close_on_rc` | BOOLEAN | NOT NULL | | TRUE | Tự đóng khi RC_JOB_POSTING đóng |
-| `guest_company_name` | VARCHAR(200) | NULL | | NULL | Tên công ty — khi poster_type='guest_company' |
-| `guest_company_email` | VARCHAR(150) | NULL | | NULL | Email liên hệ |
-| `guest_company_website` | VARCHAR(300) | NULL | | NULL | |
-| `guest_company_logo_url` | TEXT | NULL | | NULL | |
-| `expire_at` | TIMESTAMP | NULL | INDEX | NULL | NULL = không hết hạn |
+| `department_id` | UNSIGNED BIGINT | NULL | FK | NULL | FK → departments.id ON DELETE SET NULL |
+| `position_id` | UNSIGNED BIGINT | NULL | FK | NULL | FK → job_titles.id ON DELETE SET NULL |
+| `headcount` | SMALLINT | NOT NULL | | 1 | |
+| `application_count` | INT | NOT NULL | | 0 | Denormalized |
+| `view_count` | INT | NOT NULL | | 0 | Denormalized |
+| `bookmark_count` | INT | NOT NULL | | 0 | Denormalized |
+| `jp_job_post_id` | CHAR(36) | NULL | INDEX | NULL | Soft ref → jp_job_posts.uuid (không FK) |
+| `jp_sync_status` | ENUM | NULL | | NULL | synced \| out_of_sync — NULL khi không từ JP |
+| `auto_close_on_jp` | BOOLEAN | NOT NULL | | TRUE | Tự đóng khi JP_JOB_POST đóng |
+| `expire_at` | TIMESTAMP | NULL | INDEX | NULL | |
 | `closed_at` | TIMESTAMP | NULL | | NULL | |
 | `created_at` | TIMESTAMP | NOT NULL | INDEX | NOW() | |
 | `updated_at` | TIMESTAMP | NOT NULL | | NOW() | |
 
 ```sql
-CREATE UNIQUE INDEX idx_mkt_listing_slug      ON mkt_listings(slug);
-CREATE INDEX idx_mkt_listing_browse           ON mkt_listings(listing_type, status, created_at DESC)
+CREATE UNIQUE INDEX idx_mkt_listing_slug         ON mkt_listings(slug);
+CREATE INDEX idx_mkt_listing_browse              ON mkt_listings(listing_type, status, created_at DESC)
   WHERE status = 'active';
-CREATE INDEX idx_mkt_listing_org              ON mkt_listings(org_id, status);
-CREATE INDEX idx_mkt_listing_poster_type      ON mkt_listings(poster_type, status);
-CREATE INDEX idx_mkt_listing_department       ON mkt_listings(department_id, status)
-  WHERE department_id IS NOT NULL;
-CREATE INDEX idx_mkt_listing_position         ON mkt_listings(position_id, status)
-  WHERE position_id IS NOT NULL;
-CREATE INDEX idx_mkt_listing_rc_source        ON mkt_listings(rc_job_posting_id)
-  WHERE rc_job_posting_id IS NOT NULL;
-CREATE INDEX idx_mkt_listing_rc_sync          ON mkt_listings(rc_job_posting_id, rc_sync_status)
-  WHERE rc_sync_status = 'out_of_sync';
-CREATE INDEX idx_mkt_listing_pending_review   ON mkt_listings(poster_type, status)
+CREATE INDEX idx_mkt_listing_org                 ON mkt_listings(org_id, status);
+CREATE INDEX idx_mkt_listing_poster_type         ON mkt_listings(poster_type, status);
+CREATE INDEX idx_mkt_listing_jp_source           ON mkt_listings(jp_job_post_id)
+  WHERE jp_job_post_id IS NOT NULL;
+CREATE INDEX idx_mkt_listing_jp_sync             ON mkt_listings(org_id, jp_sync_status)
+  WHERE jp_sync_status = 'out_of_sync';
+CREATE INDEX idx_mkt_listing_pending_review      ON mkt_listings(poster_type, status)
   WHERE status = 'pending_review';
-CREATE INDEX idx_mkt_listing_expire           ON mkt_listings(expire_at, status)
+CREATE INDEX idx_mkt_listing_expire              ON mkt_listings(expire_at, status)
   WHERE expire_at IS NOT NULL AND status = 'active';
-CREATE FULLTEXT INDEX idx_mkt_listing_search  ON mkt_listings(title, description, requirements, location);
+CREATE UNIQUE INDEX idx_mkt_listing_jp_unique    ON mkt_listings(jp_job_post_id)
+  WHERE jp_job_post_id IS NOT NULL AND status != 'closed';
+CREATE FULLTEXT INDEX idx_mkt_listing_fts        ON mkt_listings(title, description, requirements, location);
 ```
 
 ---
 
-### 6.2 ~~MKT_LISTING_SYNC~~ — Đã loại bỏ
+### 6.2 MKT_APPLICANT — Hồ sơ người tìm việc (tách users)
 
-> Bảng này đã bị loại bỏ. Trạng thái sync được quản lý trực tiếp qua 3 cột trên `mkt_listings`:
-> - `rc_job_posting_id` — nullable FK về RC
-> - `rc_sync_status` — `synced | out_of_sync | NULL`
-> - `auto_close_on_rc` — boolean
->
-> **Observer xử lý tự động:** `RcJobPostingObserver` trong RC module lắng nghe sự kiện `updated`/`saved` trên `rc_job_postings` và cập nhật `mkt_listings` tương ứng. Không cần bảng trung gian trong monolith.
+Auth riêng qua Laravel Guard `marketplace`. Lưu tách `users` table. Đây là public profile — ai cũng xem được nếu `is_profile_public=TRUE`.
 
----
-
-### 6.3 MKT_APPLICANT — Hồ sơ công khai ứng viên / freelancer
-
-Profile công khai của cá nhân hoặc team trên Marketplace. Khác với `RC_CANDIDATE` (private, nội bộ) — MKT_APPLICANT là identity công khai, có thể tự tạo mà không cần org invite.
+**Phân quyền của MKT_APPLICANT:**
+- Xem listing: chỉ `status='active'` và `visibility='public'` (hoặc `members_only` nếu đã đăng nhập)
+- Xem đơn: chỉ đơn của chính mình (`applicant_id = auth()->id()`)
+- Xem profile org: thông tin công khai từ `organizations` (name, logo, website)
+- Không thể xem RC pipeline, RC candidate khác, hay thông tin nội bộ của org
 
 | Trường | Kiểu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK | AUTO_INCREMENT | |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `email` | VARCHAR(150) | NOT NULL | UNIQUE | | Định danh đăng nhập Marketplace |
+| `password_hash` | VARCHAR(255) | NOT NULL | | | Auth riêng, không dùng users table |
+| `email_verified_at` | TIMESTAMP | NULL | | NULL | |
 | `account_type` | ENUM | NOT NULL | | `individual` | individual \| team \| agency |
 | `display_name` | VARCHAR(150) | NOT NULL | | | Tên hiển thị công khai |
-| `slug` | VARCHAR(160) | NOT NULL | UNIQUE | | URL profile: marketplace.com/u/slug |
-| `headline` | VARCHAR(200) | NULL | | NULL | "Senior Laravel Developer · 5 năm kinh nghiệm" |
-| `bio` | TEXT | NULL | | NULL | Giới thiệu bản thân |
-| `email` | VARCHAR(150) | NOT NULL | UNIQUE | | Email đăng nhập + liên hệ (định danh duy nhất) |
-| `password_hash` | VARCHAR(255) | NULL | | NULL | Mật khẩu bcrypt — NULL nếu đăng ký qua OAuth (tính năng tương lai) |
-| `email_verified_at` | TIMESTAMP | NULL | | NULL | Thời điểm xác minh email — NULL = chưa xác minh |
+| `slug` | VARCHAR(160) | NOT NULL | UNIQUE | | URL profile |
+| `headline` | VARCHAR(200) | NULL | | NULL | "Senior Laravel Developer · 5 năm" |
+| `bio` | TEXT | NULL | | NULL | |
 | `phone` | VARCHAR(20) | NULL | | NULL | |
-| `location` | VARCHAR(150) | NULL | | NULL | Thành phố / Quốc gia |
+| `location` | VARCHAR(150) | NULL | | NULL | |
 | `avatar_url` | TEXT | NULL | | NULL | |
 | `website_url` | VARCHAR(300) | NULL | | NULL | |
 | `linkedin_url` | VARCHAR(300) | NULL | | NULL | |
-| `github_url` | VARCHAR(300) | NULL | | NULL | |
 | `years_experience` | SMALLINT | NULL | | NULL | |
 | `expected_salary_min` | DECIMAL(15,2) | NULL | | NULL | |
 | `expected_salary_max` | DECIMAL(15,2) | NULL | | NULL | |
 | `salary_currency` | CHAR(3) | NOT NULL | | `VND` | |
 | `status` | ENUM | NOT NULL | INDEX | `active` | |
 | `availability` | ENUM | NOT NULL | | `negotiable` | |
+| `is_profile_public` | BOOLEAN | NOT NULL | | TRUE | FALSE = chỉ org đã nhận đơn mới xem |
 | `is_email_public` | BOOLEAN | NOT NULL | | FALSE | |
-| `is_phone_public` | BOOLEAN | NOT NULL | | FALSE | |
-| `profile_complete_pct` | SMALLINT | NOT NULL | | 0 | % hoàn thiện profile (denormalized) |
-| `total_applications` | INT | NOT NULL | | 0 | Denormalized counter |
-| `hired_count` | INT | NOT NULL | | 0 | Đã được tuyển/hợp tác thành công |
-| `avg_rating` | DECIMAL(3,2) | NULL | | NULL | Điểm đánh giá trung bình |
+| `profile_complete_pct` | SMALLINT | NOT NULL | | 0 | Tính bằng Observer |
+| `total_applications` | INT | NOT NULL | | 0 | Denormalized |
+| `hired_count` | INT | NOT NULL | | 0 | |
+| `avg_rating` | DECIMAL(3,2) | NULL | | NULL | |
+| `remember_token` | VARCHAR(100) | NULL | | NULL | Laravel auth |
 | `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
 | `updated_at` | TIMESTAMP | NOT NULL | | NOW() | |
 
 ```sql
-CREATE UNIQUE INDEX idx_mkt_appl_slug     ON mkt_applicants(slug);
-CREATE UNIQUE INDEX idx_mkt_appl_email    ON mkt_applicants(email);
-CREATE INDEX idx_mkt_appl_status          ON mkt_applicants(status, availability);
-CREATE FULLTEXT INDEX idx_mkt_appl_search ON mkt_applicants(display_name, headline, bio, location);
+CREATE UNIQUE INDEX idx_mkt_appl_email  ON mkt_applicants(email);
+CREATE UNIQUE INDEX idx_mkt_appl_slug   ON mkt_applicants(slug);
+CREATE INDEX idx_mkt_appl_status        ON mkt_applicants(status, availability);
+CREATE FULLTEXT INDEX idx_mkt_appl_fts  ON mkt_applicants(display_name, headline, bio, location);
+```
+
+**Phân quyền chi tiết (implement bằng Policy):**
+
+```php
+// app/Policies/MktListingPolicy.php
+class MktListingPolicy
+{
+    public function view(MktApplicant $applicant, MktListing $listing): bool
+    {
+        if ($listing->status !== 'active') return false;
+        if ($listing->visibility === 'public') return true;
+        if ($listing->visibility === 'members_only') return true; // đã login
+        return false; // unlisted — chỉ có link trực tiếp
+    }
+
+    public function apply(MktApplicant $applicant, MktListing $listing): bool
+    {
+        return $listing->status === 'active';
+    }
+}
+
+// app/Policies/MktApplicationPolicy.php
+class MktApplicationPolicy
+{
+    public function view(MktApplicant $applicant, MktApplication $application): bool
+    {
+        return $application->applicant_id === $applicant->id;
+    }
+}
 ```
 
 ---
 
-### 6.4 MKT_APPLICANT_SKILL — Kỹ năng ứng viên
-
-Tách thành bảng riêng (không TEXT comma-separated) để query theo skill được, filter, analytics.
+### 6.3 MKT_APPLICANT_SKILL
 
 | Trường | Kiểu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | |
-| `applicant_id` | UUID | NOT NULL | FK, INDEX | | |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK | AUTO_INCREMENT | |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `applicant_id` | UNSIGNED BIGINT | NOT NULL | FK, INDEX | | FK → mkt_applicants.id |
 | `skill_name` | VARCHAR(100) | NOT NULL | INDEX | | "Laravel", "React", "Figma" |
 | `proficiency_level` | ENUM | NOT NULL | | `intermediate` | beginner \| intermediate \| advanced \| expert |
-| `years_used` | SMALLINT | NULL | | NULL | Số năm dùng kỹ năng này |
+| `years_used` | SMALLINT | NULL | | NULL | |
 | `sort_order` | SMALLINT | NOT NULL | | 0 | |
 
 ```sql
@@ -419,12 +423,13 @@ CREATE INDEX idx_mkt_skill_name          ON mkt_applicant_skills(skill_name, pro
 
 ---
 
-### 6.5 MKT_APPLICANT_EXPERIENCE — Kinh nghiệm làm việc
+### 6.4 MKT_APPLICANT_EXPERIENCE
 
 | Trường | Kiểu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | |
-| `applicant_id` | UUID | NOT NULL | FK, INDEX | | |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK | AUTO_INCREMENT | |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `applicant_id` | UNSIGNED BIGINT | NOT NULL | FK, INDEX | | FK → mkt_applicants.id |
 | `company_name` | VARCHAR(200) | NOT NULL | | | |
 | `title` | VARCHAR(150) | NOT NULL | | | |
 | `description` | TEXT | NULL | | NULL | |
@@ -435,47 +440,41 @@ CREATE INDEX idx_mkt_skill_name          ON mkt_applicant_skills(skill_name, pro
 | `is_current` | BOOLEAN | NOT NULL | | FALSE | |
 | `sort_order` | SMALLINT | NOT NULL | | 0 | |
 
-```sql
-CREATE INDEX idx_mkt_exp_applicant ON mkt_applicant_experiences(applicant_id, start_year DESC);
-```
-
 ---
 
-### 6.6 MKT_APPLICANT_PORTFOLIO — Portfolio / dự án nổi bật
+### 6.5 MKT_APPLICANT_PORTFOLIO
 
 | Trường | Kiểu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | |
-| `applicant_id` | UUID | NOT NULL | FK, INDEX | | |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK | AUTO_INCREMENT | |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `applicant_id` | UNSIGNED BIGINT | NOT NULL | FK, INDEX | | FK → mkt_applicants.id |
 | `title` | VARCHAR(200) | NOT NULL | | | |
 | `description` | TEXT | NULL | | NULL | |
 | `project_url` | VARCHAR(300) | NULL | | NULL | |
 | `thumbnail_url` | TEXT | NULL | | NULL | |
-| `tech_stack` | VARCHAR(300) | NULL | | NULL | "Laravel, React, MySQL" — plain text |
+| `tech_stack` | VARCHAR(300) | NULL | | NULL | Plain text |
 | `completed_year` | SMALLINT | NULL | | NULL | |
 | `sort_order` | SMALLINT | NOT NULL | | 0 | |
 
-```sql
-CREATE INDEX idx_mkt_portfolio_applicant ON mkt_applicant_portfolios(applicant_id, sort_order);
-```
-
 ---
 
-### 6.7 MKT_APPLICATION — Đơn ứng tuyển qua Marketplace
+### 6.6 MKT_APPLICATION — Đơn ứng tuyển
 
 | Trường | Kiểu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | |
-| `listing_id` | UUID | NOT NULL | FK, INDEX | | FK → MKT_LISTING.id |
-| `applicant_id` | UUID | NOT NULL | FK, INDEX | | FK → MKT_APPLICANT.id |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK | AUTO_INCREMENT | |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `listing_id` | UNSIGNED BIGINT | NOT NULL | FK, INDEX | | FK → mkt_listings.id |
+| `applicant_id` | UNSIGNED BIGINT | NOT NULL | FK, INDEX | | FK → mkt_applicants.id |
 | `status` | ENUM | NOT NULL | INDEX | `submitted` | |
 | `cover_letter` | TEXT | NULL | | NULL | |
 | `expected_salary` | DECIMAL(15,2) | NULL | | NULL | |
-| `available_from` | DATE | NULL | | NULL | Có thể bắt đầu từ ngày |
-| `portfolio_url` | VARCHAR(300) | NULL | | NULL | Link portfolio đính kèm đơn này |
-| `import_status` | ENUM | NOT NULL | | `not_imported` | not_imported \| imported \| skipped |
-| `imported_rc_candidate_id` | UUID | NULL | | NULL | Ref to RC_CANDIDATE.id sau khi import — không FK cứng |
-| `imported_rc_application_id` | UUID | NULL | | NULL | Ref to RC_APPLICATION.id |
+| `available_from` | DATE | NULL | | NULL | |
+| `portfolio_url` | VARCHAR(300) | NULL | | NULL | |
+| `import_status` | ENUM | NOT NULL | | `not_imported` | |
+| `imported_rc_candidate_id` | CHAR(36) | NULL | | NULL | Soft ref → rc_candidates.uuid |
+| `imported_rc_application_id` | CHAR(36) | NULL | | NULL | Soft ref → rc_applications.uuid |
 | `imported_at` | TIMESTAMP | NULL | | NULL | |
 | `imported_by` | UNSIGNED BIGINT | NULL | FK | NULL | FK → users.id |
 | `viewed_at` | TIMESTAMP | NULL | | NULL | Org xem lần đầu |
@@ -483,388 +482,208 @@ CREATE INDEX idx_mkt_portfolio_applicant ON mkt_applicant_portfolios(applicant_i
 | `updated_at` | TIMESTAMP | NOT NULL | | NOW() | |
 
 ```sql
-CREATE UNIQUE INDEX idx_mkt_app_unique   ON mkt_applications(listing_id, applicant_id);
-CREATE INDEX idx_mkt_app_listing         ON mkt_applications(listing_id, status);
-CREATE INDEX idx_mkt_app_applicant       ON mkt_applications(applicant_id, status);
-CREATE INDEX idx_mkt_app_import          ON mkt_applications(import_status, listing_id)
+CREATE UNIQUE INDEX idx_mkt_app_unique ON mkt_applications(listing_id, applicant_id);
+CREATE INDEX idx_mkt_app_listing       ON mkt_applications(listing_id, status);
+CREATE INDEX idx_mkt_app_applicant     ON mkt_applications(applicant_id, status);
+CREATE INDEX idx_mkt_app_import        ON mkt_applications(import_status, listing_id)
   WHERE import_status = 'not_imported';
 ```
 
 ---
 
-### ~~6.8 MKT_CONVERSATION~~ + ~~6.9 MKT_MESSAGE~~ — Đã loại khỏi scope
-
-> **Messaging real-time bị loại bỏ.** `mkt_conversations` và `mkt_messages` không được implement trong phiên bản hiện tại.
->
-> **Lý do:** Tính năng này đòi hỏi WebSocket infrastructure (Laravel Echo + Pusher/Soketi) làm tăng đáng kể độ phức tạp vận hành mà chưa cần thiết ở giai đoạn đầu.
->
-> **Thay thế:** Org liên hệ ứng viên qua email (địa chỉ email hiển thị trong profile/application). Có thể bổ sung messaging sau khi các tính năng cốt lõi (listing, apply, review) đã ổn định.
->
-> **Schema dự phòng:** Giữ thiết kế bảng trong tài liệu này để tham chiếu khi implement sau.
-```
-
----
-
-### 6.10 MKT_TAG — Nhãn phân loại listing
+### 6.7 MKT_TAG
 
 | Trường | Kiểu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | |
-| `name` | VARCHAR(80) | NOT NULL | UNIQUE | | "Laravel", "UI/UX", "Kế toán" |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK | AUTO_INCREMENT | |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `name` | VARCHAR(80) | NOT NULL | UNIQUE | | "Laravel", "UI/UX" |
 | `slug` | VARCHAR(90) | NOT NULL | UNIQUE | | |
-| `listing_type` | ENUM | NULL | INDEX | NULL | NULL = dùng cho mọi loại listing |
-| `use_count` | INT | NOT NULL | | 0 | Denormalized — số listing đang dùng tag |
+| `listing_type` | ENUM | NULL | INDEX | NULL | NULL = dùng cho mọi loại |
+| `use_count` | INT | NOT NULL | | 0 | |
 
-### 6.11 MKT_LISTING_TAG — Pivot listing–tag
+### MKT_LISTING_TAG — Pivot
 
-| Trường | Kiểu | Key | Mô tả |
-|---|---|---|---|
-| `listing_id` | UUID | PK, FK | CASCADE DELETE |
-| `tag_id` | UUID | PK, FK | |
-
-```sql
-CREATE INDEX idx_mkt_ltag_tag ON mkt_listing_tags(tag_id);
-```
+| Trường | Kiểu | Key |
+|---|---|---|
+| `listing_id` | BIGINT UNSIGNED | PK, FK → mkt_listings.id CASCADE DELETE |
+| `tag_id` | BIGINT UNSIGNED | PK, FK → mkt_tags.id |
 
 ---
 
-### 6.12 MKT_LISTING_BOOKMARK — Lưu tin đăng
+### 6.8 MKT_LISTING_BOOKMARK
 
 | Trường | Kiểu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | |
-| `listing_id` | UUID | NOT NULL | FK, INDEX | | |
-| `applicant_id` | UUID | NOT NULL | FK | | |
-| `note` | VARCHAR(300) | NULL | | NULL | Ghi chú cá nhân |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK | AUTO_INCREMENT | |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `listing_id` | UNSIGNED BIGINT | NOT NULL | FK, INDEX | | FK → mkt_listings.id |
+| `applicant_id` | UNSIGNED BIGINT | NOT NULL | FK | | FK → mkt_applicants.id |
+| `note` | VARCHAR(300) | NULL | | NULL | |
 | `created_at` | TIMESTAMP | NOT NULL | | NOW() | |
 
 ```sql
 CREATE UNIQUE INDEX idx_mkt_bookmark_unique ON mkt_listing_bookmarks(listing_id, applicant_id);
-CREATE INDEX idx_mkt_bookmark_applicant     ON mkt_listing_bookmarks(applicant_id, created_at DESC);
 ```
 
 ---
 
-### 6.13 MKT_REVIEW — Đánh giá sau hợp tác
+### 6.9 MKT_REVIEW — Đánh giá sau hợp tác
 
-Đánh giá hai chiều: org đánh giá applicant và ngược lại, sau khi hợp tác thành công.
+`reviewer_id` là polymorphic: users.id khi `reviewer_type='org'`, mkt_applicants.id khi `reviewer_type='applicant'`. Cả 2 đều là BIGINT.
 
 | Trường | Kiểu | Null | Key | Default | Mô tả |
 |---|---|---|---|---|---|
-| `id` | UUID | NOT NULL | PK | gen_random_uuid() | |
-| `listing_id` | UUID | NOT NULL | FK, INDEX | | |
-| `application_id` | UUID | NOT NULL | FK | | FK → MKT_APPLICATION.id |
+| `id` | BIGINT UNSIGNED | NOT NULL | PK | AUTO_INCREMENT | |
+| `uuid` | CHAR(36) | NULL | UNIQUE | NULL | Public UUID |
+| `listing_id` | UNSIGNED BIGINT | NOT NULL | FK, INDEX | | FK → mkt_listings.id |
+| `application_id` | UNSIGNED BIGINT | NOT NULL | FK | | FK → mkt_applications.id |
 | `reviewer_type` | ENUM | NOT NULL | | | org \| applicant |
-| `reviewer_id` | UUID | NOT NULL | | | users.id hoặc mkt_applicants.id |
-| `reviewee_id` | UUID | NOT NULL | | | Người được review |
-| `relation_type` | ENUM | NOT NULL | | `hired` | hired \| project_completed \| collaboration |
+| `reviewer_id` | UNSIGNED BIGINT | NOT NULL | | | users.id (org) hoặc mkt_applicants.id (applicant) |
+| `relation_type` | ENUM | NOT NULL | | `hired` | |
 | `overall_rating` | SMALLINT | NOT NULL | | | 1–5 |
-| `title` | VARCHAR(200) | NULL | | NULL | Tiêu đề review |
-| `content` | TEXT | NULL | | NULL | Nội dung |
-| `rating_quality` | SMALLINT | NULL | | NULL | Chất lượng công việc (1–5) |
-| `rating_communication` | SMALLINT | NULL | | NULL | Giao tiếp (1–5) |
-| `rating_punctuality` | SMALLINT | NULL | | NULL | Đúng hạn (1–5) |
+| `title` | VARCHAR(200) | NULL | | NULL | |
+| `content` | TEXT | NULL | | NULL | |
+| `rating_quality` | SMALLINT | NULL | | NULL | |
+| `rating_communication` | SMALLINT | NULL | | NULL | |
+| `rating_punctuality` | SMALLINT | NULL | | NULL | |
 | `is_public` | BOOLEAN | NOT NULL | | TRUE | |
 | `created_at` | TIMESTAMP | NOT NULL | INDEX | NOW() | |
 
 ```sql
 CREATE UNIQUE INDEX idx_mkt_review_unique ON mkt_reviews(application_id, reviewer_type, reviewer_id);
-CREATE INDEX idx_mkt_review_reviewee      ON mkt_reviews(reviewee_id, overall_rating);
 ```
 
 ---
 
 ## 7. Luồng nghiệp vụ
 
-### 7.1 Publish job từ Recruitment ra Marketplace
+### 7.1 Doanh nghiệp đăng ký và đăng tin
 
 ```
-Điều kiện:
-  RC_JOB_POSTING.status = 'open'
-  RC_JOB_POSTING.is_public = TRUE
-  Chưa có mkt_listing với rc_job_posting_id = job.id (chưa publish lần nào)
+[Doanh nghiệp mới — chưa là tenant]
+  ├─ Truy cập /portal/employer/register
+  ├─ Điền: tên công ty, website, email HR, mô tả, quy mô
+  ├─ Hệ thống INSERT organizations (status='pending', source='marketplace_signup')
+  ├─ INSERT users (email, org_id, role='org_admin')
+  ├─ INSERT mkt_listings (poster_type='pending_org', status='pending_review')
+  └─ Admin nhận alert
 
-HR click "Đăng ra Marketplace":
-  INSERT mkt_listings:
-    poster_type        = 'org'
-    org_id             = job.org_id
-    posted_by          = current_user.id
-    listing_type       = 'job'
-    title              = job.title           ← copy tại thời điểm publish
-    description        = job.description
-    requirements       = job.requirements
-    benefits           = job.benefits
-    salary_min/max     = job.salary_min/max
-    employment_type    = job.employment_type
-    headcount          = job.headcount
-    expire_at          = job.close_date
-    rc_job_posting_id  = job.id
-    rc_sync_status     = 'synced'
-    auto_close_on_rc   = TRUE
-    status             = 'active'
+Admin duyệt tổ chức:
+  UPDATE organizations SET status='active', approved_by, approved_at
+  UPDATE mkt_listings SET poster_type='org', status='active'
+    WHERE org_id = org.id AND poster_type='pending_org'
+  Gửi email thông báo cho doanh nghiệp
 
-  → Trả về mkt_listing.slug để HR preview
+Tenant đã xác thực đăng tin thêm:
+  INSERT mkt_listings (poster_type='org', status='active') — active ngay
 ```
 
-### 7.2 Re-sync và tự đóng listing — do Observer
+### 7.2 Applicant đăng ký và apply
 
 ```
-RcJobPostingObserver::updated($job):
+Applicant đăng ký:
+  POST /portal/auth/register
+  INSERT mkt_applicants (email, password_hash, display_name)
+  Gửi email verify
 
-  1. Nếu job.isDirty(['title','description','requirements','benefits',
-                       'salary_min','salary_max','close_date','headcount']):
-       UPDATE mkt_listings
-          SET rc_sync_status = 'out_of_sync'
-        WHERE rc_job_posting_id = job.id
-          AND rc_sync_status = 'synced'
-       → Hệ thống hiện badge "⚠ Listing đang lệch với job gốc" trên dashboard
-
-  2. Nếu job.isDirty('status') AND job.status IN ('closed','cancelled'):
-       UPDATE mkt_listings
-          SET status = 'closed', closed_at = NOW()
-        WHERE rc_job_posting_id = job.id
-          AND auto_close_on_rc = TRUE
-          AND status = 'active'
-
-HR click "Re-sync" trên dashboard:
-  UPDATE mkt_listings SET
-    title = job.title, description = job.description, ...
-    rc_sync_status = 'synced'
-  WHERE rc_job_posting_id = job.id
+Applicant apply:
+  Check: listing.status = 'active'
+  Check: chưa có application với listing_id + applicant_id
+  INSERT mkt_applications (status='submitted')
+  UPDATE mkt_listings.application_count += 1
+  Notify org HR
 ```
 
-### 7.3 Ứng viên ngoài apply qua Marketplace
+### 7.3 Org xem và xử lý ứng viên Marketplace
 
 ```
-Người dùng tìm thấy MKT_LISTING trên Marketplace
-  │
-  ├─ Chưa có profile: Đăng ký → INSERT MKT_APPLICANT
-  └─ Đã có profile: Đăng nhập
-
-Apply:
-  1. Kiểm tra: đã apply listing này chưa?
-     (UNIQUE INDEX listing_id + applicant_id)
-  2. INSERT MKT_APPLICATION:
-       listing_id   = listing.id
-       applicant_id = applicant.id
-       status       = 'submitted'
-  3. UPDATE mkt_listings.application_count += 1
-  4. Notify org: "Có ứng viên mới từ Marketplace"
-  5. INSERT MKT_CONVERSATION (nếu chưa có)
-```
-
-### 7.4 Org xem xét và import ứng viên vào Recruitment
-
-```
-HR xem danh sách MKT_APPLICATION của listing
-  │
-  ├─ Không quan tâm:
-  │   UPDATE application.status = 'rejected'
-  │
-  └─ Quan tâm → Import vào Recruitment:
-        1. Tìm RC_CANDIDATE theo email:
-             Đã có → dùng lại
-             Chưa có → INSERT RC_CANDIDATE từ MKT_APPLICANT data
-        2. Tìm RC_JOB_POSTING qua mkt_listing.rc_job_posting_id:
-             Guard: rc_job_posting_id IS NOT NULL (chỉ import được nếu listing đến từ RC)
-        3. INSERT RC_APPLICATION:
-             candidate_id = rc_candidate.id
-             job_id       = rc_job_posting.id
-             apply_source = 'marketplace'
-        4. UPDATE MKT_APPLICATION:
-             import_status            = 'imported'
-             imported_rc_candidate_id = rc_candidate.id
-             imported_rc_application_id = rc_application.id
-             imported_at              = NOW()
-        5. Tiếp tục xử lý trong Recruitment pipeline
-```
-
-### 7.5 Freelancer / Individual đăng profile tìm dự án
-
-```
-Freelancer đăng ký tài khoản → INSERT users (không có organization_id)
-Tạo MKT_APPLICANT profile:
-  ├─ Thêm MKT_APPLICANT_SKILL
-  ├─ Thêm MKT_APPLICANT_EXPERIENCE
-  └─ Thêm MKT_APPLICANT_PORTFOLIO
-
-Đăng resource listing:
-  INSERT MKT_LISTING:
-    poster_type  = 'individual'
-    listing_type = 'resource'
-    org_id       = NULL
-    posted_by    = user.id
-    status       = 'active'  -- không cần duyệt (individual)
-
-Org tìm freelancer:
-  Search MKT_LISTING (listing_type='resource') + MKT_APPLICANT profile
-  → Liên hệ qua MKT_CONVERSATION
-  → KHÔNG qua Recruitment pipeline (đây là outsource, không hire full-time)
-```
-
-### 7.6 Doanh nghiệp chưa xác thực đăng tin (guest_company)
-
-```
-Doanh nghiệp chưa đăng ký tenant:
-  1. Đăng ký tài khoản Marketplace → INSERT users (organization_id = NULL)
-  2. INSERT mkt_listings:
-       poster_type         = 'guest_company'
-       org_id              = NULL
-       posted_by           = user.id
-       listing_type        = 'job' | 'project'
-       guest_company_name  = "Công ty ABC"  ← bắt buộc
-       guest_company_email = "hr@abc.com"   ← bắt buộc
-       guest_company_website, guest_company_logo_url ← optional
-       status              = 'pending_review'  ← chờ admin duyệt
-
-  3. Admin duyệt → status = 'active'
-     Admin từ chối → status = 'closed', gửi email lý do
-
-Upgrade guest → tenant (sau khi đăng ký đầy đủ):
-  UPDATE mkt_listings
-     SET org_id = new_org.id,
-         poster_type = 'org',
-         guest_company_* = NULL
-   WHERE posted_by = user.id
-     AND poster_type = 'guest_company'
-```
-
-### 7.7 Luồng review sau hợp tác
-
-```
-Khi MKT_APPLICATION.status = 'hired' hoặc project hoàn thành:
-  Hệ thống mở khóa tính năng review cho cả 2 bên
-
-Org review applicant:
-  INSERT MKT_REVIEW (reviewer_type='org', reviewee_id=applicant.id)
-  UPDATE MKT_APPLICANT.avg_rating = (tính lại)
-  UPDATE MKT_APPLICANT.hired_count += 1
-
-Applicant review org:
-  INSERT MKT_REVIEW (reviewer_type='applicant', reviewee_id=org_user.id)
+Org HR vào dashboard Marketplace:
+  Xem danh sách mkt_applications của listing
+  ├─ viewed_at = NOW() (lần đầu click vào)
+  ├─ UPDATE status = 'shortlisted' | 'rejected'
+  └─ "Import vào Recruitment":
+       Xem mục 3.3 — chỉ khi jp_job_post_id IS NOT NULL
 ```
 
 ---
 
 ## 8. Query Patterns
 
-### 8.1 Browse listings (trang chính Marketplace)
+### 8.1 Browse listing công khai
 
 ```sql
 SELECT
-    l.id, l.slug, l.title, l.listing_type,
-    l.poster_type,
+    l.id, l.uuid, l.slug, l.title, l.listing_type,
     l.work_type, l.employment_type, l.experience_level,
     l.salary_min, l.salary_max, l.salary_is_visible,
-    l.location, l.application_count, l.view_count,
-    l.created_at,
-    -- Tên công ty: ưu tiên org name, fallback về guest_company_name
-    COALESCE(o.name, l.guest_company_name)     AS company_name,
-    COALESCE(o.logo_url, l.guest_company_logo_url) AS company_logo
+    l.location, l.application_count, l.created_at,
+    COALESCE(o.name, 'Cá nhân') AS poster_name,
+    o.logo_path AS org_logo
 FROM mkt_listings l
-LEFT JOIN organizations o ON o.id = l.org_id  -- LEFT JOIN vì org_id nullable
-WHERE l.status      = 'active'
-  AND l.visibility  = 'public'
+LEFT JOIN organizations o ON o.id = l.org_id
+WHERE l.status     = 'active'
+  AND l.visibility = 'public'
   AND (:type IS NULL OR l.listing_type = :type)
-  AND (:location IS NULL OR l.location ILIKE '%'||:location||'%')
-  AND (:level IS NULL OR l.experience_level = :level)
   AND (:work_type IS NULL OR l.work_type = :work_type)
+  AND (:level IS NULL OR l.experience_level = :level)
 ORDER BY l.created_at DESC
 LIMIT 20 OFFSET :offset;
 ```
 
-### 8.2 Tìm kiếm full-text + filter tag
-
-```sql
-SELECT l.id, l.slug, l.title, l.listing_type,
-       ts_rank(to_tsvector(l.title||' '||l.description), plainto_tsquery(:q)) AS rank
-FROM mkt_listings l
-JOIN mkt_listing_tags lt ON lt.listing_id = l.id
-JOIN mkt_tags t          ON t.id = lt.tag_id
-WHERE l.status = 'active'
-  AND (:q IS NULL OR to_tsvector(l.title||' '||l.description) @@ plainto_tsquery(:q))
-  AND (:tag IS NULL OR t.slug = :tag)
-ORDER BY rank DESC, l.created_at DESC;
-```
-
-### 8.3 Dashboard org — tổng hợp listings đang active
+### 8.2 Pending review — admin duyệt tổ chức
 
 ```sql
 SELECT
-    l.id, l.title, l.listing_type, l.status,
-    l.poster_type,
-    l.application_count, l.view_count,
-    COUNT(a.id) FILTER (WHERE a.status = 'submitted')       AS new_applications,
-    COUNT(a.id) FILTER (WHERE a.import_status = 'imported') AS imported,
-    l.rc_sync_status,
-    l.rc_job_posting_id IS NOT NULL                         AS from_recruitment
+    l.id, l.title, l.created_at,
+    o.name AS org_name, o.email AS org_email,
+    o.website, o.status AS org_status,
+    u.email AS hr_email
 FROM mkt_listings l
-LEFT JOIN mkt_applications a ON a.listing_id = l.id
-WHERE l.org_id = :org_id
-GROUP BY l.id
-ORDER BY l.created_at DESC;
+JOIN organizations o ON o.id = l.org_id
+JOIN users u ON u.organization_id = o.id AND u.created_at = o.created_at
+WHERE l.status = 'pending_review' AND l.poster_type = 'pending_org'
+ORDER BY l.created_at;
 ```
 
-### 8.4 Ứng viên chưa được import (pending review)
+### 8.3 Dashboard org — ứng viên chưa xử lý
 
 ```sql
 SELECT
-    a.id            AS application_id,
-    a.status,
-    a.applied_at,
-    ap.display_name,
-    ap.headline,
-    ap.avg_rating,
-    ap.hired_count,
-    l.title         AS listing_title
+    a.id, a.uuid, a.status, a.applied_at, a.import_status,
+    ap.display_name, ap.headline, ap.avg_rating,
+    ap.years_experience, ap.availability,
+    l.title AS listing_title
 FROM mkt_applications a
-JOIN mkt_applicants ap  ON ap.id = a.applicant_id
-JOIN mkt_listings l     ON l.id  = a.listing_id
-WHERE l.org_id         = :org_id
-  AND a.import_status  = 'not_imported'
-  AND a.status         NOT IN ('rejected', 'withdrawn')
+JOIN mkt_applicants ap ON ap.id = a.applicant_id
+JOIN mkt_listings l    ON l.id  = a.listing_id
+WHERE l.org_id       = :org_id
+  AND a.import_status = 'not_imported'
+  AND a.status NOT IN ('rejected', 'withdrawn')
 ORDER BY a.applied_at DESC;
 ```
 
-### 8.5 Matching freelancer theo skill (tìm resource)
+### 8.4 Applicant — đơn của tôi
 
 ```sql
 SELECT
-    ap.id, ap.display_name, ap.slug, ap.headline,
-    ap.avg_rating, ap.hired_count, ap.availability,
-    ap.location,
-    STRING_AGG(s.skill_name, ', ' ORDER BY s.sort_order) AS skills
-FROM mkt_applicants ap
-JOIN mkt_applicant_skills s ON s.applicant_id = ap.id
-WHERE ap.status      = 'active'
-  AND ap.availability != 'not_available'
-  AND s.skill_name   IN (:skill1, :skill2, :skill3)
-GROUP BY ap.id, ap.display_name, ap.slug, ap.headline,
-         ap.avg_rating, ap.hired_count, ap.availability, ap.location
-HAVING COUNT(DISTINCT s.skill_name) >= :min_skill_match
-ORDER BY ap.avg_rating DESC NULLS LAST, ap.hired_count DESC;
+    a.id, a.uuid, a.status, a.applied_at,
+    l.title, l.work_type, l.employment_type,
+    COALESCE(o.name, 'Cá nhân') AS org_name,
+    o.logo_path
+FROM mkt_applications a
+JOIN mkt_listings l     ON l.id = a.listing_id
+LEFT JOIN organizations o ON o.id = l.org_id
+WHERE a.applicant_id = :applicant_id
+ORDER BY a.applied_at DESC;
 ```
 
-### 8.6 Analytics listing — conversion funnel
+### 8.5 Out-of-sync badge — dashboard Job Posting Center
 
 ```sql
-SELECT
-    l.title,
-    l.view_count,
-    l.application_count,
-    COUNT(a.id) FILTER (WHERE a.status = 'shortlisted')  AS shortlisted,
-    COUNT(a.id) FILTER (WHERE a.status = 'hired')         AS hired,
-    ROUND(l.application_count * 100.0 / NULLIF(l.view_count, 0), 1) AS apply_rate_pct,
-    ROUND(
-      COUNT(a.id) FILTER (WHERE a.status = 'hired') * 100.0
-      / NULLIF(l.application_count, 0), 1
-    )                                                      AS hire_rate_pct
-FROM mkt_listings l
-LEFT JOIN mkt_applications a ON a.listing_id = l.id
-WHERE l.org_id = :org_id
-  AND l.created_at BETWEEN :start AND :end
-GROUP BY l.id, l.title, l.view_count, l.application_count
-ORDER BY l.created_at DESC;
+SELECT COUNT(*) AS out_of_sync_count
+FROM mkt_listings
+WHERE org_id = :org_id AND jp_sync_status = 'out_of_sync';
 ```
 
 ---
@@ -875,226 +694,196 @@ ORDER BY l.created_at DESC;
 
 | Method | Endpoint | Mô tả |
 |---|---|---|
-| GET | `/api/marketplace/listings` | Browse listings (filter, search, paginate) |
-| GET | `/api/marketplace/listings/:slug` | Chi tiết listing |
-| GET | `/api/marketplace/listings/:slug/similar` | Listing tương tự |
-| GET | `/api/marketplace/profiles/:slug` | Profile applicant/freelancer |
-| GET | `/api/marketplace/tags` | Danh sách tags phổ biến |
+| GET | `/api/portal/listings` | Browse listings |
+| GET | `/api/portal/listings/:slug` | Chi tiết |
+| GET | `/api/portal/listings/:slug/similar` | Listing tương tự |
+| GET | `/api/portal/profiles/:slug` | Profile applicant công khai |
+| GET | `/api/portal/tags` | Tags phổ biến |
 
-### Applicant (auth required)
-
-| Method | Endpoint | Mô tả |
-|---|---|---|
-| GET | `/api/marketplace/me/profile` | Profile của tôi |
-| PUT | `/api/marketplace/me/profile` | Cập nhật profile |
-| POST | `/api/marketplace/me/skills` | Thêm kỹ năng |
-| DELETE | `/api/marketplace/me/skills/:id` | Xóa kỹ năng |
-| POST | `/api/marketplace/me/experiences` | Thêm kinh nghiệm |
-| POST | `/api/marketplace/me/portfolios` | Thêm portfolio |
-| GET | `/api/marketplace/me/applications` | Danh sách đơn tôi đã nộp |
-| POST | `/api/marketplace/listings/:slug/apply` | Nộp đơn |
-| POST | `/api/marketplace/listings/:slug/bookmark` | Bookmark |
-| DELETE | `/api/marketplace/listings/:slug/bookmark` | Xóa bookmark |
-| GET | `/api/marketplace/me/bookmarks` | Danh sách bookmark |
-| ~~GET~~ | ~~`/api/marketplace/me/conversations`~~ | ~~Inbox~~ — deferred |
-| ~~POST~~ | ~~`/api/marketplace/conversations/:id/messages`~~ | ~~Gửi tin nhắn~~ — deferred |
-
-### Org / Guest Company (auth required)
+### Applicant Auth (guard: marketplace)
 
 | Method | Endpoint | Mô tả |
 |---|---|---|
-| GET | `/api/marketplace/org/listings` | Quản lý listings của org |
-| POST | `/api/marketplace/org/listings` | Tạo listing trực tiếp (không từ RC) |
+| POST | `/api/portal/auth/register` | Đăng ký |
+| POST | `/api/portal/auth/login` | Đăng nhập |
+| POST | `/api/portal/auth/logout` | Đăng xuất |
+| GET | `/api/portal/me/profile` | Profile của tôi |
+| PUT | `/api/portal/me/profile` | Cập nhật |
+| POST | `/api/portal/me/skills` | Thêm skill |
+| POST | `/api/portal/me/experiences` | Thêm kinh nghiệm |
+| POST | `/api/portal/me/portfolios` | Thêm portfolio |
+| GET | `/api/portal/me/applications` | **Chỉ đơn của tôi** |
+| POST | `/api/portal/listings/:slug/apply` | Nộp đơn |
+| POST | `/api/portal/applications/:id/withdraw` | Rút đơn |
+| POST | `/api/portal/listings/:slug/bookmark` | Bookmark |
+| GET | `/api/portal/me/bookmarks` | Danh sách bookmark |
+
+### Org (guard: web — users nội bộ)
+
+| Method | Endpoint | Mô tả |
+|---|---|---|
+| GET | `/api/marketplace/org/listings` | Listings của org |
+| POST | `/api/marketplace/org/listings` | Tạo listing trực tiếp |
 | PUT | `/api/marketplace/org/listings/:id` | Cập nhật |
-| POST | `/api/marketplace/org/listings/:id/close` | Đóng listing |
-| POST | `/api/marketplace/org/listings/publish-from-rc` | Publish job từ Recruitment → Marketplace |
-| POST | `/api/marketplace/org/listings/:id/resync` | Re-sync listing đang out_of_sync với RC |
-| GET | `/api/marketplace/org/listings/:id/applications` | Xem ứng viên |
+| POST | `/api/marketplace/org/listings/:id/close` | Đóng |
+| POST | `/api/marketplace/org/listings/:id/resync` | Re-sync từ JP_JOB_POST |
+| GET | `/api/marketplace/org/listings/:id/applicants` | Xem ứng viên |
 | POST | `/api/marketplace/org/applications/:id/shortlist` | Shortlist |
 | POST | `/api/marketplace/org/applications/:id/reject` | Từ chối |
 | POST | `/api/marketplace/org/applications/:id/import` | Import vào Recruitment |
-| POST | `/api/marketplace/org/applications/import-bulk` | Import nhiều ứng viên |
-| GET | `/api/marketplace/org/analytics` | Analytics: view, apply, conversion |
 
-### Guest Company (auth required, poster_type='guest_company')
+### Employer Registration (đăng ký tổ chức mới)
 
 | Method | Endpoint | Mô tả |
 |---|---|---|
-| POST | `/api/marketplace/guest/listings` | Đăng tin (status→pending_review) |
-| PUT | `/api/marketplace/guest/listings/:id` | Cập nhật (chỉ khi pending hoặc paused) |
-| GET | `/api/marketplace/guest/listings` | Listings của mình |
+| POST | `/api/portal/employer/register` | Đăng ký DN mới → INSERT organizations (pending) |
+| GET | `/api/portal/employer/status` | Kiểm tra trạng thái duyệt |
 
 ### Admin
 
 | Method | Endpoint | Mô tả |
 |---|---|---|
-| GET | `/api/marketplace/admin/pending-listings` | Danh sách listing chờ duyệt |
-| POST | `/api/marketplace/admin/listings/:id/approve` | Duyệt → active |
-| POST | `/api/marketplace/admin/listings/:id/reject` | Từ chối + lý do |
+| GET | `/api/admin/marketplace/pending-orgs` | DN chờ duyệt |
+| POST | `/api/admin/marketplace/orgs/:id/approve` | Duyệt → UPDATE organizations + listings |
+| POST | `/api/admin/marketplace/orgs/:id/reject` | Từ chối |
 
 ### Reviews
 
 | Method | Endpoint | Mô tả |
 |---|---|---|
 | POST | `/api/marketplace/applications/:id/review` | Gửi review |
-| GET | `/api/marketplace/profiles/:slug/reviews` | Xem reviews của profile |
+| GET | `/api/portal/profiles/:slug/reviews` | Reviews công khai |
 
 ---
 
 ## 10. Business Rules
 
-### BR-MKT-001: Listing — poster_type và org_id
-- `poster_type = 'org'`: `org_id NOT NULL`, là tenant hợp lệ — listing active ngay
-- `poster_type = 'guest_company'`: `org_id = NULL`, `guest_company_name + guest_company_email` bắt buộc — listing vào `pending_review`
-- `poster_type = 'individual'`: `org_id = NULL`, `listing_type` phải là `'resource'` — listing active ngay
-- Mỗi `rc_job_posting_id` chỉ liên kết 1 `mkt_listing` active tại 1 thời điểm — enforce bằng partial unique index
-- Publish từ RC: chỉ khi `rc_job_postings.status = 'open'` và `is_public = TRUE`
-- Re-sync: chỉ overwrite trường nội dung, không reset `application_count` / `view_count`
-- Org tạo listing trực tiếp (không từ RC): `rc_job_posting_id = NULL`, `rc_sync_status = NULL`
+### BR-MKT-001: Poster type và trạng thái listing
 
-### BR-MKT-002: Applicant profile
-- `slug` là unique globally — tự sinh từ `display_name`, thêm suffix random nếu trùng
-- `email` là định danh đăng nhập Marketplace — unique trong `mkt_applicants`
-- `profile_complete_pct` tính bằng Observer sau mỗi lần update, không tính mỗi request
+- `org`: `org_id NOT NULL`, org.status='active' → listing active ngay
+- `pending_org`: `org_id NOT NULL`, org.status='pending' → listing vào `pending_review`
+- `individual`: `org_id NULL`, `listing_type` phải là `resource` → listing active ngay
+- Khi admin duyệt org: UPDATE tất cả listing `poster_type='pending_org'` → `'org'`, `status='pending_review'` → `'active'`
+- Mỗi `jp_job_post_id` (CHAR(36)) chỉ có 1 listing không phải `closed` tại 1 thời điểm (partial unique index)
+
+### BR-MKT-002: Applicant auth độc lập
+
+- `mkt_applicants.email` UNIQUE toàn hệ thống — không share với `users.email`
+- Password hash riêng — không dùng `users` table để auth
+- Laravel Guard `marketplace` xử lý: `config/auth.php` thêm guard + provider riêng
+- Phân quyền bằng Policy: applicant chỉ xem listing active/public, chỉ xem đơn mình nộp
 
 ### BR-MKT-003: Application
-- 1 applicant chỉ apply 1 lần per listing — enforce bằng unique index
-- Không apply listing đã `closed` hoặc `expired`
-- Rút đơn (`withdrawn`): chỉ khi status còn `submitted` hoặc `viewed`
-- Import vào RC là idempotent — nếu đã `imported`, không import lại
 
-### ~~BR-MKT-004: Messaging~~ — Deferred (xem mục "Ngoài phạm vi")
+- 1 applicant 1 lần per listing (unique index)
+- Không apply listing `closed`/`expired`
+- Rút đơn: chỉ khi `submitted` hoặc `viewed`
+- Import vào RC: idempotent, chỉ khi `jp_job_post_id IS NOT NULL`
+
+### BR-MKT-004: Quan hệ với Job Posting Center
+
+- `mkt_listings.jp_job_post_id` nullable CHAR(36), soft ref → `jp_job_posts.uuid`, không FK constraint
+- Nếu JP_JOB_POST bị xóa: listing vẫn tồn tại, `jp_job_post_id` trở thành dangling ref — app layer handle
+- Khi JP_JOB_POST `status='published'` và `publish_to_marketplace=TRUE`: `JpJobPostObserver` tự INSERT/UPDATE mkt_listing
+- Khi JP_JOB_POST thay đổi nội dung sau publish: `jp_sync_status = 'out_of_sync'`
+- Import RC chỉ khả dụng khi `jp_job_post_id IS NOT NULL`
+- Observer pattern: JP module chủ động đẩy dữ liệu, không phải MKT module poll
 
 ### BR-MKT-005: Review
-- Chỉ cho phép review khi `MKT_APPLICATION.status = 'hired'` hoặc project đánh dấu completed
-- Mỗi bên chỉ review 1 lần per application
-- Review không thể xóa sau khi published — chỉ ẩn bởi Admin
 
-### BR-MKT-006: Quan hệ với Recruitment
-- `mkt_listings.rc_job_posting_id` là nullable FK với `ON DELETE SET NULL` — nếu RC job bị xóa, listing vẫn tồn tại, `rc_job_posting_id` trở thành NULL, `rc_sync_status` trở thành NULL
-- `mkt_applications.imported_rc_candidate_id` và `imported_rc_application_id` là UUID thuần, không FK — validate ở app layer khi cần
-- Import vào RC chỉ được khi `mkt_listing.rc_job_posting_id IS NOT NULL`
-- Xóa RC job không kéo theo xóa MKT listing — listing trở thành listing độc lập
+- Chỉ review khi `application.status = 'hired'` hoặc project completed
+- Mỗi bên 1 lần per application
+- Không xóa review — chỉ admin ẩn (`is_public = FALSE`)
 
 ---
 
 ## 11. Indexes & Caching
 
 ```sql
--- Browse public listings (hot path nhất)
+-- Browse public (hot path)
 CREATE INDEX idx_mkt_browse_main
   ON mkt_listings(status, listing_type, created_at DESC)
   WHERE status = 'active' AND visibility = 'public';
 
--- Filter theo salary range
-CREATE INDEX idx_mkt_salary
-  ON mkt_listings(salary_min, salary_max, status)
-  WHERE status = 'active' AND salary_min IS NOT NULL;
+-- Org manage listings
+CREATE INDEX idx_mkt_org_listings
+  ON mkt_listings(org_id, status, created_at DESC);
 
--- Org dashboard: listings chưa xử lý
-CREATE INDEX idx_mkt_org_pending
+-- Pending org approval (admin queue)
+CREATE INDEX idx_mkt_pending_org
+  ON mkt_listings(poster_type, status, created_at)
+  WHERE status = 'pending_review' AND poster_type = 'pending_org';
+
+-- Out-of-sync badge (JP_JOB_POST sync)
+CREATE INDEX idx_mkt_outofsync
+  ON mkt_listings(org_id, jp_sync_status)
+  WHERE jp_sync_status = 'out_of_sync';
+
+-- Applicant: đơn của tôi
+CREATE INDEX idx_mkt_app_my
+  ON mkt_applications(applicant_id, status, applied_at DESC);
+
+-- Org: ứng viên chưa xử lý
+CREATE INDEX idx_mkt_app_pending_import
   ON mkt_applications(listing_id, import_status, applied_at DESC)
   WHERE import_status = 'not_imported';
 
--- Freelancer matching theo skill
+-- Skill matching
 CREATE INDEX idx_mkt_skill_match
   ON mkt_applicant_skills(skill_name, proficiency_level);
 
--- Listing out-of-sync (badge cảnh báo trên dashboard RC)
-CREATE INDEX idx_mkt_listing_outofsync
-  ON mkt_listings(org_id, rc_sync_status)
-  WHERE rc_sync_status = 'out_of_sync';
+-- Expire cron
+CREATE INDEX idx_mkt_expire_cron
+  ON mkt_listings(expire_at, status)
+  WHERE expire_at IS NOT NULL AND status = 'active';
 
--- Guest company listings chờ duyệt (admin queue)
-CREATE INDEX idx_mkt_listing_pending_review
-  ON mkt_listings(poster_type, status, created_at)
-  WHERE status = 'pending_review';
-
--- Đảm bảo mỗi rc_job_posting_id chỉ có 1 listing active
-CREATE UNIQUE INDEX idx_mkt_listing_rc_unique_active
-  ON mkt_listings(rc_job_posting_id)
-  WHERE rc_job_posting_id IS NOT NULL AND status != 'closed';
+-- Unique jp_job_post active listing
+CREATE UNIQUE INDEX idx_mkt_jp_unique_active
+  ON mkt_listings(jp_job_post_id)
+  WHERE jp_job_post_id IS NOT NULL AND status != 'closed';
 ```
 
 ### Caching
 
 | Cache key | TTL | Invalidate khi |
 |---|---|---|
-| `mkt:listings:browse:{hash_params}` | 2 phút | Listing mới, status change |
+| `mkt:listings:browse:{hash}` | 2 phút | Listing mới, status change |
 | `mkt:listing:{slug}` | 5 phút | Cập nhật listing |
 | `mkt:profile:{slug}` | 10 phút | Cập nhật applicant profile |
 | `mkt:tags:popular` | 30 phút | use_count thay đổi |
 | `mkt:org:{id}:dashboard` | 3 phút | Apply mới, status change |
+| `mkt:admin:pending-count` | 1 phút | Org mới đăng ký, duyệt xong |
 
 ---
 
 ## 12. Lộ trình triển khai
 
-### Phase 1 — Listing & Public Browse (tuần 1–2)
-
-> Mục tiêu: Tenant đăng tin tuyển dụng, cổng thông tin hiển thị công khai.
-
-- [ ] Migration: `mkt_listings` (bao gồm `department_id`, `position_id` BIGINT FK mới; `rc_job_posting_id` CHAR(36)) + `mkt_tags` + `mkt_listing_tags`
-- [ ] **Tenant dashboard** — Org đăng tin trực tiếp (poster_type='org', active ngay):
-  - Tạo/sửa/đóng/tạm dừng listing
-  - Chọn department và position từ dữ liệu org hiện có
-  - Re-sync badge: cảnh báo `rc_sync_status = 'out_of_sync'`
-- [ ] **Guest company flow** — DN chưa xác thực (poster_type='guest_company'):
-  - Đăng tin → status `pending_review` → Admin duyệt
-  - Bắt buộc: `guest_company_name` + `guest_company_email`
-- [ ] **Public browse API** (không cần auth):
-  - `GET /api/portal/listings` — filter: type, location, employment_type, salary, experience_level
-  - `GET /api/portal/listings/:slug` — chi tiết + company info (LEFT JOIN organizations, COALESCE guest_company_name)
-  - `GET /api/portal/tags` — danh sách tags
-- [ ] Admin panel: duyệt/từ chối `pending_review` listings
-- [ ] Sidebar: section **"Marketplace"** gồm: Quản lý tin đăng, Ứng viên
+### Phase 1 — Listing & Employer Registration (tuần 1–2)
+- [ ] Migration: `mkt_listings` + `mkt_tags` + `mkt_listing_tags`
+- [ ] **Employer registration flow**: DN đăng ký → `organizations` (pending) → admin duyệt → active
+- [ ] Admin panel: duyệt/từ chối tổ chức
+- [ ] Public browse API (không cần auth): filter, search, tag
+- [ ] Tenant dashboard: tạo/sửa/đóng listing trực tiếp (không từ JP)
+- [ ] Observer: `JpJobPostObserver` → sync status với mkt_listings khi JP publish/close
 
 ### Phase 2 — Applicant Auth & Apply (tuần 3–4)
-
-> Mục tiêu: Ứng viên tạo profile, ứng tuyển, org xem và quản lý ứng viên.
-
-- [ ] Migration: `mkt_applicants` (với `password_hash`, `email_verified_at` — auth tách biệt `users` table), `mkt_applicant_skills`, `mkt_applicant_experiences`, `mkt_applicant_portfolios`
-- [ ] Migration: `mkt_applications`, `mkt_listing_bookmarks`
-- [ ] **Marketplace guard** — Laravel auth guard riêng (`marketplace`), route group `/portal/`
-  - Đăng ký: email + password → `email_verified_at` flow
-  - Đăng nhập: email + password
-- [ ] **Applicant profile**: tạo/sửa profile công khai, thêm skill/experience/portfolio
-- [ ] **Apply flow**:
-  - Check UNIQUE (listing_id, applicant_id) — BR-MKT-003
-  - INSERT `mkt_applications` + UPDATE `application_count`
-  - Guard: không apply listing đã `closed/expired`
-- [ ] Bookmark listing (`mkt_listing_bookmarks`)
-- [ ] **Org dashboard — quản lý ứng viên**:
-  - Danh sách `mkt_applications` của listing: xem, shortlist, reject
-  - Xem profile applicant
-  - **Import vào Recruitment pipeline** (khi `mkt_listing.rc_job_posting_id IS NOT NULL`):
-    - Tìm/tạo `RC_CANDIDATE` theo email
-    - INSERT `RC_APPLICATION` với `apply_source='marketplace'`
-    - UPDATE `mkt_application.import_status='imported'`
+- [ ] Migration: `mkt_applicants` (với `password_hash`, `email_verified_at`)
+- [ ] **Laravel Guard `marketplace`**: register, login, logout, verify email
+- [ ] Migration: `mkt_applicant_skills`, `mkt_applicant_experiences`, `mkt_applicant_portfolios`
+- [ ] Migration: `mkt_applications` + `mkt_listing_bookmarks`
+- [ ] Apply flow + phân quyền Policy
+- [ ] Org dashboard: xem applicants, shortlist, reject, import vào Recruitment
 
 ### Phase 3 — Review, Analytics & Polish (tuần 5–6)
-
-> Mục tiêu: Đánh giá sau hợp tác, analytics hiệu quả listing, listing expiry.
-
 - [ ] Migration: `mkt_reviews`
-- [ ] Review flow: mở khóa khi `application.status = 'hired'` — cả 2 bên review 1 lần per application
-- [ ] UPDATE `mkt_applicants.avg_rating` + `hired_count` sau khi review (Observer)
-- [ ] **Analytics per listing** (org dashboard):
-  - View count, apply rate, shortlist rate, hire rate
-  - Conversion funnel: views → apply → shortlist → hired
-- [ ] Listing expiry cron: quét `expire_at < NOW()` và `status='active'` → `expired`
+- [ ] Review flow (unlock khi application.status='hired')
+- [ ] Analytics: view/apply/conversion per listing
+- [ ] Listing expiry cron
+- [ ] JP sync badge: hiển thị `jp_sync_status='out_of_sync'` khi JP thay đổi
 - [ ] Trending tags, top listings
-- [ ] Re-sync badge: `rc_sync_status = 'out_of_sync'` → notify HR trên dashboard Recruitment
-
-### ~~Phase 4 — Messaging~~ — Deferred
-
-> `mkt_conversations` + `mkt_messages` + real-time (Echo/Pusher) bị loại khỏi scope hiện tại.
-> Giao tiếp org ↔ ứng viên thực hiện qua email ngoài hệ thống.
-> Bổ sung sau khi các tính năng cốt lõi (listing, apply, review, analytics) đã vận hành ổn định.
 
 ---
 
-*Version 1.3.0 — Marketplace Center Module Specification*
-*Liên module: Recruitment Center (optional upstream, qua nullable CHAR(36) FK + Observer), Workforce Center (downstream)*
-*Stack: Laravel 13 · SQLite (dev) / MySQL 8+ / PostgreSQL 15+*
-*Thay đổi 1.3.0: loại bỏ messaging real-time (mkt_conversations, mkt_messages) khỏi scope — deferred; giảm từ 4 phases → 3 phases (2026-06-05)*
+*Version 2.1.0 — Marketplace Center*
+*Thay đổi v2.1: (1) Sửa tất cả id UUID PK → BIGINT PK + uuid CHAR(36) riêng biệt; (2) Sửa FK nội bộ mkt_* → BIGINT thay vì UUID; (3) Đổi rc_hiring_request_id → jp_job_post_id (soft ref → jp_job_posts.uuid) vì RC v3.0 đã loại bỏ RC_HIRING_REQUEST; (4) Đổi rc_sync_status → jp_sync_status, auto_close_on_rc → auto_close_on_jp; (5) Cập nhật luồng 3.2 thành JP→MKT Observer thay vì RC→MKT; (6) Cập nhật BR-MKT-004 và indexes theo jp_job_post_id*
+*Thay đổi v2.0: (1) Bỏ guest_company — DN đăng ký qua organizations (pending); (2) Làm rõ MKT_APPLICANT auth riêng biệt users + phân quyền bằng Policy; (3) Xóa MKT_CONVERSATION khỏi ERD; (4) Thêm luồng employer registration chi tiết*

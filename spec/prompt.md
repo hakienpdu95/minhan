@@ -1,4 +1,4 @@
-Tôi có hệ thống SaaS SME Laravel 11 + Alpine.js với các bảng/module sẵn có sau:
+Tôi có hệ thống SaaS SME Laravel 13 + Alpine.js với các bảng/module sẵn có sau:
 
 **Bảng/module đã có trong hệ thống:**
 - Modules/Organization
@@ -18,13 +18,16 @@ Tôi có hệ thống SaaS SME Laravel 11 + Alpine.js với các bảng/module s
 - Modules/WorkflowAutomation
 - Modules/ActivityLog
 
-**Yêu cầu:**
-Đọc file spec/kc.md cho module Knowledge Center và spec/sop.md cho module SOP, sau đó:
-1. Xác định các bảng/trường đang bị TRÙNG LẶP với hệ thống hiện có
-2. Xác định FK nào cần điều chỉnh để reference đúng bảng sẵn có
-3. Loại bỏ hoặc gộp bảng không cần thiết
-4. Cập nhật lại ERD và đặc tả — giữ nguyên logic nghiệp vụ, chỉ tối ưu cấu trúc
-5. Xuất file .md mới đã được cập nhật vào trong 2 file tương ứng spec/kc.md và spec/sop.md 
+Read all migration files in database/migrations/ and all model files in app/Models/ and model in all folder Modules/*.
+
+Then read these spec files: spec/job-posting.md & spec/recruitment.md & spec/marketplace.md
+
+Compare and do:
+1. List fields/tables in spec that DUPLICATE existing system (organizations, users, roles, departments, employees, job_titles, leaves...)
+2. List FK types that are WRONG (UUID vs BIGINT mismatches)
+3. List fields in spec that DON'T EXIST in migrations yet
+4. Update the spec .md files: remove duplicates, fix FK types, keep only what's new
+5. Output updated .md files
 
 **Lưu ý**
 Trong thiết kế bảng, tuyệt đối và hạn chế không sử dụng json để lưu data, vì hạn chế trong query, nữa là thiết kế bảng luôn có cột id bigtin và cột uuid nhé

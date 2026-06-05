@@ -35,3 +35,15 @@ Schedule::command('sop:expiry-warning')
     ->name('sop:expiry-warning')
     ->weeklyOn(1, '08:00')
     ->onOneServer();
+
+// JP: auto-close expired job posts
+Schedule::command('jp:expire-posts')
+    ->name('jp:expire-posts')
+    ->dailyAt('00:30')
+    ->onOneServer();
+
+// JP: notify owners of job posts expiring in 7/3/1 days
+Schedule::command('jp:expiry-warning')
+    ->name('jp:expiry-warning')
+    ->dailyAt('08:00')
+    ->onOneServer();
