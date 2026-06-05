@@ -62,9 +62,9 @@
     </div>
 
     {{-- ── Stat cards ────────────────────────────────────────────────────── --}}
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
         <div class="stat bg-base-100 border border-base-200 rounded-xl py-3 px-4 shadow-sm">
-            <div class="stat-title text-xs">Tổng nhân viên</div>
+            <div class="stat-title text-xs">Tổng</div>
             <div class="stat-value text-2xl">{{ number_format($totalAll) }}</div>
         </div>
         <div class="stat bg-base-100 border border-base-200 rounded-xl py-3 px-4 shadow-sm">
@@ -72,14 +72,87 @@
             <div class="stat-value text-2xl text-success">{{ number_format($totalActive) }}</div>
         </div>
         <div class="stat bg-base-100 border border-base-200 rounded-xl py-3 px-4 shadow-sm">
-            <div class="stat-title text-xs">Đang nghỉ phép</div>
+            <div class="stat-title text-xs">Thử việc</div>
+            <div class="stat-value text-2xl text-info">{{ number_format($totalProbation) }}</div>
+        </div>
+        <div class="stat bg-base-100 border border-base-200 rounded-xl py-3 px-4 shadow-sm">
+            <div class="stat-title text-xs">Nghỉ phép</div>
             <div class="stat-value text-2xl text-warning">{{ number_format($totalOnLeave) }}</div>
+        </div>
+        <div class="stat bg-base-100 border border-base-200 rounded-xl py-3 px-4 shadow-sm">
+            <div class="stat-title text-xs">Hợp đồng</div>
+            <div class="stat-value text-2xl text-accent">{{ number_format($totalContractor) }}</div>
         </div>
         <div class="stat bg-base-100 border border-base-200 rounded-xl py-3 px-4 shadow-sm">
             <div class="stat-title text-xs">Đã nghỉ việc</div>
             <div class="stat-value text-2xl text-error">{{ number_format($totalInactive) }}</div>
         </div>
     </div>
+
+    {{-- ── Cảnh báo hợp đồng sắp hết hạn ───────────────────────────────── --}}
+    @if($contractAlerts90 > 0)
+    <div x-data="{ open: true }" class="mb-4">
+        <div class="card bg-base-100 shadow-sm border {{ $contractAlerts30 > 0 ? 'border-error/40' : 'border-warning/40' }}">
+            <div class="card-body p-0">
+                <button type="button" @click="open = !open"
+                        class="flex items-center justify-between w-full px-4 py-3 text-left hover:bg-base-200/50 transition-colors rounded-t-2xl">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 {{ $contractAlerts30 > 0 ? 'text-error' : 'text-warning' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        <span class="font-semibold text-sm">Hợp đồng sắp hết hạn</span>
+                        @if($contractAlerts30 > 0)
+                        <span class="badge badge-error badge-sm">{{ $contractAlerts30 }} trong 30 ngày</span>
+                        @endif
+                        <span class="badge badge-warning badge-sm">{{ $contractAlerts90 }} trong 90 ngày</span>
+                    </div>
+                    <svg class="w-4 h-4 text-base-content/40 transition-transform"
+                         :class="open ? 'rotate-180' : ''"
+                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+                <div x-show="open" x-transition class="border-t border-base-200">
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr class="text-xs text-base-content/50">
+                                    <th>Nhân viên</th>
+                                    <th>Phòng ban</th>
+                                    <th>Chức danh</th>
+                                    <th>Hết hạn HĐ</th>
+                                    <th>Còn lại</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($contractAlerts as $alert)
+                                @php $daysLeft = now()->diffInDays($alert->contract_end, false); @endphp
+                                <tr class="{{ $daysLeft <= 30 ? 'bg-error/5' : '' }}">
+                                    <td>
+                                        <a href="{{ route('backend.employees.show', $alert->id) }}"
+                                           class="font-medium text-primary hover:underline text-sm">{{ $alert->full_name }}</a>
+                                        <p class="text-xs font-mono text-base-content/40">{{ $alert->employee_code }}</p>
+                                    </td>
+                                    <td class="text-sm text-base-content/70">{{ $alert->snap_dept_name ?? '—' }}</td>
+                                    <td class="text-sm text-base-content/70">{{ $alert->snap_job_title ?? '—' }}</td>
+                                    <td class="text-sm font-medium {{ $daysLeft <= 30 ? 'text-error' : 'text-warning' }}">
+                                        {{ \Carbon\Carbon::parse($alert->contract_end)->format('d/m/Y') }}
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-sm {{ $daysLeft <= 30 ? 'badge-error' : 'badge-warning' }}">
+                                            {{ $daysLeft }} ngày
+                                        </span>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 
     {{-- ── Filter bar ────────────────────────────────────────────────────── --}}
     <div class="card bg-base-100 shadow-sm border border-base-200 mb-4">

@@ -35,21 +35,40 @@ class EmployeeController extends Controller
             ->selectRaw(
                 'COUNT(*) as total_all,
                  SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as total_active,
+                 SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as total_probation,
                  SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as total_on_leave,
-                 SUM(CASE WHEN status IN (?,?) THEN 1 ELSE 0 END) as total_inactive',
+                 SUM(CASE WHEN status IN (?,?) THEN 1 ELSE 0 END) as total_inactive,
+                 SUM(CASE WHEN employment_type = ? THEN 1 ELSE 0 END) as total_contractor',
                 [
                     EmployeeStatus::Active->value,
+                    EmployeeStatus::Probation->value,
                     EmployeeStatus::OnLeave->value,
                     EmployeeStatus::Resigned->value,
                     EmployeeStatus::Terminated->value,
+                    EmploymentType::Contractor->value,
                 ]
             )
             ->first();
 
-        $totalAll      = (int) ($counts->total_all      ?? 0);
-        $totalActive   = (int) ($counts->total_active   ?? 0);
-        $totalOnLeave  = (int) ($counts->total_on_leave ?? 0);
-        $totalInactive = (int) ($counts->total_inactive ?? 0);
+        $totalAll        = (int) ($counts->total_all        ?? 0);
+        $totalActive     = (int) ($counts->total_active     ?? 0);
+        $totalProbation  = (int) ($counts->total_probation  ?? 0);
+        $totalOnLeave    = (int) ($counts->total_on_leave   ?? 0);
+        $totalInactive   = (int) ($counts->total_inactive   ?? 0);
+        $totalContractor = (int) ($counts->total_contractor ?? 0);
+
+        // Cảnh báo hợp đồng sắp hết hạn
+        $contractAlerts = Employee::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->whereNotNull('contract_end')
+            ->whereIn('status', [EmployeeStatus::Active->value, EmployeeStatus::Probation->value])
+            ->where('contract_end', '<=', now()->addDays(90)->toDateString())
+            ->where('contract_end', '>=', now()->toDateString())
+            ->orderBy('contract_end')
+            ->get(['id', 'full_name', 'employee_code', 'contract_end', 'snap_dept_name', 'snap_job_title']);
+
+        $contractAlerts30 = $contractAlerts->filter(fn ($e) => $e->contract_end <= now()->addDays(30))->count();
+        $contractAlerts90 = $contractAlerts->count();
 
         $statuses = collect(EmployeeStatus::cases())
             ->map(fn ($s) => ['value' => $s->value, 'text' => $s->label()])
@@ -76,7 +95,8 @@ class EmployeeController extends Controller
             ->all();
 
         return view('employee::index', compact(
-            'totalAll', 'totalActive', 'totalOnLeave', 'totalInactive',
+            'totalAll', 'totalActive', 'totalProbation', 'totalOnLeave', 'totalInactive', 'totalContractor',
+            'contractAlerts', 'contractAlerts30', 'contractAlerts90',
             'statuses', 'employmentTypes', 'branches', 'departments'
         ));
     }

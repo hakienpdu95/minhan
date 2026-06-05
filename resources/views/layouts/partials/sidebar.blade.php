@@ -221,6 +221,40 @@
             </details>
             @endcan
 
+            @can('viewAny', \Modules\Leave\Models\LeavePolicy::class)
+            <details {{ request()->routeIs('backend.leave.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('backend.leave.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <span class="nav-label">Nghỉ phép</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('backend.leave.requests.index') }}" class="sub-link {{ request()->routeIs('backend.leave.requests.*') ? 'active' : '' }}">Đơn nghỉ phép</a>
+                    <a href="{{ route('backend.leave.balances.me') }}" class="sub-link {{ request()->routeIs('backend.leave.balances.me') ? 'active' : '' }}">Số dư của tôi</a>
+                    <a href="{{ route('backend.leave.policies.index') }}" class="sub-link {{ request()->routeIs('backend.leave.policies.*') ? 'active' : '' }}">Chính sách nghỉ phép</a>
+                </div>
+            </details>
+            @endcan
+
+            @can('viewAny', \Modules\KpiGoal\Models\KpiGoal::class)
+            <details {{ request()->routeIs('backend.kpi.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('backend.kpi.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                    <span class="nav-label">KPI Goals</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('backend.kpi.goals.index') }}" class="sub-link {{ request()->routeIs('backend.kpi.goals.*') ? 'active' : '' }}">Mục tiêu KPI</a>
+                    @can('viewLeaderboard', \Modules\KpiGoal\Models\KpiGoal::class)
+                    <a href="{{ route('backend.kpi.leaderboard') }}" class="sub-link {{ request()->routeIs('backend.kpi.leaderboard') ? 'active' : '' }}">Bảng xếp hạng</a>
+                    @endcan
+                    @can('create', \Modules\KpiGoal\Models\KpiGoal::class)
+                    <a href="{{ route('backend.kpi.goals.create') }}" class="sub-link {{ request()->routeIs('backend.kpi.goals.create') ? 'active' : '' }}">Thêm mục tiêu</a>
+                    @endcan
+                </div>
+            </details>
+            @endcan
+
             @can('viewAny', \Modules\PerformanceReview\Models\PerformanceReview::class)
             <details {{ request()->routeIs('backend.performance-reviews.*') || request()->routeIs('backend.review-templates.*') ? 'open' : '' }}>
                 <summary class="nav-summary {{ request()->routeIs('backend.performance-reviews.*') || request()->routeIs('backend.review-templates.*') ? 'active' : '' }}">

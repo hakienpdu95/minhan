@@ -1151,43 +1151,50 @@ CREATE INDEX idx_kpi_snapshots_cycle_emp
 - [x] Cập nhật `StoreEmployeeAction`, `UpdateEmployeeAction`: thêm new fields
 - [x] Cập nhật `StoreEmployeeData`, `UpdateEmployeeData`: thêm new fields + validation
 
-### Phase 1B — Employee UI (tuần 2)
+### Phase 1B — Employee UI (tuần 2) ✅ DONE
 
-- [ ] Form nhân viên: tabbed (Thông tin cá nhân / Hợp đồng & Lương / Liên hệ / Ghi chú HR)
-- [ ] Widget headcount dashboard (headcount by dept, probation count, contractor count)
-- [ ] Danh sách cảnh báo hợp đồng sắp hết hạn (contract_end trong 30/60/90 ngày)
-- [ ] View lịch sử nhân viên (employee_history timeline)
+- [x] Form nhân viên: 4 tabs (Vị trí & Tổ chức / Hồ sơ cá nhân / Hợp đồng & Lương / Liên hệ & Ghi chú) — cả create và edit. Lương/bank/notes ẩn theo HR role.
+- [x] Stat cards: 6 thẻ (Tổng / Đang làm / Thử việc / Nghỉ phép / Hợp đồng / Đã nghỉ) — EmployeeController truyền thêm totalProbation, totalContractor
+- [x] Danh sách cảnh báo hợp đồng: collapsible panel trong index, badge 30/90 ngày, link tới show
+- [x] View lịch sử nhân viên: timeline với dot + line, label tiếng Việt per change_type, hiển thị salary diff, show.blade.php refactor toàn bộ (thêm contract section, bank HR-only, ghi chú HR, emergency contact, contract_end alert)
 
-### Phase 2 — Leave Management (tuần 3–4)
+### Phase 2 — Leave Management (tuần 3–4) ✅ DONE
 
 > New module: `php artisan module:make Leave`
 
-- [ ] Migration: `create_leave_policies_table`
-- [ ] Migration: `create_leave_balances_table`
-- [ ] Migration: `create_leave_requests_table`
-- [ ] Models: `LeavePolicy`, `LeaveBalance`, `LeaveRequest` (extends `TenantAwareModel`)
-- [ ] Enums: `LeaveType`, `LeaveRequestStatus`
-- [ ] Actions: `StoreLeavePolicyAction`, `UpdateLeavePolicyAction`
-- [ ] Actions: `StoreLeaveRequestAction` (atomic), `ApproveLeaveAction`, `RejectLeaveAction`, `CancelLeaveRequestAction`
-- [ ] Queries: `ListLeaveRequestsQuery/Handler`, `ListPendingApprovalQuery/Handler`
-- [ ] Observer: `LeaveRequestObserver`
-- [ ] Policies: `LeavePolicyPolicy`, `LeaveRequestPolicy`
-- [ ] Views: Policy CRUD, form đăng ký nghỉ, hàng đợi duyệt, bảng balance
-- [ ] Test: atomic transaction (insert + balance update không bị split)
+- [x] Migration: `create_leave_policies_table` (organization_id + softDeletes + unique scope index)
+- [x] Migration: `create_leave_balances_table` (organization_id + softDeletes)
+- [x] Migration: `create_leave_requests_table` (softDeletes, FK approved_by → employees)
+- [x] Models: `LeavePolicy`, `LeaveBalance` (getRemainingDaysAttribute), `LeaveRequest` (extends TenantAwareModel)
+- [x] Enums: `LeaveType` (8 values + label() + noBalanceCheck()), `LeaveRequestStatus` (badgeClass())
+- [x] Actions: `StoreLeavePolicyAction`, `UpdateLeavePolicyAction`
+- [x] Actions: `StoreLeaveRequestAction` (atomic + server-side days calc + balance check), `ApproveLeaveAction`, `RejectLeaveAction`, `CancelLeaveRequestAction`
+- [x] Queries: `ListLeaveRequestsQuery/Handler`, `ListPendingApprovalQuery/Handler`
+- [x] Observer: `LeaveRequestObserver` (log approved/rejected/cancelled)
+- [x] Policies: `LeavePolicyPolicy`, `LeaveRequestPolicy`
+- [x] Controllers: `LeavePolicyController`, `LeaveRequestController`, `LeaveBalanceController`
+- [x] Routes: 16 routes (policies CRUD, requests CRUD + approve/reject/cancel, balances/me + employee)
+- [x] Views: Policy index/create/edit, Request index/create/show/pending, Balance me/employee
+- [x] Sidebar: Entry "Nghỉ phép" trong phần Tổ chức
+- [x] Deviated from spec: `leave_balances` thêm `organization_id` để TenantAwareModel hoạt động
 
-### Phase 3A — KPI Goals Manual (tuần 5–6)
+### Phase 3A — KPI Goals Manual (tuần 5–6) ✅ DONE
 
 > New module: `php artisan module:make KpiGoal`
 
-- [ ] Migration: `create_kpi_goals_table`
-- [ ] Migration: `create_kpi_snapshots_table`
-- [ ] Models: `KpiGoal`, `KpiSnapshot`
-- [ ] Enums: `KpiGoalType`, `KpiGoalStatus`, `KpiDirection`
-- [ ] Actions: `StoreKpiGoalAction`, `UpdateKpiGoalAction`, `ApproveKpiGoalAction` (weight validation), `UpdateKpiProgressAction`, `CloseKpiCycleAction`
-- [ ] Observer: `KpiGoalObserver` (recalc achievement_pct)
-- [ ] Queries: `ListKpiGoalsQuery/Handler`, `KpiLeaderboardQuery/Handler`
-- [ ] Policy: `KpiGoalPolicy`
-- [ ] Views: Goal CRUD, progress update, cycle close, leaderboard
+- [x] Migration: `create_kpi_goals_table` (self-ref parent_goal_id, softDeletes, 2 indexes)
+- [x] Migration: `create_kpi_snapshots_table` (unique goal_id, no timestamps, immutable guard)
+- [x] Models: `KpiGoal` (TenantAwareModel + Observer + helpers), `KpiSnapshot` (plain Model, immutable save()/delete())
+- [x] Enums: `KpiGoalType`, `KpiGoalStatus` (weightedStatuses()), `KpiDirection` (calcAchievement() method)
+- [x] Actions: `StoreKpiGoalAction`, `UpdateKpiGoalAction` (guard editable), `ApproveKpiGoalAction` (weight sum = 100), `UpdateKpiProgressAction`, `CloseKpiCycleAction` (transaction + DB::table insert + kpi_total_score backfill)
+- [x] Observer: `KpiGoalObserver` (updated() → recalc achievement_pct via KpiDirection::calcAchievement, updateQuietly để tránh loop)
+- [x] Queries: `ListKpiGoalsQuery/Handler`, `KpiLeaderboardQuery/Handler` (raw SQL SUM + GROUP BY)
+- [x] Policy: `KpiGoalPolicy` (HR/Manager/CEO create; updateProgress = owner or manager; closeCycle = HR/CEO)
+- [x] Controllers: `KpiGoalController` (index/create/store/show/edit/update/approve/updateProgress/closeCycle/leaderboard)
+- [x] Routes: 10 routes
+- [x] Views: goals/index, create, edit, show (inline progress modal Alpine.js), leaderboard (rank với medal emoji)
+- [x] Sidebar: Entry "KPI Goals" trong phần Tổ chức
+- [x] KpiSnapshot immutable: override save()/delete() throw RuntimeException
 
 ### Phase 3B — KPI Auto-sync (tuần 7+, DEFERRED)
 

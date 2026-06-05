@@ -9,7 +9,7 @@
     <span class="sep">›</span>
     <a href="{{ route('backend.employees.show', $employee) }}">{{ $employee->full_name }}</a>
     <span class="sep">›</span>
-    <span class="current">Chỉnh sửa</span>
+    <span class="current">Sửa</span>
 </nav>
 @endsection
 
@@ -18,13 +18,14 @@
     tab: 'basic',
     tabFields: {
         basic:    ['full_name', 'employee_code', 'email', 'branch_id', 'department_id', 'job_title_id', 'manager_id', 'employment_type'],
-        personal: ['phone', 'gender', 'date_of_birth', 'national_id', 'tax_code', 'locale'],
-        dates:    ['hired_at', 'left_at'],
+        personal: ['phone', 'gender', 'date_of_birth', 'national_id', 'national_id_issued', 'tax_code', 'locale', 'personal_email', 'work_location'],
+        contract: ['hired_at', 'probation_end_date', 'contract_start', 'contract_end', 'salary_base'],
+        contact:  ['address', 'emergency_contact_name', 'emergency_contact_phone', 'bank_account', 'bank_name', 'notes'],
     },
     errs: {{ Js::from($errors->keys()) }},
     errCount(t) { return this.tabFields[t].filter(f => this.errs.includes(f)).length; },
     init() {
-        const order = ['basic', 'personal', 'dates'];
+        const order = ['basic', 'personal', 'contract', 'contact'];
         for (const t of order) { if (this.errCount(t) > 0) { this.tab = t; break; } }
     }
 }">
@@ -33,7 +34,7 @@
 <div class="flex items-center justify-between mb-6">
     <div>
         <h1 class="text-2xl font-bold text-base-content">Sửa hồ sơ nhân viên</h1>
-        <p class="text-sm text-base-content/50 mt-0.5">{{ $employee->employee_code }} — {{ $employee->full_name }}</p>
+        <p class="text-sm text-base-content/50 mt-0.5">Điền thông tin hồ sơ nhân sự</p>
     </div>
     <a href="{{ route('backend.employees.show', $employee) }}" class="btn btn-ghost btn-sm gap-1.5">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -76,7 +77,7 @@
                             :class="tab === 'basic'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-content/20'">
-                        Vị trí & Hợp đồng
+                        Vị trí & Tổ chức
                         <span x-show="errCount('basic') > 0" x-text="errCount('basic')"
                               class="badge badge-error badge-xs"></span>
                     </button>
@@ -87,19 +88,30 @@
                             :class="tab === 'personal'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-content/20'">
-                        Thông tin cá nhân
+                        Hồ sơ cá nhân
                         <span x-show="errCount('personal') > 0" x-text="errCount('personal')"
                               class="badge badge-error badge-xs"></span>
                     </button>
 
-                    <button type="button" role="tab" :aria-selected="tab === 'dates'"
-                            @click="tab = 'dates'"
-                            class="flex items-center gap-1.5 px-1 py-4 text-sm font-medium border-b-2 transition-colors"
-                            :class="tab === 'dates'
+                    <button type="button" role="tab" :aria-selected="tab === 'contract'"
+                            @click="tab = 'contract'"
+                            class="flex items-center gap-1.5 px-1 py-4 mr-6 text-sm font-medium border-b-2 transition-colors"
+                            :class="tab === 'contract'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-content/20'">
-                        Ngày công tác
-                        <span x-show="errCount('dates') > 0" x-text="errCount('dates')"
+                        Hợp đồng & Lương
+                        <span x-show="errCount('contract') > 0" x-text="errCount('contract')"
+                              class="badge badge-error badge-xs"></span>
+                    </button>
+
+                    <button type="button" role="tab" :aria-selected="tab === 'contact'"
+                            @click="tab = 'contact'"
+                            class="flex items-center gap-1.5 px-1 py-4 text-sm font-medium border-b-2 transition-colors"
+                            :class="tab === 'contact'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-content/20'">
+                        Liên hệ & Ghi chú
+                        <span x-show="errCount('contact') > 0" x-text="errCount('contact')"
                               class="badge badge-error badge-xs"></span>
                     </button>
 
@@ -109,8 +121,8 @@
             {{-- Tab panels --}}
             <div class="p-6">
 
-                {{-- Panel: Vị trí & Hợp đồng --}}
-                <div x-show="tab === 'basic'" data-tab-label="Vị trí & Hợp đồng" class="space-y-4">
+                {{-- Panel: Vị trí & Tổ chức --}}
+                <div x-show="tab === 'basic'" data-tab-label="Vị trí & Tổ chức" class="space-y-4">
 
                     <div class="form-control">
                         <label class="label py-0 pb-1.5">
@@ -119,7 +131,7 @@
                         <input type="text" name="full_name" value="{{ old('full_name', $employee->full_name) }}"
                                data-req="Vui lòng nhập họ và tên"
                                class="input input-bordered input-sm w-full @error('full_name') input-error @enderror"
-                               placeholder="VD: Nguyễn Văn A">
+                               placeholder="VD: Nguyễn Văn A" autofocus>
                         @error('full_name')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
@@ -241,7 +253,7 @@
                     <div class="flex justify-end pt-2">
                         <button type="button" @click="tab = 'personal'"
                                 class="btn btn-ghost btn-sm gap-1.5">
-                            Tiếp theo: Thông tin cá nhân
+                            Tiếp theo: Hồ sơ cá nhân
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                             </svg>
@@ -250,8 +262,8 @@
 
                 </div>
 
-                {{-- Panel: Thông tin cá nhân --}}
-                <div x-show="tab === 'personal'" data-tab-label="Thông tin cá nhân" class="space-y-4">
+                {{-- Panel: Hồ sơ cá nhân --}}
+                <div x-show="tab === 'personal'" data-tab-label="Hồ sơ cá nhân" class="space-y-4">
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
@@ -284,8 +296,7 @@
                             <label class="label py-0 pb-1.5">
                                 <span class="label-text font-medium">Ngày sinh</span>
                             </label>
-                            <input type="date" name="date_of_birth"
-                                   value="{{ old('date_of_birth', $employee->date_of_birth?->format('Y-m-d')) }}"
+                            <input type="date" name="date_of_birth" value="{{ old('date_of_birth', $employee->date_of_birth?->format('Y-m-d')) }}"
                                    class="input input-bordered input-sm w-full @error('date_of_birth') input-error @enderror">
                             @error('date_of_birth')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
@@ -299,6 +310,15 @@
                                    class="input input-bordered input-sm w-full font-mono @error('national_id') input-error @enderror"
                                    placeholder="VD: 012345678901">
                             @error('national_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Ngày cấp CCCD</span>
+                            </label>
+                            <input type="date" name="national_id_issued" value="{{ old('national_id_issued', $employee->national_id_issued?->format('Y-m-d')) }}"
+                                   class="input input-bordered input-sm w-full @error('national_id_issued') input-error @enderror">
+                            @error('national_id_issued')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
                         <div class="form-control">
@@ -327,6 +347,31 @@
                             @error('locale')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Email cá nhân</span>
+                            </label>
+                            <input type="email" name="personal_email" value="{{ old('personal_email', $employee->personal_email) }}"
+                                   class="input input-bordered input-sm w-full @error('personal_email') input-error @enderror"
+                                   placeholder="VD: ten.ho@gmail.com">
+                            @error('personal_email')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-control sm:col-span-2">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Nơi làm việc</span>
+                            </label>
+                            <select id="ts-work_location" name="work_location"
+                                    class="select select-bordered select-sm w-full ts-init @error('work_location') select-error @enderror"
+                                    data-ts-placeholder="— Chưa xác định —">
+                                <option value="">— Chưa xác định —</option>
+                                <option value="office"  {{ old('work_location', $employee->work_location) === 'office'  ? 'selected' : '' }}>Tại văn phòng</option>
+                                <option value="remote"  {{ old('work_location', $employee->work_location) === 'remote'  ? 'selected' : '' }}>Làm việc từ xa</option>
+                                <option value="hybrid"  {{ old('work_location', $employee->work_location) === 'hybrid'  ? 'selected' : '' }}>Kết hợp</option>
+                            </select>
+                            @error('work_location')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
                     </div>
 
                     {{-- Tab footer: prev / next --}}
@@ -336,11 +381,11 @@
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                             </svg>
-                            Vị trí & Hợp đồng
+                            Vị trí & Tổ chức
                         </button>
-                        <button type="button" @click="tab = 'dates'"
+                        <button type="button" @click="tab = 'contract'"
                                 class="btn btn-ghost btn-sm gap-1.5">
-                            Tiếp theo: Ngày công tác
+                            Tiếp theo: Hợp đồng & Lương
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                             </svg>
@@ -349,8 +394,8 @@
 
                 </div>
 
-                {{-- Panel: Ngày công tác --}}
-                <div x-show="tab === 'dates'" data-tab-label="Ngày công tác" class="space-y-4">
+                {{-- Panel: Hợp đồng & Lương --}}
+                <div x-show="tab === 'contract'" data-tab-label="Hợp đồng & Lương" class="space-y-4">
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
@@ -358,33 +403,162 @@
                             <label class="label py-0 pb-1.5">
                                 <span class="label-text font-medium">Ngày vào làm</span>
                             </label>
-                            <input type="date" name="hired_at"
-                                   value="{{ old('hired_at', $employee->hired_at?->format('Y-m-d')) }}"
+                            <input type="date" name="hired_at" value="{{ old('hired_at', $employee->hired_at?->format('Y-m-d')) }}"
                                    class="input input-bordered input-sm w-full @error('hired_at') input-error @enderror">
                             @error('hired_at')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
                         <div class="form-control">
                             <label class="label py-0 pb-1.5">
-                                <span class="label-text font-medium">Ngày nghỉ việc</span>
-                                <span class="label-text-alt text-xs text-base-content/40">Điền khi đã nghỉ</span>
+                                <span class="label-text font-medium">Kết thúc thử việc</span>
                             </label>
-                            <input type="date" name="left_at"
-                                   value="{{ old('left_at', $employee->left_at?->format('Y-m-d')) }}"
-                                   class="input input-bordered input-sm w-full @error('left_at') input-error @enderror">
-                            @error('left_at')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                            <input type="date" name="probation_end_date" value="{{ old('probation_end_date', $employee->probation_end_date?->format('Y-m-d')) }}"
+                                   class="input input-bordered input-sm w-full @error('probation_end_date') input-error @enderror">
+                            @error('probation_end_date')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Bắt đầu hợp đồng</span>
+                            </label>
+                            <input type="date" name="contract_start" value="{{ old('contract_start', $employee->contract_start?->format('Y-m-d')) }}"
+                                   class="input input-bordered input-sm w-full @error('contract_start') input-error @enderror">
+                            @error('contract_start')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Hết hạn hợp đồng</span>
+                            </label>
+                            <input type="date" name="contract_end" value="{{ old('contract_end', $employee->contract_end?->format('Y-m-d')) }}"
+                                   class="input input-bordered input-sm w-full @error('contract_end') input-error @enderror">
+                            <p class="mt-1 text-base-content/40 text-xs">Để trống = không thời hạn</p>
+                            @error('contract_end')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
                     </div>
 
-                    {{-- Tab footer: prev --}}
+                    @if(auth()->user()?->hasAnyRole(['System_Admin', 'HR']))
+                    <div class="divider text-xs text-base-content/40">Thông tin lương (chỉ HR)</div>
+
+                    <div class="form-control">
+                        <label class="label py-0 pb-1.5">
+                            <span class="label-text font-medium">Lương cơ bản</span>
+                        </label>
+                        <input type="number" name="salary_base" value="{{ old('salary_base', $employee->salary_base) }}"
+                               step="1000"
+                               class="input input-bordered input-sm w-full @error('salary_base') input-error @enderror"
+                               placeholder="VD: 15000000">
+                        <p class="mt-1 text-xs text-base-content/40">VND</p>
+                        @error('salary_base')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        <input type="hidden" name="salary_currency" value="VND">
+                    </div>
+                    @endif
+
+                    {{-- Tab footer: prev / next --}}
                     <div class="flex items-center justify-between pt-2">
                         <button type="button" @click="tab = 'personal'"
                                 class="btn btn-ghost btn-sm gap-1.5">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                             </svg>
-                            Thông tin cá nhân
+                            Hồ sơ cá nhân
+                        </button>
+                        <button type="button" @click="tab = 'contact'"
+                                class="btn btn-ghost btn-sm gap-1.5">
+                            Tiếp theo: Liên hệ & Ghi chú
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                </div>
+
+                {{-- Panel: Liên hệ & Ghi chú --}}
+                <div x-show="tab === 'contact'" data-tab-label="Liên hệ & Ghi chú" class="space-y-4">
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                        <div class="form-control sm:col-span-2">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Địa chỉ thường trú</span>
+                            </label>
+                            <textarea name="address" rows="2"
+                                      class="textarea textarea-bordered textarea-sm w-full @error('address') textarea-error @enderror"
+                                      placeholder="VD: 123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM">{{ old('address', $employee->address) }}</textarea>
+                            @error('address')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Người liên hệ khẩn cấp</span>
+                            </label>
+                            <input type="text" name="emergency_contact_name" value="{{ old('emergency_contact_name', $employee->emergency_contact_name) }}"
+                                   class="input input-bordered input-sm w-full @error('emergency_contact_name') input-error @enderror"
+                                   placeholder="VD: Nguyễn Thị B">
+                            @error('emergency_contact_name')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">SĐT khẩn cấp</span>
+                            </label>
+                            <input type="text" name="emergency_contact_phone" value="{{ old('emergency_contact_phone', $employee->emergency_contact_phone) }}"
+                                   class="input input-bordered input-sm w-full @error('emergency_contact_phone') input-error @enderror"
+                                   placeholder="VD: 0901234567">
+                            @error('emergency_contact_phone')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                    </div>
+
+                    @if(auth()->user()?->hasAnyRole(['System_Admin', 'HR']))
+                    <div class="divider text-xs text-base-content/40">Thông tin ngân hàng (chỉ HR)</div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Số tài khoản</span>
+                            </label>
+                            <input type="text" name="bank_account" value="{{ old('bank_account', $employee->bank_account) }}"
+                                   class="input input-bordered input-sm w-full font-mono @error('bank_account') input-error @enderror"
+                                   placeholder="VD: 0123456789">
+                            @error('bank_account')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Ngân hàng</span>
+                            </label>
+                            <input type="text" name="bank_name" value="{{ old('bank_name', $employee->bank_name) }}"
+                                   class="input input-bordered input-sm w-full @error('bank_name') input-error @enderror"
+                                   placeholder="VD: Vietcombank">
+                            @error('bank_name')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
+                    </div>
+                    @endif
+
+                    <div class="form-control">
+                        <label class="label py-0 pb-1.5">
+                            <span class="label-text font-medium">Ghi chú nội bộ HR</span>
+                        </label>
+                        <textarea name="notes" rows="3"
+                                  class="textarea textarea-bordered textarea-sm w-full @error('notes') textarea-error @enderror"
+                                  placeholder="Ghi chú thêm về nhân viên...">{{ old('notes', $employee->notes) }}</textarea>
+                        <p class="mt-1 text-xs text-base-content/40">Không hiển thị với nhân viên</p>
+                        @error('notes')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                    </div>
+
+                    {{-- Tab footer: prev --}}
+                    <div class="flex items-center justify-between pt-2">
+                        <button type="button" @click="tab = 'contract'"
+                                class="btn btn-ghost btn-sm gap-1.5">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                            </svg>
+                            Hợp đồng & Lương
                         </button>
                         <span class="text-xs text-base-content/40">Nhấn <strong>Lưu lại</strong> ở bên phải khi xong</span>
                     </div>
@@ -402,7 +576,7 @@
 
                     <p class="text-xs font-semibold text-base-content/40 uppercase tracking-wide mb-3">Xuất bản</p>
 
-                    <div class="form-control mb-3">
+                    <div class="form-control mb-4">
                         <label class="label py-0 pb-1">
                             <span class="label-text text-xs font-medium">Trạng thái <span class="text-error">*</span></span>
                         </label>

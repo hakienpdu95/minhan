@@ -73,4 +73,4 @@ php artisan module:make Auth
 
 Dựa trên file spec/sop.md và làm phase 1 trước, implement theo đúng spec, đọc thêm file docs/module-list-pattern.md để tuân thủ đúng cấu trúc và nguyên tắc chuẩn khi thiết kế và triển khai module theo cấu trúc Advanced Vertical Slice (AVSA) + CQRS-lite + Laravel Modules + Laravel Actions, bổ sung ra mdenu sidebar để dùng, phần views hãy kế thừa và làm chuẩn @extends('layouts.backend')
 
-- Đọc file docs/migration-pattern.md và implement theo đúng spec đó
+- Đọc file docs/workforce.md và làm tiếp phase 2, implement theo đúng spec đó

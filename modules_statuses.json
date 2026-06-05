@@ -19,5 +19,7 @@
     "OrgChart": true,
     "KcCategory": true,
     "KcItem": true,
-    "Sop": true
+    "Sop": true,
+    "Leave": true,
+    "KpiGoal": true
 }
