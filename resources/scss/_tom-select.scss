@@ -24,9 +24,15 @@
 }
 
 // ── Wrapper ───────────────────────────────────────────────────────────
+// DaisyUI .select (copied from <select> by TomSelect) adds:
+//   padding-inline: .75rem 1.75rem  → right gap for native arrow
+//   background-image: linear-gradient(...)  → the native chevron triangles
+// TomSelect renders its own chevron via ::after → strip all of it.
 .ts-wrapper {
-    position: relative;
-    width: 100%;
+    position:         relative !important;
+    width:            100% !important;
+    padding:          0 !important;
+    background-image: none !important;
 }
 
 // ── Control (ô hiển thị) ──────────────────────────────────────────────

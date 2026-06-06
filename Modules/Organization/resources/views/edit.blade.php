@@ -302,7 +302,10 @@
                         <label class="label py-0 pb-1">
                             <span class="label-text text-xs font-medium">Trạng thái <span class="text-error">*</span></span>
                         </label>
-                        <select name="status" class="select select-bordered select-sm w-full @error('status') select-error @enderror">
+                        <select id="ts-status" name="status"
+                                class="select select-bordered select-sm w-full ts-init @error('status') select-error @enderror"
+                                data-ts-placeholder="— Chọn trạng thái —">
+                            <option value="">— Chọn trạng thái —</option>
                             <option value="active"    {{ old('status', $organization->status->value) === 'active'    ? 'selected' : '' }}>Hoạt động</option>
                             <option value="inactive"  {{ old('status', $organization->status->value) === 'inactive'  ? 'selected' : '' }}>Không hoạt động</option>
                             <option value="suspended" {{ old('status', $organization->status->value) === 'suspended' ? 'selected' : '' }}>Tạm khóa</option>
@@ -369,6 +372,7 @@
 @push('scripts')
     @vite([
         'resources/js/modules/toastify.js',
+        'resources/js/modules/tom-select.js',
         'resources/js/modules/jodit.js',
         'Modules/Organization/resources/assets/js/organization.js',
     ], 'build/backend')

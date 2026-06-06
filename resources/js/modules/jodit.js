@@ -60,24 +60,19 @@ const PRESETS = {
             'bold', 'italic', 'underline', 'strikethrough', '|',
             'ul', 'ol', '|',
             'font', 'fontsize', 'paragraph', '|',
-            'link', 'align', '|',
-            'undo', 'redo', '|',
-            'hr', 'fullsize', 'source',
-        ],
-        removeButtons: ['about', 'classSpan', 'image'],
-    },
-
-    full: {
-        height: 400,
-        buttons: [
-            'bold', 'italic', 'underline', 'strikethrough', '|',
-            'ul', 'ol', '|',
-            'font', 'fontsize', 'paragraph', '|',
             'image', 'link', '|',
             'align', '|',
             'undo', 'redo', '|',
             'hr', 'fullsize', 'source',
         ],
+        removeButtons: ['about', 'classSpan'],
+    },
+
+    // full: không khai báo buttons → Jodit dùng bộ mặc định đầy đủ
+    // (image, file, video, table, align, indent, superscript, print, v.v.)
+    full: {
+        height: 400,
+        removeButtons: ['about', 'classSpan'],
     },
 };
 

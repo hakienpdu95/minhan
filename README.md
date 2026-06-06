@@ -66,4 +66,4 @@ php artisan db:seed
 
 php artisan module:make Auth
 
-# > Đọc file docs/form-ui-spec.md và implement theo đúng spec đó, hãy cập nhật nội dung để có thể áp dụng và tái sử dung linh hoạt các thành phần thư viện nếu có như: "flatpickr":"^4.6.13","jodit":"^4.12.2","toastify-js":"^1.12.0","tom-select":"^2.6.0". Ví dụ có field sử dụng thư viện flatpickr thì áp dụng class chung ntn vì 1 form có nhiều hơn 2 field dùng flatpickr. Và song song đó review code và áp dụng hoàn thiện cho views module Branch
+# > Đọc file docs/form-ui-spec.md và implement theo đúng spec đó, áp dụng hoàn thiện cho views module Organization

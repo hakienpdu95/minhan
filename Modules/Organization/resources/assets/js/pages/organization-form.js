@@ -7,11 +7,14 @@
  *      chuyển tab, hiện Toast trước khi initFormValidation validate inline
  *   3. Slug auto-fill — sinh slug từ tên tổ chức (Vietnamese-aware), khoá lại
  *      ngay khi user tự sửa slug
- *   4. Jodit init
+ *   4. TomSelect — auto-init mọi select.ts-init (status...)
+ *   5. Jodit init
  *
  * Requires globals (core bundle): initFormValidation, window.Alpine, window.Toast
- * Requires globals (lazy bundle):  initJoditAll (jodit.js)
+ * Requires globals (lazy bundle):  initJoditAll (jodit.js), window.TomSelect (tom-select.js)
  */
+
+import { initAllTomSelects } from '@shared/tom-select-factory.js';
 
 // ── Constants & lookup tables ──────────────────────────────────────────────
 
@@ -51,9 +54,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!form) return;
 
     initFormValidation(FORM_SEL);
-    _initJodit(form);
     _setupTabGuard(form);
     _setupSlugAutoFill(form);
+    initAllTomSelects(form);
+    _initJodit(form);
 });
 
 // ── Tab-aware submit guard ─────────────────────────────────────────────────

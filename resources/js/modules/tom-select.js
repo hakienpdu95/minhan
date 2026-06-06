@@ -10,11 +10,14 @@ import TomSelect from 'tom-select';
 import 'tom-select/dist/css/tom-select.css';
 
 const DEFAULTS = {
-    create:       false,
-    sortField:    { field: 'text', direction: 'asc' },
-    placeholder:  'Chọn...',
-    searchField:  ['text', 'value'],
-    maxOptions:   200,
+    create:          false,
+    sortField:       { field: 'text', direction: 'asc' },
+    placeholder:     'Chọn...',
+    searchField:     ['text', 'value'],
+    maxOptions:      200,
+    // Append dropdown to body → thoát khỏi overflow/clip của parent container
+    // (cần thiết khi TomSelect nằm trong Alpine x-show, modal, tab ẩn, v.v.)
+    dropdownParent:  'body',
     render: {
         no_results: () => `<div class="no-results" style="padding:8px 12px;font-size:13px;color:#94a3b8">Không tìm thấy kết quả</div>`,
     },

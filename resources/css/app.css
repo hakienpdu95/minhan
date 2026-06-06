@@ -1,36 +1,5 @@
-/**
- * resources/css/app.css
- * ────────────────────────────────────────────────────────────────────
- * Core stylesheet — tải trên MỌI trang backend.
- *
- * Stack:
- *  · Tailwind CSS v4  — @tailwindcss/vite plugin, không cần postcss/config
- *  · DaisyUI v5       — @plugin "daisyui" (Tailwind v4 plugin syntax)
- *
- * Cú pháp Tailwind v4:
- *  · @import "tailwindcss"          → inject toàn bộ Tailwind layers
- *  · @plugin "daisyui"              → load DaisyUI từ node_modules
- *  · @theme { ... }                 → override/extend design tokens
- *  · @layer utilities { ... }       → custom utility classes
- *
- * KHÔNG dùng: tailwind.config.js, postcss.config.js,
- *             @tailwind base/components/utilities (Tailwind v3 syntax)
- * ────────────────────────────────────────────────────────────────────
- */
-
-/* ── 1. Tailwind CSS v4 ────────────────────────────────────────────── */
 @import "tailwindcss";
 
-/* ── 2. DaisyUI v5 (Tailwind v4 plugin syntax) ─────────────────────
- *
- * @plugin "daisyui" nhận đường dẫn npm package — Tailwind v4 resolve
- * tự động từ node_modules. Không dùng @import cho DaisyUI ở đây vì
- * DaisyUI v5 là Tailwind plugin, không phải plain CSS.
- *
- * themes:    chỉ build theme thực sự dùng → CSS nhỏ hơn đáng kể.
- *            Thêm theme khác: "cupcake", "business", "corporate"...
- * darkTheme: tên theme kích hoạt khi html[data-theme="dark"]
- * ─────────────────────────────────────────────────────────────────── */
 @plugin "daisyui" {
     themes: light --default, dark --prefersdark;
     darkTheme: dark;
@@ -40,12 +9,6 @@
     logs:      false;   /* tắt DaisyUI console logs khi build */
 }
 
-/* ── 3. Design tokens (override DaisyUI / Tailwind defaults) ────────
- *
- * @theme block cho phép định nghĩa/override CSS custom properties.
- * Tailwind v4 generate utility classes từ các biến này tự động.
- * VD: --color-primary → class text-primary, bg-primary, border-primary
- * ─────────────────────────────────────────────────────────────────── */
 @theme {
     /* Brand colors — ánh xạ sang DaisyUI primary/secondary/accent */
     --color-primary:   oklch(59.8% 0.2 266);  /* indigo-500 ≈ #6366f1 */
@@ -63,7 +26,7 @@
     --radius-2xl: 24px;
 }
 
-/* ── 4. Alpine.js — cloak helper ───────────────────────────────────
+/* ── Alpine.js — cloak helper ───────────────────────────────────
  *
  * x-cloak ẩn element cho đến khi Alpine khởi tạo xong.
  * Phải có rule này trong CSS vì Alpine remove attribute [x-cloak]
@@ -235,12 +198,6 @@ details[open] > .nav-summary .nav-arrow { transform: rotate(90deg); }
 .rich-content hr { border: none; border-top: 1px solid #e2e8f0; margin: .75em 0; }
 .rich-content a { color: #6366f1; text-decoration: underline; }
 
-/* ── Remove focus outline / DaisyUI focus indicator ─────────────────
- * DaisyUI v5:
- *   - .input:focus  → outline: 2px solid var(--input-color)  [removed below]
- *   - .input:focus  → --input-color: var(--color-base-content)  [dark box-shadow]
- * Tailwind base adds :focus-visible outline.
- * Override all — border-color shift on focus (per-component) is enough. */
 *:focus,
 *:focus-visible,
 *:focus-within {
