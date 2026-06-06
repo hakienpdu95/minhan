@@ -30,10 +30,47 @@ const initDateTimePicker  = (sel, opts = {}) => flatpickr(sel, { ...BASE, enable
 const initDateRangePicker = (sel, opts = {}) => flatpickr(sel, { ...BASE, mode: 'range', ...opts });
 const initTimePicker      = (sel, opts = {}) => flatpickr(sel, { ...BASE, noCalendar: true, enableTime: true, dateFormat: 'H:i', ...opts });
 
+/**
+ * Auto-init tất cả input.fp-init trong container.
+ *
+ * Blade: thêm class="... fp-init" + id="fp-[field]" vào <input>
+ *        value="{{ old('field', $model->field?->format('Y-m-d') ?? '') }}"
+ *
+ * - dateFormat:  'Y-m-d'  → submitted value (ISO, tương thích Laravel 'date' validation)
+ * - altInput:    true      → Flatpickr tạo input hiển thị riêng
+ * - altFormat:   'd/m/Y'  → format hiển thị cho user
+ * - data-fp-mode: 'single' | 'range' | 'datetime'  (mặc định 'single')
+ *
+ * Gọi 1 lần trong page controller:
+ *   window.initAllDatePickers?.(form);
+ */
+function initAllDatePickers(container = document) {
+    for (const el of container.querySelectorAll('input.fp-init')) {
+        if (el._flatpickr) continue;
+        const mode = el.dataset.fpMode ?? 'single';
+        const base = {
+            locale:        VI,
+            dateFormat:    'Y-m-d',
+            altInput:      true,
+            altFormat:     'd/m/Y',
+            allowInput:    false,
+            disableMobile: true,
+        };
+        if (mode === 'datetime') {
+            flatpickr(el, { ...base, enableTime: true, altFormat: 'd/m/Y H:i', dateFormat: 'Y-m-d H:i:S' });
+        } else if (mode === 'range') {
+            flatpickr(el, { ...base, mode: 'range' });
+        } else {
+            flatpickr(el, base);
+        }
+    }
+}
+
 window.initDatePicker      = initDatePicker;
 window.initDateTimePicker  = initDateTimePicker;
 window.initDateRangePicker = initDateRangePicker;
 window.initTimePicker      = initTimePicker;
+window.initAllDatePickers  = initAllDatePickers;
 window.flatpickr           = flatpickr;
-export { initDatePicker, initDateTimePicker, initDateRangePicker, initTimePicker };
+export { initDatePicker, initDateTimePicker, initDateRangePicker, initTimePicker, initAllDatePickers };
 export default flatpickr;

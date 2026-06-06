@@ -392,9 +392,10 @@
                             <label class="label py-0 pb-1.5">
                                 <span class="label-text font-medium">Ngày khai trương</span>
                             </label>
-                            <input type="date" name="opened_at"
-                                   value="{{ old('opened_at', $branch->opened_at?->format('Y-m-d')) }}"
-                                   class="input input-bordered input-sm w-full @error('opened_at') input-error @enderror">
+                            <input type="text" name="opened_at" id="fp-opened-at"
+                                   value="{{ old('opened_at', $branch->opened_at?->format('Y-m-d') ?? '') }}"
+                                   class="input input-bordered input-sm w-full fp-init @error('opened_at') input-error @enderror"
+                                   placeholder="DD/MM/YYYY">
                             @error('opened_at')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
@@ -402,9 +403,10 @@
                             <label class="label py-0 pb-1.5">
                                 <span class="label-text font-medium">Ngày đóng cửa</span>
                             </label>
-                            <input type="date" name="closed_at"
-                                   value="{{ old('closed_at', $branch->closed_at?->format('Y-m-d')) }}"
-                                   class="input input-bordered input-sm w-full @error('closed_at') input-error @enderror">
+                            <input type="text" name="closed_at" id="fp-closed-at"
+                                   value="{{ old('closed_at', $branch->closed_at?->format('Y-m-d') ?? '') }}"
+                                   class="input input-bordered input-sm w-full fp-init @error('closed_at') input-error @enderror"
+                                   placeholder="DD/MM/YYYY">
                             @error('closed_at')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
@@ -506,6 +508,7 @@
 @push('scripts')
     @vite([
         'resources/js/modules/toastify.js',
+        'resources/js/modules/flatpickr.js',
         'resources/js/modules/tom-select.js',
         'Modules/Branch/resources/assets/js/branch.js',
     ], 'build/backend')

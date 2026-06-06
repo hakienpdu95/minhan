@@ -234,3 +234,25 @@ details[open] > .nav-summary .nav-arrow { transform: rotate(90deg); }
 .rich-content blockquote { border-left: 3px solid #e2e8f0; padding-left: .75em; color: #64748b; margin: .5em 0; }
 .rich-content hr { border: none; border-top: 1px solid #e2e8f0; margin: .75em 0; }
 .rich-content a { color: #6366f1; text-decoration: underline; }
+
+/* ── Remove focus outline / DaisyUI focus indicator ─────────────────
+ * DaisyUI v5:
+ *   - .input:focus  → outline: 2px solid var(--input-color)  [removed below]
+ *   - .input:focus  → --input-color: var(--color-base-content)  [dark box-shadow]
+ * Tailwind base adds :focus-visible outline.
+ * Override all — border-color shift on focus (per-component) is enough. */
+*:focus,
+*:focus-visible,
+*:focus-within {
+    outline: none !important;
+    outline-offset: 0 !important;
+}
+/* Reset --input-color on focus so DaisyUI's inset box-shadow stays subtle */
+.input:focus,
+.input:focus-within,
+.select:focus,
+.select:focus-within,
+.textarea:focus,
+.textarea:focus-within {
+    --input-color: color-mix(in oklab, var(--color-base-content) 20%, #0000) !important;
+}

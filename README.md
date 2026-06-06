@@ -66,10 +66,4 @@ php artisan db:seed
 
 php artisan module:make Auth
 
-# > Đọc file spec/lead.md và implement theo đúng spec đó, lưu ý là lead cơ hội của ai thì khi vào tài khoản sẽ xem được lead trong phạm vi của mình. Làm chắc chắn và tối ưu từng task một, hỏi để xác nhận trước khi làm tiếp
-
-# > Đọc file spec/prompt.md và implement theo đúng spec đó
-
-Đọc file spec/marketplace.md và làm phase 1 trước, implement theo đúng spec, đọc thêm file docs/module-list-pattern.md để tuân thủ đúng cấu trúc và nguyên tắc chuẩn khi thiết kế và triển khai module theo cấu trúc Advanced Vertical Slice (AVSA) + CQRS-lite + Laravel Modules + Laravel Actions, bổ sung ra mdenu sidebar để dùng, phần views hãy kế thừa và làm chuẩn @extends('layouts.backend')
-
-- Đọc file spec/marketplace.md và làm phase 2, implement theo đúng spec đó
+# > Đọc file docs/form-ui-spec.md và implement theo đúng spec đó, hãy cập nhật nội dung để có thể áp dụng và tái sử dung linh hoạt các thành phần thư viện nếu có như: "flatpickr":"^4.6.13","jodit":"^4.12.2","toastify-js":"^1.12.0","tom-select":"^2.6.0". Ví dụ có field sử dụng thư viện flatpickr thì áp dụng class chung ntn vì 1 form có nhiều hơn 2 field dùng flatpickr. Và song song đó review code và áp dụng hoàn thiện cho views module Branch

@@ -173,6 +173,7 @@ Tầng 4 — Module assets Modules/[Name]/resources/assets/
 | `window.initTomSelect` | `tom-select.js` | Factory helper |
 | `window.initOrgAddress` | `tom-select.js` | Province/Ward cascade |
 | `window.initJoditAll` | `jodit.js` | Khởi tạo rich text |
+| `window.initAllDatePickers` | `flatpickr.js` | Auto-init mọi `input.fp-init` trong container (altInput `d/m/Y`, submit `Y-m-d`) |
 
 > `window.Toast` chỉ có sau khi `@vite(['resources/js/modules/toastify.js'])` được load trong blade.
 
@@ -189,10 +190,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.querySelector(FORM_SEL);
     if (!form) return;
 
-    initFormValidation(FORM_SEL);     // global từ app.js
-    _initJodit(form);                 // chỉ nếu form có rich text
-    _setupTabGuard(form);             // chỉ nếu form dùng tab
-    _setupSlugAutoFill(form);         // chỉ nếu form có slug
+    initFormValidation(FORM_SEL);          // global từ app.js
+    window.initAllDatePickers?.(form);    // chỉ nếu form có date field (fp-init)
+    _initJodit(form);                     // chỉ nếu form có rich text
+    _setupTabGuard(form);                 // chỉ nếu form dùng tab
+    _setupSlugAutoFill(form);             // chỉ nếu form có slug
 });
 ```
 
@@ -257,11 +259,15 @@ const MODULE_ENTRIES = [
 @push('scripts')
     @vite([
         'resources/js/modules/toastify.js',   ← nếu cần Toast
-        'resources/js/modules/jodit.js',       ← nếu có rich text
+        'resources/js/modules/flatpickr.js',  ← nếu có date field (fp-init)
+        'resources/js/modules/tom-select.js', ← nếu có select (ts-init)
+        'resources/js/modules/jodit.js',      ← nếu có rich text
         'Modules/[Name]/resources/assets/js/[name].js',
     ], 'build/backend')
 @endpush
 ```
+
+**Thứ tự quan trọng:** `toastify` → `flatpickr` → `tom-select` → module JS.
 
 ### 6.2 Truyền server data vào Alpine
 
@@ -877,15 +883,67 @@ JS auto-fill: xem [Section 18](#18-slug-auto-fill).
 </div>
 ```
 
-### Date picker (Flatpickr)
+### Date picker (Flatpickr) — `fp-init` pattern
+
+Khi form có ≥ 1 date field, dùng class `fp-init` để auto-init toàn bộ:
 
 ```blade
-<input type="text" name="close_date" id="fp-close-date"
-       value="{{ old('close_date', $model->close_date?->format('d/m/Y') ?? '') }}"
-       class="input input-bordered input-sm w-full @error('close_date') input-error @enderror"
-       placeholder="DD/MM/YYYY" readonly>
+{{-- Create --}}
+<input type="text" name="opened_at" id="fp-opened-at"
+       value="{{ old('opened_at') }}"
+       class="input input-bordered input-sm w-full fp-init @error('opened_at') input-error @enderror"
+       placeholder="DD/MM/YYYY">
+
+{{-- Edit: truyền Y-m-d format để Flatpickr parse; altInput hiển thị d/m/Y --}}
+<input type="text" name="opened_at" id="fp-opened-at"
+       value="{{ old('opened_at', $model->opened_at?->format('Y-m-d') ?? '') }}"
+       class="input input-bordered input-sm w-full fp-init @error('opened_at') input-error @enderror"
+       placeholder="DD/MM/YYYY">
 ```
-Không dùng `type="date"` native — dùng Flatpickr qua `initDatePicker('#fp-close-date')`.
+
+**Quy tắc:**
+- `id="fp-[field-name]"` — bắt buộc, dùng để override config nếu cần
+- `class="... fp-init"` — trigger auto-init bởi `initAllDatePickers(form)`
+- `value` — truyền `Y-m-d` (edit) hoặc `old()` để Flatpickr parse chính xác
+- Display luôn là `d/m/Y` — Flatpickr tự chuyển qua `altFormat`
+- Submit luôn là `Y-m-d` — tương thích với Laravel `'nullable', 'date'` validation
+- Không dùng `type="date"` native
+- Không cần `readonly` — Flatpickr `altInput` tự xử lý
+
+**Gọi trong page controller (1 lần, init toàn bộ fields):**
+
+```js
+window.initAllDatePickers?.(form);   // init tất cả input.fp-init trong form
+```
+
+**`data-fp-mode` (tùy chọn):**
+
+| Giá trị | Hành vi |
+|---|---|
+| `single` (mặc định) | Chọn 1 ngày |
+| `range` | Chọn khoảng ngày |
+| `datetime` | Chọn ngày + giờ |
+
+```blade
+<input ... data-fp-mode="datetime" class="... fp-init">
+```
+
+**Override thủ công (1 field cần config đặc biệt — không thêm `fp-init`):**
+
+```js
+initDatePicker(form.querySelector('[name="special_date"]'), { minDate: 'today' });
+```
+
+**Thứ tự load scripts:**
+
+```blade
+@push('scripts')
+    @vite([
+        'resources/js/modules/flatpickr.js',   ← trước module JS
+        'Modules/[Name]/resources/assets/js/[name].js',
+    ], 'build/backend')
+@endpush
+```
 
 ### Address picker
 
@@ -1502,6 +1560,15 @@ Slug:  "ten-slug-vd"
 - [ ] Alpine component đăng ký trong JS file (event `alpine:init`), không inline blade
 - [ ] `import @shared/*` dùng alias, không dùng đường dẫn tương đối
 - [ ] Regex/lookup table compile 1 lần ở scope module, không trong callback
+
+### Flatpickr (khi form có date field)
+
+- [ ] Mọi date field dùng `class="... fp-init"` và `id="fp-[field]"`
+- [ ] Edit form: `value="{{ old('field', $model->field?->format('Y-m-d') ?? '') }}"` (Y-m-d)
+- [ ] `window.initAllDatePickers?.(form)` được gọi trong page controller
+- [ ] `flatpickr.js` load trước module JS trong `@push('scripts')`
+- [ ] Không dùng `type="date"` native
+- [ ] Không dùng `data-fp-mode` trừ khi cần range hoặc datetime
 
 ### TomSelect (bắt buộc khi form có `<select>`)
 

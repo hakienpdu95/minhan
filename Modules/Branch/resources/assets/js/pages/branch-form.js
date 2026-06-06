@@ -25,9 +25,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!form) return;
 
     initFormValidation(FORM_SEL);
+    window.initAllDatePickers?.(form);   // init mọi input.fp-init (opened_at, closed_at)
     _setupTabGuard(form);
-    initAllTomSelects(form);   // init mọi select.ts-init
-    _initProvinceWard(form);   // cascade: province (onChange) + ward (dynamic)
+    initAllTomSelects(form);             // init mọi select.ts-init
+    _initProvinceWard(form);             // cascade: province (onChange) + ward (dynamic)
 });
 
 // ── TomSelect: Province → Ward cascade ────────────────────────────────────
