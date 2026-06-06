@@ -158,9 +158,9 @@
                             <span class="label-text font-medium">Mô tả dự án</span>
                             <span class="label-text-alt text-xs text-base-content/40">Không bắt buộc</span>
                         </label>
-                        <textarea name="description" rows="4"
-                                  class="textarea textarea-bordered textarea-sm w-full @error('description') textarea-error @enderror"
-                                  placeholder="Mô tả mục tiêu, phạm vi, nội dung dự án...">{{ old('description') }}</textarea>
+                        <textarea name="description"
+                                  class="jodit-editor textarea textarea-bordered textarea-sm w-full @error('description') textarea-error @enderror"
+                                  data-jodit-preset="standard">{{ old('description') }}</textarea>
                         @error('description')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
@@ -266,8 +266,8 @@
                             </label>
                             <input type="text" name="start_date" id="fp-start-date"
                                    value="{{ old('start_date') }}"
-                                   class="input input-bordered input-sm w-full @error('start_date') input-error @enderror"
-                                   placeholder="DD/MM/YYYY" readonly>
+                                   class="input input-bordered input-sm w-full fp-init @error('start_date') input-error @enderror"
+                                   placeholder="DD/MM/YYYY">
                             @error('start_date')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
@@ -277,8 +277,8 @@
                             </label>
                             <input type="text" name="end_date" id="fp-end-date"
                                    value="{{ old('end_date') }}"
-                                   class="input input-bordered input-sm w-full @error('end_date') input-error @enderror"
-                                   placeholder="DD/MM/YYYY" readonly>
+                                   class="input input-bordered input-sm w-full fp-init @error('end_date') input-error @enderror"
+                                   placeholder="DD/MM/YYYY">
                             @error('end_date')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
@@ -400,6 +400,7 @@
         'resources/js/modules/toastify.js',
         'resources/js/modules/tom-select.js',
         'resources/js/modules/flatpickr.js',
+        'resources/js/modules/jodit.js',
         'Modules/Project/resources/assets/js/project.js',
     ], 'build/backend')
 @endpush

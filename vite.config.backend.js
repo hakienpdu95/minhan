@@ -87,6 +87,10 @@ const JS_OUTPUT = {
   'kc-item':                'assets/modules/kc-item.[hash].js',
   'sop':                    'assets/modules/sop.[hash].js',
   'job-posting':            'assets/modules/job-posting.[hash].js',
+  'leave':                  'assets/modules/leave.[hash].js',
+  'kpi-goal':               'assets/modules/kpi-goal.[hash].js',
+  'marketplace':            'assets/modules/marketplace.[hash].js',
+  'recruitment':            'assets/modules/recruitment.[hash].js',
 
 };
 
@@ -126,6 +130,10 @@ const CSS_OUTPUT = {
   'kc-item.css':                'assets/modules/kc-item.[hash].css',
   'sop.css':                    'assets/modules/sop.[hash].css',
   'job-posting.css':            'assets/modules/job-posting.[hash].css',
+  'leave.css':                  'assets/modules/leave.[hash].css',
+  'kpi-goal.css':               'assets/modules/kpi-goal.[hash].css',
+  'marketplace.css':            'assets/modules/marketplace.[hash].css',
+  'recruitment.css':            'assets/modules/recruitment.[hash].css',
 };
 
 // ─── Module input entries ─────────────────────────────────────────────
@@ -197,6 +205,18 @@ const MODULE_ENTRIES = [
   // JobPosting
   'Modules/JobPosting/resources/assets/sass/job-posting.scss',
   'Modules/JobPosting/resources/assets/js/job-posting.js',
+  // Leave
+  'Modules/Leave/resources/assets/sass/leave.scss',
+  'Modules/Leave/resources/assets/js/leave.js',
+  // KpiGoal
+  'Modules/KpiGoal/resources/assets/sass/kpi-goal.scss',
+  'Modules/KpiGoal/resources/assets/js/kpi-goal.js',
+  // Marketplace
+  'Modules/Marketplace/resources/assets/sass/marketplace.scss',
+  'Modules/Marketplace/resources/assets/js/marketplace.js',
+  // Recruitment
+  'Modules/Recruitment/resources/assets/sass/recruitment.scss',
+  'Modules/Recruitment/resources/assets/js/recruitment.js',
 ];
 
 // ─────────────────────────────────────────────────────────────────────

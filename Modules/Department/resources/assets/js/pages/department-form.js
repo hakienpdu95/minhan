@@ -22,7 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initFormValidation(FORM_SEL);
     _setupTabGuard(form);
-    initAllTomSelects(form);   // init mọi select.ts-init trong form
+    window.initAllDatePickers?.(form);   // init mọi input.fp-init trong form
+    initAllTomSelects(form);             // init mọi select.ts-init trong form
 });
 
 // ── Tab-Aware Submit Guard ─────────────────────────────────────────────────

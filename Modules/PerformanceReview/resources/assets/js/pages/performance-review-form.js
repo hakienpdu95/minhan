@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initAllTomSelects(form);
     _initTemplateTomSelect(form);
     _initFlatpickr(form);
+    _initJodit(form);
 });
 
 // ── Template TomSelect (manual — cần onChange → Alpine) ───────────────────────
@@ -48,6 +49,14 @@ function _initTemplateTomSelect(form) {
             } catch { /* Alpine not ready */ }
         },
     });
+}
+
+// ── Jodit rich-text editors ───────────────────────────────────────────────────
+
+function _initJodit(form) {
+    if (form.querySelector('.jodit-editor') && typeof initJoditAll === 'function') {
+        initJoditAll('.jodit-editor');
+    }
 }
 
 // ── Flatpickr date pickers ─────────────────────────────────────────────────────

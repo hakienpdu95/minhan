@@ -17,4 +17,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initFormValidation(FORM_SEL);
     initAllTomSelects(form);
+    _initJodit(form);
 });
+
+function _initJodit(form) {
+    if (form.querySelector('.jodit-editor') && typeof initJoditAll === 'function') {
+        initJoditAll('.jodit-editor');
+    }
+}

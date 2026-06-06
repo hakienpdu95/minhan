@@ -2,14 +2,16 @@
 @section('title', 'Tags Kho tri thức')
 
 @section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <span class="current">Tags KC</span>
-</nav>
+<div class="breadcrumbs text-sm px-6 pt-4 pb-0">
+    <ul>
+        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
+        <li class="font-semibold">Tags KC</li>
+    </ul>
+</div>
 @endsection
 
 @section('content')
+<div class="p-6">
 <div x-data="kcTagListPage({{ Js::from([
     'apiUrl'    => route('backend.api.kc-tags'),
     'canDelete' => auth()->user()->can('delete', \Modules\KcItem\Models\KcTag::class),
@@ -81,6 +83,7 @@
     </div>
 
 </div>
+</div>
 
 {{-- ── Delete confirm modal ─────────────────────────────────────────────── --}}
 <dialog id="kcTagDeleteModal" class="modal">
@@ -105,8 +108,9 @@
 @endpush
 
 @push('scripts')
-    @vite([
-        'resources/js/modules/tabulator.js',
-        'Modules/KcItem/resources/assets/js/kc-item.js',
-    ], 'build/backend')
+@vite([
+    'resources/js/modules/tabulator.js',
+    'Modules/KcItem/resources/assets/sass/kc-item.scss',
+    'Modules/KcItem/resources/assets/js/kc-item.js',
+], 'build/backend')
 @endpush

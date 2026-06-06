@@ -23,9 +23,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!form) return;
 
     initFormValidation(FORM_SEL);
+    window.initAllDatePickers?.(form);
     initAllTomSelects(form);
     _setupTabGuard(form);
+    _initJodit(form);
 });
+
+function _initJodit(form) {
+    if (form.querySelector('.jodit-editor') && typeof initJoditAll === 'function') {
+        initJoditAll('.jodit-editor');
+    }
+}
 
 // ── Tab-aware submit guard ─────────────────────────────────────────────────────
 

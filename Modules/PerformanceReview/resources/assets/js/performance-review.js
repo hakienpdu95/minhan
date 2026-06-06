@@ -5,3 +5,4 @@
 
 import './pages/performance-review-form.js';
 import './pages/performance-review-index.js';
+import './pages/review-template-form.js';

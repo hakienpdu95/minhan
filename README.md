@@ -66,4 +66,5 @@ php artisan db:seed
 
 php artisan module:make Auth
 
-# > Đọc file docs/form-ui-spec.md và implement theo đúng spec đó, áp dụng hoàn thiện cho views module Organization
+# > Đọc file docs/form-ui-spec.md và implement theo đúng spec đó, áp dụng hoàn thiện cho resources/views ở module Employee, nhớ cập nhật jodit cho textarea
+# > Tương tự, áp dụng hoàn thiện cho resources/views ở module Sop, nhớ cập nhật jodit cho textarea

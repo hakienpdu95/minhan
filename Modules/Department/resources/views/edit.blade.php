@@ -268,9 +268,10 @@
                             <label class="label py-0 pb-1.5">
                                 <span class="label-text font-medium">Ngày thành lập</span>
                             </label>
-                            <input type="date" name="effective_from"
-                                   value="{{ old('effective_from', $department->effective_from?->format('Y-m-d')) }}"
-                                   class="input input-bordered input-sm w-full @error('effective_from') input-error @enderror">
+                            <input type="text" name="effective_from" id="fp-effective-from"
+                                   value="{{ old('effective_from', $department->effective_from?->format('Y-m-d') ?? '') }}"
+                                   class="input input-bordered input-sm w-full fp-init @error('effective_from') input-error @enderror"
+                                   placeholder="DD/MM/YYYY">
                             @error('effective_from')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
@@ -278,9 +279,10 @@
                             <label class="label py-0 pb-1.5">
                                 <span class="label-text font-medium">Ngày giải thể</span>
                             </label>
-                            <input type="date" name="effective_to"
-                                   value="{{ old('effective_to', $department->effective_to?->format('Y-m-d')) }}"
-                                   class="input input-bordered input-sm w-full @error('effective_to') input-error @enderror">
+                            <input type="text" name="effective_to" id="fp-effective-to"
+                                   value="{{ old('effective_to', $department->effective_to?->format('Y-m-d') ?? '') }}"
+                                   class="input input-bordered input-sm w-full fp-init @error('effective_to') input-error @enderror"
+                                   placeholder="DD/MM/YYYY">
                             @error('effective_to')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
@@ -439,6 +441,7 @@
 @push('scripts')
     @vite([
         'resources/js/modules/toastify.js',
+        'resources/js/modules/flatpickr.js',
         'resources/js/modules/tom-select.js',
         'Modules/Department/resources/assets/js/department.js',
     ], 'build/backend')

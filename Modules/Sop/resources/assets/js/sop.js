@@ -1,3 +1,5 @@
+import { initAllTomSelects } from '@shared/tom-select-factory.js';
+
 document.addEventListener('alpine:init', () => {
 
     // ── Shared flowchart layout helpers ─────────────────────────────────────
@@ -872,4 +874,12 @@ document.addEventListener('alpine:init', () => {
             return this.connectSource?.id === node.id;
         },
     }));
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.querySelector('[data-sop-form]');
+    if (!form) return;
+    initAllTomSelects(form);
+    window.initAllDatePickers?.(form);
+    if (typeof initJoditAll === 'function') initJoditAll('.jodit-editor');
 });

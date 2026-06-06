@@ -50,4 +50,19 @@ class UpdateSopProcessData extends Data
             'expired_date'   => ['nullable', 'date', 'after_or_equal:effective_date'],
         ];
     }
+
+    public static function messages(): array
+    {
+        return [
+            'title.required'              => 'Tên quy trình là bắt buộc.',
+            'title.max'                   => 'Tên quy trình không được vượt quá 300 ký tự.',
+            'owner_id.required'           => 'Người phụ trách là bắt buộc.',
+            'owner_id.exists'             => 'Người phụ trách không tồn tại trong hệ thống.',
+            'department_id.exists'        => 'Phòng ban không hợp lệ.',
+            'branch_id.exists'            => 'Chi nhánh không hợp lệ.',
+            'effective_date.date'         => 'Ngày hiệu lực không đúng định dạng.',
+            'expired_date.date'           => 'Ngày hết hạn không đúng định dạng.',
+            'expired_date.after_or_equal' => 'Ngày hết hạn phải sau hoặc bằng ngày hiệu lực.',
+        ];
+    }
 }

@@ -141,10 +141,15 @@
                     <label class="label py-0 pb-1.5">
                         <span class="label-text font-medium">Mô tả vai trò / trách nhiệm</span>
                     </label>
-                    <textarea name="description" rows="4"
-                              {{ $jobTitle->is_locked ? 'disabled' : '' }}
+                    @if($jobTitle->is_locked)
+                    <textarea name="description" rows="4" disabled
                               class="textarea textarea-bordered textarea-sm w-full @error('description') textarea-error @enderror"
-                              placeholder="Mô tả ngắn về vai trò và trách nhiệm của chức danh này...">{{ old('description', $jobTitle->description) }}</textarea>
+                    >{{ old('description', $jobTitle->description) }}</textarea>
+                    @else
+                    <textarea name="description"
+                              class="jodit-editor textarea textarea-bordered textarea-sm w-full @error('description') textarea-error @enderror"
+                              data-jodit-preset="compact">{{ old('description', $jobTitle->description) }}</textarea>
+                    @endif
                     @error('description')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                 </div>
 
@@ -219,6 +224,7 @@
     @vite([
         'resources/js/modules/toastify.js',
         'resources/js/modules/tom-select.js',
+        'resources/js/modules/jodit.js',
         'Modules/JobTitle/resources/assets/js/job-title.js',
     ], 'build/backend')
 @endpush

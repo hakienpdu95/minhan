@@ -1,4 +1,7 @@
-// SOP module styles — minimal for Phase 3
+// SOP module styles
+
+@use 'form-patterns';
+@use 'tom-select';
 
 .sop-flowchart-canvas {
     min-height: 180px;

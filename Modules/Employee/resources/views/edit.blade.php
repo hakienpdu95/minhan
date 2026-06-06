@@ -296,8 +296,10 @@
                             <label class="label py-0 pb-1.5">
                                 <span class="label-text font-medium">Ngày sinh</span>
                             </label>
-                            <input type="date" name="date_of_birth" value="{{ old('date_of_birth', $employee->date_of_birth?->format('Y-m-d')) }}"
-                                   class="input input-bordered input-sm w-full @error('date_of_birth') input-error @enderror">
+                            <input type="text" name="date_of_birth" id="fp-date-of-birth"
+                                   value="{{ old('date_of_birth', $employee->date_of_birth?->format('Y-m-d') ?? '') }}"
+                                   class="input input-bordered input-sm w-full fp-init @error('date_of_birth') input-error @enderror"
+                                   placeholder="DD/MM/YYYY">
                             @error('date_of_birth')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
@@ -316,8 +318,10 @@
                             <label class="label py-0 pb-1.5">
                                 <span class="label-text font-medium">Ngày cấp CCCD</span>
                             </label>
-                            <input type="date" name="national_id_issued" value="{{ old('national_id_issued', $employee->national_id_issued?->format('Y-m-d')) }}"
-                                   class="input input-bordered input-sm w-full @error('national_id_issued') input-error @enderror">
+                            <input type="text" name="national_id_issued" id="fp-national-id-issued"
+                                   value="{{ old('national_id_issued', $employee->national_id_issued?->format('Y-m-d') ?? '') }}"
+                                   class="input input-bordered input-sm w-full fp-init @error('national_id_issued') input-error @enderror"
+                                   placeholder="DD/MM/YYYY">
                             @error('national_id_issued')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
@@ -403,8 +407,10 @@
                             <label class="label py-0 pb-1.5">
                                 <span class="label-text font-medium">Ngày vào làm</span>
                             </label>
-                            <input type="date" name="hired_at" value="{{ old('hired_at', $employee->hired_at?->format('Y-m-d')) }}"
-                                   class="input input-bordered input-sm w-full @error('hired_at') input-error @enderror">
+                            <input type="text" name="hired_at" id="fp-hired-at"
+                                   value="{{ old('hired_at', $employee->hired_at?->format('Y-m-d') ?? '') }}"
+                                   class="input input-bordered input-sm w-full fp-init @error('hired_at') input-error @enderror"
+                                   placeholder="DD/MM/YYYY">
                             @error('hired_at')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
@@ -412,8 +418,10 @@
                             <label class="label py-0 pb-1.5">
                                 <span class="label-text font-medium">Kết thúc thử việc</span>
                             </label>
-                            <input type="date" name="probation_end_date" value="{{ old('probation_end_date', $employee->probation_end_date?->format('Y-m-d')) }}"
-                                   class="input input-bordered input-sm w-full @error('probation_end_date') input-error @enderror">
+                            <input type="text" name="probation_end_date" id="fp-probation-end-date"
+                                   value="{{ old('probation_end_date', $employee->probation_end_date?->format('Y-m-d') ?? '') }}"
+                                   class="input input-bordered input-sm w-full fp-init @error('probation_end_date') input-error @enderror"
+                                   placeholder="DD/MM/YYYY">
                             @error('probation_end_date')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
@@ -421,8 +429,10 @@
                             <label class="label py-0 pb-1.5">
                                 <span class="label-text font-medium">Bắt đầu hợp đồng</span>
                             </label>
-                            <input type="date" name="contract_start" value="{{ old('contract_start', $employee->contract_start?->format('Y-m-d')) }}"
-                                   class="input input-bordered input-sm w-full @error('contract_start') input-error @enderror">
+                            <input type="text" name="contract_start" id="fp-contract-start"
+                                   value="{{ old('contract_start', $employee->contract_start?->format('Y-m-d') ?? '') }}"
+                                   class="input input-bordered input-sm w-full fp-init @error('contract_start') input-error @enderror"
+                                   placeholder="DD/MM/YYYY">
                             @error('contract_start')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
@@ -430,8 +440,10 @@
                             <label class="label py-0 pb-1.5">
                                 <span class="label-text font-medium">Hết hạn hợp đồng</span>
                             </label>
-                            <input type="date" name="contract_end" value="{{ old('contract_end', $employee->contract_end?->format('Y-m-d')) }}"
-                                   class="input input-bordered input-sm w-full @error('contract_end') input-error @enderror">
+                            <input type="text" name="contract_end" id="fp-contract-end"
+                                   value="{{ old('contract_end', $employee->contract_end?->format('Y-m-d') ?? '') }}"
+                                   class="input input-bordered input-sm w-full fp-init @error('contract_end') input-error @enderror"
+                                   placeholder="DD/MM/YYYY">
                             <p class="mt-1 text-base-content/40 text-xs">Để trống = không thời hạn</p>
                             @error('contract_end')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
@@ -544,9 +556,9 @@
                         <label class="label py-0 pb-1.5">
                             <span class="label-text font-medium">Ghi chú nội bộ HR</span>
                         </label>
-                        <textarea name="notes" rows="3"
-                                  class="textarea textarea-bordered textarea-sm w-full @error('notes') textarea-error @enderror"
-                                  placeholder="Ghi chú thêm về nhân viên...">{{ old('notes', $employee->notes) }}</textarea>
+                        <textarea name="notes"
+                                  class="jodit-editor textarea textarea-bordered textarea-sm w-full @error('notes') textarea-error @enderror"
+                                  data-jodit-preset="standard">{{ old('notes', $employee->notes) }}</textarea>
                         <p class="mt-1 text-xs text-base-content/40">Không hiển thị với nhân viên</p>
                         @error('notes')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
@@ -629,6 +641,8 @@
     @vite([
         'resources/js/modules/toastify.js',
         'resources/js/modules/tom-select.js',
+        'resources/js/modules/flatpickr.js',
+        'resources/js/modules/jodit.js',
         'Modules/Employee/resources/assets/js/employee.js',
     ], 'build/backend')
 @endpush

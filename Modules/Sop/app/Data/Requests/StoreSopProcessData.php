@@ -52,11 +52,29 @@ class StoreSopProcessData extends Data
                     ->where('organization_id', $orgId)
                     ->whereNull('deleted_at'),
             ],
-            'owner_id'     => ['required', 'integer', Rule::exists('users', 'id')],
+            'owner_id'      => ['required', 'integer', Rule::exists('users', 'id')],
             'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')->where('organization_id', $orgId)],
-            'branch_id'    => ['nullable', 'integer', Rule::exists('branches', 'id')->where('organization_id', $orgId)],
+            'branch_id'     => ['nullable', 'integer', Rule::exists('branches', 'id')->where('organization_id', $orgId)],
             'effective_date' => ['nullable', 'date'],
             'expired_date'   => ['nullable', 'date', 'after_or_equal:effective_date'],
+        ];
+    }
+
+    public static function messages(): array
+    {
+        return [
+            'code.required'               => 'Mã SOP là bắt buộc.',
+            'code.max'                    => 'Mã SOP không được vượt quá 50 ký tự.',
+            'code.unique'                 => 'Mã SOP này đã được sử dụng trong tổ chức.',
+            'title.required'              => 'Tên quy trình là bắt buộc.',
+            'title.max'                   => 'Tên quy trình không được vượt quá 300 ký tự.',
+            'owner_id.required'           => 'Người phụ trách là bắt buộc.',
+            'owner_id.exists'             => 'Người phụ trách không tồn tại trong hệ thống.',
+            'department_id.exists'        => 'Phòng ban không hợp lệ.',
+            'branch_id.exists'            => 'Chi nhánh không hợp lệ.',
+            'effective_date.date'         => 'Ngày hiệu lực không đúng định dạng.',
+            'expired_date.date'           => 'Ngày hết hạn không đúng định dạng.',
+            'expired_date.after_or_equal' => 'Ngày hết hạn phải sau hoặc bằng ngày hiệu lực.',
         ];
     }
 }

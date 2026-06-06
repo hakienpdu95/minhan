@@ -4,3 +4,4 @@
  */
 
 import './pages/job-posting-index.js';
+import './pages/job-posting-form.js';

@@ -124,9 +124,9 @@
                     <label class="label py-0 pb-1.5">
                         <span class="label-text font-medium">Mô tả vai trò / trách nhiệm</span>
                     </label>
-                    <textarea name="description" rows="4"
-                              class="textarea textarea-bordered textarea-sm w-full @error('description') textarea-error @enderror"
-                              placeholder="Mô tả ngắn về vai trò và trách nhiệm của chức danh này...">{{ old('description') }}</textarea>
+                    <textarea name="description"
+                              class="jodit-editor textarea textarea-bordered textarea-sm w-full @error('description') textarea-error @enderror"
+                              data-jodit-preset="compact">{{ old('description') }}</textarea>
                     @error('description')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                 </div>
 
@@ -196,6 +196,7 @@
     @vite([
         'resources/js/modules/toastify.js',
         'resources/js/modules/tom-select.js',
+        'resources/js/modules/jodit.js',
         'Modules/JobTitle/resources/assets/js/job-title.js',
     ], 'build/backend')
 @endpush

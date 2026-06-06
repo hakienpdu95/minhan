@@ -26,7 +26,16 @@ document.addEventListener('DOMContentLoaded', () => {
     _setupTabGuard(form);
     initAllTomSelects(form);
     _initFlatpickr(form);
+    _initJodit(form);
 });
+
+// ── Jodit rich-text editors ───────────────────────────────────────────────────
+
+function _initJodit(form) {
+    if (form.querySelector('.jodit-editor') && typeof initJoditAll === 'function') {
+        initJoditAll('.jodit-editor');
+    }
+}
 
 // ── Flatpickr date pickers ─────────────────────────────────────────────────────
 

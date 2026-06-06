@@ -178,8 +178,8 @@
                             </label>
                             <input type="text" name="period_start" id="fp-period-start"
                                    value="{{ old('period_start', $review->period_start?->format('Y-m-d') ?? '') }}"
-                                   class="input input-bordered input-sm w-full @error('period_start') input-error @enderror"
-                                   placeholder="DD/MM/YYYY" readonly>
+                                   class="input input-bordered input-sm w-full fp-init @error('period_start') input-error @enderror"
+                                   placeholder="DD/MM/YYYY">
                             @error('period_start')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
@@ -189,8 +189,8 @@
                             </label>
                             <input type="text" name="period_end" id="fp-period-end"
                                    value="{{ old('period_end', $review->period_end?->format('Y-m-d') ?? '') }}"
-                                   class="input input-bordered input-sm w-full @error('period_end') input-error @enderror"
-                                   placeholder="DD/MM/YYYY" readonly>
+                                   class="input input-bordered input-sm w-full fp-init @error('period_end') input-error @enderror"
+                                   placeholder="DD/MM/YYYY">
                             @error('period_end')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
@@ -216,9 +216,9 @@
                             <span class="label-text font-medium">Điểm mạnh</span>
                             <span class="label-text-alt text-xs text-base-content/40">Không bắt buộc</span>
                         </label>
-                        <textarea name="strengths" rows="4"
-                                  class="textarea textarea-bordered textarea-sm w-full"
-                                  placeholder="Ghi nhận những điểm mạnh nổi bật...">{{ old('strengths', $review->strengths) }}</textarea>
+                        <textarea name="strengths"
+                                  class="jodit-editor textarea textarea-bordered textarea-sm w-full @error('strengths') textarea-error @enderror"
+                                  data-jodit-preset="compact">{{ old('strengths', $review->strengths) }}</textarea>
                     </div>
 
                     <div class="form-control">
@@ -226,9 +226,9 @@
                             <span class="label-text font-medium">Cần cải thiện</span>
                             <span class="label-text-alt text-xs text-base-content/40">Không bắt buộc</span>
                         </label>
-                        <textarea name="improvements" rows="4"
-                                  class="textarea textarea-bordered textarea-sm w-full"
-                                  placeholder="Những điểm cần cải thiện...">{{ old('improvements', $review->improvements) }}</textarea>
+                        <textarea name="improvements"
+                                  class="jodit-editor textarea textarea-bordered textarea-sm w-full @error('improvements') textarea-error @enderror"
+                                  data-jodit-preset="compact">{{ old('improvements', $review->improvements) }}</textarea>
                     </div>
 
                     <div class="form-control">
@@ -236,9 +236,9 @@
                             <span class="label-text font-medium">Mục tiêu kỳ sau</span>
                             <span class="label-text-alt text-xs text-base-content/40">Không bắt buộc</span>
                         </label>
-                        <textarea name="goals_next_period" rows="4"
-                                  class="textarea textarea-bordered textarea-sm w-full"
-                                  placeholder="Mục tiêu đặt ra cho kỳ đánh giá tiếp theo...">{{ old('goals_next_period', $review->goals_next_period) }}</textarea>
+                        <textarea name="goals_next_period"
+                                  class="jodit-editor textarea textarea-bordered textarea-sm w-full @error('goals_next_period') textarea-error @enderror"
+                                  data-jodit-preset="compact">{{ old('goals_next_period', $review->goals_next_period) }}</textarea>
                     </div>
 
                     <div class="form-control">
@@ -246,9 +246,9 @@
                             <span class="label-text font-medium">Phản hồi nhân viên</span>
                             <span class="label-text-alt text-xs text-base-content/40">Không bắt buộc</span>
                         </label>
-                        <textarea name="employee_comment" rows="3"
-                                  class="textarea textarea-bordered textarea-sm w-full"
-                                  placeholder="Ý kiến phản hồi từ nhân viên...">{{ old('employee_comment', $review->employee_comment) }}</textarea>
+                        <textarea name="employee_comment"
+                                  class="jodit-editor textarea textarea-bordered textarea-sm w-full @error('employee_comment') textarea-error @enderror"
+                                  data-jodit-preset="compact">{{ old('employee_comment', $review->employee_comment) }}</textarea>
                     </div>
 
                     {{-- Tab footer: prev / next --}}
@@ -379,6 +379,7 @@
         'resources/js/modules/toastify.js',
         'resources/js/modules/tom-select.js',
         'resources/js/modules/flatpickr.js',
+        'resources/js/modules/jodit.js',
         'Modules/PerformanceReview/resources/assets/js/performance-review.js',
     ], 'build/backend')
 @endpush
