@@ -2,15 +2,6 @@
 
 @section('title', 'Offer Letter')
 
-@section('breadcrumb')
-<div class="breadcrumbs text-sm px-6 pt-4 pb-0">
-    <ul>
-        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
-        <li><a href="{{ route('backend.recruitment.applications.show', $offer->application) }}">{{ $offer->application?->candidate?->full_name }}</a></li>
-        <li class="font-semibold">Offer Letter</li>
-    </ul>
-</div>
-@endsection
 
 @section('content')
 <div x-data="rcOfferShow" class="p-6 max-w-3xl space-y-5">

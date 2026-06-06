@@ -2,15 +2,6 @@
 
 @section('title', $listing->title . ' — Marketplace')
 
-@section('breadcrumb')
-<div class="breadcrumbs text-sm px-6 pt-4">
-    <ul>
-        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
-        <li><a href="{{ route('backend.marketplace.listings.index') }}">Marketplace</a></li>
-        <li>{{ Str::limit($listing->title, 50) }}</li>
-    </ul>
-</div>
-@endsection
 
 @section('content')
 <div class="px-6 py-4 max-w-4xl mx-auto space-y-4">

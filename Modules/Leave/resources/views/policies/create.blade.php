@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Thêm chính sách nghỉ phép')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.leave.policies.index') }}">Chính sách nghỉ phép</a>
-    <span class="sep">›</span>
-    <span class="current">Thêm mới</span>
-</nav>
-@endsection
 
 @push('styles')
     @vite(['Modules/Leave/resources/assets/sass/leave.scss'], 'build/backend')

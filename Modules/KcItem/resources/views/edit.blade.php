@@ -1,16 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Sửa: ' . $kcItem->title)
 
-@section('breadcrumb')
-<div class="breadcrumbs text-sm px-6 pt-4 pb-0">
-    <ul>
-        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
-        <li><a href="{{ route('backend.kc-items.index') }}">Kho tri thức</a></li>
-        <li><a href="{{ route('backend.kc-items.show', $kcItem) }}">{{ Str::limit($kcItem->title, 30) }}</a></li>
-        <li class="font-semibold">Chỉnh sửa</li>
-    </ul>
-</div>
-@endsection
 
 @section('content')
 <div class="p-6">

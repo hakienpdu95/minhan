@@ -1,16 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Sửa SOP — ' . $sop->code)
 
-@section('breadcrumb')
-<div class="breadcrumbs text-sm px-6 pt-4 pb-0">
-    <ul>
-        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
-        <li><a href="{{ route('backend.sop.index') }}">Quy trình SOP</a></li>
-        <li><a href="{{ route('backend.sop.show', $sop) }}">{{ $sop->code }}</a></li>
-        <li class="font-semibold">Chỉnh sửa</li>
-    </ul>
-</div>
-@endsection
 
 @section('content')
 <div class="p-6">

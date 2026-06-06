@@ -1,16 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Chỉnh sửa phân quyền')
 
-@section('breadcrumb')
-<div class="breadcrumbs text-sm px-6 pt-4 pb-0">
-    <ul>
-        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
-        <li><a href="{{ route('backend.role-scopes.index') }}">Phân quyền phạm vi</a></li>
-        <li><a href="{{ route('backend.role-scopes.show', $roleScope) }}">Chi tiết #{{ $roleScope->id }}</a></li>
-        <li class="font-semibold">Chỉnh sửa</li>
-    </ul>
-</div>
-@endsection
 
 @section('content')
 <div class="p-6">

@@ -1,13 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Activity Log')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <span class="current">Activity Log</span>
-</nav>
-@endsection
 
 @section('content')
 <div x-data="activityLogIndex">

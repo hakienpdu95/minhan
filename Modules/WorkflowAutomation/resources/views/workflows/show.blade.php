@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', $workflow->name)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('workflows.index') }}">Workflow</a>
-    <span class="sep">›</span>
-    <span class="current">{{ $workflow->name }}</span>
-</nav>
-@endsection
 
 @section('content')
 @php

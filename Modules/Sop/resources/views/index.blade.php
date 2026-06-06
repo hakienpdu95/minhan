@@ -1,13 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Quy trình SOP')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <span class="current">Quy trình SOP</span>
-</nav>
-@endsection
 
 @section('content')
 <div x-data="sopListPage" x-init="init()">

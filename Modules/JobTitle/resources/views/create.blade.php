@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Thêm chức danh mới')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.job-titles.index') }}">Chức danh</a>
-    <span class="sep">›</span>
-    <span class="current">Thêm mới</span>
-</nav>
-@endsection
 
 @push('styles')
     @vite(['Modules/JobTitle/resources/assets/sass/job-title.scss'], 'build/backend')

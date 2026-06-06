@@ -1,16 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Chỉnh sửa danh mục')
 
-@section('breadcrumb')
-<div class="breadcrumbs text-sm px-6 pt-4 pb-0">
-    <ul>
-        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
-        <li><a href="{{ route('backend.kc-categories.index') }}">Danh mục KC</a></li>
-        <li><a href="{{ route('backend.kc-categories.show', $kcCategory) }}">{{ Str::limit($kcCategory->name, 30) }}</a></li>
-        <li class="font-semibold">Chỉnh sửa</li>
-    </ul>
-</div>
-@endsection
 
 @section('content')
 <div class="p-6">

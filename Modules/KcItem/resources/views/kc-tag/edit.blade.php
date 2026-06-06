@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Sửa tag: ' . $kcTag->name)
 
-@section('breadcrumb')
-<div class="breadcrumbs text-sm px-6 pt-4 pb-0">
-    <ul>
-        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
-        <li><a href="{{ route('backend.kc-tags.index') }}">Tags KC</a></li>
-        <li class="font-semibold">{{ $kcTag->name }}</li>
-    </ul>
-</div>
-@endsection
 
 @section('content')
 <div class="p-6">

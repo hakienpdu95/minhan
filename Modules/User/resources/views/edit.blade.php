@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Sửa tài khoản — ' . $user->name)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.users.index') }}">Tài khoản</a>
-    <span class="sep">›</span>
-    <span class="current">{{ $user->name }}</span>
-</nav>
-@endsection
 
 @php
 $avatarUrl = 'https://api.dicebear.com/9.x/initials/svg?seed=' . urlencode($user->name)

@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', $jobPost->title)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.job-posts.index') }}">Tin tuyển dụng</a>
-    <span class="sep">›</span>
-    <span class="current">{{ $jobPost->code }}</span>
-</nav>
-@endsection
 
 @section('content')
 <div x-data="{ activeTab: 'detail' }">

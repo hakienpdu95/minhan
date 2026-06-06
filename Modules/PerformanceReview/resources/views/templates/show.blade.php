@@ -1,17 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Chi tiết mẫu — ' . $template->name)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.performance-reviews.index') }}">Đánh giá hiệu suất</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.review-templates.index') }}">Mẫu đánh giá</a>
-    <span class="sep">›</span>
-    <span class="current">{{ $template->name }}</span>
-</nav>
-@endsection
 
 @section('content')
 

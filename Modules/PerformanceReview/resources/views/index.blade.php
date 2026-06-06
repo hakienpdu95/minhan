@@ -1,13 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Đánh giá hiệu suất')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <span class="current">Đánh giá hiệu suất</span>
-</nav>
-@endsection
 
 @section('content')
 <div x-data="performanceReviewListPage({{ Js::from([

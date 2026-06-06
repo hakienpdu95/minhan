@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Tạo tin đăng mới — Marketplace')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.marketplace.listings.index') }}">Marketplace</a>
-    <span class="sep">›</span>
-    <span class="current">Tạo tin mới</span>
-</nav>
-@endsection
 
 @section('content')
 <div x-data="{

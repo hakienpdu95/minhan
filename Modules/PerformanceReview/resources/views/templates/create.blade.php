@@ -1,17 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Tạo mẫu đánh giá')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.performance-reviews.index') }}">Đánh giá hiệu suất</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.review-templates.index') }}">Mẫu đánh giá</a>
-    <span class="sep">›</span>
-    <span class="current">Tạo mới</span>
-</nav>
-@endsection
 
 @push('styles')
     @vite(['Modules/PerformanceReview/resources/assets/sass/performance-review.scss'], 'build/backend')

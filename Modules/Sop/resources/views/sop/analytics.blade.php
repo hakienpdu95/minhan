@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Analytics — SOP')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.sop.index') }}">Quy trình SOP</a>
-    <span class="sep">›</span>
-    <span class="current">Analytics</span>
-</nav>
-@endsection
 
 @section('content')
 @php

@@ -1,17 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Chỉnh sửa dự án — ' . $project->name)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.projects.index') }}">Dự án</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.projects.show', $project) }}">{{ $project->name }}</a>
-    <span class="sep">›</span>
-    <span class="current">Chỉnh sửa</span>
-</nav>
-@endsection
 
 @section('content')
 <div x-data="{

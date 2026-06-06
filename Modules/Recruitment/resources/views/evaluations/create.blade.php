@@ -2,15 +2,6 @@
 
 @section('title', 'Nộp đánh giá phỏng vấn')
 
-@section('breadcrumb')
-<div class="breadcrumbs text-sm px-6 pt-4 pb-0">
-    <ul>
-        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
-        <li><a href="{{ route('backend.recruitment.interviews.show', $interview) }}">Phỏng vấn</a></li>
-        <li class="font-semibold">Đánh giá</li>
-    </ul>
-</div>
-@endsection
 
 @section('content')
 

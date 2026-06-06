@@ -2,15 +2,6 @@
 
 @section('title', $candidate->full_name . ' — Ứng viên')
 
-@section('breadcrumb')
-<div class="breadcrumbs text-sm px-6 pt-4 pb-0">
-    <ul>
-        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
-        <li><a href="{{ route('backend.recruitment.candidates.index') }}">Ứng viên</a></li>
-        <li class="font-semibold">{{ $candidate->full_name }}</li>
-    </ul>
-</div>
-@endsection
 
 @section('content')
 <div x-data="rcCandidateShow" class="p-6 space-y-5 max-w-5xl">

@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Thêm tài khoản')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.users.index') }}">Tài khoản</a>
-    <span class="sep">›</span>
-    <span class="current">Thêm mới</span>
-</nav>
-@endsection
 
 @section('content')
 <div x-data="createUserPage({{ Js::from([

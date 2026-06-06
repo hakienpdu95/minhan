@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', $assessment->assessment_code)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('assessments.index') }}">Assessment</a>
-    <span class="sep">›</span>
-    <span class="current">{{ $assessment->assessment_code }}</span>
-</nav>
-@endsection
 
 @section('content')
 <div class="flex items-start justify-between mb-6">

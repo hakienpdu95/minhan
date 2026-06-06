@@ -1,13 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Mục tiêu KPI')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <span class="current">Mục tiêu KPI</span>
-</nav>
-@endsection
 
 @section('content')
 <div>

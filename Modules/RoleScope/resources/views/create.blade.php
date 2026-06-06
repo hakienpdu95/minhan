@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Cấp quyền phạm vi mới')
 
-@section('breadcrumb')
-<div class="breadcrumbs text-sm px-6 pt-4 pb-0">
-    <ul>
-        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
-        <li><a href="{{ route('backend.role-scopes.index') }}">Phân quyền phạm vi</a></li>
-        <li class="font-semibold">Cấp quyền mới</li>
-    </ul>
-</div>
-@endsection
 
 @section('content')
 <div x-data="grantRoleScopeForm({{ Js::from([

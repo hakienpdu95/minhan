@@ -1,17 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Sửa chi nhánh: ' . $branch->name)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.branches.index') }}">Chi nhánh</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.branches.show', $branch) }}">{{ $branch->name }}</a>
-    <span class="sep">›</span>
-    <span class="current">Sửa</span>
-</nav>
-@endsection
 
 @push('styles')
     @vite(['Modules/Branch/resources/assets/sass/branch.scss'], 'build/backend')

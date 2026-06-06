@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Chi nhánh: ' . $branch->name)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.branches.index') }}">Chi nhánh</a>
-    <span class="sep">›</span>
-    <span class="current">{{ $branch->name }}</span>
-</nav>
-@endsection
 
 @section('content')
 

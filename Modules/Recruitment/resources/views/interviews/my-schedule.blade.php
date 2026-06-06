@@ -2,14 +2,6 @@
 
 @section('title', 'Lịch phỏng vấn của tôi')
 
-@section('breadcrumb')
-<div class="breadcrumbs text-sm px-6 pt-4 pb-0">
-    <ul>
-        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
-        <li class="font-semibold">Lịch phỏng vấn của tôi</li>
-    </ul>
-</div>
-@endsection
 
 @section('content')
 <div class="p-6 max-w-3xl">

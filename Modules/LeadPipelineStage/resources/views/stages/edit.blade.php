@@ -1,17 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Sửa tình trạng — ' . $stage->label)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('lead.index') }}">Cơ hội</a>
-    <span class="sep">›</span>
-    <a href="{{ route('lead-pipeline-stage.index') }}">Pipeline Stages</a>
-    <span class="sep">›</span>
-    <span class="current">{{ $stage->label }}</span>
-</nav>
-@endsection
 
 @section('content')
 

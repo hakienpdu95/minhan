@@ -1,13 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Kho tri thức')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <span class="current">Kho tri thức</span>
-</nav>
-@endsection
 
 @section('content')
 <div x-data="kcItemListPage({{ Js::from([

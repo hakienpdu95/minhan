@@ -2,17 +2,6 @@
 
 @section('title', 'API Tokens — ' . $survey->title)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.surveys.index') }}">Khảo sát</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.surveys.edit', $survey) }}">{{ Str::limit($survey->title, 35) }}</a>
-    <span class="sep">›</span>
-    <span class="current">API Tokens</span>
-</nav>
-@endsection
 
 @section('content')
 <div

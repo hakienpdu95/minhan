@@ -6,17 +6,6 @@
 
 @section('title', 'Cấu hình — ' . $assessmentCode)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('assessments.index') }}">Assessment</a>
-    <span class="sep">›</span>
-    
-    <span class="sep">›</span>
-    <span class="current">Cấu hình</span>
-</nav>
-@endsection
 
 @section('content')
 <div

@@ -1,13 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Quản lý Assessment')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <span class="current">Assessment</span>
-</nav>
-@endsection
 
 @section('content')
 <div class="flex items-center justify-between mb-6">

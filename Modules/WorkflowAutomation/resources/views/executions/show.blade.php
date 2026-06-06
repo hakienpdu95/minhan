@@ -1,17 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Execution ' . substr($execution->run_id, 0, 8))
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('workflows.index') }}">Workflow</a>
-    <span class="sep">›</span>
-    <a href="{{ route('workflows.executions', $execution->workflow_id) }}">Lịch sử</a>
-    <span class="sep">›</span>
-    <span class="current">{{ substr($execution->run_id, 0, 8) }}…</span>
-</nav>
-@endsection
 
 @section('content')
 @php

@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Tạo mục tiêu KPI')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.kpi.goals.index') }}">Mục tiêu KPI</a>
-    <span class="sep">›</span>
-    <span class="current">Tạo mới</span>
-</nav>
-@endsection
 
 @push('styles')
     @vite(['Modules/KpiGoal/resources/assets/sass/kpi-goal.scss'], 'build/backend')

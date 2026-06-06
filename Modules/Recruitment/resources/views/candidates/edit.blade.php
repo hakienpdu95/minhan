@@ -2,16 +2,6 @@
 
 @section('title', 'Chỉnh sửa — ' . $candidate->full_name)
 
-@section('breadcrumb')
-<div class="breadcrumbs text-sm px-6 pt-4 pb-0">
-    <ul>
-        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
-        <li><a href="{{ route('backend.recruitment.candidates.index') }}">Ứng viên</a></li>
-        <li><a href="{{ route('backend.recruitment.candidates.show', $candidate) }}">{{ $candidate->full_name }}</a></li>
-        <li class="font-semibold">Chỉnh sửa</li>
-    </ul>
-</div>
-@endsection
 
 @section('content')
 <div

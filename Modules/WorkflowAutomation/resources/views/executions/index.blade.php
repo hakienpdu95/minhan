@@ -1,17 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Lịch sử chạy — ' . $workflow->name)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('workflows.index') }}">Workflow</a>
-    <span class="sep">›</span>
-    <a href="{{ route('workflows.show', $workflow) }}">{{ $workflow->name }}</a>
-    <span class="sep">›</span>
-    <span class="current">Lịch sử chạy</span>
-</nav>
-@endsection
 
 @section('content')
 <div x-data="wfExecListPage">

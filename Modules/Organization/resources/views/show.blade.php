@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', $organization->name)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.organizations.index') }}">Tổ chức</a>
-    <span class="sep">›</span>
-    <span class="current">{{ Str::limit($organization->name, 40) }}</span>
-</nav>
-@endsection
 
 @section('content')
 

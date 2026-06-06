@@ -1,14 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Tags Kho tri thức')
 
-@section('breadcrumb')
-<div class="breadcrumbs text-sm px-6 pt-4 pb-0">
-    <ul>
-        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
-        <li class="font-semibold">Tags KC</li>
-    </ul>
-</div>
-@endsection
 
 @section('content')
 <div class="p-6">

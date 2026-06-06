@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Phòng ban: ' . $department->name)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.departments.index') }}">Phòng ban</a>
-    <span class="sep">›</span>
-    <span class="current">{{ $department->name }}</span>
-</nav>
-@endsection
 
 @section('content')
 

@@ -1,13 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Danh sách tổ chức')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <span class="current">Tổ chức</span>
-</nav>
-@endsection
 
 @section('content')
 <div x-data="orgListPage({{ Js::from([

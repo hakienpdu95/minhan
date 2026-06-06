@@ -1,13 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Phân quyền theo phạm vi')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <span class="current">Phân quyền phạm vi</span>
-</nav>
-@endsection
 
 @section('content')
 <div x-data="roleScopeListPage({{ Js::from([

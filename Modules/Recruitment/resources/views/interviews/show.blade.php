@@ -2,16 +2,6 @@
 
 @section('title', 'Chi tiết phỏng vấn')
 
-@section('breadcrumb')
-<div class="breadcrumbs text-sm px-6 pt-4 pb-0">
-    <ul>
-        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
-        <li><a href="{{ route('backend.recruitment.candidates.index') }}">Ứng viên</a></li>
-        <li><a href="{{ route('backend.recruitment.applications.show', $interview->application) }}">{{ $interview->application?->candidate?->full_name }}</a></li>
-        <li class="font-semibold">Phỏng vấn</li>
-    </ul>
-</div>
-@endsection
 
 @section('content')
 <div x-data="rcInterviewShow" class="p-6 space-y-5 max-w-4xl">

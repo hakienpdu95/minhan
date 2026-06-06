@@ -19,9 +19,9 @@
     <div class="main-area" id="mainArea">
         @include('layouts.partials.header')
         <main class="page-content">
-            @hasSection('breadcrumb')
-                @yield('breadcrumb')
-            @endif
+            @section('breadcrumb')
+                <x-breadcrumb />
+            @show
             @yield('content')
         </main>
         @include('layouts.partials.footer')

@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Log #' . $log->id)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('activitylog.index') }}">Activity Log</a>
-    <span class="sep">›</span>
-    <span class="current">#{{ $log->id }}</span>
-</nav>
-@endsection
 
 @section('content')
 <div class="space-y-5 max-w-4xl">

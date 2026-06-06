@@ -2,15 +2,6 @@
 
 @section('title', 'Marketplace Analytics')
 
-@section('breadcrumb')
-<div class="breadcrumbs text-sm px-6 pt-4">
-    <ul>
-        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
-        <li><a href="{{ route('backend.marketplace.listings.index') }}">Marketplace</a></li>
-        <li>Analytics</li>
-    </ul>
-</div>
-@endsection
 
 @section('content')
 <div class="px-6 py-4 max-w-6xl mx-auto space-y-6">

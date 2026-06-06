@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Quản lý Tags')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('lead.index') }}">Cơ hội</a>
-    <span class="sep">›</span>
-    <span class="current">Quản lý Tags</span>
-</nav>
-@endsection
 
 @section('content')
 

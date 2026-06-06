@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Thêm Assessment')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('assessments.index') }}">Assessment</a>
-    <span class="sep">›</span>
-    <span class="current">Thêm mới</span>
-</nav>
-@endsection
 
 @section('content')
 <div x-data="assessmentForm({{ Js::from([

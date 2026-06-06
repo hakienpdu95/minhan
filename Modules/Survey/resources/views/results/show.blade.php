@@ -2,21 +2,6 @@
 
 @section('title', 'Kết quả #' . $response->id . ' — ' . $survey->title)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.surveys.index') }}">Khảo sát</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.surveys.edit', $survey) }}">{{ Str::limit($survey->title, 35) }}</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.surveys.responses.index', $survey) }}">Responses</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.surveys.responses.show', [$survey, $response]) }}">#{{ $response->id }}</a>
-    <span class="sep">›</span>
-    <span class="current">Kết quả chấm điểm</span>
-</nav>
-@endsection
 
 @section('content')
 <div class="space-y-5 max-w-4xl" x-data="resultShowPage({{ $response->id }}, {{ $survey->id }})">

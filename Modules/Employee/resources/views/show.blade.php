@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', $employee->full_name)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.employees.index') }}">Nhân viên</a>
-    <span class="sep">›</span>
-    <span class="current">{{ $employee->full_name }}</span>
-</nav>
-@endsection
 
 @section('content')
 

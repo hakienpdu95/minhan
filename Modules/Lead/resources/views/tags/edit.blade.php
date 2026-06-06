@@ -1,17 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Sửa tag: ' . $tag->name)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('lead.index') }}">Cơ hội</a>
-    <span class="sep">›</span>
-    <a href="{{ route('lead.tags.index') }}">Tags</a>
-    <span class="sep">›</span>
-    <span class="current">{{ $tag->name }}</span>
-</nav>
-@endsection
 
 @section('content')
 

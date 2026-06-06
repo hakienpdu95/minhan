@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Thêm phòng ban mới')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.departments.index') }}">Phòng ban</a>
-    <span class="sep">›</span>
-    <span class="current">Thêm mới</span>
-</nav>
-@endsection
 
 @push('styles')
     @vite(['Modules/Department/resources/assets/sass/department.scss'], 'build/backend')

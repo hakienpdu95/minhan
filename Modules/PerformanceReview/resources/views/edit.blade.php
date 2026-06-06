@@ -1,17 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Sửa đánh giá — ' . $review->employee?->full_name)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.performance-reviews.index') }}">Đánh giá hiệu suất</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.performance-reviews.show', $review) }}">{{ $review->employee?->full_name }}</a>
-    <span class="sep">›</span>
-    <span class="current">Sửa</span>
-</nav>
-@endsection
 
 @section('content')
 <div x-data="{

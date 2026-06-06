@@ -2,16 +2,6 @@
 
 @section('title', 'Đơn ứng tuyển — ' . $application->candidate?->full_name)
 
-@section('breadcrumb')
-<div class="breadcrumbs text-sm px-6 pt-4 pb-0">
-    <ul>
-        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
-        <li><a href="{{ route('backend.recruitment.candidates.index') }}">Ứng viên</a></li>
-        <li><a href="{{ route('backend.recruitment.candidates.show', $application->candidate) }}">{{ $application->candidate?->full_name }}</a></li>
-        <li class="font-semibold">Đơn ứng tuyển</li>
-    </ul>
-</div>
-@endsection
 
 @section('content')
 <div x-data="rcApplicationShow" class="p-6 space-y-5 max-w-5xl">

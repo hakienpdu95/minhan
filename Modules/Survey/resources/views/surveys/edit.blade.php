@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Chỉnh sửa: ' . $survey->title)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.surveys.index') }}">Khảo sát</a>
-    <span class="sep">›</span>
-    <span class="current">{{ Str::limit($survey->title, 40) }}</span>
-</nav>
-@endsection
 
 @section('content')
 

@@ -1,17 +1,6 @@
 @extends('layouts.backend')
 @section('title', $sop->code . ' — Ma trận RACI')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.sop.index') }}">Quy trình SOP</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.sop.show', $sop) }}">{{ $sop->code }}</a>
-    <span class="sep">›</span>
-    <span class="current">Ma trận RACI</span>
-</nav>
-@endsection
 
 @section('content')
 <div class="mb-5 flex items-center gap-3">

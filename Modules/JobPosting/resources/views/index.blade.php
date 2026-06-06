@@ -1,13 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Tin tuyển dụng')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <span class="current">Tin tuyển dụng</span>
-</nav>
-@endsection
 
 @section('content')
 <div x-data="jobPostListPage({{ Js::from([

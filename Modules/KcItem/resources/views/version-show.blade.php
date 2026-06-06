@@ -1,17 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Version ' . $version->version_number . ' — ' . Str::limit($kcItem->title, 40))
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.kc-items.index') }}">Kho tri thức</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.kc-items.show', $kcItem) }}">{{ Str::limit($kcItem->title, 30) }}</a>
-    <span class="sep">›</span>
-    <span class="current">Version {{ $version->version_number }}</span>
-</nav>
-@endsection
 
 @section('content')
 

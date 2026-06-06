@@ -2,15 +2,6 @@
 
 @section('title', 'Pipeline Stages — Recruitment')
 
-@section('breadcrumb')
-<div class="breadcrumbs text-sm px-6 pt-4 pb-0">
-    <ul>
-        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
-        <li>Recruitment</li>
-        <li class="font-semibold">Pipeline Stages</li>
-    </ul>
-</div>
-@endsection
 
 @section('content')
 <div class="p-6 space-y-5 max-w-4xl">

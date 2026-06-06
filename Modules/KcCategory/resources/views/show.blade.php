@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', $kcCategory->name)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.kc-categories.index') }}">Danh mục tài liệu KC</a>
-    <span class="sep">›</span>
-    <span class="current">{{ Str::limit($kcCategory->name, 40) }}</span>
-</nav>
-@endsection
 
 @section('content')
 

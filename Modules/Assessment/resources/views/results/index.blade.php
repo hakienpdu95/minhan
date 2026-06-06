@@ -1,17 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Kết quả — ' . $assessment->assessment_code)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('assessments.index') }}">Assessment</a>
-    <span class="sep">›</span>
-    <a href="{{ route('assessments.show', $assessment->assessment_code) }}">{{ $assessment->assessment_code }}</a>
-    <span class="sep">›</span>
-    <span class="current">Kết quả</span>
-</nav>
-@endsection
 
 @section('content')
 <div class="flex items-center justify-between mb-6">

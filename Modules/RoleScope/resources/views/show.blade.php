@@ -1,15 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Chi tiết phân quyền')
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.role-scopes.index') }}">Phân quyền phạm vi</a>
-    <span class="sep">›</span>
-    <span class="current">Chi tiết #{{ $roleScope->id }}</span>
-</nav>
-@endsection
 
 @section('content')
 <div>

@@ -2,21 +2,6 @@
 
 @section('title', 'Kết quả #' . $assessmentResult->id . ' — ' . $assessment->assessment_code)
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('assessments.index') }}">Assessment</a>
-    <span class="sep">›</span>
-    <a href="{{ route('assessments.show', $assessment->assessment_code) }}">{{ $assessment->assessment_code }}</a>
-    <span class="sep">›</span>
-    
-    <span class="sep">›</span>
-    
-    <span class="sep">›</span>
-    <span class="current">Kết quả #{{ $assessmentResult->id }}</span>
-</nav>
-@endsection
 
 @section('content')
 <div class="space-y-5 max-w-4xl" x-data="resultShowPage({{ $assessmentResult->id }}, '{{ $assessment->assessment_code }}')">

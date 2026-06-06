@@ -1,17 +1,6 @@
 @extends('layouts.backend')
 @section('title', 'Sửa tin đăng — ' . Str::limit($listing->title, 40))
 
-@section('breadcrumb')
-<nav class="breadcrumb-nav">
-    <a href="{{ route('backend.dashboard') }}">Trang chủ</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.marketplace.listings.index') }}">Marketplace</a>
-    <span class="sep">›</span>
-    <a href="{{ route('backend.marketplace.listings.show', $listing) }}">{{ Str::limit($listing->title, 32) }}</a>
-    <span class="sep">›</span>
-    <span class="current">Chỉnh sửa</span>
-</nav>
-@endsection
 
 @section('content')
 <div x-data="{

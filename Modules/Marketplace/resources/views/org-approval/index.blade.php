@@ -2,15 +2,6 @@
 
 @section('title', 'Duyệt tổ chức — Marketplace')
 
-@section('breadcrumb')
-<div class="breadcrumbs text-sm px-6 pt-4">
-    <ul>
-        <li><a href="{{ route('backend.dashboard') }}">Dashboard</a></li>
-        <li><a href="{{ route('backend.marketplace.listings.index') }}">Marketplace</a></li>
-        <li>Duyệt tổ chức</li>
-    </ul>
-</div>
-@endsection
 
 @section('content')
 <div class="px-6 py-4 space-y-4">
