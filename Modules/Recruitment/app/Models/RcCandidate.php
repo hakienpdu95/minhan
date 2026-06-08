@@ -4,6 +4,7 @@ namespace Modules\Recruitment\Models;
 
 use App\Models\User;
 use App\Shared\Tenancy\TenantContext;
+use App\Traits\HasTenantMedia;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,9 +12,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use Modules\Recruitment\Enums\CandidateSource;
 use Modules\Recruitment\Enums\CandidateStatus;
+use Spatie\MediaLibrary\HasMedia;
 
-class RcCandidate extends Model
+class RcCandidate extends Model implements HasMedia
 {
+    use HasTenantMedia;
+
     protected $table = 'rc_candidates';
 
     protected $fillable = [

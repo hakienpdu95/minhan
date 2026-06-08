@@ -20,6 +20,7 @@ class Organization extends Model
         'name',
         'slug',
         'status',
+        'is_system',
         'owner_id',
         'settings',
         // Marketplace employer registration fields
@@ -33,8 +34,9 @@ class Organization extends Model
     protected function casts(): array
     {
         return [
-            'status'   => OrganizationStatus::class,
-            'settings' => 'array',
+            'status'    => OrganizationStatus::class,
+            'is_system' => 'boolean',
+            'settings'  => 'array',
         ];
     }
 
@@ -84,6 +86,12 @@ class Organization extends Model
     public function scopeBySlug(Builder $query, string $slug): Builder
     {
         return $query->where('slug', $slug);
+    }
+
+    /** Org mặc định hệ thống — dùng làm tenant context cho super-admin. */
+    public function scopeSystem(Builder $query): Builder
+    {
+        return $query->where('is_system', true);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────

@@ -3,6 +3,7 @@
 namespace Modules\KcItem\Models;
 
 use App\Foundation\Models\TenantAwareModel;
+use App\Traits\HasTenantMedia;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,9 +11,12 @@ use Modules\KcCategory\Models\KcCategory;
 use Modules\KcItem\Enums\KcItemStatus;
 use Modules\KcItem\Enums\KcItemType;
 use Modules\KcItem\Enums\KcItemVisibility;
+use Spatie\MediaLibrary\HasMedia;
 
-class KcItem extends TenantAwareModel
+class KcItem extends TenantAwareModel implements HasMedia
 {
+    use HasTenantMedia;
+
     protected $table = 'kc_items';
 
     protected $fillable = [

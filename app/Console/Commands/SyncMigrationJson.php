@@ -647,7 +647,14 @@ class SyncMigrationJson extends Command
             foreach ($this->extractStatements($body) as $stmt) {
                 $parsed = $this->parseStatement($stmt);
                 if ($parsed === null) continue;
-                if (in_array($parsed, [['__timestamps__'], ['__softdeletes__']], true)) continue;
+                if ($parsed === ['__timestamps__']) continue;
+                // softDeletes() trong ALTER → thêm deleted_at vào extension JSON
+                if ($parsed === ['__softdeletes__']) {
+                    if (!isset($mergedCols['deleted_at'])) {
+                        $mergedCols['deleted_at'] = 'deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm';
+                    }
+                    continue;
+                }
 
                 if (($parsed['type'] ?? '') === '__drop') {
                     foreach ($parsed['names'] as $name) unset($mergedCols[$name]);

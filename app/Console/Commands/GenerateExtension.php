@@ -131,7 +131,7 @@ class GenerateExtension extends Command
         string $firstAfter
     ): array {
         return match ($action) {
-            'add'    => $this->buildAddBody($rows, $firstAfter),
+            'add'    => $this->buildAddBody($rows, $firstAfter, $tableName),
             'drop'   => $this->buildDropBody($rows),
             'change' => $this->buildChangeBody($rows),
             default  => [['// TODO'], ['// TODO']],
@@ -140,7 +140,7 @@ class GenerateExtension extends Command
 
     // ── ADD ────────────────────────────────────────────────────────
 
-    private function buildAddBody(array $rows, string $firstAfter): array
+    private function buildAddBody(array $rows, string $firstAfter, string $tableName): array
     {
         $upLines     = [];
         $fkCols      = [];
@@ -152,39 +152,86 @@ class GenerateExtension extends Command
             [$colName, $colType, $colLen, $colNull, $colDefault, $colMod, $colComment] = $p;
 
             if (in_array($colName, self::SPECIAL_DIRECTIVES)) {
-                $this->buildIndexDirective($colMod, $colType, $upLines);
+                $this->buildIdempotentIndexDirective($colMod, $colType, $tableName, $upLines);
                 continue;
             }
 
             $afterClause = $prevColName ? "->after('$prevColName')" : '';
             $prevColName = $colName;
 
-            $upLines[] = $this->buildColumnDef(
+            // Wrap mỗi cột trong hasColumn check để migration idempotent khi chạy lại
+            // FK columns (buildCustomFk) trả về multi-line string → cần split + re-indent
+            $colDef    = $this->buildColumnDef(
                 $colName, $colType, $colLen,
                 $colNull, $colDefault, $colMod, $colComment,
                 $afterClause
             );
+            $colDefLines = array_filter(array_map('trim', preg_split('/\n/', $colDef)), fn($l) => $l !== '');
+            $upLines[] = "if (!Schema::hasColumn('$tableName', '$colName')) {";
+            foreach ($colDefLines as $defLine) {
+                $upLines[] = "    $defLine";
+            }
+            $upLines[] = "}";
 
             if ($this->isForeignKey($colType, $colMod)) {
                 $fkCols[] = $colName;
             }
         }
 
-        // Down: xóa FK trước, rồi xóa cột
-        $downLines = [];
-        foreach ($fkCols as $fkCol) {
-            $downLines[] = "\$table->dropForeign(['$fkCol']);";
-        }
+        // Down: xóa FK trước, rồi xóa cột (chỉ khi cột tồn tại)
         $allNames = array_values(array_filter(
             array_map(fn($r) => trim(explode('///', $r)[0]), $rows),
             fn($n) => !in_array($n, self::SPECIAL_DIRECTIVES)
         ));
-        $quotedNames = array_map(fn($n) => "'$n'", $allNames);
-        $downLines[] = count($quotedNames) === 1
-            ? "\$table->dropColumn({$quotedNames[0]});"
-            : "\$table->dropColumn([" . implode(', ', $quotedNames) . "]);";
+        $existingCols = implode(', ', array_map(fn($n) => "'$n'", $allNames));
+        $downLines = [];
+        foreach ($fkCols as $fkCol) {
+            $downLines[] = "if (Schema::hasColumn('$tableName', '$fkCol')) \$table->dropForeign(['$fkCol']);";
+        }
+        $downLines[] = "\$cols = array_filter([$existingCols], fn(\$c) => Schema::hasColumn('$tableName', \$c));";
+        $downLines[] = "if (!empty(\$cols)) \$table->dropColumn(array_values(\$cols));";
 
         return [$upLines, $downLines];
+    }
+
+    // ── IDEMPOTENT INDEX ──────────────────────────────────────────
+    // Giống buildIndexDirective nhưng wrap mỗi index trong Schema::hasIndex check
+    // để tránh "Duplicate key name" khi migration chạy lại trên DB đã có index.
+
+    private function buildIdempotentIndexDirective(string $colMod, string $indexType, string $tableName, array &$lines): void
+    {
+        $method = match (strtolower($indexType)) {
+            'fulltext' => 'fullText',
+            'unique'   => 'unique',
+            'spatial'  => 'spatialIndex',
+            default    => 'index',
+        };
+
+        foreach (explode(';', $colMod) as $entry) {
+            $entry = trim($entry);
+            if ($entry === '' || $entry === '__') continue;
+
+            $name = null;
+            if (str_contains($entry, '|')) {
+                [$entry, $name] = explode('|', $entry, 2);
+                $entry = trim($entry);
+                $name  = trim($name);
+            }
+
+            $colList = array_map('trim', explode(',', $entry));
+            $cols    = array_map(fn($c) => "'" . $c . "'", $colList);
+            $nameArg = $name ? ", '$name'" : '';
+            $line    = count($cols) > 1
+                ? "\$table->$method([" . implode(', ', $cols) . "]$nameArg);"
+                : "\$table->$method({$cols[0]}$nameArg);";
+
+            // Tính tên index: custom name ưu tiên, fallback về tên Laravel auto-generate
+            $idxName = $name ?? ($tableName . '_' . implode('_', $colList) . '_' . strtolower($method));
+
+            $lines[] = "if (!Schema::hasIndex('$tableName', '$idxName')) {";
+            $lines[] = "    $line";
+            $lines[] = "}";
+        }
     }
 
     // ── DROP ───────────────────────────────────────────────────────

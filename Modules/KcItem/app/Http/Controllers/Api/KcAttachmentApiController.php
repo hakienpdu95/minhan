@@ -3,15 +3,18 @@
 namespace Modules\KcItem\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Media;
+use App\Services\Media\MediaUrlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\KcItem\Actions\Backend\DestroyKcAttachmentAction;
 use Modules\KcItem\Actions\Backend\StoreKcAttachmentAction;
 use Modules\KcItem\Models\KcItem;
-use Modules\KcItem\Models\KcItemAttachment;
 
 class KcAttachmentApiController extends Controller
 {
+    public function __construct(private readonly MediaUrlService $urlService) {}
+
     public function store(Request $request, KcItem $kcItem, StoreKcAttachmentAction $action): JsonResponse
     {
         $this->authorize('update', $kcItem);
@@ -28,38 +31,39 @@ class KcAttachmentApiController extends Controller
             ],
         ]);
 
-        // Kiểm tra tổng dung lượng của tài liệu
-        $currentTotalKb = $kcItem->attachments()->sum('file_size_kb');
-        $newSizeKb      = (int) ceil($request->file('file')->getSize() / 1024);
+        // Total size check via media table (bytes)
+        $currentTotalBytes = $kcItem->getMedia('attachments')->sum('size');
+        $newSizeBytes       = $request->file('file')->getSize();
 
-        if (($currentTotalKb + $newSizeKb) > $maxItemMb * 1024) {
+        if (($currentTotalBytes + $newSizeBytes) > $maxItemMb * 1024 * 1024) {
             return response()->json([
                 'message' => 'Tổng dung lượng file đính kèm vượt quá ' . $maxItemMb . 'MB cho phép.',
             ], 422);
         }
 
-        $attachment = $action->handle($kcItem, $request->file('file'));
+        $media = $action->handle($kcItem, $request->file('file'));
 
         return response()->json([
-            'id'           => $attachment->id,
-            'uuid'         => $attachment->uuid,
-            'file_name'    => $attachment->file_name,
-            'file_url'     => $attachment->file_url,
-            'file_type'    => $attachment->file_type,
-            'file_size_kb' => $attachment->file_size_kb,
-            'delete_url'   => route('backend.api.kc-items.attachments.destroy', [$kcItem, $attachment]),
+            'id'           => $media->id,
+            'uuid'         => $media->uuid,
+            'file_name'    => $media->file_name,
+            'file_url'     => $this->urlService->url($media),
+            'file_type'    => $media->mime_type,
+            'file_size_kb' => (int) ceil($media->size / 1024),
+            'delete_url'   => route('backend.api.kc-items.attachments.destroy', [$kcItem, $media->uuid]),
         ], 201);
     }
 
-    public function destroy(KcItem $kcItem, KcItemAttachment $attachment, DestroyKcAttachmentAction $action): JsonResponse
+    public function destroy(KcItem $kcItem, string $attachment, DestroyKcAttachmentAction $action): JsonResponse
     {
         $this->authorize('update', $kcItem);
 
-        if ($attachment->item_id !== $kcItem->id) {
-            abort(404);
-        }
+        $media = Media::where('uuid', $attachment)
+            ->where('model_type', KcItem::class)
+            ->where('model_id', $kcItem->id)
+            ->firstOrFail();
 
-        $action->handle($attachment);
+        $action->handle($media);
 
         return response()->json(['message' => 'Đã xóa file đính kèm.']);
     }

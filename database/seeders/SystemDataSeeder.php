@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Modules\Auth\Database\Seeders\AuthDatabaseSeeder;
 use Modules\Organization\Database\Seeders\OrganizationRolePermissionSeeder;
+use Database\Seeders\SystemOrganizationSeeder;
 
 /**
  * Master Seeder — điểm khởi chạy duy nhất cho toàn bộ dữ liệu mặc định hệ thống.
@@ -42,13 +43,17 @@ class SystemDataSeeder extends Seeder
             // ── 3. Organization template roles ────────────────────────────
             OrganizationRolePermissionSeeder::class,
 
-            // ── 4. Demo organization ──────────────────────────────────────
+            // ── 4. Org hệ thống mặc định (id=1 trên fresh DB) ────────────
+            //    Phải trước OrganizationSeeder để đảm bảo là bản ghi đầu tiên
+            SystemOrganizationSeeder::class,
+
+            // ── 5. Demo organization (dành cho test/dev) ─────────────────
             OrganizationSeeder::class,
 
-            // ── 5. Test users (1 per role) ───────────────────────────────
+            // ── 6. Test users (1 per role) ───────────────────────────────
             UserSeeder::class,
 
-            // ── 6. Module seeders — đăng ký thêm tại đây theo dependency ─
+            // ── 7. Module seeders — đăng ký thêm tại đây theo dependency ─
             // ExampleModuleSeeder::class,
         ]);
 

@@ -3,14 +3,18 @@
 namespace Modules\Sop\Models;
 
 use App\Models\User;
+use App\Traits\HasTenantMedia;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Modules\Sop\Enums\StepType;
+use Spatie\MediaLibrary\HasMedia;
 
-class SopStep extends Model
+class SopStep extends Model implements HasMedia
 {
+    use HasTenantMedia;
+
     protected $table = 'sop_steps';
 
     protected $fillable = [

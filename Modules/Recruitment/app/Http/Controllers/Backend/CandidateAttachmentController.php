@@ -3,58 +3,65 @@
 namespace Modules\Recruitment\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
+use App\Models\Media;
+use App\Services\Media\MediaUrlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Recruitment\Actions\Backend\StoreCandidateAttachmentAction;
 use Modules\Recruitment\Enums\AttachmentFileType;
 use Modules\Recruitment\Models\RcCandidate;
-use Modules\Recruitment\Models\RcCandidateAttachment;
 
 class CandidateAttachmentController extends Controller
 {
+    public function __construct(private readonly MediaUrlService $urlService) {}
+
     public function store(Request $request, RcCandidate $candidate, StoreCandidateAttachmentAction $action): JsonResponse
     {
         $this->authorize('update', $candidate);
 
         $validated = $request->validate([
-            'file'           => ['required', 'file', 'max:10240'], // 10 MB
+            'file'           => ['required', 'file', 'max:10240'],
             'file_type'      => ['required', 'string', 'in:' . implode(',', array_column(AttachmentFileType::cases(), 'value'))],
             'application_id' => ['nullable', 'integer', 'exists:rc_applications,id'],
         ]);
 
-        $attachment = $action->handle($candidate, $request->file('file'), $validated);
-        $attachment->load('uploadedBy');
+        $media = $action->handle($candidate, $request->file('file'), $validated);
+
+        $fileTypeEnum = AttachmentFileType::tryFrom($media->getCustomProperty('file_type', 'other'));
 
         return response()->json([
             'message'    => 'Đã tải lên file thành công',
             'attachment' => [
-                'id'          => $attachment->id,
-                'file_name'   => $attachment->file_name,
-                'file_url'    => $attachment->file_url,
-                'file_type'   => $attachment->file_type?->value,
-                'file_label'  => $attachment->file_type?->label(),
-                'file_size'   => $attachment->fileSizeFormatted(),
-                'uploaded_by' => $attachment->uploadedBy?->name,
-                'uploaded_at' => $attachment->uploaded_at?->format('d/m/Y H:i'),
+                'id'          => $media->id,
+                'uuid'        => $media->uuid,
+                'file_name'   => $media->file_name,
+                'file_url'    => $this->urlService->url($media),
+                'file_type'   => $fileTypeEnum?->value,
+                'file_label'  => $fileTypeEnum?->label(),
+                'file_size'   => $this->formatSize((int) ceil($media->size / 1024)),
+                'uploaded_by' => auth()->user()?->name,
+                'uploaded_at' => $media->uploaded_at?->format('d/m/Y H:i'),
+                'delete_url'  => route('backend.candidates.attachments.destroy', [$candidate, $media->uuid]),
             ],
         ]);
     }
 
-    public function destroy(RcCandidate $candidate, RcCandidateAttachment $attachment): JsonResponse
+    public function destroy(RcCandidate $candidate, string $attachment): JsonResponse
     {
         $this->authorize('update', $candidate);
 
-        if ($attachment->candidate_id !== $candidate->id) {
-            abort(404);
-        }
+        $media = Media::where('uuid', $attachment)
+            ->where('model_type', RcCandidate::class)
+            ->where('model_id', $candidate->id)
+            ->firstOrFail();
 
-        // Xóa file khỏi storage
-        if ($attachment->storage_provider === 'local' && !empty($attachment->storage_key)) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($attachment->storage_key);
-        }
-
-        $attachment->delete();
+        $media->delete();
 
         return response()->json(['message' => 'Đã xóa file']);
+    }
+
+    private function formatSize(int $kb): string
+    {
+        return $kb >= 1024 ? round($kb / 1024, 1) . ' MB' : "{$kb} KB";
     }
 }

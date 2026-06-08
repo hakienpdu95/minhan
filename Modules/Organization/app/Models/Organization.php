@@ -6,9 +6,11 @@ use App\Models\Province;
 use App\Models\User;
 use App\Models\Ward;
 use App\Shared\Tenancy\Models\Organization as BaseOrganization;
+use App\Traits\HasTenantMedia;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\MediaLibrary\HasMedia;
 
 /**
  * Extended Organization model for the Organization module.
@@ -16,8 +18,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * Adds: members, settings table relations.
  * Overrides getSetting()/setSetting() to use organization_settings table.
  */
-class Organization extends BaseOrganization
+class Organization extends BaseOrganization implements HasMedia
 {
+    use HasTenantMedia;
     protected $fillable = [
         'uuid',
         'name',

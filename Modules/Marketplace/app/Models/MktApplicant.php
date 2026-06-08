@@ -2,6 +2,7 @@
 
 namespace Modules\Marketplace\Models;
 
+use App\Traits\HasTenantMedia;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -9,9 +10,11 @@ use Illuminate\Support\Str;
 use Modules\Marketplace\Enums\ApplicantAccountType;
 use Modules\Marketplace\Enums\ApplicantAvailability;
 use Modules\Marketplace\Enums\ApplicantStatus;
+use Spatie\MediaLibrary\HasMedia;
 
-class MktApplicant extends Authenticatable
+class MktApplicant extends Authenticatable implements HasMedia
 {
+    use HasTenantMedia;
     use Notifiable;
 
     protected $table = 'mkt_applicants';

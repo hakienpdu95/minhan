@@ -1037,7 +1037,8 @@
         "__index///index///__///__///__///organization_id,trigger_type,is_active|idx_org_trigger///__",
         "__index///index///__///__///__///organization_id,is_active,priority|idx_org_priority///__",
         "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
-        "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật"
+        "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật",
+        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
     ],
     [
         "workflow_trigger_params///__///__///",
@@ -1294,7 +1295,8 @@
         "aggregation_model///string///30///NOT_NULL///'flat_sum'///__///flat_sum | weighted_domain | sectioned",
         "classification_type///string///30///NOT_NULL///'none'///__///none | score_band | pass_fail | persona_match",
         "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
-        "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật"
+        "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật",
+        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
     ],
     [
         "score_rule_numeric_ranges///__///__///",
@@ -1614,7 +1616,8 @@
         "__index///unique///__///__///__///organization_id,slug|idx_jp_skill_slug///__",
         "__index///index///__///__///__///organization_id,category,is_active|idx_jp_skill_cat///__",
         "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
-        "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật"
+        "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật",
+        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
     ],
     [
         "jp_benefit_masters///__///__///",
@@ -1625,7 +1628,8 @@
         "is_active///boolean///__///NOT_NULL///true///__///__",
         "__index///index///__///__///__///organization_id,category,is_active|idx_jp_benefit_cat///__",
         "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
-        "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật"
+        "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật",
+        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
     ],
     [
         "jp_job_posts///__///__///",
@@ -2179,5 +2183,16 @@
         "rating_punctuality///smallInteger///__///_NULL///NULL///__///__",
         "is_public///boolean///__///NOT_NULL///true///__///__",
         "created_at///timestamp///__///NOT_NULL///__///__///__"
+    ],
+    [
+        "jodit_drafts///__///__///",
+        "organization_id///unsignedBigInteger///__///_NULL///NULL///->constrained()->onDelete('set null')///__",
+        "user_id///unsignedBigInteger///__///_NULL///NULL///->constrained()->onDelete('set null')///__",
+        "context_type///string///__///_NULL///NULL///__///Loại entity sẽ nhận media sau khi save",
+        "context_id///unsignedBigInteger///__///_NULL///NULL///__///ID entity sẽ nhận media sau khi save",
+        "__index///index///__///__///__///organization_id,user_id///__",
+        "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
+        "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật",
+        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
     ]
 ]

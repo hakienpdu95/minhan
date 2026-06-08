@@ -2,12 +2,15 @@
 
 namespace Modules\Marketplace\Models;
 
+use App\Traits\HasTenantMedia;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use Spatie\MediaLibrary\HasMedia;
 
-class MktApplicantPortfolio extends Model
+class MktApplicantPortfolio extends Model implements HasMedia
 {
+    use HasTenantMedia;
     protected $table = 'mkt_applicant_portfolios';
 
     protected $fillable = [

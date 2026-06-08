@@ -19,7 +19,7 @@ class EmployeeListResource extends JsonResource
             'full_name'     => $this->full_name,
             'email'         => $this->email,
             'phone'         => $this->phone,
-            'avatar_url'    => $this->avatar_url,
+            'avatar_url'    => $this->getMediaUrl('avatar', 'thumb') ?: $this->avatar_url,
 
             'status'       => $status->value,
             'status_label' => $status->label(),

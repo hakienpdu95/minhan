@@ -10,7 +10,17 @@ use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    public function register(): void {}
+    public function register(): void
+    {
+        // Đăng ký 3 thư mục migration con để `php artisan migrate` luôn phát hiện được
+        // (Laravel glob chỉ scan 1 cấp — không đệ quy — nên cần đăng ký tường minh).
+        // migration:generate --fresh vẫn dùng --path= riêng, không bị ảnh hưởng.
+        $this->loadMigrationsFrom([
+            database_path('migrations/vendor'),
+            database_path('migrations/generated'),
+            database_path('migrations/extensions'),
+        ]);
+    }
 
     public function boot(): void
     {

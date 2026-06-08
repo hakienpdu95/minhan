@@ -1,8 +1,25 @@
 <?php
 
+use App\Http\Controllers\Api\MediaJoditUploadController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('backend.dashboard'));
+
+/*
+|--------------------------------------------------------------------------
+| Media API Routes — prefix: api/v1/media
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['api', 'auth:sanctum', 'tenant'])
+    ->prefix('api/v1/media')
+    ->name('api.media.')
+    ->group(function () {
+        Route::post('jodit-upload',         [MediaJoditUploadController::class, 'store'])->name('jodit.upload');
+        Route::delete('jodit-upload/{uuid}',[MediaJoditUploadController::class, 'destroy'])->name('jodit.destroy');
+        Route::post('jodit-discard',        [MediaJoditUploadController::class, 'discard'])->name('jodit.discard');
+        Route::patch('jodit-touch',         [MediaJoditUploadController::class, 'touch'])->name('jodit.touch');
+        Route::get('{uuid}/url',            [MediaJoditUploadController::class, 'refreshUrl'])->name('url.refresh');
+    });
 
 /*
 |--------------------------------------------------------------------------

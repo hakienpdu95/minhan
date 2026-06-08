@@ -114,9 +114,10 @@ class IdentifyOrganization
     }
 
     /**
-     * Super-admin không thuộc org nào → mặc định lấy org đầu tiên đang active.
+     * Super-admin không thuộc org nào → dùng org hệ thống (is_system=true) làm tenant context.
+     * Fallback về org active đầu tiên nếu chưa seed SystemOrganizationSeeder.
      * Session sẽ ghi nhớ cho các request tiếp theo.
-     * Có thể đổi org bằng header X-Organization-ID.
+     * Có thể đổi sang org cụ thể bằng header X-Organization-ID.
      */
     private function resolveDefaultForSuperAdmin(Request $request): ?Organization
     {
@@ -126,7 +127,8 @@ class IdentifyOrganization
             return null;
         }
 
-        return Organization::active()->orderBy('id')->first();
+        return Organization::active()->system()->first()
+            ?? Organization::active()->orderBy('id')->first();
     }
 
     private function findBySlug(string $slug): ?Organization

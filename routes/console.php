@@ -47,3 +47,9 @@ Schedule::command('jp:expiry-warning')
     ->name('jp:expiry-warning')
     ->dailyAt('08:00')
     ->onOneServer();
+
+// Media: cleanup Jodit orphan images older than 24h — chạy mỗi 4h
+Schedule::command('media:cleanup-orphans')
+    ->name('media:cleanup-orphans')
+    ->everyFourHours()
+    ->onOneServer();

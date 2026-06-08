@@ -4,14 +4,17 @@ namespace Modules\Employee\Models;
 
 use App\Foundation\Models\TenantAwareModel;
 use App\Models\User;
+use App\Traits\HasTenantMedia;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Modules\Employee\Enums\EmployeeStatus;
 use Modules\Employee\Enums\EmploymentType;
 use Modules\Employee\Observers\EmployeeObserver;
+use Spatie\MediaLibrary\HasMedia;
 
-class Employee extends TenantAwareModel
+class Employee extends TenantAwareModel implements HasMedia
 {
+    use HasTenantMedia;
     public static bool $skipHistoryTracking = false;
 
     protected $fillable = [

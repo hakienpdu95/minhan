@@ -1,6 +1,7 @@
 [
     [
         "organizations///add///settings///Thêm owner_id và các trường thông tin doanh nghiệp vào bảng organizations",
+        "is_system///boolean///__///NOT_NULL///false///__///True = org hệ thống mặc định cho super-admin",
         "owner_id///unsignedBigInteger///__///_NULL///NULL///->index()///ID người sở hữu — không có FK ở DB",
         "tax_code///string///20///_NULL///NULL///__///Mã số thuế doanh nghiệp",
         "phone///string///20///_NULL///NULL///__///Số điện thoại liên hệ",
@@ -67,7 +68,8 @@
         "surveys///add///__///",
         "assessment_code///string///50///_NULL///NULL///->unique()///Mã định danh cho Scoring Engine — nullable nếu survey không có scoring",
         "lead_notify_email///string///255///_NULL///NULL///__///Email nhận alert khi hot lead nộp bài — để trống = không gửi",
-        "allow_multiple_responses///boolean///__///NOT_NULL///true///__///__"
+        "allow_multiple_responses///boolean///__///NOT_NULL///true///__///__",
+        "organization_id///unsignedBigInteger///__///_NULL///NULL///->constrained()->onDelete('restrict')///__"
     ],
     [
         "maturity_levels///add///__///",
@@ -153,7 +155,8 @@
         "salary_min///decimal///15,2///_NULL///NULL///__///__",
         "salary_max///decimal///15,2///_NULL///NULL///__///__",
         "salary_currency///char///3///NOT_NULL///'VND'///__///__",
-        "is_manager_role///tinyInteger///__///NOT_NULL///0///__///__"
+        "is_manager_role///tinyInteger///__///NOT_NULL///0///__///__",
+        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
     ],
     [
         "rc_candidates///add///__///",
@@ -201,5 +204,39 @@
         "bookmark_count///integer///__///NOT_NULL///0///__///__",
         "jp_sync_status///string///20///_NULL///NULL///__///__",
         "auto_close_on_jp///boolean///__///NOT_NULL///true///__///__"
+    ],
+    [
+        "assessments///add///__///",
+        "organization_id///unsignedBigInteger///__///_NULL///NULL///->constrained()->onDelete('restrict')///__",
+        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
+    ],
+    [
+        "media///add///__///",
+        "organization_id///unsignedBigInteger///__///_NULL///NULL///__///__",
+        "uploaded_at///timestamp///__///_NULL///NULL///__///Timestamp user thực sự upload — bảo toàn khi migrate từ bảng cũ",
+        "last_touched_at///timestamp///__///_NULL///NULL///__///Jodit orphan TTL: update mỗi khi session active; NULL = không phải jodit orphan",
+        "__index///index///__///__///__///model_type,model_id,collection_name|idx_media_polymorphic///__",
+        "__index///index///__///__///__///disk,created_at|idx_media_disk///__",
+        "__index///index///__///__///__///collection_name,model_type,last_touched_at|idx_media_orphan///__"
+    ],
+    [
+        "jp_skill_masters///add///__///",
+        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
+    ],
+    [
+        "jp_benefit_masters///add///__///",
+        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
+    ],
+    [
+        "org_chart_configs///add///__///",
+        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
+    ],
+    [
+        "user_role_scopes///add///__///",
+        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
+    ],
+    [
+        "workflows///add///__///",
+        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
     ]
 ]
