@@ -2,17 +2,16 @@
 
 namespace Modules\Assessment\Models;
 
+use App\Foundation\Models\TenantAwareModel;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Support\LogOptions;
-use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
-class Assessment extends Model
+class Assessment extends TenantAwareModel
 {
-    use LogsActivity;
     protected $table = 'assessments';
 
     protected $fillable = [
+        'organization_id',
         'assessment_code',
         'name',
         'version',

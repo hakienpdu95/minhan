@@ -2,6 +2,7 @@
 
 namespace Modules\Recruitment\Data\Requests;
 
+use Spatie\LaravelData\Attributes\Validation\IntegerType;
 use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\Nullable;
 use Spatie\LaravelData\Attributes\Validation\Required;
@@ -11,6 +12,9 @@ use Spatie\LaravelData\Data;
 class StoreCandidateData extends Data
 {
     public function __construct(
+        #[Required, IntegerType]
+        public readonly int $organization_id,
+
         #[Required, StringType, Max(150)]
         public readonly string $full_name,
 
@@ -50,4 +54,11 @@ class StoreCandidateData extends Data
         #[Nullable, StringType, Max(300)]
         public readonly ?string $portfolio_url,
     ) {}
+
+    public static function rules(): array
+    {
+        return [
+            'organization_id' => ['required', 'integer', 'exists:organizations,id'],
+        ];
+    }
 }

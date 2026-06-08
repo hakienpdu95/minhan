@@ -2,7 +2,6 @@
 
 namespace Modules\Sop\Actions\Backend;
 
-use App\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Str;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Sop\Data\Requests\StoreSopProcessData;
@@ -16,8 +15,8 @@ class StoreSopProcessAction
     public function handle(StoreSopProcessData $data): SopProcess
     {
         $sop = SopProcess::create([
+            'organization_id' => $data->organization_id,
             'uuid'            => Str::uuid(),
-            'organization_id' => TenantContext::getOrganizationId(),
             'owner_id'        => $data->owner_id,
             'department_id'   => $data->department_id,
             'branch_id'       => $data->branch_id,

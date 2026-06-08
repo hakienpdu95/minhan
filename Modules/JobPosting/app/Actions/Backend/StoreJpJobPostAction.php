@@ -2,7 +2,6 @@
 
 namespace Modules\JobPosting\Actions\Backend;
 
-use App\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Lorisleiva\Actions\Concerns\AsAction;
@@ -19,7 +18,7 @@ class StoreJpJobPostAction
 
     public function handle(StoreJpJobPostData $data): JpJobPost
     {
-        $orgId  = TenantContext::getOrganizationId();
+        $orgId  = $data->organization_id;
         $userId = Auth::id();
 
         $slug = $this->generateSlug($data->title, $orgId);

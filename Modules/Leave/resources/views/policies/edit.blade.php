@@ -57,6 +57,16 @@
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
+                        {{-- Tổ chức (readonly — không đổi sau khi tạo) --}}
+                        <div class="form-control sm:col-span-2">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Tổ chức</span>
+                                <span class="label-text-alt text-xs text-base-content/40">Không thể thay đổi</span>
+                            </label>
+                            <input type="text" value="{{ $orgName }}" readonly
+                                   class="input input-bordered input-sm w-full bg-base-200 cursor-not-allowed">
+                        </div>
+
                         {{-- leave_type: readonly sau khi tạo --}}
                         <div class="form-control sm:col-span-2">
                             <label class="label py-0 pb-1.5">

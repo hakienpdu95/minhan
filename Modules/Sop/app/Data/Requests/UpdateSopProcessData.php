@@ -2,7 +2,6 @@
 
 namespace Modules\Sop\Data\Requests;
 
-use App\Shared\Tenancy\TenantContext;
 use Illuminate\Validation\Rule;
 use Modules\Sop\Enums\SopType;
 use Spatie\LaravelData\Attributes\Validation\Max;
@@ -14,6 +13,9 @@ use Spatie\LaravelData\Data;
 class UpdateSopProcessData extends Data
 {
     public function __construct(
+        // Injected from existing SOP in controller — not from form field
+        public readonly int $organization_id,
+
         #[Required, StringType, Max(300)]
         public readonly string $title,
 
@@ -40,7 +42,7 @@ class UpdateSopProcessData extends Data
 
     public static function rules(): array
     {
-        $orgId = TenantContext::getOrganizationId();
+        $orgId = (int) request('organization_id');
 
         return [
             'owner_id'      => ['required', 'integer', Rule::exists('users', 'id')],

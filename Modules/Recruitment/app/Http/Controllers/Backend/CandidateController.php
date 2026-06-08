@@ -4,6 +4,7 @@ namespace Modules\Recruitment\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Shared\Tenancy\Models\Organization;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -41,7 +42,9 @@ class CandidateController extends Controller
 
         $users = User::query()->orderBy('name')->get(['id', 'name']);
 
-        return view('recruitment::candidates.create', compact('sources', 'users'));
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
+
+        return view('recruitment::candidates.create', compact('sources', 'users', 'organizations', 'defaultOrgId', 'orgLocked'));
     }
 
     public function store(Request $request, StoreCandidateAction $action): RedirectResponse
@@ -82,7 +85,9 @@ class CandidateController extends Controller
 
         $users = User::query()->orderBy('name')->get(['id', 'name']);
 
-        return view('recruitment::candidates.edit', compact('candidate', 'sources', 'users'));
+        [$organizations, , $orgLocked] = $this->_resolveOrganizations();
+
+        return view('recruitment::candidates.edit', compact('candidate', 'sources', 'users', 'organizations', 'orgLocked'));
     }
 
     public function update(Request $request, RcCandidate $candidate, StoreCandidateAction $action): RedirectResponse
@@ -117,5 +122,14 @@ class CandidateController extends Controller
         return redirect()
             ->route('backend.recruitment.candidates.index')
             ->with('success', 'Đã xóa ứng viên');
+    }
+
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
     }
 }

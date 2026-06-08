@@ -37,6 +37,7 @@ class RoleScopeApiController extends Controller
             sortField:      $sortField,
             sortDir:        $sortDir,
             search:         $validated['search'] ?? null,
+            orgId:          auth()->user()->organization_id ?: null,
             roleId:         isset($validated['role_id']) ? (int) $validated['role_id'] : null,
             scopeBranchId:  isset($validated['scope_branch_id']) ? (int) $validated['scope_branch_id'] : null,
             scopeDeptId:    isset($validated['scope_dept_id']) ? (int) $validated['scope_dept_id'] : null,

@@ -6,7 +6,15 @@ use Spatie\LaravelData\Data;
 
 class StoreJpJobPostData extends Data
 {
+    public static function rules(): array
+    {
+        return [
+            'organization_id' => ['required', 'integer', 'exists:organizations,id'],
+        ];
+    }
+
     public function __construct(
+        public readonly int     $organization_id,
         public readonly string  $title,
         public readonly string  $description,
         public readonly string  $requirements,

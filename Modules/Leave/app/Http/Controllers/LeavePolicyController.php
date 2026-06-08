@@ -3,7 +3,8 @@
 namespace Modules\Leave\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Shared\Tenancy\TenantContext;
+use App\Shared\Tenancy\Models\Organization;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Modules\Department\Models\Department;
@@ -37,25 +38,29 @@ class LeavePolicyController extends Controller
     {
         $this->authorize('create', LeavePolicy::class);
 
-        $orgId = TenantContext::getOrganizationId();
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
 
-        $jobTitles = JobTitle::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name', 'category']);
+        $filterOrgId = auth()->user()->organization_id;
 
-        $departments = Department::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->where('status', 'active')
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        $jobTitleQuery = JobTitle::withoutTenant()->where('is_active', true)->orderBy('name');
+        $deptQuery     = Department::withoutTenant()->where('status', 'active')->orderBy('name');
+
+        if ($filterOrgId) {
+            $jobTitleQuery->where('organization_id', $filterOrgId);
+            $deptQuery->where('organization_id', $filterOrgId);
+        }
+
+        $jobTitles   = $jobTitleQuery->get(['id', 'name', 'category']);
+        $departments = $deptQuery->get(['id', 'name']);
 
         $leaveTypes = collect(LeaveType::cases())
             ->map(fn ($t) => ['value' => $t->value, 'text' => $t->label()])
             ->all();
 
-        return view('leave::policies.create', compact('jobTitles', 'departments', 'leaveTypes'));
+        return view('leave::policies.create', compact(
+            'organizations', 'defaultOrgId', 'orgLocked',
+            'jobTitles', 'departments', 'leaveTypes'
+        ));
     }
 
     public function store(Request $request, StoreLeavePolicyAction $action): RedirectResponse
@@ -73,7 +78,7 @@ class LeavePolicyController extends Controller
     {
         $this->authorize('update', $policy);
 
-        $orgId = TenantContext::getOrganizationId();
+        $orgId = $policy->organization_id;
 
         $jobTitles = JobTitle::withoutTenant()
             ->where('organization_id', $orgId)
@@ -91,7 +96,9 @@ class LeavePolicyController extends Controller
             ->map(fn ($t) => ['value' => $t->value, 'text' => $t->label()])
             ->all();
 
-        return view('leave::policies.edit', compact('policy', 'jobTitles', 'departments', 'leaveTypes'));
+        $orgName = Organization::find($orgId)?->name ?? '';
+
+        return view('leave::policies.edit', compact('policy', 'jobTitles', 'departments', 'leaveTypes', 'orgName'));
     }
 
     public function update(Request $request, LeavePolicy $policy, UpdateLeavePolicyAction $action): RedirectResponse
@@ -113,5 +120,14 @@ class LeavePolicyController extends Controller
 
         return redirect()->route('backend.leave.policies.index')
             ->with('success', 'Đã xóa chính sách nghỉ phép.');
+    }
+
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
     }
 }

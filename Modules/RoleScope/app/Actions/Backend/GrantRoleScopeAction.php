@@ -14,6 +14,7 @@ class GrantRoleScopeAction
     public function handle(GrantRoleScopeData $data): UserRoleScope
     {
         $scope = UserRoleScope::create([
+            'organization_id' => $data->organization_id,
             'user_id'         => $data->user_id,
             'role_id'         => $data->role_id,
             'scope_branch_id' => $data->scope_branch_id,

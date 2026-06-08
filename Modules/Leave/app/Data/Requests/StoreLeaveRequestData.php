@@ -2,7 +2,6 @@
 
 namespace Modules\Leave\Data\Requests;
 
-use App\Shared\Tenancy\TenantContext;
 use Illuminate\Validation\Rule;
 use Modules\Leave\Enums\LeaveType;
 use Spatie\LaravelData\Data;
@@ -21,7 +20,7 @@ class StoreLeaveRequestData extends Data
 
     public static function rules(): array
     {
-        $orgId = TenantContext::getOrganizationId();
+        $orgId = (int) request('organization_id');
 
         return [
             'organization_id' => ['required', 'integer', 'exists:organizations,id'],
@@ -31,6 +30,20 @@ class StoreLeaveRequestData extends Data
             'date_to'        => ['required', 'date', 'after_or_equal:date_from'],
             'reason'         => ['nullable', 'string', 'max:1000'],
             'attachment_url' => ['nullable', 'string', 'max:500'],
+        ];
+    }
+
+    public static function messages(): array
+    {
+        return [
+            'organization_id.required' => 'Vui lòng chọn tổ chức.',
+            'organization_id.exists'   => 'Tổ chức không hợp lệ.',
+            'employee_id.required'     => 'Vui lòng chọn nhân viên.',
+            'employee_id.exists'       => 'Nhân viên không thuộc tổ chức đã chọn.',
+            'leave_type.required'      => 'Vui lòng chọn loại nghỉ.',
+            'date_from.required'       => 'Vui lòng chọn ngày bắt đầu.',
+            'date_to.required'         => 'Vui lòng chọn ngày kết thúc.',
+            'date_to.after_or_equal'   => 'Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.',
         ];
     }
 }

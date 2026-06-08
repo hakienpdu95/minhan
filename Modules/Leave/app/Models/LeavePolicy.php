@@ -13,8 +13,8 @@ class LeavePolicy extends TenantAwareModel
     protected $table = 'leave_policies';
 
     protected $fillable = [
-        'uuid',
         'organization_id',
+        'uuid',
         'leave_type',
         'name',
         'days_per_year',

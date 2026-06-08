@@ -7,7 +7,7 @@
 <div
     x-data="{
         tab: 'basic',
-        tabFields: { basic: ['full_name', 'email'], work: [], source: ['source'] },
+        tabFields: { basic: ['organization_id', 'full_name', 'email'], work: [], source: ['source'] },
         errs: {{ Js::from($errors->keys()) }},
         errCount(t) { return (this.tabFields[t] || []).filter(f => this.errs.includes(f)).length },
         init() {
@@ -77,6 +77,32 @@
                 {{-- Tab: Thông tin cơ bản --}}
                 <div x-show="tab === 'basic'" data-tab-label="Thông tin cơ bản" class="space-y-4">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {{-- Tổ chức --}}
+                        <div class="form-control sm:col-span-2">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Tổ chức <span class="text-error">*</span></span>
+                            </label>
+                            @if($orgLocked)
+                                <input type="hidden" name="organization_id" value="{{ $organizations->first()->id }}">
+                                <input type="text" value="{{ $organizations->first()->name }}" readonly
+                                       class="input input-bordered input-sm w-full bg-base-200 cursor-not-allowed">
+                                <p class="mt-1 text-xs text-base-content/40">Xác định từ tài khoản của bạn.</p>
+                            @else
+                                <select id="ts-organization" name="organization_id"
+                                        class="select select-bordered select-sm w-full ts-init @error('organization_id') select-error @enderror"
+                                        data-ts-placeholder="— Chọn tổ chức —"
+                                        data-req="Vui lòng chọn tổ chức">
+                                    <option value="">— Chọn tổ chức —</option>
+                                    @foreach($organizations as $org)
+                                    <option value="{{ $org->id }}" {{ old('organization_id', $candidate->org_id) == $org->id ? 'selected' : '' }}>
+                                        {{ $org->name }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                                @error('organization_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                            @endif
+                        </div>
+
                         <div class="form-control">
                             <label class="label" for="full_name">
                                 <span class="label-text font-medium">Họ và tên <span class="text-error">*</span></span>

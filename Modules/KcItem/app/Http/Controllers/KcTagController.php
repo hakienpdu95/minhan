@@ -3,6 +3,7 @@
 namespace Modules\KcItem\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\Models\Organization;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -34,7 +35,9 @@ class KcTagController extends Controller
 
     public function create()
     {
-        return view('kcitem::kc-tag.create');
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
+
+        return view('kcitem::kc-tag.create', compact('organizations', 'defaultOrgId', 'orgLocked'));
     }
 
     public function store(Request $request, StoreKcTagAction $action): RedirectResponse
@@ -53,7 +56,9 @@ class KcTagController extends Controller
 
     public function edit(KcTag $kcTag)
     {
-        return view('kcitem::kc-tag.edit', compact('kcTag'));
+        [$organizations, , $orgLocked] = $this->_resolveOrganizations();
+
+        return view('kcitem::kc-tag.edit', compact('kcTag', 'organizations', 'orgLocked'));
     }
 
     public function update(Request $request, KcTag $kcTag, UpdateKcTagAction $action): RedirectResponse
@@ -63,6 +68,15 @@ class KcTagController extends Controller
 
         return redirect()->route('backend.kc-tags.index')
             ->with('success', 'Cập nhật tag thành công.');
+    }
+
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
     }
 
     public function destroy(Request $request, KcTag $kcTag, DestroyKcTagAction $action): RedirectResponse|JsonResponse

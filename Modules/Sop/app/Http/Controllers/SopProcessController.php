@@ -5,6 +5,7 @@ namespace Modules\Sop\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Shared\Tenancy\TenantContext;
+use App\Shared\Tenancy\Models\Organization;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -61,29 +62,34 @@ class SopProcessController extends Controller
 
     public function create()
     {
-        $orgId = TenantContext::getOrganizationId();
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
+
+        $filterOrgId = auth()->user()->organization_id ?? TenantContext::getOrganizationId();
 
         $types = collect(SopType::cases())
             ->map(fn ($t) => ['value' => $t->value, 'text' => $t->label()])
             ->all();
 
         $departments = Department::withoutTenant()
-            ->where('organization_id', $orgId)
+            ->where('organization_id', $filterOrgId)
             ->where('status', 'active')
             ->orderBy('name')
             ->get(['id', 'name']);
 
         $branches = Branch::withoutTenant()
-            ->where('organization_id', $orgId)
+            ->where('organization_id', $filterOrgId)
             ->where('status', 'active')
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $owners = User::where('organization_id', $orgId)
+        $owners = User::where('organization_id', $filterOrgId)
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        return view('sop::create', compact('types', 'departments', 'branches', 'owners'));
+        return view('sop::create', compact(
+            'organizations', 'defaultOrgId', 'orgLocked',
+            'types', 'departments', 'branches', 'owners'
+        ));
     }
 
     public function store(Request $request, StoreSopProcessAction $action): RedirectResponse
@@ -114,36 +120,44 @@ class SopProcessController extends Controller
 
     public function edit(SopProcess $sop)
     {
-        $orgId = TenantContext::getOrganizationId();
+        [$organizations, , $orgLocked] = $this->_resolveOrganizations();
+
+        $filterOrgId = $sop->organization_id;
 
         $types = collect(SopType::cases())
             ->map(fn ($t) => ['value' => $t->value, 'text' => $t->label()])
             ->all();
 
         $departments = Department::withoutTenant()
-            ->where('organization_id', $orgId)
+            ->where('organization_id', $filterOrgId)
             ->where('status', 'active')
             ->orderBy('name')
             ->get(['id', 'name']);
 
         $branches = Branch::withoutTenant()
-            ->where('organization_id', $orgId)
+            ->where('organization_id', $filterOrgId)
             ->where('status', 'active')
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $owners = User::where('organization_id', $orgId)
+        $owners = User::where('organization_id', $filterOrgId)
             ->orderBy('name')
             ->get(['id', 'name']);
 
         $sop->load(['department', 'branch', 'owner']);
 
-        return view('sop::edit', compact('sop', 'types', 'departments', 'branches', 'owners'));
+        return view('sop::edit', compact(
+            'sop', 'organizations', 'orgLocked',
+            'types', 'departments', 'branches', 'owners'
+        ));
     }
 
     public function update(Request $request, SopProcess $sop, UpdateSopProcessAction $action): RedirectResponse
     {
-        $data = UpdateSopProcessData::validateAndCreate($request->all());
+        // Inject existing SOP's organization_id so UpdateSopProcessData can use it in rules()
+        $data = UpdateSopProcessData::validateAndCreate(
+            array_merge($request->all(), ['organization_id' => $sop->organization_id])
+        );
         $action->handle($sop, $data);
 
         return redirect()->route('backend.sop.show', $sop)
@@ -166,7 +180,6 @@ class SopProcessController extends Controller
     {
         $this->authorize('view', $sop);
 
-        // Build matrix: steps × people/roles, groupBy assignee_name
         $steps = SopStep::where('sop_id', $sop->id)
             ->where('is_active', true)
             ->orderBy('position')
@@ -183,12 +196,36 @@ class SopProcessController extends Controller
                 'assignee_type' => $r->assignee_type,
             ]);
 
-        // Build per-assignee matrix: assignee_name => [step_id => [R,A,C,I]]
         $assignees = $raciRows->groupBy('assignee_name')->map(function ($rows, $name) use ($stepIds) {
             $byStep = $rows->groupBy('step_id')->map(fn ($r) => $r->pluck('raci_type')->toArray());
             return ['name' => $name, 'by_step' => $byStep];
         })->sortKeys()->values();
 
         return view('sop::raci', compact('sop', 'steps', 'assignees'));
+    }
+
+    /**
+     * DN user (organization_id != null) → chỉ thấy org của họ, field bị locked.
+     * Admin (organization_id = null)    → thấy tất cả org, chọn tự do qua TomSelect.
+     *
+     * @return array{0: \Illuminate\Support\Collection, 1: int|null, 2: bool}
+     */
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+
+        if ($userOrgId) {
+            return [
+                Organization::where('id', $userOrgId)->get(['id', 'name']),
+                $userOrgId,
+                true,
+            ];
+        }
+
+        return [
+            Organization::orderBy('name')->get(['id', 'name']),
+            null,
+            false,
+        ];
     }
 }

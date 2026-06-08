@@ -3,6 +3,7 @@
 namespace Modules\Survey\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\Models\Organization;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Modules\Survey\Actions\ActivateSurveyAction;
@@ -36,8 +37,8 @@ class SurveyController extends Controller
     public function create()
     {
         $this->authorize('survey.create');
-
-        return view('survey::surveys.create');
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
+        return view('survey::surveys.create', compact('organizations', 'defaultOrgId', 'orgLocked'));
     }
 
     public function store(SurveyRequest $request, CreateSurveyAction $action): RedirectResponse
@@ -101,7 +102,9 @@ class SurveyController extends Controller
             'label' => $ft->label(),
         ])->all();
 
-        return view('survey::surveys.edit', compact('survey', 'sectionsData', 'fieldTypes', 'isLocked'));
+        [$organizations, , $orgLocked] = $this->_resolveOrganizations();
+
+        return view('survey::surveys.edit', compact('survey', 'sectionsData', 'fieldTypes', 'isLocked', 'organizations', 'orgLocked'));
     }
 
     public function update(SurveyRequest $request, Survey $survey, UpdateSurveyAction $action): RedirectResponse
@@ -127,6 +130,17 @@ class SurveyController extends Controller
         return redirect()
             ->route('backend.surveys.edit', $survey)
             ->with('success', "Survey \"{$survey->title}\" đã được kích hoạt (Active).");
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────
+
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
     }
 
     // ── Destroy ────────────────────────────────────────────────────────

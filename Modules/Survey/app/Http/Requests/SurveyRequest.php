@@ -14,8 +14,9 @@ class SurveyRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title'   => ['required', 'string', 'max:255'],
-            'version' => ['nullable', 'integer', 'min:1', 'max:9999'],
+            'organization_id' => ['required', 'integer', 'exists:organizations,id'],
+            'title'           => ['required', 'string', 'max:255'],
+            'version'         => ['nullable', 'integer', 'min:1', 'max:9999'],
         ];
     }
 
@@ -29,8 +30,9 @@ class SurveyRequest extends FormRequest
     public function toData(): array
     {
         return [
-            'title'   => $this->input('title'),
-            'version' => $this->input('version') ? (int) $this->input('version') : null,
+            'organization_id' => (int) $this->input('organization_id'),
+            'title'           => $this->input('title'),
+            'version'         => $this->input('version') ? (int) $this->input('version') : null,
         ];
     }
 }

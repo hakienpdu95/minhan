@@ -16,6 +16,7 @@ class ListUserRoleScopesQuery implements QueryInterface
         public readonly ?string $search        = null,
 
         // Exact filters
+        public readonly ?int    $orgId          = null, // null = all orgs (admin)
         public readonly ?int    $roleId         = null,
         public readonly ?int    $scopeBranchId  = null,
         public readonly ?int    $scopeDeptId    = null,

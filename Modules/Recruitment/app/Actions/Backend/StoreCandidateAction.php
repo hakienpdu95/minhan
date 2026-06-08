@@ -2,7 +2,6 @@
 
 namespace Modules\Recruitment\Actions\Backend;
 
-use App\Shared\Tenancy\TenantContext;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Recruitment\Data\Requests\StoreCandidateData;
 use Modules\Recruitment\Models\RcCandidate;
@@ -13,10 +12,8 @@ class StoreCandidateAction
 
     public function handle(StoreCandidateData $data): RcCandidate
     {
-        $orgId = TenantContext::getOrganizationId();
-
         return RcCandidate::create([
-            'org_id'           => $orgId,
+            'org_id'           => $data->organization_id,
             'full_name'        => $data->full_name,
             'email'            => $data->email,
             'phone'            => $data->phone,

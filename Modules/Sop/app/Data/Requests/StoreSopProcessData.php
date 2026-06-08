@@ -2,7 +2,6 @@
 
 namespace Modules\Sop\Data\Requests;
 
-use App\Shared\Tenancy\TenantContext;
 use Illuminate\Validation\Rule;
 use Modules\Sop\Enums\SopType;
 use Spatie\LaravelData\Attributes\Validation\Max;
@@ -14,6 +13,9 @@ use Spatie\LaravelData\Data;
 class StoreSopProcessData extends Data
 {
     public function __construct(
+        #[Required]
+        public readonly int $organization_id,
+
         #[Required, StringType, Max(50)]
         public readonly string $code,
 
@@ -43,9 +45,10 @@ class StoreSopProcessData extends Data
 
     public static function rules(): array
     {
-        $orgId = TenantContext::getOrganizationId();
+        $orgId = (int) request('organization_id');
 
         return [
+            'organization_id' => ['required', 'integer', 'exists:organizations,id'],
             'code' => [
                 'required', 'string', 'max:50',
                 Rule::unique('sop_processes', 'code')
@@ -63,6 +66,8 @@ class StoreSopProcessData extends Data
     public static function messages(): array
     {
         return [
+            'organization_id.required'    => 'Vui lòng chọn tổ chức.',
+            'organization_id.exists'      => 'Tổ chức không hợp lệ.',
             'code.required'               => 'Mã SOP là bắt buộc.',
             'code.max'                    => 'Mã SOP không được vượt quá 50 ký tự.',
             'code.unique'                 => 'Mã SOP này đã được sử dụng trong tổ chức.',

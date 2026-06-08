@@ -5,6 +5,7 @@
  *   1. Inline validation — delegate to global initFormValidation
  *   2. Flatpickr — datetime picker cho trường expires_at
  *   3. Alpine component grantRoleScopeForm — TomSelect manual init + cascade branch → dept
+ *      + dynamic org selection → load users/branches/departments via API
  *
  * Requires globals (core): initFormValidation, window.Alpine
  * Requires globals (lazy): window.TomSelect (tom-select.js), initDateTimePicker (flatpickr.js)
@@ -13,6 +14,7 @@
 import { createTs } from '@shared/tom-select-factory.js';
 
 const FORM_SEL = '[data-role-scope-form]';
+const API_ORG_DATA = '/dashboard/role-scopes/api/org-data';
 
 // ── Entry point ────────────────────────────────────────────────────────────────
 
@@ -38,9 +40,10 @@ function _initFlatpickr(form) {
 document.addEventListener('alpine:init', () => {
 
     Alpine.data('grantRoleScopeForm', (cfg) => {
-        const ALL_DEPTS = cfg.departments;
+        let ALL_DEPTS = cfg.departments;
 
         // Module-level TomSelect instances — shared across methods
+        let _orgTs    = null;
         let _userTs   = null;
         let _roleTs   = null;
         let _branchTs = null;
@@ -56,6 +59,37 @@ document.addEventListener('alpine:init', () => {
             },
 
             _initSelects() {
+                const self = this;
+
+                // ── Org select (admin only) ──────────────────────────────────────
+                const orgEl = document.querySelector('#select-org');
+                if (orgEl && !cfg.orgLocked) {
+                    _orgTs = createTs(orgEl, {
+                        dropdownParent: 'body',
+                        placeholder:    'Chọn tổ chức...',
+                        maxOptions:     null,
+                        searchField:    ['text'],
+                        plugins:        ['clear_button'],
+                        options:        cfg.organizations,
+                        render: { no_results: NO_RESULTS },
+                        onChange(val) {
+                            if (val) {
+                                self._loadOrgData(val);
+                            } else {
+                                self._clearOrgData();
+                            }
+                        },
+                    });
+
+                    // If there's an old value from failed validation, restore it and load data
+                    const preselect = cfg.oldOrgId || cfg.defaultOrgId;
+                    if (preselect) {
+                        _orgTs.setValue(String(preselect), true); // silent=true to avoid triggering onChange
+                        this._loadOrgData(preselect, true);       // isInitial=true to restore old field values
+                    }
+                }
+
+                // ── User select ────────────────────────────────────────────────
                 _userTs = createTs(document.querySelector('#select-user'), {
                     dropdownParent: 'body',
                     placeholder:    'Chọn user...',
@@ -67,6 +101,7 @@ document.addEventListener('alpine:init', () => {
                     render: { no_results: NO_RESULTS },
                 });
 
+                // ── Role select ────────────────────────────────────────────────
                 _roleTs = createTs(document.querySelector('#select-role'), {
                     dropdownParent: 'body',
                     placeholder:    'Chọn role...',
@@ -78,8 +113,7 @@ document.addEventListener('alpine:init', () => {
                     render: { no_results: NO_RESULTS },
                 });
 
-                const self = this;
-
+                // ── Branch select ──────────────────────────────────────────────
                 _branchTs = createTs(document.querySelector('#select-branch'), {
                     dropdownParent: 'body',
                     placeholder:    '— Toàn tổ chức (không giới hạn chi nhánh) —',
@@ -96,6 +130,7 @@ document.addEventListener('alpine:init', () => {
                     render: { no_results: NO_RESULTS },
                 });
 
+                // ── Dept select ────────────────────────────────────────────────
                 _deptTs = createTs(document.querySelector('#select-dept'), {
                     dropdownParent: 'body',
                     placeholder:    '— Toàn chi nhánh (không giới hạn phòng ban) —',
@@ -108,6 +143,70 @@ document.addEventListener('alpine:init', () => {
                 });
 
                 if (self.selectedBranchId) self._refreshDepts(cfg.oldDeptId);
+            },
+
+            /**
+             * Fetch users/branches/departments for the chosen org,
+             * then repopulate all three selects.
+             *
+             * isInitial=true: org was pre-selected (defaultOrgId or oldOrgId),
+             * so restore old field values from cfg.
+             */
+            async _loadOrgData(orgId, isInitial = false) {
+                const self = this;
+
+                try {
+                    const data = await fetch(`${API_ORG_DATA}?org_id=${encodeURIComponent(orgId)}`)
+                        .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+
+                    // ── Repopulate user select ───────────────────────────────
+                    if (_userTs) {
+                        _userTs.clearOptions();
+                        for (const u of data.users) _userTs.addOption(u);
+                        _userTs.refreshOptions(false);
+                        if (isInitial && cfg.oldUserId) {
+                            _userTs.setValue(String(cfg.oldUserId), true);
+                        } else if (!isInitial) {
+                            _userTs.clear(true);
+                        }
+                    }
+
+                    // ── Repopulate branch select ─────────────────────────────
+                    if (_branchTs) {
+                        _branchTs.clearOptions();
+                        for (const b of data.branches) _branchTs.addOption(b);
+                        _branchTs.refreshOptions(false);
+                        if (isInitial && cfg.oldBranchId) {
+                            _branchTs.setValue(String(cfg.oldBranchId), true);
+                            self.selectedBranchId = parseInt(cfg.oldBranchId);
+                        } else if (!isInitial) {
+                            _branchTs.clear(true);
+                            self.selectedBranchId = null;
+                        }
+                    }
+
+                    // ── Update ALL_DEPTS pool + refresh dept select ───────────
+                    ALL_DEPTS = data.departments;
+                    if (_deptTs) {
+                        _deptTs.clearOptions();
+                        _deptTs.clear(true);
+                    }
+                    if (self.selectedBranchId) {
+                        self._refreshDepts(isInitial ? cfg.oldDeptId : null);
+                    }
+
+                } catch (e) {
+                    console.error('[RoleScope] Không thể tải dữ liệu tổ chức:', e);
+                }
+            },
+
+            /** Called when org is cleared — empty all dependent selects */
+            _clearOrgData() {
+                if (_userTs) { _userTs.clearOptions(); _userTs.clear(true); }
+                if (_branchTs) { _branchTs.clearOptions(); _branchTs.clear(true); }
+                if (_deptTs) { _deptTs.clearOptions(); _deptTs.clear(true); }
+                ALL_DEPTS = [];
+                this.selectedBranchId = null;
             },
 
             _refreshDepts(pendingDept) {

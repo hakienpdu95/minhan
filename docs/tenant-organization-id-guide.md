@@ -1,20 +1,21 @@
-# Tenant Organization ID — Hướng dẫn chuẩn hóa module
+# Chuẩn hóa `organization_id` cho module — Hướng dẫn toàn diện
 
 > **Mục đích:** Đảm bảo mọi module đều có `organization_id` đúng chuẩn để  
-> `TenantAwareModel` + `BelongsToOrganization` scope dữ liệu theo tenant.  
-> **Reference implementation:** `Modules/Branch` — đây là module gold standard cho pattern này.
+> `TenantAwareModel` + `BelongsToOrganization` tự động scope dữ liệu theo tenant.  
+> **Reference implementation:** `Modules/Branch` — gold standard cho toàn bộ pattern.  
+> **Cập nhật lần cuối:** 2026-06-09 (sau khi hoàn thành Priority Groups 1, 2, 3)
 
 ---
 
 ## Mục lục
 
 1. [Kiến trúc tenant](#1-kiến-trúc-tenant)
-2. [Chẩn đoán nhanh](#2-chẩn-đoán-nhanh)
-3. [Trạng thái hiện tại từng module](#3-trạng-thái-hiện-tại)
-4. [Checklist 5 lớp](#4-checklist-5-lớp)
-5. [Code template từng lớp](#5-code-template)
-6. [Logic phân quyền tổ chức (mở rộng DN)](#6-logic-phân-quyền-tổ-chức)
-7. [Thứ tự thực hiện khuyến nghị](#7-thứ-tự-thực-hiện)
+2. [Trạng thái hiện tại](#2-trạng-thái-hiện-tại)
+3. [Checklist 6 lớp](#3-checklist-6-lớp)
+4. [Code template từng lớp](#4-code-template)
+5. [Trường hợp đặc biệt](#5-trường-hợp-đặc-biệt)
+6. [Quy trình áp dụng cho module mới](#6-quy-trình-áp-dụng)
+7. [Câu hỏi thường gặp](#7-câu-hỏi-thường-gặp)
 
 ---
 
@@ -22,152 +23,115 @@
 
 ```
 TenantAwareModel (app/Foundation/Models/TenantAwareModel.php)
-    └── uses BelongsToOrganization (app/Shared/Tenancy/Traits/)
+    ├── SoftDeletes
+    ├── LogsActivity
+    └── BelongsToOrganization (app/Shared/Tenancy/Traits/)
             ├── bootBelongsToOrganization()
-            │     ├── addGlobalScope(OrganizationScope)   ← tự filter WHERE organization_id = ?
+            │     ├── addGlobalScope(OrganizationScope)  ← auto filter WHERE organization_id = ?
             │     └── creating: auto-set organization_id từ TenantContext nếu chưa có
             ├── organization(): BelongsTo Organization
             └── scopeWithoutTenant() / scopeForOrganization()
 ```
 
-**Quy tắc:** Bất kỳ model nào lưu dữ liệu theo tenant **phải** extend `TenantAwareModel`.  
-Model extends `TenantAwareModel` mà bảng thiếu cột `organization_id` → **query sẽ fail**.
+**Quy tắc cốt lõi:**
+
+- Model lưu dữ liệu theo tenant → **phải** extend `TenantAwareModel`
+- Bảng thiếu cột `organization_id` khi model extend `TenantAwareModel` → **query sẽ fail**
+- `BelongsToOrganization` trait cung cấp sẵn relationship `organization()` — **không** khai báo lại trong model
+- Store Action **phải** truyền `organization_id` explicit từ `$data` (không dựa vào TenantContext auto-set) để đảm bảo đúng khi dùng trong queue job hoặc API không qua tenant middleware
 
 ---
 
-## 2. Chẩn đoán nhanh
+## 2. Trạng thái hiện tại
 
-Chạy lệnh sau để kiểm tra tất cả module cùng lúc:
+> Cập nhật: 2026-06-09 — tất cả 3 nhóm đã hoàn thành.
 
-```bash
-# Kiểm tra model có TenantAwareModel và organization_id không
-for mod in Modules/*/app/Models/*.php; do
-  has_tenant=$(grep -c "TenantAwareModel" "$mod" 2>/dev/null || echo 0)
-  has_org=$(grep -c "organization_id" "$mod" 2>/dev/null || echo 0)
-  [ "$has_tenant" -gt 0 ] && [ "$has_org" -eq 0 ] && echo "⚠️  THIẾU org_id trong fillable: $mod"
-  [ "$has_tenant" -eq 0 ] && echo "❌ CHƯA tenant-aware: $mod"
-done
-
-# Kiểm tra migration có organization_id không
-for mod in Modules/*/database/migrations/; do
-  create_mig=$(find "$mod" -name "*create_*table*" 2>/dev/null | head -1)
-  [ -n "$create_mig" ] && ! grep -q "organization_id" "$create_mig" && echo "⚠️  Migration thiếu org_id: $create_mig"
-done
-```
-
----
-
-## 3. Trạng thái hiện tại
-
-> Cập nhật: 2026-06-08. Scan tự động từ codebase.
-
-| Module | Model TenantAware | org_id migration | org_id fillable | org_id StoreBranchData | Store Action explicit | Views có field |
+| Module | TenantAwareModel | org_id migration | org_id fillable | StoreData field | StoreAction explicit | Controller + Views |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Branch** ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Department | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Employee | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| JobPosting | ❌ | ⚠️ partial | ❌ | ❌ | ⚠️ partial | ❌ |
-| JobTitle | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| KcCategory | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| KcItem | ❌ | ⚠️ partial | ❌ | ✅ | ❌ | ❌ |
-| KpiGoal | ✅ | ✅ | ✅ | ⚠️ partial | ❌ | ❌ |
-| Lead | ❌ | ⚠️ partial | ✅ | ❌ | ✅ | ❌ |
-| LeadPipelineStage | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ |
-| LeadSource | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ |
-| Leave | ✅ | ✅ | ✅ | ⚠️ partial | ❌ | ❌ |
-| PerformanceReview | ✅ | ✅ | ✅ | ⚠️ partial | ❌ | ❌ |
-| Project | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Recruitment | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Sop | ✅ | ⚠️ partial | ✅ | ✅ | ⚠️ partial | ❌ |
-| Survey | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Department ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Employee ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| JobTitle ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| KcCategory ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| KpiGoal ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Leave ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| PerformanceReview ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Project ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Lead ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| LeadPipelineStage ✅ ⚠️ | plain Model* | ✅ | ✅ | ✅ | ✅ | ✅ |
+| LeadSource ✅ ⚠️ | plain Model* | ✅ | ✅ | ✅ | ✅ | ✅ |
+| JobPosting ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| KcItem ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Recruitment ✅ ⚠️ | ✅ | ✅ (org_id*) | ✅ | ✅ | ✅ | ✅ |
+| Survey ✅ | ✅ | ✅ (migration added) | ✅ | ✅ | ✅ | ✅ |
+| Sop ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Assessment ✅ | ✅ | ✅ (migration added + deleted_at) | ✅ | ✅ (inline validate) | ✅ | ✅ |
 
-**Phân nhóm theo độ ưu tiên:**
-
-- 🔴 **Cần làm đầy đủ** (thiếu nhiều lớp): `Recruitment`, `Survey`, `JobPosting`, `KcItem`
-- 🟠 **Cần fix model + data + views**: `Lead`, `LeadPipelineStage`, `LeadSource`
-- 🟡 **Chỉ cần store action + views**: `Department`, `JobTitle`, `KcCategory`, `KpiGoal`, `Leave`, `PerformanceReview`, `Project`, `Employee`
-- ✅ **Done**: `Branch`
+> ⚠️ Ghi chú đặc biệt: xem [Mục 5 — Trường hợp đặc biệt](#5-trường-hợp-đặc-biệt)
 
 ---
 
-## 4. Checklist 5 lớp
+## 3. Checklist 6 lớp
 
-Mỗi module cần hoàn thành **5 lớp** theo thứ tự sau:
+Mỗi module cần hoàn thành **6 lớp** theo thứ tự:
 
-### Lớp 1 — Migration
+### Lớp 0 — Migration (nếu cột chưa tồn tại)
 
-- [ ] Bảng `[entity]s` có cột `organization_id` (unsignedBigInteger, NOT NULL, FK → organizations.id)
-- [ ] Có unique constraint kết hợp `(organization_id, [code_field])` nếu code phải unique trong org
-- [ ] Có index `(organization_id, status)` nếu list thường filter theo status
+- [ ] Bảng đã có cột `organization_id` — kiểm tra bằng `php artisan db:show --table=[table]`
+- [ ] Nếu chưa: tạo migration alter riêng (xem template 4.1)
+- [ ] Chạy `php artisan migrate`
 
-```sql
--- Cột cần có trong create migration
-$table->foreignId('organization_id')->constrained()->restrictOnDelete();
--- Hoặc nếu bảng đã tồn tại, tạo migration riêng:
-$table->foreignId('organization_id')->nullable()->constrained()->nullOnDelete()->after('id');
-```
-
-### Lớp 2 — Model
+### Lớp 1 — Model
 
 - [ ] Extends `TenantAwareModel` (không phải `Model` thường)
-- [ ] `organization_id` có trong `$fillable`
-- [ ] **Không cần** khai báo thêm `organization()` relationship — đã có trong `BelongsToOrganization` trait
+- [ ] `'organization_id'` là **phần tử đầu tiên** trong `$fillable`
+- [ ] **Không** khai báo thêm `organization()` — trait đã cung cấp
 
-```php
-// ✅ Đúng
-class Department extends TenantAwareModel { ... }
+### Lớp 2 — Store Data (Spatie Laravel Data)
 
-// ❌ Sai
-class Department extends Model { ... }
-```
+- [ ] `public readonly int $organization_id` là **tham số đầu tiên** trong constructor
+- [ ] `rules()` có rule `'organization_id' => ['required', 'integer', 'exists:organizations,id']`
+- [ ] `UpdateFooData` **không** cần `organization_id` — org không thay đổi sau khi tạo
 
-### Lớp 3 — Data/Request (Spatie Laravel Data)
+### Lớp 3 — Store Action
 
-- [ ] `StoreFooData` có field `public readonly int $organization_id`
-- [ ] Rules có `'organization_id' => ['required', 'integer', 'exists:organizations,id']`
-- [ ] `UpdateFooData` **không cần** `organization_id` (org không thay đổi sau khi tạo)
+- [ ] `'organization_id' => $data->organization_id` là **key đầu tiên** trong mảng `create([])`
+- [ ] Không import / dùng `TenantContext` để lấy org_id
 
-### Lớp 4 — Action
+### Lớp 4 — Controller
 
-- [ ] `StoreFooAction::handle()` truyền `'organization_id' => $data->organization_id` vào `create([])`
-- [ ] `UpdateFooAction::handle()` **không** include `organization_id` trong `update([])`
+- [ ] Import `use App\Shared\Tenancy\Models\Organization;`
+- [ ] Có method `private function _resolveOrganizations(): array` trả về 3-tuple
+- [ ] `create()` nhận `[$organizations, $defaultOrgId, $orgLocked]` và pass xuống view
+- [ ] `edit()` nhận `[$organizations, , $orgLocked]` và pass xuống view
 
-> **Lưu ý:** `BelongsToOrganization` trait auto-set `organization_id` từ `TenantContext` khi `creating`,  
-> nên nếu model extend đúng thì sẽ tự được set. Tuy nhiên **vẫn nên truyền explicit** từ Data  
-> để rõ ràng và tránh lỗi khi TenantContext chưa được hydrate (job queue, API không có middleware).
+### Lớp 5 — View + JS + SCSS
 
-### Lớp 5 — Controller + Views
-
-**Controller:**
-- [ ] `create()` và `edit()` truyền `$organizations` và `$defaultOrgId` xuống view
-- [ ] Logic phân quyền: DN user → chỉ org của họ; Admin → tất cả org
-
-**Views:**
-- [ ] Field "Tổ chức" là **field đầu tiên** trong tab Thông tin cơ bản (hoặc đầu form nếu flat form)
-- [ ] Dùng TomSelect chuẩn (`id="ts-organization"`, class `ts-init`) khi admin
-- [ ] Dùng readonly input + hidden field khi DN user (1 org)
-- [ ] `tabFields.basic` trong Alpine x-data phải include `'organization_id'`
+- [ ] Field "Tổ chức" là **field đầu tiên** trong form (tab Thông tin cơ bản hoặc card đầu)
+- [ ] Dùng `$orgLocked` (không dùng `$organizations->count() === 1`) để phân nhánh UI
+- [ ] `tabFields.basic` trong Alpine `x-data` bao gồm `'organization_id'`
+- [ ] SCSS entry point có `@use 'tom-select';` (bắt buộc nếu form có bất kỳ `<select>`)
+- [ ] JS gọi `initAllTomSelects(form)` sau khi form được tìm thấy
 
 ---
 
-## 5. Code template
+## 4. Code template
 
-### 5.1 Migration (thêm vào bảng đã tồn tại)
+### 4.1 Migration — thêm cột vào bảng đã tồn tại
 
 ```php
-// database/migrations/YYYY_MM_DD_XXXXXX_alter_[table]_add_organization_id.php
+// Modules/[Name]/database/migrations/YYYY_MM_DD_XXXXXX_add_organization_id_to_[table].php
 return new class extends Migration
 {
     public function up(): void
     {
         Schema::table('[table]', function (Blueprint $table) {
-            // Kiểm tra trước khi add để migration idempotent
             if (!Schema::hasColumn('[table]', 'organization_id')) {
                 $table->foreignId('organization_id')
-                      ->nullable()
+                      ->nullable()          // nullable để không break dữ liệu cũ
+                      ->after('id')
                       ->constrained()
-                      ->nullOnDelete()
-                      ->after('id');
+                      ->restrictOnDelete(); // hoặc nullOnDelete() tùy use-case
             }
         });
     }
@@ -182,7 +146,7 @@ return new class extends Migration
 };
 ```
 
-### 5.2 Model
+### 4.2 Model
 
 ```php
 use App\Foundation\Models\TenantAwareModel;
@@ -190,24 +154,26 @@ use App\Foundation\Models\TenantAwareModel;
 class [Entity] extends TenantAwareModel
 {
     protected $fillable = [
-        'organization_id',  // ← bắt buộc
+        'organization_id',  // ← luôn đầu tiên
+        'name',
         // ... các field khác
     ];
 }
 ```
 
-### 5.3 Store Data
+### 4.3 Store Data (Spatie Laravel Data)
 
 ```php
+use Spatie\LaravelData\Attributes\Validation\Required;
 use Spatie\LaravelData\Data;
 
 class Store[Entity]Data extends Data
 {
     public function __construct(
         #[Required]
-        public readonly int $organization_id,  // ← field đầu tiên
+        public readonly int $organization_id,  // ← tham số đầu tiên
 
-        // ... các field khác
+        // ... các tham số khác
     ) {}
 
     public static function rules(): array
@@ -220,9 +186,11 @@ class Store[Entity]Data extends Data
 }
 ```
 
-### 5.4 Store Action
+### 4.4 Store Action
 
 ```php
+use Lorisleiva\Actions\Concerns\AsAction;
+
 class Store[Entity]Action
 {
     use AsAction;
@@ -230,252 +198,332 @@ class Store[Entity]Action
     public function handle(Store[Entity]Data $data): [Entity]
     {
         return [Entity]::create([
-            'organization_id' => $data->organization_id,  // ← explicit, không dựa vào TenantContext
+            'organization_id' => $data->organization_id,  // ← explicit, key đầu tiên
             // ... các field khác
         ]);
     }
 }
 ```
 
-### 5.5 Controller — create() và edit()
+### 4.5 Controller
 
 ```php
 use App\Shared\Tenancy\Models\Organization;
 
-public function create()
+class [Entity]Controller extends Controller
 {
-    [$organizations, $defaultOrgId] = $this->_resolveOrganizations();
+    public function create()
+    {
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
+        // ... lấy các data khác
 
-    // ... các data khác
+        return view('[module]::[view]', compact(
+            'organizations', 'defaultOrgId', 'orgLocked',
+            // ... compact các var khác
+        ));
+    }
 
-    return view('[module]::create', compact(
-        'organizations', 'defaultOrgId',
-        // ... compact các var khác
-    ));
-}
+    public function edit([Entity] $entity)
+    {
+        [$organizations, , $orgLocked] = $this->_resolveOrganizations();
+        // ... lấy các data khác
 
-public function edit([Entity] $entity)
-{
-    [$organizations] = $this->_resolveOrganizations();
+        return view('[module]::[view]', compact(
+            'entity', 'organizations', 'orgLocked',
+            // ... compact các var khác
+        ));
+    }
 
-    // ... các data khác
+    /**
+     * DN user (organization_id != null) → chỉ thấy org của họ, field bị locked.
+     * Admin (organization_id = null)    → thấy tất cả org, chọn tự do qua TomSelect.
+     *
+     * @return array{0: \Illuminate\Support\Collection, 1: int|null, 2: bool}
+     */
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
 
-    return view('[module]::edit', compact(
-        'entity', 'organizations',
-        // ... compact các var khác
-    ));
-}
+        if ($userOrgId) {
+            return [
+                Organization::where('id', $userOrgId)->get(['id', 'name']),
+                $userOrgId,
+                true,  // orgLocked — DN user không thể thay đổi org
+            ];
+        }
 
-/**
- * DN user chỉ thấy org của họ; admin thấy tất cả.
- * Return: [$organizations, $defaultOrgId]
- */
-private function _resolveOrganizations(): array
-{
-    $userOrgId = auth()->user()->organization_id;
-
-    if ($userOrgId) {
         return [
-            Organization::where('id', $userOrgId)->get(['id', 'name']),
-            $userOrgId,
+            Organization::orderBy('name')->get(['id', 'name']),
+            null,
+            false, // orgLocked = false — Admin chọn tự do
         ];
     }
-
-    return [
-        Organization::orderBy('name')->get(['id', 'name']),
-        null,
-    ];
 }
 ```
 
-### 5.6 View — Blade (Tab form)
+> **Quan trọng:** Dùng `auth()->user()->organization_id` — **KHÔNG** dùng `TenantContext::getOrganizationId()`.  
+> TenantContext fallback về org đầu tiên khi admin (organization_id = null), làm admin bị nhận dạng sai thành DN user → field bị locked sai.
 
-Thêm vào `tabFields.basic` trong Alpine x-data:
+### 4.6 View — Create form (Blade)
+
+**Tab-based form** — thêm `'organization_id'` vào `tabFields.basic` trong Alpine data:
 
 ```blade
-tabFields: {
-    basic: ['organization_id', 'name', 'code', ...],  {{-- organization_id phải có --}}
+x-data="{
+    tab: 'basic',
+    tabFields: {
+        basic: ['organization_id', 'name', 'code', ...],
+        ...
+    },
     ...
-},
+}"
 ```
 
-Field HTML — đặt **đầu tiên** trong grid của tab Thông tin cơ bản:
+**Field HTML** — đặt đầu tiên trong grid, dùng `$orgLocked` để phân nhánh:
 
 ```blade
-{{-- Tab: Thông tin cơ bản --}}
-<div x-show="tab === 'basic'" data-tab-label="Thông tin cơ bản" class="space-y-4">
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-        {{-- ── Tổ chức: LUÔN là field đầu tiên ─────────────────────── --}}
-        <div class="form-control sm:col-span-2">
-            <label class="label py-0 pb-1.5">
-                <span class="label-text font-medium">Tổ chức <span class="text-error">*</span></span>
-            </label>
-            @if($organizations->count() === 1)
-                {{-- DN user: locked, không thể thay đổi --}}
-                <input type="hidden" name="organization_id" value="{{ $organizations->first()->id }}">
-                <input type="text" value="{{ $organizations->first()->name }}" readonly
-                       class="input input-bordered input-sm w-full bg-base-200 cursor-not-allowed">
-                <p class="mt-1 text-xs text-base-content/40">Xác định từ tài khoản của bạn.</p>
-            @else
-                {{-- Admin: chọn tự do --}}
-                <select id="ts-organization" name="organization_id"
-                        class="select select-bordered select-sm w-full ts-init
-                               @error('organization_id') select-error @enderror"
-                        data-ts-placeholder="— Chọn tổ chức —"
-                        data-req="Vui lòng chọn tổ chức">
-                    <option value="">— Chọn tổ chức —</option>
-                    @foreach($organizations as $org)
-                    <option value="{{ $org->id }}"
-                        {{-- Create: --}} {{ old('organization_id', $defaultOrgId ?? '') == $org->id ? 'selected' : '' }}
-                        {{-- Edit: thay $defaultOrgId bằng $model->organization_id --}}
-                    >{{ $org->name }}</option>
-                    @endforeach
-                </select>
-                @error('organization_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
-            @endif
-        </div>
-
-        {{-- ── Tên [entity]: field thứ hai ─────────────────────────── --}}
-        <div class="form-control sm:col-span-2">
-            <label class="label py-0 pb-1.5">
-                <span class="label-text font-medium">Tên ... <span class="text-error">*</span></span>
-            </label>
-            <input type="text" name="name" value="{{ old('name') }}"
-                   data-req="Vui lòng nhập tên ..."
-                   class="input input-bordered input-sm w-full @error('name') input-error @enderror"
-                   placeholder="VD: ...">
-            @error('name')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
-        </div>
-
-        {{-- ... các field còn lại ... --}}
-
-    </div>
+{{-- ── Tổ chức: LUÔN là field đầu tiên ─────────────────────────── --}}
+<div class="form-control sm:col-span-2">
+    <label class="label py-0 pb-1.5">
+        <span class="label-text font-medium">Tổ chức <span class="text-error">*</span></span>
+    </label>
+    @if($orgLocked)
+        {{-- DN user: không thể thay đổi --}}
+        <input type="hidden" name="organization_id" value="{{ $organizations->first()->id }}">
+        <input type="text" value="{{ $organizations->first()->name }}" readonly
+               class="input input-bordered input-sm w-full bg-base-200 cursor-not-allowed">
+        <p class="mt-1 text-xs text-base-content/40">Xác định từ tài khoản của bạn.</p>
+    @else
+        {{-- Admin: chọn tự do qua TomSelect --}}
+        <select id="ts-organization" name="organization_id"
+                class="select select-bordered select-sm w-full ts-init
+                       @error('organization_id') select-error @enderror"
+                data-ts-placeholder="— Chọn tổ chức —"
+                data-req="Vui lòng chọn tổ chức">
+            <option value="">— Chọn tổ chức —</option>
+            @foreach($organizations as $org)
+            <option value="{{ $org->id }}"
+                {{ old('organization_id', $defaultOrgId ?? '') == $org->id ? 'selected' : '' }}>
+                {{ $org->name }}
+            </option>
+            @endforeach
+        </select>
+        @error('organization_id')
+            <p class="mt-1 text-xs text-error">{{ $message }}</p>
+        @enderror
+    @endif
 </div>
 ```
 
-**Edit form** — chỉ khác 1 chỗ trong option selected:
+### 4.7 View — Edit form (Blade)
+
+Giống create, chỉ khác phần `selected`:
 
 ```blade
-{{ old('organization_id', $[entity]->organization_id) == $org->id ? 'selected' : '' }}
+{{ old('organization_id', $entity->organization_id) == $org->id ? 'selected' : '' }}
 ```
 
-### 5.7 View — Blade (Flat form)
+`$orgLocked` vẫn dùng từ `_resolveOrganizations()` — không hardcode từ entity.
 
-Với flat form (≤ 10 trường), đặt field "Tổ chức" là field đầu tiên trong card:
+### 4.8 SCSS entry point
 
-```blade
-<div class="card bg-base-100 shadow-sm border border-base-200">
-    <div class="card-body">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+```scss
+// Modules/[Name]/resources/assets/sass/[name].scss
+@use 'tom-select';   // ← bắt buộc nếu form có bất kỳ <select> nào
 
-            {{-- Tổ chức luôn đầu tiên --}}
-            <div class="form-control sm:col-span-2">
-                {{-- copy template 5.6 ở trên --}}
-            </div>
+// ... phần còn lại
+```
 
-            {{-- ... các field khác --}}
-        </div>
-    </div>
-</div>
+### 4.9 JS — Entry point (thin wrapper)
+
+```js
+// Modules/[Name]/resources/assets/js/[name].js
+import './pages/[entity]-form.js';
+// Nếu có index page với Tabulator:
+// import './pages/[entity]-index.js';
+```
+
+### 4.10 JS — Form page
+
+```js
+// Modules/[Name]/resources/assets/js/pages/[entity]-form.js
+import { initAllTomSelects } from '@shared/tom-select-factory.js';
+
+const FORM_SEL = '[data-[entity]-form]';
+
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.querySelector(FORM_SEL);
+    if (!form) return;
+
+    initFormValidation(FORM_SEL);   // global từ app.js
+    initAllTomSelects(form);        // init tất cả [class="ts-init"] trong form
+    // ... logic khác của form
+});
 ```
 
 ---
 
-## 6. Logic phân quyền tổ chức
+## 5. Trường hợp đặc biệt
 
-### Nguyên tắc hiện tại (Admin only)
+### 5.1 Model có bản ghi `is_global` — LeadPipelineStage, LeadSource
 
-- Admin (`user.organization_id = null`) → thấy **tất cả** org, chọn tự do
-- DN user (`user.organization_id != null`) → chỉ thấy **1 org** của họ, field bị locked
+**Vấn đề:** Có bản ghi `is_global = 1` chia sẻ giữa tất cả org (template mặc định). Nếu extend `TenantAwareModel`, `OrganizationScope` filter `WHERE organization_id = ?` và **xóa** các bản ghi global khỏi kết quả. Ngoài ra, bảng chưa có cột `deleted_at` nên SoftDeletes cũng lỗi.
 
-### Mở rộng cho tài khoản DN
-
-Khi một tài khoản DN được kích hoạt, hệ thống tự động hoạt động đúng vì logic đã được handle trong `_resolveOrganizations()`:
-
-```
-user.organization_id = null  →  Admin  →  select all orgs, chọn tự do
-user.organization_id = X     →  DN     →  chỉ thấy org X, field locked (readonly + hidden input)
-```
-
-**Không cần thay đổi gì thêm** khi DN account được activate — chỉ cần đảm bảo `user.organization_id` được set đúng khi onboard DN.
-
-### Nếu cần role-based (tương lai)
+**Giải pháp:** Giữ `extends Model`. Quản lý `organization_id` explicit trong form và action.
 
 ```php
-private function _resolveOrganizations(): array
+// ✅ Đúng cho model có is_global
+class LeadPipelineStage extends Model
 {
-    $user = auth()->user();
-
-    // System Admin không có org → thấy tất cả
-    if ($user->hasRole('System_Admin') || !$user->organization_id) {
-        return [Organization::orderBy('name')->get(['id', 'name']), null];
-    }
-
-    // Mọi user khác → locked vào org của họ
-    return [
-        Organization::where('id', $user->organization_id)->get(['id', 'name']),
-        $user->organization_id,
-    ];
+    protected $fillable = ['organization_id', 'name', ...];
+    // Tự implement scoping trong queries khi cần
 }
 ```
 
+**Lưu ý:** Vẫn cần đủ 5 lớp còn lại (Data, Action, Controller, View, JS/SCSS). Chỉ khác ở lớp Model.
+
+### 5.2 DB column khác tên chuẩn — Recruitment (`org_id`)
+
+**Vấn đề:** Bảng `candidates` dùng cột `org_id` thay vì `organization_id`.
+
+**Giải pháp:** Form field vẫn đặt tên `organization_id` (đúng chuẩn). Action map tường minh:
+
+```php
+// StoreCandidateAction.php
+return Candidate::create([
+    'org_id' => $data->organization_id,  // ← map: form field → DB column
+    // ...
+]);
+```
+
+Edit view — fallback dùng tên cột DB:
+
+```blade
+{{ old('organization_id', $candidate->org_id) == $org->id ? 'selected' : '' }}
+```
+
+**Không** đổi tên cột DB để tránh break migration và code hiện có.
+
+### 5.3 Module chưa có cột `organization_id` — Survey
+
+**Vấn đề:** Bảng `surveys` chưa có cột `organization_id`. Không thể thêm vào `$fillable` hay extend `TenantAwareModel` trước khi chạy migration.
+
+**Quy trình bắt buộc:**
+
+1. Tạo migration alter với `nullable()` (để không break dữ liệu cũ)
+2. Chạy `php artisan migrate`
+3. **Sau đó** mới chỉnh Model → Data → Action → Controller → Views
+
+```php
+// nullable để safe với dữ liệu cũ đã tồn tại
+$table->foreignId('organization_id')
+      ->nullable()
+      ->after('id')
+      ->constrained()
+      ->restrictOnDelete();
+```
+
+### 5.4 JS dùng TomSelect trực tiếp (anti-pattern) — KcItem
+
+**Vấn đề:** `kc-item-form.js` dùng `new window.TomSelect(el, {...})` trực tiếp theo ID, không dùng factory `initAllTomSelects`.
+
+**Giải pháp tạm thời:** Thêm `'ts-organization'` vào danh sách ID trong forEach hiện có:
+
+```js
+['ts-organization', 'ts-type', 'ts-category', 'ts-visibility'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    new window.TomSelect(el, { dropdownParent: 'body', create: false, plugins: ['clear_button'] });
+});
+```
+
+**Việc cần làm (task riêng):** Refactor `kc-item-form.js` sang `initAllTomSelects(form)` + `createTs()` factory. Không ưu tiên vì hiện đang hoạt động đúng.
+
 ---
 
-## 7. Thứ tự thực hiện khuyến nghị
+## 6. Quy trình áp dụng cho module mới
 
-### Nhóm ưu tiên 1 — Chỉ cần store action + views (model/migration đã đủ)
+### Bước 1 — Kiểm tra trạng thái hiện tại
 
-Các module này đã có `TenantAwareModel`, `organization_id` trong migration và fillable/data.  
-Chỉ cần: **Store Action explicit** + **Views**.
+```bash
+# Model extend gì?
+grep -r "extends " Modules/[Name]/app/Models/
 
-| Module | Việc cần làm |
-|---|---|
-| Department | Store action + create/edit views |
-| JobTitle | Store action + create/edit views |
-| KcCategory | Store action + create/edit views |
-| Leave | Store action (check partial) + views nếu có |
-| PerformanceReview | Store action (check partial) + create/edit views |
-| Project | Store action + create/edit views |
-| Employee | Views (store action đã có) |
-| KpiGoal | Data class (check partial) + store action + views nếu có |
+# Migration có organization_id không?
+grep -r "organization_id" Modules/[Name]/database/migrations/
 
-**Ước lượng:** ~15 phút/module × 8 = ~2 giờ
+# Cột thực tế trong DB
+php artisan db:show --table=[table_name]
+```
 
-### Nhóm ưu tiên 2 — Cần thêm TenantAwareModel
+### Bước 2 — Xác định trường hợp đặc biệt
 
-Các module này có `organization_id` trong model/migration nhưng **chưa extend TenantAwareModel**.  
-Cần: **Model extend** + **Data** + **Store Action** + **Views** (nếu có).
+Trả lời 3 câu hỏi:
 
-| Module | Việc cần làm |
-|---|---|
-| Lead | Extend TenantAwareModel, StoreLead Data/Action, views nếu có |
-| LeadPipelineStage | Extend TenantAwareModel, Data/Action fix |
-| LeadSource | Extend TenantAwareModel, Data/Action fix |
+1. **Model có bản ghi `is_global`?** → Giữ `extends Model`, quản lý explicit (xem 5.1)
+2. **Bảng dùng tên cột khác `organization_id`?** → Map trong Action, dùng tên DB trong edit fallback (xem 5.2)
+3. **Cột `organization_id` chưa tồn tại trong DB?** → Tạo migration nullable trước (xem 5.3)
 
-> ⚠️ **Thận trọng với Lead:** model có nhiều relationships và queries. Kiểm tra kỹ `withoutTenant()` calls sau khi thêm global scope.
+### Bước 3 — Thực hiện theo thứ tự 6 lớp
 
-### Nhóm ưu tiên 3 — Cần làm đầy đủ từ đầu
+```
+[0] Migration (nếu cần)   → php artisan migrate
+[1] Model                  → extend TenantAwareModel, organization_id đầu fillable
+[2] StoreData              → $organization_id tham số đầu + rules()
+[3] StoreAction            → 'organization_id' => $data->organization_id, key đầu create()
+[4] Controller             → _resolveOrganizations() 3-tuple, cập nhật create() + edit()
+[5] View + JS + SCSS       → field Tổ chức đầu form, $orgLocked, @use 'tom-select', initAllTomSelects()
+```
 
-| Module | Việc cần làm |
-|---|---|
-| Recruitment | Migration add org_id + Model extend + Data + Action + Views |
-| Survey | Migration create + Model extend + Data + Action + Views |
-| JobPosting | Model extend + Data fix + Action fix + Views |
-| KcItem | Model extend + Data check + Action + Views |
+### Bước 4 — Build và verify
+
+```bash
+npx vite build --config vite.config.backend.js
+# Kiểm tra: build thành công, không có error
+```
+
+### Bước 5 — Test cases tối thiểu
+
+| Test | Admin | DN user |
+|---|---|---|
+| Form create | Thấy TomSelect, có thể chọn org | Thấy readonly + hidden input |
+| Submit không chọn org | Validation error | N/A (auto-locked) |
+| Submit hợp lệ | Record tạo với org đã chọn | Record tạo với org của user |
+| Form edit | TomSelect chọn đúng org record | Readonly đúng org |
+| List records | Thấy theo org được filter | Chỉ thấy records của org mình |
 
 ---
 
-## Phụ lục — Câu hỏi thường gặp
+## 7. Câu hỏi thường gặp
 
-**Q: TenantContext chưa được set trong queue job thì sao?**  
-A: Dùng `TenantAwareJob` (app/Foundation/TenantAwareJob.php) làm base class cho job. Nó restore `TenantContext` từ `organization_id` đã serialize trong job payload.
+**Q: Tại sao `auth()->user()->organization_id` thay vì `TenantContext::getOrganizationId()`?**
 
-**Q: API endpoint không có tenant middleware thì sao?**  
-A: Truyền `organization_id` explicit từ `$data->organization_id` trong Store Action thay vì dựa vào TenantContext auto-set. Đây là lý do template yêu cầu explicit assignment.
+A: `TenantContext` fallback về org đầu tiên khi user không có org (Admin). Điều này làm Admin bị nhận dạng sai thành DN user → field bị locked. `auth()->user()->organization_id` trả về `null` cho Admin → hiển thị TomSelect đúng.
 
-**Q: Có cần `organization()` relationship trong mỗi model không?**  
-A: Không — `BelongsToOrganization` trait đã cung cấp relationship này. Chỉ khai báo thêm trong model nếu cần eager loading với tên khác hoặc constraints đặc biệt.
+**Q: Tại sao `$orgLocked` thay vì `$organizations->count() === 1`?**
 
-**Q: `withoutTenant()` scope dùng khi nào?**  
-A: Khi cần query cross-tenant, ví dụ admin dashboard thống kê toàn hệ thống, hoặc khi lấy parent options (như Branch lấy `parentOptions` của chính org đó bằng `where('organization_id', $orgId)`).
+A: Nếu hệ thống chỉ có 1 org tổng, Admin cũng bị locked — sai. `$orgLocked` là boolean explicit từ server, tách biệt intent (user bị giới hạn bởi account) khỏi data (số lượng org trong list trả về).
+
+**Q: `BelongsToOrganization` trait có auto-set `organization_id` không?**
+
+A: Có — nhưng vẫn phải truyền explicit từ `$data->organization_id` trong Action vì: (1) Queue job có thể chưa hydrate TenantContext, (2) API không qua tenant middleware → TenantContext null. Explicit > implicit.
+
+**Q: `UpdateFooAction` có cần `organization_id` không?**
+
+A: Không. Org của một record không thay đổi sau khi tạo. `UpdateFooData` không cần field này, `update([])` không include `organization_id`.
+
+**Q: Dùng `withoutTenant()` khi nào?**
+
+A: Khi cần query cross-tenant — ví dụ admin dashboard thống kê toàn hệ thống, hoặc lấy options với filter tùy chỉnh trên chính org mình: `Entity::withoutTenant()->where('organization_id', $orgId)->get()`.
+
+**Q: TenantContext trong queue job thì sao?**
+
+A: Extend `TenantAwareJob` (`app/Foundation/TenantAwareJob.php`). Nó serialize `organization_id` vào job payload và restore `TenantContext` khi job chạy.
+
+**Q: Module có nhiều entity (KcItem + KcTag) thì sao?**
+
+A: Mỗi entity cần đủ 6 lớp riêng. Không share StoreData hay StoreAction giữa các entity khác nhau.
+
+**Q: SCSS cần `@use 'tom-select'` khi org field là readonly?**
+
+A: Nếu form có nhánh `@else` (Admin case với TomSelect), cần. Để an toàn và nhất quán, include cho mọi module có form.

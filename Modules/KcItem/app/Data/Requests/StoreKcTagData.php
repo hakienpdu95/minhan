@@ -13,6 +13,9 @@ use Spatie\LaravelData\Data;
 class StoreKcTagData extends Data
 {
     public function __construct(
+        #[Required]
+        public readonly int $organization_id,
+
         #[Required, StringType, Max(80)]
         public readonly string $name,
 
@@ -28,6 +31,7 @@ class StoreKcTagData extends Data
         $orgId = TenantContext::getOrganizationId();
 
         return [
+            'organization_id' => ['required', 'integer', 'exists:organizations,id'],
             'slug' => [
                 'required', 'string', 'max:90', 'regex:/^[a-z0-9\-]+$/',
                 Rule::unique('kc_tags', 'slug')->where('organization_id', $orgId),

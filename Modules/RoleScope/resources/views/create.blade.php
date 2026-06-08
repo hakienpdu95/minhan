@@ -4,15 +4,21 @@
 
 @section('content')
 <div x-data="grantRoleScopeForm({{ Js::from([
-    'users'       => $users->map(fn($u) => ['value' => $u->id, 'text' => $u->name . ' (' . $u->email . ')'])->values()->all(),
-    'roles'       => $roles->map(fn($r) => ['value' => $r->id, 'text' => $r->name])->values()->all(),
-    'branches'    => $branches->map(fn($b) => ['value' => $b->id, 'text' => $b->name . ' [' . $b->code . ']'])->values()->all(),
-    'departments' => $departments->map(fn($d) => ['value' => $d->id, 'text' => $d->name . ' [' . $d->code . ']', 'branch_id' => $d->branch_id])->values()->all(),
-    'oldUserId'   => old('user_id'),
-    'oldRoleId'   => old('role_id'),
-    'oldBranchId' => old('scope_branch_id'),
-    'oldDeptId'   => old('scope_dept_id'),
-]) }})" class="p-6">
+    'orgLocked'    => $orgLocked,
+    'orgId'        => $orgLocked ? ($organizations->first()->id ?? null) : null,
+    'orgName'      => $orgLocked ? ($organizations->first()->name ?? '') : '',
+    'organizations' => $orgLocked ? [] : $organizations->map(fn($o) => ['value' => $o->id, 'text' => $o->name])->values()->all(),
+    'defaultOrgId' => $defaultOrgId,
+    'oldOrgId'     => old('organization_id'),
+    'users'        => $users->map(fn($u) => ['value' => $u->id, 'text' => $u->name . ' (' . $u->email . ')'])->values()->all(),
+    'roles'        => $roles->map(fn($r) => ['value' => $r->id, 'text' => $r->name])->values()->all(),
+    'branches'     => $branches->map(fn($b) => ['value' => $b->id, 'text' => $b->name . ' [' . $b->code . ']'])->values()->all(),
+    'departments'  => $departments->map(fn($d) => ['value' => $d->id, 'text' => $d->name . ' [' . $d->code . ']', 'branch_id' => $d->branch_id])->values()->all(),
+    'oldUserId'    => old('user_id'),
+    'oldRoleId'    => old('role_id'),
+    'oldBranchId'  => old('scope_branch_id'),
+    'oldDeptId'    => old('scope_dept_id'),
+]) }})">
 
 <div class="mb-5">
     <h1 class="text-xl font-bold">Cấp quyền phạm vi mới</h1>
@@ -36,6 +42,30 @@
         {{-- ── Card chính ───────────────────────────────────────────────────── --}}
         <div class="card bg-base-100 shadow-sm border border-base-200">
             <div class="card-body p-5 space-y-4">
+
+                {{-- Tổ chức --}}
+                @if($orgLocked)
+                    <input type="hidden" name="organization_id" value="{{ $organizations->first()->id }}">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-medium">Tổ chức</span>
+                        </label>
+                        <input type="text" value="{{ $organizations->first()->name }}" readonly
+                               class="input input-bordered input-sm w-full bg-base-200 cursor-not-allowed">
+                        <p class="mt-1 text-xs opacity-40">Xác định từ tài khoản của bạn.</p>
+                    </div>
+                @else
+                    <div class="form-control">
+                        <label class="label" for="select-org">
+                            <span class="label-text font-medium">Tổ chức <span class="text-error">*</span></span>
+                            <span class="label-text-alt text-xs opacity-40">Chọn trước để lọc user</span>
+                        </label>
+                        <select id="select-org" name="organization_id"
+                                class="select select-bordered select-sm w-full @error('organization_id') select-error @enderror"
+                                data-req="Vui lòng chọn tổ chức"></select>
+                        @error('organization_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                    </div>
+                @endif
 
                 {{-- User --}}
                 <div class="form-control">

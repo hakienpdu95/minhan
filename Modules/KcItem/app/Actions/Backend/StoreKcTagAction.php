@@ -14,6 +14,7 @@ class StoreKcTagAction
     public function handle(StoreKcTagData $data): KcTag
     {
         return KcTag::create([
+            'organization_id' => $data->organization_id,
             'uuid'      => Str::uuid(),
             'name'      => $data->name,
             'slug'      => $data->slug,

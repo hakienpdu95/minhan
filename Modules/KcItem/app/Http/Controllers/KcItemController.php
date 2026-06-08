@@ -3,6 +3,7 @@
 namespace Modules\KcItem\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\Models\Organization;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -92,7 +93,9 @@ class KcItemController extends Controller
 
         $tagsApiUrl = route('backend.api.kc-tags.select');
 
-        return view('kcitem::create', compact('categories', 'types', 'visibilities', 'tagsApiUrl'));
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
+
+        return view('kcitem::create', compact('categories', 'types', 'visibilities', 'tagsApiUrl', 'organizations', 'defaultOrgId', 'orgLocked'));
     }
 
     public function store(Request $request, StoreKcItemAction $action): RedirectResponse
@@ -172,7 +175,9 @@ class KcItemController extends Controller
         $tagsApiUrl   = route('backend.api.kc-tags.select');
         $selectedTags = $kcItem->tags()->pluck('kc_tags.id')->toArray();
 
-        return view('kcitem::edit', compact('kcItem', 'categories', 'types', 'visibilities', 'tagsApiUrl', 'selectedTags'));
+        [$organizations, , $orgLocked] = $this->_resolveOrganizations();
+
+        return view('kcitem::edit', compact('kcItem', 'categories', 'types', 'visibilities', 'tagsApiUrl', 'selectedTags', 'organizations', 'orgLocked'));
     }
 
     public function update(Request $request, KcItem $kcItem, UpdateKcItemAction $action): RedirectResponse
@@ -194,6 +199,17 @@ class KcItemController extends Controller
 
         return redirect()->route('backend.kc-items.index')
             ->with('success', 'Đã xóa tài liệu "' . $title . '".');
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
     }
 
     // ── Version management ────────────────────────────────────────────────────

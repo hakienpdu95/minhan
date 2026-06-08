@@ -41,4 +41,7 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
         Route::get('/employee/{employee}', [LeaveBalanceController::class, 'forEmployee'])->name('employee');
     });
 
+    // ── Leave internal API ─────────────────────────────────────────────────────
+    Route::get('/leave/api/employees', [LeaveRequestController::class, 'apiEmployees'])->name('leave.api.employees');
+
 });

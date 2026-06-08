@@ -4,7 +4,6 @@ namespace Modules\RoleScope\Queries;
 
 use App\Shared\Contracts\QueryHandlerInterface;
 use App\Shared\Contracts\QueryInterface;
-use App\Shared\Tenancy\TenantContext;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Modules\RoleScope\Models\UserRoleScope;
@@ -27,7 +26,7 @@ class ListUserRoleScopesHandler implements QueryHandlerInterface
 
         $q = UserRoleScope::withoutTenant()
             ->select('user_role_scopes.*')
-            ->where('user_role_scopes.organization_id', TenantContext::getOrganizationId())
+            ->when($query->orgId, fn ($b, $id) => $b->where('user_role_scopes.organization_id', $id))
             ->with([
                 'user:id,name,email',
                 'role:id,name',

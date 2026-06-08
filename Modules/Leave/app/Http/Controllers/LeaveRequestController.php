@@ -3,7 +3,8 @@
 namespace Modules\Leave\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Shared\Tenancy\TenantContext;
+use App\Shared\Tenancy\Models\Organization;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Modules\Employee\Models\Employee;
@@ -52,19 +53,51 @@ class LeaveRequestController extends Controller
     {
         $this->authorize('create', LeaveRequest::class);
 
-        $orgId = TenantContext::getOrganizationId();
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
 
-        $employees = Employee::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->working()
-            ->orderBy('full_name')
-            ->get(['id', 'full_name', 'employee_code']);
+        // For locked org users, pre-load employees server-side.
+        // For admin users, employees are loaded dynamically via JS/API when org is selected.
+        $employees = collect();
+        if ($orgLocked) {
+            $employees = Employee::withoutTenant()
+                ->where('organization_id', auth()->user()->organization_id)
+                ->working()
+                ->orderBy('full_name')
+                ->get(['id', 'full_name', 'employee_code']);
+        }
 
         $leaveTypes = collect(LeaveType::cases())
             ->map(fn ($t) => ['value' => $t->value, 'text' => $t->label()])
             ->all();
 
-        return view('leave::requests.create', compact('employees', 'leaveTypes'));
+        return view('leave::requests.create', compact(
+            'organizations', 'defaultOrgId', 'orgLocked',
+            'employees', 'leaveTypes'
+        ));
+    }
+
+    public function apiEmployees(Request $request): JsonResponse
+    {
+        $orgId = (int) $request->input('org_id');
+        if (!$orgId) {
+            return response()->json([]);
+        }
+
+        $employees = Employee::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->working()
+            ->when($request->input('q'), fn ($q, $search) =>
+                $q->where('full_name', 'like', "%{$search}%")
+            )
+            ->orderBy('full_name')
+            ->get(['id', 'full_name', 'employee_code'])
+            ->map(fn ($e) => [
+                'id'   => $e->id,
+                'text' => $e->full_name . ' (' . $e->employee_code . ')',
+            ])
+            ->values();
+
+        return response()->json($employees);
     }
 
     public function store(Request $request, StoreLeaveRequestAction $action): RedirectResponse
@@ -95,13 +128,15 @@ class LeaveRequestController extends Controller
         $this->authorize('approve', new LeaveRequest);
 
         $user = auth()->user();
-        $orgId = TenantContext::getOrganizationId();
+        $orgId = $user->organization_id;
 
         // Find the employee record for the current user to use as manager_id
-        $managerEmployee = Employee::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->where('user_id', $user->id)
-            ->first();
+        $managerEmployee = $orgId
+            ? Employee::withoutTenant()
+                ->where('organization_id', $orgId)
+                ->where('user_id', $user->id)
+                ->first()
+            : null;
 
         if (!$managerEmployee) {
             $requests = collect();
@@ -118,7 +153,7 @@ class LeaveRequestController extends Controller
         $this->authorize('approve', $leaveRequest);
 
         $user = auth()->user();
-        $orgId = TenantContext::getOrganizationId();
+        $orgId = $leaveRequest->organization_id;
 
         $approver = Employee::withoutTenant()
             ->where('organization_id', $orgId)
@@ -157,5 +192,14 @@ class LeaveRequestController extends Controller
         } catch (\RuntimeException $e) {
             return back()->withErrors(['action' => $e->getMessage()]);
         }
+    }
+
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
     }
 }

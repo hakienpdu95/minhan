@@ -29,4 +29,7 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
     // ── Leaderboard ─────────────────────────────────────────────────────────────
     Route::get('kpi/leaderboard',   [KpiGoalController::class, 'leaderboard'])->name('kpi.leaderboard');
 
+    // ── KPI internal API ────────────────────────────────────────────────────────
+    Route::get('kpi/api/employees', [KpiGoalController::class, 'apiEmployees'])->name('kpi.api.employees');
+
 });

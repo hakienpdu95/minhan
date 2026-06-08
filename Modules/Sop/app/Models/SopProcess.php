@@ -17,8 +17,8 @@ class SopProcess extends TenantAwareModel
     protected $table = 'sop_processes';
 
     protected $fillable = [
-        'uuid',
         'organization_id',
+        'uuid',
         'branch_id',
         'department_id',
         'owner_id',

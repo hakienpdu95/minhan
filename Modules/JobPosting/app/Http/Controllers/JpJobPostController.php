@@ -3,6 +3,7 @@
 namespace Modules\JobPosting\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\Models\Organization;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -137,8 +138,11 @@ class JpJobPostController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'category', 'icon']);
 
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
+
         return view('job-posting::create', compact(
-            'departments', 'jobTitles', 'skills', 'benefits'
+            'departments', 'jobTitles', 'skills', 'benefits',
+            'organizations', 'defaultOrgId', 'orgLocked'
         ) + $this->enumOptions());
     }
 
@@ -174,7 +178,9 @@ class JpJobPostController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
 
-        return view('job-posting::edit', compact('jobPost', 'departments', 'jobTitles') + $this->enumOptions());
+        [$organizations, , $orgLocked] = $this->_resolveOrganizations();
+
+        return view('job-posting::edit', compact('jobPost', 'departments', 'jobTitles', 'organizations', 'orgLocked') + $this->enumOptions());
     }
 
     public function update(Request $request, JpJobPost $jobPost, UpdateJpJobPostAction $action): RedirectResponse
@@ -290,6 +296,15 @@ class JpJobPostController extends Controller
 
         return redirect()->route('backend.job-posts.show', $jobPost)
             ->with('success', 'Đã đồng bộ ra Marketplace.');
+    }
+
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
     }
 
     private function enumOptions(): array

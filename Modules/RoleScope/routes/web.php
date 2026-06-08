@@ -12,6 +12,10 @@ use Modules\RoleScope\Http\Controllers\RoleScopeController;
 
 // ── Backend CRUD ────────────────────────────────────────────────────────────
 Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(function () {
+    // Must be before resource to avoid {role_scope} binding capturing "api"
+    Route::get('role-scopes/api/org-data', [RoleScopeController::class, 'apiOrgData'])
+        ->name('role-scopes.api.org-data');
+
     Route::resource('role-scopes', RoleScopeController::class);
 });
 

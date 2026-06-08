@@ -3,7 +3,8 @@
 namespace Modules\KpiGoal\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Shared\Tenancy\TenantContext;
+use App\Shared\Tenancy\Models\Organization;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Modules\Department\Models\Department;
@@ -40,18 +41,17 @@ class KpiGoalController extends Controller
 
         $goals = (new ListKpiGoalsHandler)->handle($query)->paginate(20)->withQueryString();
 
-        $orgId    = TenantContext::getOrganizationId();
-        $statuses = collect(KpiGoalStatus::cases())
+        $userOrgId = auth()->user()->organization_id;
+        $statuses  = collect(KpiGoalStatus::cases())
             ->map(fn ($s) => ['value' => $s->value, 'text' => $s->label()])->all();
 
-        $employees = Employee::withoutTenant()
-            ->where('organization_id', $orgId)->working()
-            ->orderBy('full_name')->get(['id', 'full_name', 'employee_code']);
+        $empQuery = Employee::withoutTenant()->working()->orderBy('full_name');
+        if ($userOrgId) $empQuery->where('organization_id', $userOrgId);
+        $employees = $empQuery->get(['id', 'full_name', 'employee_code']);
 
-        $cycleLabels = KpiGoal::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->distinct()->orderByDesc('cycle_label')
-            ->pluck('cycle_label');
+        $cycleQuery = KpiGoal::withoutTenant()->distinct()->orderByDesc('cycle_label');
+        if ($userOrgId) $cycleQuery->where('organization_id', $userOrgId);
+        $cycleLabels = $cycleQuery->pluck('cycle_label');
 
         return view('kpigoal::goals.index', compact('goals', 'statuses', 'employees', 'cycleLabels'));
     }
@@ -60,11 +60,17 @@ class KpiGoalController extends Controller
     {
         $this->authorize('create', KpiGoal::class);
 
-        $orgId = TenantContext::getOrganizationId();
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
 
-        $employees = Employee::withoutTenant()
-            ->where('organization_id', $orgId)->working()
-            ->orderBy('full_name')->get(['id', 'full_name', 'employee_code']);
+        // Pre-load employees for locked users; admin loads dynamically via JS
+        $employees = collect();
+        if ($orgLocked) {
+            $employees = Employee::withoutTenant()
+                ->where('organization_id', auth()->user()->organization_id)
+                ->working()
+                ->orderBy('full_name')
+                ->get(['id', 'full_name', 'employee_code']);
+        }
 
         $directions = collect(KpiDirection::cases())
             ->map(fn ($d) => ['value' => $d->value, 'text' => $d->label()])->all();
@@ -72,7 +78,34 @@ class KpiGoalController extends Controller
         $goalTypes = collect(KpiGoalType::cases())
             ->map(fn ($t) => ['value' => $t->value, 'text' => $t->label()])->all();
 
-        return view('kpigoal::goals.create', compact('employees', 'directions', 'goalTypes'));
+        return view('kpigoal::goals.create', compact(
+            'organizations', 'defaultOrgId', 'orgLocked',
+            'employees', 'directions', 'goalTypes'
+        ));
+    }
+
+    public function apiEmployees(Request $request): JsonResponse
+    {
+        $orgId = (int) $request->input('org_id');
+        if (!$orgId) {
+            return response()->json([]);
+        }
+
+        $employees = Employee::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->working()
+            ->when($request->input('q'), fn ($q, $search) =>
+                $q->where('full_name', 'like', "%{$search}%")
+            )
+            ->orderBy('full_name')
+            ->get(['id', 'full_name', 'employee_code'])
+            ->map(fn ($e) => [
+                'id'   => $e->id,
+                'text' => $e->full_name . ' (' . $e->employee_code . ')',
+            ])
+            ->values();
+
+        return response()->json($employees);
     }
 
     public function store(Request $request, StoreKpiGoalAction $action): RedirectResponse
@@ -98,16 +131,12 @@ class KpiGoalController extends Controller
     {
         $this->authorize('update', $goal);
 
-        $orgId = TenantContext::getOrganizationId();
-
-        $employees = Employee::withoutTenant()
-            ->where('organization_id', $orgId)->working()
-            ->orderBy('full_name')->get(['id', 'full_name', 'employee_code']);
-
         $directions = collect(KpiDirection::cases())
             ->map(fn ($d) => ['value' => $d->value, 'text' => $d->label()])->all();
 
-        return view('kpigoal::goals.edit', compact('goal', 'employees', 'directions'));
+        $orgName = Organization::find($goal->organization_id)?->name ?? '';
+
+        return view('kpigoal::goals.edit', compact('goal', 'directions', 'orgName'));
     }
 
     public function update(Request $request, KpiGoal $goal, UpdateKpiGoalAction $action): RedirectResponse
@@ -127,9 +156,8 @@ class KpiGoalController extends Controller
     {
         $this->authorize('approve', $goal);
 
-        $orgId    = TenantContext::getOrganizationId();
         $approver = Employee::withoutTenant()
-            ->where('organization_id', $orgId)
+            ->where('organization_id', $goal->organization_id)
             ->where('user_id', auth()->id())
             ->firstOrFail();
 
@@ -186,11 +214,14 @@ class KpiGoalController extends Controller
     {
         $this->authorize('viewLeaderboard', KpiGoal::class);
 
-        $orgId = TenantContext::getOrganizationId();
+        $userOrgId = auth()->user()->organization_id;
 
-        $cycleLabels = KpiSnapshot::whereHas('employee', fn ($q) =>
-            $q->where('organization_id', $orgId)
-        )->distinct()->orderByDesc('cycle_label')->pluck('cycle_label');
+        $snapshotQuery = KpiSnapshot::whereHas('employee', fn ($q) =>
+            $userOrgId
+                ? $q->where('organization_id', $userOrgId)
+                : $q
+        );
+        $cycleLabels = $snapshotQuery->distinct()->orderByDesc('cycle_label')->pluck('cycle_label');
 
         $cycleLabel   = $request->input('cycle_label', $cycleLabels->first());
         $departmentId = $request->integer('department_id') ?: null;
@@ -202,10 +233,19 @@ class KpiGoalController extends Controller
             );
         }
 
-        $departments = Department::withoutTenant()
-            ->where('organization_id', $orgId)->where('status', 'active')
-            ->orderBy('name')->get(['id', 'name']);
+        $deptQuery = Department::withoutTenant()->where('status', 'active')->orderBy('name');
+        if ($userOrgId) $deptQuery->where('organization_id', $userOrgId);
+        $departments = $deptQuery->get(['id', 'name']);
 
         return view('kpigoal::goals.leaderboard', compact('rows', 'cycleLabels', 'cycleLabel', 'departments', 'departmentId'));
+    }
+
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
     }
 }

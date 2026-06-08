@@ -13,6 +13,9 @@ use Spatie\LaravelData\Data;
 class StoreKcItemData extends Data
 {
     public function __construct(
+        #[Required]
+        public readonly int $organization_id,
+
         #[Required, StringType, Max(300)]
         public readonly string $title,
 
@@ -53,6 +56,7 @@ class StoreKcItemData extends Data
         $orgId = TenantContext::getOrganizationId();
 
         return [
+            'organization_id' => ['required', 'integer', 'exists:organizations,id'],
             'slug' => [
                 'required', 'string', 'max:320', 'regex:/^[a-z0-9\-]+$/',
                 Rule::unique('kc_items', 'slug')

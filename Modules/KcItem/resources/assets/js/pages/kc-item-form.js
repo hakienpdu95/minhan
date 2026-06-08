@@ -42,7 +42,7 @@ document.addEventListener('alpine:init', function () {
 document.addEventListener('DOMContentLoaded', function () {
     if (!window.TomSelect) return;
 
-    ['ts-type', 'ts-category', 'ts-visibility'].forEach(function (id) {
+    ['ts-organization', 'ts-type', 'ts-category', 'ts-visibility'].forEach(function (id) {
         var el = document.getElementById(id);
         if (!el) return;
         new window.TomSelect(el, {

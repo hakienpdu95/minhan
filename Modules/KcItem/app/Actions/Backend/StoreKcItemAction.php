@@ -16,6 +16,7 @@ class StoreKcItemAction
     public function handle(StoreKcItemData $data): KcItem
     {
         $kcItem = KcItem::create([
+            'organization_id' => $data->organization_id,
             'uuid'           => Str::uuid(),
             'category_id'    => $data->category_id,
             'title'          => $data->title,

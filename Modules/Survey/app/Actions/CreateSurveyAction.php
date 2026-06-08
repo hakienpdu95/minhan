@@ -18,6 +18,7 @@ class CreateSurveyAction
         $slug = $this->uniqueSlug($data->title);
 
         $survey = Survey::create([
+            'organization_id' => $data->organization_id,
             'title'   => $data->title,
             'slug'    => $slug,
             'status'  => SurveyStatus::Draft,

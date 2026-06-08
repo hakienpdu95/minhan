@@ -2,7 +2,6 @@
 
 namespace Modules\KpiGoal\Data\Requests;
 
-use App\Shared\Tenancy\TenantContext;
 use Illuminate\Validation\Rule;
 use Modules\KpiGoal\Enums\KpiDirection;
 use Modules\KpiGoal\Enums\KpiGoalType;
@@ -28,7 +27,7 @@ class StoreKpiGoalData extends Data
 
     public static function rules(): array
     {
-        $orgId = TenantContext::getOrganizationId();
+        $orgId = (int) request('organization_id');
 
         return [
             'organization_id' => ['required', 'integer', 'exists:organizations,id'],
@@ -44,6 +43,24 @@ class StoreKpiGoalData extends Data
             'parent_goal_id' => ['nullable', 'integer', Rule::exists('kpi_goals', 'id')->where('organization_id', $orgId)],
             'description'    => ['nullable', 'string', 'max:2000'],
             'unit'           => ['nullable', 'string', 'max:30'],
+        ];
+    }
+
+    public static function messages(): array
+    {
+        return [
+            'organization_id.required' => 'Vui lòng chọn tổ chức.',
+            'organization_id.exists'   => 'Tổ chức không hợp lệ.',
+            'employee_id.required'     => 'Vui lòng chọn nhân viên.',
+            'employee_id.exists'       => 'Nhân viên không thuộc tổ chức đã chọn.',
+            'cycle_label.required'     => 'Vui lòng nhập nhãn kỳ.',
+            'cycle_start.required'     => 'Vui lòng chọn ngày bắt đầu.',
+            'cycle_end.required'       => 'Vui lòng chọn ngày kết thúc.',
+            'cycle_end.after'          => 'Ngày kết thúc phải sau ngày bắt đầu.',
+            'title.required'           => 'Vui lòng nhập tên mục tiêu.',
+            'target_value.required'    => 'Vui lòng nhập giá trị mục tiêu.',
+            'direction.required'       => 'Vui lòng chọn hướng.',
+            'weight_percent.required'  => 'Vui lòng nhập trọng số.',
         ];
     }
 }

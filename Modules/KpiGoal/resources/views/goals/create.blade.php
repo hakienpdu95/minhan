@@ -36,7 +36,10 @@
 </div>
 @endif
 
-<form method="POST" action="{{ route('backend.kpi.goals.store') }}" novalidate data-kpi-goal-form>
+<form method="POST" action="{{ route('backend.kpi.goals.store') }}" novalidate
+      data-kpi-goal-form
+      data-org-locked="{{ $orgLocked ? '1' : '0' }}"
+      data-locked-org-id="{{ $orgLocked ? ($organizations->first()->id ?? '') : '' }}">
     @csrf
     <input type="hidden" name="parent_goal_id" value="">
 
@@ -58,14 +61,41 @@
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
+                        {{-- Tổ chức --}}
+                        <div class="form-control sm:col-span-2">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Tổ chức <span class="text-error">*</span></span>
+                            </label>
+                            @if($orgLocked)
+                                <input type="hidden" name="organization_id" value="{{ $organizations->first()->id }}">
+                                <input type="text" value="{{ $organizations->first()->name }}" readonly
+                                       class="input input-bordered input-sm w-full bg-base-200 cursor-not-allowed">
+                                <p class="mt-1 text-xs text-base-content/40">Xác định từ tài khoản của bạn.</p>
+                            @else
+                                <select id="ts-organization_id" name="organization_id"
+                                        class="select select-bordered select-sm w-full @error('organization_id') select-error @enderror"
+                                        data-ts-placeholder="— Chọn tổ chức —"
+                                        data-req="Vui lòng chọn tổ chức">
+                                    <option value="">— Chọn tổ chức —</option>
+                                    @foreach($organizations as $org)
+                                    <option value="{{ $org->id }}" {{ old('organization_id', $defaultOrgId ?? '') == $org->id ? 'selected' : '' }}>
+                                        {{ $org->name }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                                @error('organization_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                            @endif
+                        </div>
+
+                        {{-- Nhân viên — loaded dynamically based on org --}}
                         <div class="form-control sm:col-span-2">
                             <label class="label py-0 pb-1.5">
                                 <span class="label-text font-medium">Nhân viên <span class="text-error">*</span></span>
                             </label>
                             <select id="ts-employee_id" name="employee_id"
                                     data-req="Vui lòng chọn nhân viên"
-                                    class="select select-bordered select-sm w-full ts-init @error('employee_id') select-error @enderror"
-                                    data-ts-placeholder="— Chọn nhân viên —">
+                                    data-old-value="{{ old('employee_id') }}"
+                                    class="select select-bordered select-sm w-full @error('employee_id') select-error @enderror">
                                 <option value="">— Chọn nhân viên —</option>
                                 @foreach($employees as $emp)
                                 <option value="{{ $emp->id }}" {{ old('employee_id') == $emp->id ? 'selected' : '' }}>

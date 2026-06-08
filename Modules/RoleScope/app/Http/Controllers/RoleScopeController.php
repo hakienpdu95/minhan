@@ -4,7 +4,7 @@ namespace Modules\RoleScope\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Shared\Tenancy\TenantContext;
+use App\Shared\Tenancy\Models\Organization;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,10 +27,10 @@ class RoleScopeController extends Controller
 
     public function index()
     {
-        $orgId = TenantContext::getOrganizationId();
+        $userOrgId = auth()->user()->organization_id;
 
         $counts = UserRoleScope::withoutTenant()
-            ->where('organization_id', $orgId)
+            ->when($userOrgId, fn ($q, $id) => $q->where('organization_id', $id))
             ->selectRaw(
                 'COUNT(*) as total_all,
                  SUM(CASE WHEN expires_at IS NULL OR expires_at > NOW() THEN 1 ELSE 0 END) as total_active,
@@ -65,31 +65,34 @@ class RoleScopeController extends Controller
 
     public function create()
     {
-        $orgId = TenantContext::getOrganizationId();
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
 
-        $users = User::where('organization_id', $orgId)
-            ->orderBy('name')
-            ->get(['id', 'name', 'email']);
+        // For locked org users, pre-load related data server-side.
+        // For admin users, data is loaded dynamically via JS/API when org is selected.
+        $users = $branches = $departments = collect();
+        if ($orgLocked) {
+            $lockedOrgId = auth()->user()->organization_id;
+            $users = User::where('organization_id', $lockedOrgId)
+                ->orderBy('name')->get(['id', 'name', 'email']);
+            $branches = Branch::withoutTenant()
+                ->where('organization_id', $lockedOrgId)->where('status', 'active')
+                ->orderBy('name')->get(['id', 'name', 'code']);
+            $departments = Department::withoutTenant()
+                ->where('organization_id', $lockedOrgId)->where('status', 'active')
+                ->orderBy('name')->get(['id', 'name', 'code', 'branch_id']);
+        }
 
-        $roles    = Role::orderBy('name')->get(['id', 'name']);
-        $branches = Branch::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->where('status', 'active')
-            ->orderBy('name')
-            ->get(['id', 'name', 'code']);
+        $roles = Role::orderBy('name')->get(['id', 'name']);
 
-        $departments = Department::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->where('status', 'active')
-            ->orderBy('name')
-            ->get(['id', 'name', 'code', 'branch_id']);
-
-        return view('rolescope::create', compact('users', 'roles', 'branches', 'departments'));
+        return view('rolescope::create', compact(
+            'organizations', 'defaultOrgId', 'orgLocked',
+            'users', 'roles', 'branches', 'departments'
+        ));
     }
 
     public function store(Request $request, GrantRoleScopeAction $action): RedirectResponse
     {
-        $request->validate($this->grantValidationRules($request));
+        $request->validate($this->_grantValidationRules($request));
 
         $data  = GrantRoleScopeData::validateAndCreate($request->all());
         $scope = $action->handle($data);
@@ -149,11 +152,39 @@ class RoleScopeController extends Controller
             ->with('success', 'Đã thu hồi quyền "' . $result['roleName'] . '" của "' . $result['userName'] . '".');
     }
 
-    private function grantValidationRules(Request $request): array
+    public function apiOrgData(Request $request): JsonResponse
     {
-        $orgId = TenantContext::getOrganizationId();
+        $orgId = (int) $request->input('org_id');
+        if (!$orgId) {
+            return response()->json(['users' => [], 'branches' => [], 'departments' => []]);
+        }
+
+        $users = User::where('organization_id', $orgId)
+            ->orderBy('name')->get(['id', 'name', 'email'])
+            ->map(fn ($u) => ['value' => $u->id, 'text' => $u->name . ' (' . $u->email . ')'])
+            ->values();
+
+        $branches = Branch::withoutTenant()
+            ->where('organization_id', $orgId)->where('status', 'active')
+            ->orderBy('name')->get(['id', 'name', 'code'])
+            ->map(fn ($b) => ['value' => $b->id, 'text' => $b->name . ' [' . $b->code . ']'])
+            ->values();
+
+        $departments = Department::withoutTenant()
+            ->where('organization_id', $orgId)->where('status', 'active')
+            ->orderBy('name')->get(['id', 'name', 'code', 'branch_id'])
+            ->map(fn ($d) => ['value' => $d->id, 'text' => $d->name . ' [' . $d->code . ']', 'branch_id' => $d->branch_id])
+            ->values();
+
+        return response()->json(compact('users', 'branches', 'departments'));
+    }
+
+    private function _grantValidationRules(Request $request): array
+    {
+        $orgId = (int) $request->input('organization_id');
 
         $rules = [
+            'organization_id' => ['required', 'integer', 'exists:organizations,id'],
             'user_id'         => ['required', 'integer', 'exists:users,id'],
             'role_id'         => ['required', 'integer', 'exists:roles,id'],
             'scope_branch_id' => ['nullable', 'integer', 'exists:branches,id'],
@@ -168,5 +199,14 @@ class RoleScopeController extends Controller
         }
 
         return $rules;
+    }
+
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
     }
 }
