@@ -28,6 +28,7 @@ use Modules\Lead\Queries\GetPipelineStagesQuery;
 use Modules\Lead\Queries\ListLeadsHandler;
 use Modules\Lead\Queries\ListLeadsQuery;
 use App\Models\Province;
+use App\Shared\Tenancy\Models\Organization;
 use Modules\Lead\Queries\ListTagsHandler;
 use Modules\Lead\Queries\ListTagsQuery;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -67,7 +68,9 @@ class LeadController extends Controller
         $tags      = $tagsHandler->handle(new ListTagsQuery($orgId));
         $provinces = Province::orderBy('name')->get(['province_code', 'name']);
 
-        return view('lead::leads.create', compact('stages', 'sources', 'tags', 'provinces'));
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
+
+        return view('lead::leads.create', compact('stages', 'sources', 'tags', 'provinces', 'organizations', 'defaultOrgId', 'orgLocked'));
     }
 
     public function store(Request $request, CreateLeadAction $action): RedirectResponse
@@ -129,7 +132,9 @@ class LeadController extends Controller
         $stages  = $stagesHandler->handle(new GetPipelineStagesQuery($orgId));
         $sources = $sourcesHandler->handle(new GetLeadSourcesQuery($orgId));
 
-        return view('lead::leads.edit', compact('lead', 'stages', 'sources'));
+        [$organizations, , $orgLocked] = $this->_resolveOrganizations();
+
+        return view('lead::leads.edit', compact('lead', 'stages', 'sources', 'organizations', 'orgLocked'));
     }
 
     public function update(
@@ -225,5 +230,14 @@ class LeadController extends Controller
     private function orgId(): int
     {
         return TenantContext::getOrganizationId() ?? abort(403, 'No organization context.');
+    }
+
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
     }
 }

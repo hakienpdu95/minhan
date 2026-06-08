@@ -13,12 +13,12 @@ class CreateSourceAction
 {
     use AsAction;
 
-    public function handle(CreateSourceData $data, int $orgId): LeadSource
+    public function handle(CreateSourceData $data): LeadSource
     {
-        $this->assertCodeUnique($data->code, $orgId);
+        $this->assertCodeUnique($data->code, $data->organization_id);
 
         $source = DB::transaction(fn () => LeadSource::create([
-            'organization_id' => $orgId,
+            'organization_id' => $data->organization_id,
             'is_global'       => false,
             'code'            => $data->code,
             'label'           => $data->label,

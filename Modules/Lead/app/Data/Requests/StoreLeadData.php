@@ -18,6 +18,8 @@ use Spatie\LaravelData\Data;
 class StoreLeadData extends Data
 {
     public function __construct(
+        public readonly int     $organization_id,
+
         // ── Contact core ─────────────────────────────────────────────
         #[Required, StringType, Max(200)]
         public readonly string  $contact_name,
@@ -106,6 +108,7 @@ class StoreLeadData extends Data
     public static function rules(): array
     {
         return [
+            'organization_id' => ['required', 'integer', 'exists:organizations,id'],
             'tag_ids'   => ['nullable', 'array'],
             'tag_ids.*' => ['integer', 'min:1'],
         ];

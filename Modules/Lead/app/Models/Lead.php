@@ -3,9 +3,8 @@
 namespace Modules\Lead\Models;
 
 use App\Models\User;
-use App\Shared\Tenancy\TenantContext;
+use App\Foundation\Models\TenantAwareModel;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Lead\Enums\LeadStatus;
 use Modules\LeadPipelineStage\Models\LeadPipelineStage;
@@ -14,7 +13,7 @@ use Modules\Assessment\Contracts\ScoringSubjectInterface;
 use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
-class Lead extends Model implements ScoringSubjectInterface
+class Lead extends TenantAwareModel implements ScoringSubjectInterface
 {
     use SoftDeletes;
     use LogsActivity;
@@ -61,17 +60,6 @@ class Lead extends Model implements ScoringSubjectInterface
         'last_activity_at'    => 'datetime',
         'status'              => LeadStatus::class,
     ];
-
-    // ── Global scope: tự động filter theo org hiện tại ─────────────
-
-    protected static function booted(): void
-    {
-        static::addGlobalScope('org_scope', function (Builder $builder) {
-            if ($orgId = TenantContext::getOrganizationId()) {
-                $builder->where('leads.organization_id', $orgId);
-            }
-        });
-    }
 
     // ── Relationships ───────────────────────────────────────────────
 

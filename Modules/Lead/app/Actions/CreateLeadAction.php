@@ -41,7 +41,7 @@ class CreateLeadAction
 
             // 3. Create lead
             $lead = Lead::create([
-                'organization_id'     => $orgId,
+                'organization_id'     => $data->organization_id,
                 'contact_id'          => $contact->id,
                 'contact_name'        => $contact->full_name,
                 'contact_phone'       => $contact->phone,

@@ -12,7 +12,7 @@
  * Globals (lazy bundles):  window.TomSelect (tom-select.js), initDatePicker (flatpickr.js)
  */
 
-import { createTs, createTsAssignee } from '@shared/tom-select-factory.js';
+import { createTs, createTsAssignee, initAllTomSelects } from '@shared/tom-select-factory.js';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -26,9 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!form) return;
 
     initFormValidation(FORM_SEL);
+    initAllTomSelects(form);
     _initWidgets(form);
     _initProvinceWard(form);
-    _initTagCheckboxes(form);
     _setupTabGuard(form);
 });
 
@@ -113,6 +113,16 @@ function _initWidgets(form) {
         createTsAssignee(assignedEl, assignedEl.dataset.assignableUrl);
     }
 
+    // Tags TomSelect multi-select
+    const tagsEl = form.querySelector('#ts-tag-ids');
+    if (tagsEl) {
+        createTs(tagsEl, {
+            plugins:  ['remove_button'],
+            maxItems: null,
+            placeholder: '— Chọn tags —',
+        });
+    }
+
     // Flatpickr cho ngày chốt
     const dateEl = form.querySelector('#lead-close-date');
     if (dateEl && typeof initDatePicker === 'function') {
@@ -123,8 +133,8 @@ function _initWidgets(form) {
 // ── Province / Ward cascade ────────────────────────────────────────────────
 
 function _initProvinceWard(form) {
-    const provEl     = form.querySelector('#lead-province');
-    const wardEl     = form.querySelector('#lead-ward');
+    const provEl     = form.querySelector('#ts-province');
+    const wardEl     = form.querySelector('#ts-ward');
     const provNameEl = form.querySelector('#lead-province-name');
     const wardNameEl = form.querySelector('#lead-ward-name');
 
@@ -135,19 +145,17 @@ function _initProvinceWard(form) {
     const pendingWardName = wardEl.dataset.wardNameInit || '';
 
     // Ward TomSelect — disabled cho đến khi chọn tỉnh
-    const wardTs = new window.TomSelect(wardEl, {
+    const wardTs = createTs(wardEl, {
         placeholder: 'Chọn tỉnh / TP trước',
-        create: false,
         onChange(val) {
             wardNameEl.value = val ? (wardTs.options[val]?.text ?? '') : '';
         },
     });
     wardTs.disable();
 
-    // Province TomSelect — onChange fetch wards
-    const provTs = new window.TomSelect(provEl, {
+    // Province TomSelect — onChange fetch wards (không dùng ts-init vì cần onChange cascade)
+    const provTs = createTs(provEl, {
         placeholder: 'Tìm tỉnh / thành phố...',
-        create: false,
         onChange: async (code) => {
             provNameEl.value = code ? (provTs.options[code]?.text ?? '') : '';
             wardNameEl.value = '';
@@ -182,24 +190,7 @@ function _initProvinceWard(form) {
     });
 
     // Pre-populate tỉnh nếu old() có giá trị
-    const initProv = provEl.dataset.provinceInit;
+    const initProv = provEl.dataset.selectedProvince;
     if (initProv) provTs.setValue(initProv, /* silent */ true);
 }
 
-// ── Tag checkboxes ─────────────────────────────────────────────────────────
-
-function _initTagCheckboxes(form) {
-    form.querySelectorAll('.tag-item input[type="checkbox"]').forEach(cb => {
-        const badge = cb.nextElementSibling;
-        const color = cb.dataset.color || '#6b7280';
-
-        const apply = () => {
-            badge.style.backgroundColor = cb.checked ? color : '';
-            badge.style.borderColor     = color;
-            badge.style.color           = cb.checked ? '#fff' : color;
-        };
-
-        apply(); // initial state
-        cb.addEventListener('change', apply, { passive: true });
-    });
-}

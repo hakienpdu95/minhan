@@ -12,7 +12,16 @@ use Spatie\LaravelData\Data;
 
 class CreateSourceData extends Data
 {
+    public static function rules(): array
+    {
+        return [
+            'organization_id' => ['required', 'integer', 'exists:organizations,id'],
+        ];
+    }
+
     public function __construct(
+        public readonly int $organization_id,
+
         #[Required, StringType, Max(32)]
         public readonly string $code,
 

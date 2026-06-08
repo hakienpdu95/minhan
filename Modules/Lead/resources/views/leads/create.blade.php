@@ -6,9 +6,9 @@
 <div x-data="{
     tab: 'customer',
     tabFields: {
-        customer:    ['contact_name'],
+        customer:    ['contact_name', 'organization_id'],
         opportunity: [],
-        classify:    []
+        classify:    ['tag_ids']
     },
     errs: {{ Js::from($errors->keys()) }},
     errCount(t) {
@@ -113,6 +113,33 @@
                 {{-- ── Panel: Khách hàng ─────────────────────────────── --}}
                 <div x-show="tab === 'customer'" data-tab-label="Khách hàng" class="space-y-4">
 
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="form-control sm:col-span-2">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Tổ chức <span class="text-error">*</span></span>
+                            </label>
+                            @if($orgLocked)
+                                <input type="hidden" name="organization_id" value="{{ $organizations->first()->id }}">
+                                <input type="text" value="{{ $organizations->first()->name }}" readonly
+                                       class="input input-bordered input-sm w-full bg-base-200 cursor-not-allowed">
+                                <p class="mt-1 text-xs text-base-content/40">Xác định từ tài khoản của bạn.</p>
+                            @else
+                                <select id="ts-organization" name="organization_id"
+                                        class="select select-bordered select-sm w-full ts-init @error('organization_id') select-error @enderror"
+                                        data-ts-placeholder="— Chọn tổ chức —"
+                                        data-req="Vui lòng chọn tổ chức">
+                                    <option value="">— Chọn tổ chức —</option>
+                                    @foreach($organizations as $org)
+                                    <option value="{{ $org->id }}" {{ old('organization_id', $defaultOrgId ?? '') == $org->id ? 'selected' : '' }}>
+                                        {{ $org->name }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                                @error('organization_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                            @endif
+                        </div>
+                    </div>
+
                     <div class="form-control">
                         <label class="label py-0 pb-1.5">
                             <span class="label-text font-medium">Họ và tên <span class="text-error">*</span></span>
@@ -199,9 +226,10 @@
                             <label class="label py-0 pb-1.5">
                                 <span class="label-text font-medium">Tỉnh / Thành phố</span>
                             </label>
-                            <select id="lead-province" name="province_code"
-                                    data-province-init="{{ old('province_code', '') }}">
-                                <option value=""></option>
+                            <select id="ts-province" name="province_code"
+                                    class="select select-bordered select-sm w-full @error('province_code') select-error @enderror"
+                                    data-selected-province="{{ old('province_code', '') }}">
+                                <option value="">Chọn tỉnh / thành phố...</option>
                                 @foreach ($provinces as $p)
                                 <option value="{{ $p->province_code }}"
                                         {{ old('province_code') === $p->province_code ? 'selected' : '' }}>
@@ -216,10 +244,12 @@
                             <label class="label py-0 pb-1.5">
                                 <span class="label-text font-medium">Phường / Xã</span>
                             </label>
-                            <select id="lead-ward" name="ward_code"
+                            <select id="ts-ward" name="ward_code"
+                                    class="select select-bordered select-sm w-full @error('ward_code') select-error @enderror"
                                     data-ward-init="{{ old('ward_code', '') }}"
-                                    data-ward-name-init="{{ old('ward_name', '') }}">
-                                <option value=""></option>
+                                    data-ward-name-init="{{ old('ward_name', '') }}"
+                                    {{ !old('province_code') ? 'disabled' : '' }}>
+                                <option value="">Chọn phường / xã...</option>
                             </select>
                             <input type="hidden" name="ward_name" id="lead-ward-name"
                                    value="{{ old('ward_name') }}">
@@ -344,24 +374,20 @@
 
                     @if($tags->count())
                     <div class="form-control">
-                        <label class="label py-0 pb-2">
+                        <label class="label py-0 pb-1.5">
                             <span class="label-text font-medium">Tags</span>
                         </label>
-                        <div class="flex flex-wrap gap-2">
+                        <select id="ts-tag-ids" name="tag_ids[]" multiple
+                                class="select select-bordered select-sm w-full @error('tag_ids') select-error @enderror"
+                                data-ts-placeholder="— Chọn tags —">
                             @foreach($tags as $tag)
-                            @php $color = $tag->color ?? '#6b7280'; @endphp
-                            <label class="tag-item cursor-pointer">
-                                <input type="checkbox" name="tag_ids[]"
-                                       value="{{ $tag->id }}"
-                                       class="sr-only"
-                                       data-color="{{ $color }}"
-                                       {{ in_array($tag->id, old('tag_ids', [])) ? 'checked' : '' }}>
-                                <span class="badge badge-outline transition-all select-none px-3 py-3 text-xs">
-                                    {{ $tag->name }}
-                                </span>
-                            </label>
+                            <option value="{{ $tag->id }}"
+                                    {{ in_array($tag->id, old('tag_ids', [])) ? 'selected' : '' }}>
+                                {{ $tag->name }}
+                            </option>
                             @endforeach
-                        </div>
+                        </select>
+                        @error('tag_ids')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
                     @endif
 

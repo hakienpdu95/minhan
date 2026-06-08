@@ -13,13 +13,13 @@ class CreateStageAction
 {
     use AsAction;
 
-    public function handle(CreateStageData $data, int $orgId): LeadPipelineStage
+    public function handle(CreateStageData $data): LeadPipelineStage
     {
         // Enforce: org cannot duplicate a code that exists globally or within org
-        $this->assertCodeUnique($data->code, $orgId);
+        $this->assertCodeUnique($data->code, $data->organization_id);
 
         $stage = DB::transaction(fn () => LeadPipelineStage::create([
-            'organization_id' => $orgId,
+            'organization_id' => $data->organization_id,
             'is_global'       => false,
             'code'            => $data->code,
             'label'           => $data->label,

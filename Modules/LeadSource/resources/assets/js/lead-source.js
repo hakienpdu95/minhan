@@ -1,57 +1,17 @@
 /**
- * lead-source.js
+ * Modules/LeadSource/resources/assets/js/lead-source.js
+ * ─────────────────────────────────────────────────────────────────────
+ * Entry point JS của module LeadSource.
+ * Build: vite.config.backend.js → public/build/backend/assets/modules/lead-source.[hash].js
  *
- * Responsibilities:
- *   1. Inline validation — delegate to global initFormValidation
- *   2. Color picker sync — color input ↔ hex text input
- *   3. Icon preview — live Iconify preview khi user gõ icon name
+ * Blade:
+ *   @push('scripts')
+ *       @vite(['Modules/LeadSource/resources/assets/js/lead-source.js'], 'build/backend')
+ *   @endpush
  *
- * Requires globals (core bundle): initFormValidation, window.Iconify
+ * @shared/* → alias trong vite.config.backend.js → resources/js/shared/
+ * window.*  → globals từ core bundle (app.js): Alpine, $, initFormValidation, TomSelect
+ * ─────────────────────────────────────────────────────────────────────
  */
 
-// ── Constants ──────────────────────────────────────────────────────────────
-
-const FORM_SEL        = '[data-lead-source-form]';
-const ICON_FALLBACK   = 'mdi:help-circle';
-
-// ── Entry point ────────────────────────────────────────────────────────────
-
-document.addEventListener('DOMContentLoaded', () => {
-    const form = document.querySelector(FORM_SEL);
-    if (!form) return;
-
-    initFormValidation(FORM_SEL);
-    _syncColorPicker(form);
-    _setupIconPreview(form);
-});
-
-// ── Color picker sync ──────────────────────────────────────────────────────
-
-function _syncColorPicker(form) {
-    const picker = form.querySelector('#colorPicker');
-    const text   = form.querySelector('#colorText');
-    if (!picker || !text) return;
-
-    picker.addEventListener('input',  () => { text.value = picker.value; }, { passive: true });
-    picker.addEventListener('change', () => { text.value = picker.value; }, { passive: true });
-
-    text.addEventListener('input', () => {
-        if (/^#[0-9a-fA-F]{6}$/.test(text.value)) picker.value = text.value;
-    }, { passive: true });
-}
-
-// ── Icon preview ───────────────────────────────────────────────────────────
-
-function _setupIconPreview(form) {
-    const iconInput   = form.querySelector('#iconInput');
-    const iconPreview = form.querySelector('#iconPreview');
-    if (!iconInput || !iconPreview) return;
-
-    const span = iconPreview.querySelector('.iconify');
-    if (!span) return;
-
-    iconInput.addEventListener('input', () => {
-        span.setAttribute('data-icon', iconInput.value.trim() || ICON_FALLBACK);
-        window.Iconify?.scan(iconPreview);
-    }, { passive: true });
-}
+import './pages/source-form.js';

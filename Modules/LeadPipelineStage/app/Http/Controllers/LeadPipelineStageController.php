@@ -3,6 +3,7 @@
 namespace Modules\LeadPipelineStage\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\Models\Organization;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -34,13 +35,15 @@ class LeadPipelineStageController extends Controller
 
     public function create(): View
     {
-        return view('lead-pipeline-stage::stages.create');
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
+
+        return view('lead-pipeline-stage::stages.create', compact('organizations', 'defaultOrgId', 'orgLocked'));
     }
 
     public function store(Request $request, CreateStageAction $action): RedirectResponse
     {
         $data = CreateStageData::validateAndCreate($request->all());
-        $action->handle($data, $this->orgId());
+        $action->handle($data);
 
         return redirect()->route('lead-pipeline-stage.index')
             ->with('success', 'Đã thêm tình trạng mới.');
@@ -48,7 +51,9 @@ class LeadPipelineStageController extends Controller
 
     public function edit(LeadPipelineStage $stage): View
     {
-        return view('lead-pipeline-stage::stages.edit', compact('stage'));
+        [$organizations, , $orgLocked] = $this->_resolveOrganizations();
+
+        return view('lead-pipeline-stage::stages.edit', compact('stage', 'organizations', 'orgLocked'));
     }
 
     public function update(
@@ -82,5 +87,14 @@ class LeadPipelineStageController extends Controller
     private function orgId(): int
     {
         return TenantContext::getOrganizationId() ?? abort(403, 'No organization context.');
+    }
+
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
     }
 }

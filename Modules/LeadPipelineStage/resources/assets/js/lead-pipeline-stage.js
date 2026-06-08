@@ -1,40 +1,17 @@
 /**
- * lead-pipeline-stage.js
+ * Modules/LeadPipelineStage/resources/assets/js/lead-pipeline-stage.js
+ * ─────────────────────────────────────────────────────────────────────
+ * Entry point JS của module LeadPipelineStage.
+ * Build: vite.config.backend.js → public/build/backend/assets/modules/lead-pipeline-stage.[hash].js
  *
- * Responsibilities:
- *   1. Inline validation — delegate to global initFormValidation
- *   2. Color picker sync — color input ↔ hex text input
+ * Blade:
+ *   @push('scripts')
+ *       @vite(['Modules/LeadPipelineStage/resources/assets/js/lead-pipeline-stage.js'], 'build/backend')
+ *   @endpush
  *
- * Requires globals (core bundle): initFormValidation
+ * @shared/* → alias trong vite.config.backend.js → resources/js/shared/
+ * window.*  → globals từ core bundle (app.js): Alpine, $, initFormValidation, TomSelect
+ * ─────────────────────────────────────────────────────────────────────
  */
 
-// ── Constants ──────────────────────────────────────────────────────────────
-
-const FORM_SEL = '[data-pipeline-stage-form]';
-
-// ── Entry point ────────────────────────────────────────────────────────────
-
-document.addEventListener('DOMContentLoaded', () => {
-    const form = document.querySelector(FORM_SEL);
-    if (!form) return;
-
-    initFormValidation(FORM_SEL);
-    _syncColorPicker(form);
-});
-
-// ── Color picker sync ──────────────────────────────────────────────────────
-
-function _syncColorPicker(form) {
-    const picker = form.querySelector('#colorPicker');
-    const text   = form.querySelector('#colorText');
-    if (!picker || !text) return;
-
-    // Picker drives text
-    picker.addEventListener('input',  () => { text.value = picker.value; }, { passive: true });
-    picker.addEventListener('change', () => { text.value = picker.value; }, { passive: true });
-
-    // Text drives picker (only when valid hex)
-    text.addEventListener('input', () => {
-        if (/^#[0-9a-fA-F]{6}$/.test(text.value)) picker.value = text.value;
-    }, { passive: true });
-}
+import './pages/stage-form.js';
