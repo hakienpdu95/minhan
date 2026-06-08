@@ -3,6 +3,7 @@
 namespace Modules\KcCategory\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\Models\Organization;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -50,6 +51,15 @@ class KcCategoryController extends Controller
         ));
     }
 
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
+    }
+
     public function create()
     {
         $orgId = TenantContext::getOrganizationId();
@@ -64,7 +74,9 @@ class KcCategoryController extends Controller
             ->map(fn ($c) => ['value' => $c->id, 'text' => $c->name])
             ->all();
 
-        return view('kccategory::create', compact('parentOptions'));
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
+
+        return view('kccategory::create', compact('parentOptions', 'organizations', 'defaultOrgId', 'orgLocked'));
     }
 
     public function store(Request $request, StoreKcCategoryAction $action): RedirectResponse
@@ -98,7 +110,9 @@ class KcCategoryController extends Controller
             ->map(fn ($c) => ['value' => $c->id, 'text' => $c->name])
             ->all();
 
-        return view('kccategory::edit', compact('kcCategory', 'parentOptions'));
+        [$organizations, , $orgLocked] = $this->_resolveOrganizations();
+
+        return view('kccategory::edit', compact('kcCategory', 'parentOptions', 'organizations', 'orgLocked'));
     }
 
     public function update(Request $request, KcCategory $kcCategory, UpdateKcCategoryAction $action): RedirectResponse

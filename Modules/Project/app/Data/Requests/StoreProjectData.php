@@ -15,6 +15,8 @@ use Spatie\LaravelData\Data;
 class StoreProjectData extends Data
 {
     public function __construct(
+        public readonly int $organization_id,
+
         #[Required, StringType, Max(255)]
         public readonly string $name,
 
@@ -58,6 +60,7 @@ class StoreProjectData extends Data
         $orgId = TenantContext::getOrganizationId();
 
         return [
+            'organization_id' => ['required', 'integer', 'exists:organizations,id'],
             'code' => [
                 'required', 'string', 'max:50',
                 Rule::unique('projects', 'code')

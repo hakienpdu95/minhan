@@ -3,6 +3,7 @@
 namespace Modules\Employee\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\Models\Organization;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -137,8 +138,10 @@ class EmployeeController extends Controller
             ->map(fn ($t) => ['value' => $t->value, 'text' => $t->label()])
             ->all();
 
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
+
         return view('employee::create', compact(
-            'branches', 'departments', 'jobTitles', 'managers', 'statuses', 'employmentTypes'
+            'branches', 'departments', 'jobTitles', 'managers', 'statuses', 'employmentTypes', 'organizations', 'defaultOrgId', 'orgLocked'
         ));
     }
 
@@ -202,8 +205,10 @@ class EmployeeController extends Controller
 
         $employee->load(['branch', 'department', 'jobTitle']);
 
+        [$organizations, , $orgLocked] = $this->_resolveOrganizations();
+
         return view('employee::edit', compact(
-            'employee', 'branches', 'departments', 'jobTitles', 'managers', 'statuses', 'employmentTypes'
+            'employee', 'branches', 'departments', 'jobTitles', 'managers', 'statuses', 'employmentTypes', 'organizations', 'orgLocked'
         ));
     }
 
@@ -226,5 +231,14 @@ class EmployeeController extends Controller
 
         return redirect()->route('backend.employees.index')
             ->with('success', 'Đã xóa nhân viên "' . $name . '".');
+    }
+
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
     }
 }

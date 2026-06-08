@@ -15,6 +15,7 @@ class StoreLeavePolicyAction
     {
         return LeavePolicy::create([
             'uuid'                 => Str::uuid(),
+            'organization_id'      => $data->organization_id,
             'leave_type'           => $data->leave_type->value,
             'name'                 => $data->name,
             'days_per_year'        => $data->days_per_year,

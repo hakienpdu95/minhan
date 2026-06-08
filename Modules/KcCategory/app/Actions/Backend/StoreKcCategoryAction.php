@@ -15,8 +15,9 @@ class StoreKcCategoryAction
     public function handle(StoreKcCategoryData $data): KcCategory
     {
         $kcCategory = KcCategory::create([
-            'uuid'        => Str::uuid(),
-            'parent_id'   => $data->parent_id,
+            'uuid'            => Str::uuid(),
+            'organization_id' => $data->organization_id,
+            'parent_id'       => $data->parent_id,
             'name'        => $data->name,
             'slug'        => $data->slug,
             'description' => $data->description,

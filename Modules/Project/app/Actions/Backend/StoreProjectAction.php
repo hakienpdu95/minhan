@@ -16,6 +16,7 @@ class StoreProjectAction
     {
         $project = Project::create([
             'uuid'          => Str::uuid(),
+            'organization_id' => $data->organization_id,
             'branch_id'     => $data->branch_id,
             'department_id' => $data->department_id,
             'owner_id'      => $data->owner_id,

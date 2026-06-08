@@ -15,6 +15,7 @@ class StoreKpiGoalAction
     {
         return KpiGoal::create([
             'uuid'           => Str::uuid(),
+            'organization_id' => $data->organization_id,
             'employee_id'    => $data->employee_id,
             'cycle_label'    => $data->cycle_label,
             'cycle_start'    => $data->cycle_start,

@@ -4,6 +4,7 @@ namespace Modules\Branch\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Province;
+use App\Shared\Tenancy\Models\Organization;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -96,7 +97,17 @@ class BranchController extends Controller
             ])
             ->all();
 
-        return view('branch::create', compact('provinces', 'types', 'statuses', 'parentOptions'));
+        $userOrgId = auth()->user()->organization_id;
+        $orgLocked = (bool) $userOrgId;
+        if ($userOrgId) {
+            $organizations = Organization::where('id', $userOrgId)->get(['id', 'name']);
+            $defaultOrgId  = $userOrgId;
+        } else {
+            $organizations = Organization::orderBy('name')->get(['id', 'name']);
+            $defaultOrgId  = null;
+        }
+
+        return view('branch::create', compact('provinces', 'types', 'statuses', 'parentOptions', 'organizations', 'defaultOrgId', 'orgLocked'));
     }
 
     public function store(Request $request, StoreBranchAction $action): RedirectResponse
@@ -150,7 +161,15 @@ class BranchController extends Controller
 
         $branch->load(['province', 'ward']);
 
-        return view('branch::edit', compact('branch', 'provinces', 'types', 'statuses', 'parentOptions'));
+        $userOrgId = auth()->user()->organization_id;
+        $orgLocked = (bool) $userOrgId;
+        if ($userOrgId) {
+            $organizations = Organization::where('id', $userOrgId)->get(['id', 'name']);
+        } else {
+            $organizations = Organization::orderBy('name')->get(['id', 'name']);
+        }
+
+        return view('branch::edit', compact('branch', 'provinces', 'types', 'statuses', 'parentOptions', 'organizations', 'orgLocked'));
     }
 
     public function update(Request $request, Branch $branch, UpdateBranchAction $action): RedirectResponse

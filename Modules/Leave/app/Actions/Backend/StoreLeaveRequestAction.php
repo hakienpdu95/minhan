@@ -41,6 +41,7 @@ class StoreLeaveRequestAction
         return DB::transaction(function () use ($data, $balance, $daysCount, $employee) {
             $request = LeaveRequest::create([
                 'uuid'         => Str::uuid(),
+                'organization_id' => $data->organization_id,
                 'employee_id'  => $data->employee_id,
                 'balance_id'   => $balance->id,
                 'leave_type'   => $data->leave_type->value,

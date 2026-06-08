@@ -15,8 +15,9 @@ class StoreBranchAction
     public function handle(StoreBranchData $data): Branch
     {
         $branch = Branch::create([
-            'uuid'          => Str::uuid(),
-            'parent_id'     => $data->parent_id,
+            'uuid'            => Str::uuid(),
+            'organization_id' => $data->organization_id,
+            'parent_id'       => $data->parent_id,
             'name'          => $data->name,
             'code'          => strtoupper(trim($data->code)),
             'type'          => $data->type->value,

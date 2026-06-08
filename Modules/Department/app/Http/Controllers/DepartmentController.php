@@ -7,6 +7,7 @@ use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use App\Shared\Tenancy\Models\Organization;
 use Modules\Branch\Models\Branch;
 use Modules\Department\Actions\Backend\DestroyDepartmentAction;
 use Modules\Department\Actions\Backend\StoreDepartmentAction;
@@ -90,7 +91,9 @@ class DepartmentController extends Controller
 
         $parentOptions = $this->buildParentOptions($orgId);
 
-        return view('department::create', compact('functions', 'statuses', 'branchOptions', 'parentOptions'));
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
+
+        return view('department::create', compact('functions', 'statuses', 'branchOptions', 'parentOptions', 'organizations', 'defaultOrgId', 'orgLocked'));
     }
 
     public function store(Request $request, StoreDepartmentAction $action): RedirectResponse
@@ -138,6 +141,8 @@ class DepartmentController extends Controller
 
         $parentOptions = $this->buildParentOptions($orgId, $excludeIds);
 
+        [$organizations, , $orgLocked] = $this->_resolveOrganizations();
+
         $mergedIntoOptions = Department::withoutTenant()
             ->where('organization_id', $orgId)
             ->where('id', '!=', $department->id)
@@ -151,7 +156,7 @@ class DepartmentController extends Controller
             ->all();
 
         return view('department::edit', compact(
-            'department', 'functions', 'statuses', 'branchOptions', 'parentOptions', 'mergedIntoOptions'
+            'department', 'functions', 'statuses', 'branchOptions', 'parentOptions', 'mergedIntoOptions', 'organizations', 'orgLocked'
         ));
     }
 
@@ -174,6 +179,15 @@ class DepartmentController extends Controller
 
         return redirect()->route('backend.departments.index')
             ->with('success', 'Đã xóa phòng ban "' . $name . '".');
+    }
+
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
     }
 
     private function buildParentOptions(int $orgId, array $excludeIds = []): array

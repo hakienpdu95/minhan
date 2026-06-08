@@ -16,6 +16,7 @@ class StoreDepartmentAction
     {
         $dept = Department::create([
             'uuid'            => Str::uuid(),
+            'organization_id' => $data->organization_id,
             'parent_id'       => $data->parent_id,
             'branch_id'       => $data->branch_id,
             'name'            => $data->name,

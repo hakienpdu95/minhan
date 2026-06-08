@@ -17,6 +17,7 @@ class StoreEmployeeAction
     {
         $employee = Employee::create([
             'uuid'                 => Str::uuid(),
+            'organization_id'      => $data->organization_id,
             'user_id'              => $data->user_id,
             'branch_id'            => $data->branch_id,
             'department_id'        => $data->department_id,

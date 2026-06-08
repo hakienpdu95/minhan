@@ -15,8 +15,9 @@ class StoreJobTitleAction
     public function handle(StoreJobTitleData $data): JobTitle
     {
         $jobTitle = JobTitle::create([
-            'uuid'        => Str::uuid(),
-            'name'        => $data->name,
+            'uuid'            => Str::uuid(),
+            'organization_id' => $data->organization_id,
+            'name'            => $data->name,
             'code'        => strtoupper(trim($data->code)),
             'category'    => $data->category->value,
             'level'       => $data->level,

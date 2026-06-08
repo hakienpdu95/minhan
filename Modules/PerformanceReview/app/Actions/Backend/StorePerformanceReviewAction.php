@@ -21,6 +21,7 @@ class StorePerformanceReviewAction
 
         $review = PerformanceReview::create([
             'uuid'              => Str::uuid(),
+            'organization_id'   => $data->organization_id,
             'employee_id'       => $data->employee_id,
             'reviewer_id'       => $data->reviewer_id,
             'template_id'       => $data->template_id,

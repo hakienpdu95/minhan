@@ -10,6 +10,7 @@ use Spatie\LaravelData\Data;
 class StoreLeavePolicyData extends Data
 {
     public function __construct(
+        public readonly int       $organization_id,
         public readonly LeaveType $leave_type,
         public readonly string    $name,
         public readonly float     $days_per_year,
@@ -28,6 +29,7 @@ class StoreLeavePolicyData extends Data
         $orgId = TenantContext::getOrganizationId();
 
         return [
+            'organization_id'      => ['required', 'integer', 'exists:organizations,id'],
             'leave_type'           => ['required', 'string', Rule::enum(LeaveType::class)],
             'name'                 => ['required', 'string', 'max:100'],
             'days_per_year'        => ['required', 'numeric', 'min:0', 'max:365'],

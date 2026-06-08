@@ -3,6 +3,7 @@
 namespace Modules\PerformanceReview\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\Models\Organization;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -24,6 +25,15 @@ class PerformanceReviewController extends Controller
     public function __construct()
     {
         $this->authorizeResource(PerformanceReview::class, 'performance_review');
+    }
+
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
     }
 
     public function index()
@@ -67,6 +77,8 @@ class PerformanceReviewController extends Controller
     {
         $orgId = TenantContext::getOrganizationId();
 
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
+
         $employees = Employee::withoutTenant()
             ->where('organization_id', $orgId)
             ->where('status', EmployeeStatus::Active->value)
@@ -80,7 +92,7 @@ class PerformanceReviewController extends Controller
             ->with('criteria')
             ->get();
 
-        return view('performancereview::create', compact('employees', 'templates'));
+        return view('performancereview::create', compact('employees', 'templates', 'organizations', 'defaultOrgId', 'orgLocked'));
     }
 
     public function store(Request $request, StorePerformanceReviewAction $action): RedirectResponse
@@ -108,6 +120,8 @@ class PerformanceReviewController extends Controller
     {
         $orgId = TenantContext::getOrganizationId();
 
+        [$organizations, , $orgLocked] = $this->_resolveOrganizations();
+
         $employees = Employee::withoutTenant()
             ->where('organization_id', $orgId)
             ->where('status', EmployeeStatus::Active->value)
@@ -124,9 +138,11 @@ class PerformanceReviewController extends Controller
         $performanceReview->load(['scores', 'template.criteria', 'reviewer']);
 
         return view('performancereview::edit', [
-            'review'    => $performanceReview,
-            'employees' => $employees,
-            'templates' => $templates,
+            'review'        => $performanceReview,
+            'employees'     => $employees,
+            'templates'     => $templates,
+            'organizations' => $organizations,
+            'orgLocked'     => $orgLocked,
         ]);
     }
 

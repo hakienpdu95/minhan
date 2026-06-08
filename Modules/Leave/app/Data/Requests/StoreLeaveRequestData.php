@@ -10,6 +10,7 @@ use Spatie\LaravelData\Data;
 class StoreLeaveRequestData extends Data
 {
     public function __construct(
+        public readonly int       $organization_id,
         public readonly int       $employee_id,
         public readonly LeaveType $leave_type,
         public readonly string    $date_from,
@@ -23,6 +24,7 @@ class StoreLeaveRequestData extends Data
         $orgId = TenantContext::getOrganizationId();
 
         return [
+            'organization_id' => ['required', 'integer', 'exists:organizations,id'],
             'employee_id'    => ['required', 'integer', Rule::exists('employees', 'id')->where('organization_id', $orgId)],
             'leave_type'     => ['required', 'string', Rule::enum(LeaveType::class)],
             'date_from'      => ['required', 'date'],

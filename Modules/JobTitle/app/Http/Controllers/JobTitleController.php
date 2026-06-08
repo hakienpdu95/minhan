@@ -3,6 +3,7 @@
 namespace Modules\JobTitle\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\Models\Organization;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -56,13 +57,24 @@ class JobTitleController extends Controller
         ));
     }
 
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
+    }
+
     public function create()
     {
         $categories = collect(JobTitleCategory::cases())
             ->map(fn ($c) => ['value' => $c->value, 'text' => $c->label()])
             ->all();
 
-        return view('jobtitle::create', compact('categories'));
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
+
+        return view('jobtitle::create', compact('categories', 'organizations', 'defaultOrgId', 'orgLocked'));
     }
 
     public function store(Request $request, StoreJobTitleAction $action): RedirectResponse
@@ -85,7 +97,9 @@ class JobTitleController extends Controller
             ->map(fn ($c) => ['value' => $c->value, 'text' => $c->label()])
             ->all();
 
-        return view('jobtitle::edit', compact('jobTitle', 'categories'));
+        [$organizations, , $orgLocked] = $this->_resolveOrganizations();
+
+        return view('jobtitle::edit', compact('jobTitle', 'categories', 'organizations', 'orgLocked'));
     }
 
     public function update(Request $request, JobTitle $jobTitle, UpdateJobTitleAction $action): RedirectResponse

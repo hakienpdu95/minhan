@@ -13,6 +13,8 @@ use Spatie\LaravelData\Data;
 class StorePerformanceReviewData extends Data
 {
     public function __construct(
+        public readonly int $organization_id,
+
         #[Required]
         public readonly int $employee_id,
 
@@ -49,6 +51,7 @@ class StorePerformanceReviewData extends Data
         $orgId = TenantContext::getOrganizationId();
 
         return [
+            'organization_id' => ['required', 'integer', 'exists:organizations,id'],
             'employee_id'  => ['required', 'integer', Rule::exists('employees', 'id')->where('organization_id', $orgId)],
             'reviewer_id'  => ['required', 'integer', Rule::exists('employees', 'id')->where('organization_id', $orgId)],
             'template_id'  => ['required', 'integer', Rule::exists('review_templates', 'id')->where('organization_id', $orgId)],

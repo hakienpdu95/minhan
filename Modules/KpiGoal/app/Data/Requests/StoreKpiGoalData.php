@@ -11,6 +11,7 @@ use Spatie\LaravelData\Data;
 class StoreKpiGoalData extends Data
 {
     public function __construct(
+        public readonly int          $organization_id,
         public readonly int          $employee_id,
         public readonly string       $cycle_label,
         public readonly string       $cycle_start,
@@ -30,6 +31,7 @@ class StoreKpiGoalData extends Data
         $orgId = TenantContext::getOrganizationId();
 
         return [
+            'organization_id' => ['required', 'integer', 'exists:organizations,id'],
             'employee_id'    => ['required', 'integer', Rule::exists('employees', 'id')->where('organization_id', $orgId)],
             'cycle_label'    => ['required', 'string', 'max:30'],
             'cycle_start'    => ['required', 'date'],
