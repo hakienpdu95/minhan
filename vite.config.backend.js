@@ -91,6 +91,7 @@ const JS_OUTPUT = {
   'kpi-goal':               'assets/modules/kpi-goal.[hash].js',
   'marketplace':            'assets/modules/marketplace.[hash].js',
   'recruitment':            'assets/modules/recruitment.[hash].js',
+  'task':                   'assets/modules/task.[hash].js',
 
 };
 
@@ -134,6 +135,7 @@ const CSS_OUTPUT = {
   'kpi-goal.css':               'assets/modules/kpi-goal.[hash].css',
   'marketplace.css':            'assets/modules/marketplace.[hash].css',
   'recruitment.css':            'assets/modules/recruitment.[hash].css',
+  'task.css':                   'assets/modules/task.[hash].css',
 };
 
 // ─── Module input entries ─────────────────────────────────────────────
@@ -217,6 +219,9 @@ const MODULE_ENTRIES = [
   // Recruitment
   'Modules/Recruitment/resources/assets/sass/recruitment.scss',
   'Modules/Recruitment/resources/assets/js/recruitment.js',
+  // Task
+  'Modules/Task/resources/assets/sass/task.scss',
+  'Modules/Task/resources/assets/js/task.js',
 ];
 
 // ─────────────────────────────────────────────────────────────────────

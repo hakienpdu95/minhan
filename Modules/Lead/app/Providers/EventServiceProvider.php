@@ -12,20 +12,19 @@ use Modules\Lead\Events\TagDeleted;
 use Modules\Lead\Events\TagUpdated;
 use Modules\Lead\Listeners\FlushTagsCache;
 use Modules\Lead\Listeners\LogLeadAssigned;
-use Modules\Lead\Listeners\LogLeadCreated;
 use Modules\Lead\Listeners\LogLeadStageChanged;
-use Modules\Lead\Listeners\LogLeadUpdated;
 use Modules\Lead\Listeners\TriggerLeadAssessment;
 
 class EventServiceProvider extends ServiceProvider
 {
+    // lead_created / lead_updated / lead_deleted → LeadObserver (BaseModelObserver)
+    // LogLeadCreated / LogLeadUpdated đã bỏ để tránh double log.
+    // LogLeadStageChanged / LogLeadAssigned giữ lại: business events có context riêng.
     protected $listen = [
         LeadCreated::class => [
-            LogLeadCreated::class,
             TriggerLeadAssessment::class,
         ],
         LeadUpdated::class => [
-            LogLeadUpdated::class,
             TriggerLeadAssessment::class,
         ],
         LeadStageChanged::class => [

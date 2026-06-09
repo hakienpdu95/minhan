@@ -15,7 +15,7 @@ final class ActivityLogger
         LogLevel $level       = LogLevel::Info,
         ?string  $description = null,
     ): void {
-        if ($level->value < config('activitylog.min_level', LogLevel::Info->value)) {
+        if ($level->value < config('activitylog_module.min_level', LogLevel::Info->value)) {
             return;
         }
 
@@ -23,11 +23,10 @@ final class ActivityLogger
             $entry = app(LogEntryBuilder::class)->build(
                 $module, $action, $subject, $context, $level, $description
             );
-            WriteActivityLogAction::dispatch($entry)->onQueue(
-                config('activitylog.queue', 'actlog')
-            );
+            // Ghi đồng bộ — không dùng queue để đơn giản hoá hệ thống
+            WriteActivityLogAction::run($entry);
         } catch (\Throwable $e) {
-            logger()->error('[ActivityLog] dispatch failed', [
+            logger()->error('[ActivityLog] write failed', [
                 'module' => $module,
                 'action' => $action,
                 'error'  => $e->getMessage(),

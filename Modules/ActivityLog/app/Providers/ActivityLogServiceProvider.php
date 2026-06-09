@@ -43,10 +43,8 @@ class ActivityLogServiceProvider extends ServiceProvider
                 ->name('activitylog:purge')
                 ->onOneServer();
 
-            // Invalidate stats cache mỗi 5 phút (cache TTL = 300s)
-            $schedule->call(function (): void {
-                Cache::forget('actlog:meta:all');
-            })->everyFiveMinutes()->name('activitylog:flush-meta-cache');
+            // Meta cache tự expire theo TTL (600s) — không cần flush scheduled.
+            // Mỗi org có key riêng: actlog:meta:{orgId}, không có key "actlog:meta:all".
         });
     }
 }

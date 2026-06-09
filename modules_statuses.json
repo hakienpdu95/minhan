@@ -24,5 +24,6 @@
     "KpiGoal": true,
     "JobPosting": true,
     "Recruitment": true,
-    "Marketplace": true
+    "Marketplace": true,
+    "Task": true
 }

@@ -6,7 +6,6 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\Cache;
 use Modules\ActivityLog\Models\ActivityLog;
 use App\Shared\Tenancy\TenantContext;
 
@@ -70,11 +69,12 @@ class ActivityLogApiController extends Controller
         if (!empty($v['date_from'])) $query->where('created_at', '>=', $v['date_from'] . ' 00:00:00');
         if (!empty($v['date_to']))   $query->where('created_at', '<=', $v['date_to'] . ' 23:59:59');
         if (!empty($v['search'])) {
+            // Chỉ search trên actor_name (có index qua compound) và action/subject_label.
+            // Bỏ description và event để tránh full-scan trên cột TEXT lớn.
             $t = '%' . $v['search'] . '%';
-            $query->where(fn ($q) => $q->where('description', 'like', $t)
+            $query->where(fn ($q) => $q->where('actor_name', 'like', $t)
                                        ->orWhere('action', 'like', $t)
-                                       ->orWhere('event', 'like', $t)
-                                       ->orWhere('actor_name', 'like', $t));
+                                       ->orWhere('subject_label', 'like', $t));
         }
 
         $total = $query->count();
@@ -168,64 +168,63 @@ class ActivityLogApiController extends Controller
 
     public function stats(Request $request): JsonResponse
     {
-        $days     = min(90, max(1, (int) $request->input('days', 30)));
-        $from     = now()->subDays($days);
-        $orgId    = TenantContext::isSet() ? TenantContext::getOrganizationId() : null;
-        $cacheKey = "actlog:stats:{$days}:" . ($orgId ?? 'all');
+        $days  = min(90, max(1, (int) $request->input('days', 30)));
+        $from  = now()->subDays($days);
+        $orgId = TenantContext::isSet() ? TenantContext::getOrganizationId() : null;
 
-        return response()->json(Cache::remember($cacheKey, 300, function () use ($from, $orgId) {
-            $base = ActivityLog::where('created_at', '>=', $from)
-                ->when($orgId, fn ($q) => $q->where('organization_id', $orgId));
+        $base = ActivityLog::where('created_at', '>=', $from)
+            ->when($orgId, fn ($q) => $q->forOrganization($orgId));
 
-            return [
-                'by_level'       => (clone $base)->selectRaw('level, COUNT(*) as count')->groupBy('level')->get(),
-                'by_module'      => (clone $base)->selectRaw(
-                                        "COALESCE(NULLIF(module,''), log_name) as display_module, COUNT(*) as count"
-                                    )->groupByRaw("COALESCE(NULLIF(module,''), log_name)")
-                                    ->orderByDesc('count')->limit(10)->get(),
-                'by_day'         => (clone $base)->selectRaw('DATE(created_at) as date, COUNT(*) as count')
-                                        ->groupBy('date')->orderBy('date')->get(),
-                'error_today'    => ActivityLog::where('level', '>=', 4)->whereDate('created_at', today())
-                                        ->when($orgId, fn ($q) => $q->where('organization_id', $orgId))->count(),
-                'critical_today' => ActivityLog::where('level', 5)->whereDate('created_at', today())
-                                        ->when($orgId, fn ($q) => $q->where('organization_id', $orgId))->count(),
-            ];
-        }));
+        $todayCounts = ActivityLog::whereDate('created_at', today())
+            ->when($orgId, fn ($q) => $q->forOrganization($orgId))
+            ->selectRaw('
+                SUM(CASE WHEN level >= 4 THEN 1 ELSE 0 END) as error_today,
+                SUM(CASE WHEN level  = 5 THEN 1 ELSE 0 END) as critical_today
+            ')
+            ->first();
+
+        return response()->json([
+            'by_level'       => (clone $base)->selectRaw('level, COUNT(*) as count')->groupBy('level')->get(),
+            'by_module'      => (clone $base)->selectRaw(
+                                    "COALESCE(NULLIF(module,''), log_name) as display_module, COUNT(*) as count"
+                                )->groupByRaw("COALESCE(NULLIF(module,''), log_name)")
+                                ->orderByDesc('count')->limit(10)->get(),
+            'by_day'         => (clone $base)->selectRaw('DATE(created_at) as date, COUNT(*) as count')
+                                    ->groupBy('date')->orderBy('date')->get(),
+            'error_today'    => (int) ($todayCounts->error_today    ?? 0),
+            'critical_today' => (int) ($todayCounts->critical_today ?? 0),
+        ]);
     }
 
     public function meta(): JsonResponse
     {
-        $orgId    = TenantContext::isSet() ? TenantContext::getOrganizationId() : null;
-        $cacheKey = 'actlog:meta:' . ($orgId ?? 'all');
+        $orgId = TenantContext::isSet() ? TenantContext::getOrganizationId() : null;
+        $base  = ActivityLog::when($orgId, fn ($q) => $q->forOrganization($orgId));
 
-        return response()->json(Cache::remember($cacheKey, 600, function () use ($orgId) {
-            $base = ActivityLog::when($orgId, fn ($q) => $q->where('organization_id', $orgId));
+        // Merge custom modules + Spatie log_names into one list
+        $customModules  = (clone $base)->whereNotNull('module')->where('module', '!=', '')
+            ->distinct()->pluck('module');
+        $spatieModules  = (clone $base)->whereNull('module')->whereNotNull('log_name')
+            ->where('log_name', '!=', '')
+            ->distinct()->pluck('log_name')
+            ->map(fn ($n) => ucfirst($n));
+        $modules = $customModules->merge($spatieModules)->unique()->sort()->values();
 
-            // Merge custom modules + Spatie log_names into one list
-            $customModules = (clone $base)->whereNotNull('module')->where('module', '!=', '')
-                ->distinct()->pluck('module');
-            $splatieModules = (clone $base)->whereNull('module')->whereNotNull('log_name')
-                ->where('log_name', '!=', '')
-                ->distinct()->pluck('log_name')
-                ->map(fn ($n) => ucfirst($n));
-            $modules = $customModules->merge($splatieModules)->unique()->sort()->values();
+        // Merge actions per module: custom actions + Spatie events grouped by log_name/module
+        $customActions = (clone $base)->whereNotNull('module')->whereNotNull('action')
+            ->where('action', '!=', '')
+            ->distinct()->select('module', 'action')->orderBy('action')
+            ->get()->groupBy('module');
 
-            // Merge actions per module: custom actions + Spatie events grouped by log_name/module
-            $customActions = (clone $base)->whereNotNull('module')->whereNotNull('action')
-                ->where('action', '!=', '')
-                ->distinct()->select('module', 'action')->orderBy('action')
-                ->get()->groupBy('module');
+        $spatieActions = (clone $base)->whereNull('module')->whereNotNull('event')
+            ->where('event', '!=', '')
+            ->distinct()->select('log_name', 'event')
+            ->orderBy('event')->get()
+            ->groupBy(fn ($r) => ucfirst($r->log_name))
+            ->map(fn ($items) => $items->map(fn ($r) => (object)['action' => $r->event]));
 
-            $spatieActions = (clone $base)->whereNull('module')->whereNotNull('event')
-                ->where('event', '!=', '')
-                ->distinct()->select('log_name', 'event')
-                ->orderBy('event')->get()
-                ->groupBy(fn ($r) => ucfirst($r->log_name))
-                ->map(fn ($items) => $items->map(fn ($r) => (object)['action' => $r->event]));
+        $actions = $customActions->toBase()->merge($spatieActions);
 
-            $actions = $customActions->toBase()->merge($spatieActions);
-
-            return compact('modules', 'actions');
-        }));
+        return response()->json(compact('modules', 'actions'));
     }
 }

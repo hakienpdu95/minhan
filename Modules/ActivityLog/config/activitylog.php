@@ -9,13 +9,7 @@ return [
     'min_level' => (int) env('ACTIVITYLOG_MIN_LEVEL', 2),
 
     /*
-    | Số ngày giữ log trong DB trước khi PurgeOldLogsAction xóa.
+    | Số ngày giữ log trong DB trước khi activitylog:purge xóa.
     */
     'retain_days' => (int) env('ACTIVITYLOG_RETAIN_DAYS', 90),
-
-    /*
-    | Queue riêng cho ActivityLog jobs.
-    | Tách khỏi queue chính để không cạnh tranh với business jobs.
-    */
-    'queue' => env('ACTIVITYLOG_QUEUE', 'actlog'),
 ];

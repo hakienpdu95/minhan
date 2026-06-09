@@ -42,7 +42,8 @@ class ActivityLog extends Activity
 
     public function scopeForOrganization(Builder $q, int $orgId): Builder
     {
-        return $q->where('organization_id', $orgId);
+        // Bao gồm cả rows không có org (system/legacy logs)
+        return $q->where(fn ($q) => $q->where('organization_id', $orgId)->orWhereNull('organization_id'));
     }
 
     public function scopeModule(Builder $q, string $module): Builder

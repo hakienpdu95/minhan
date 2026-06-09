@@ -6,16 +6,10 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\ActivityLog\Data\LogEntryData;
-use Modules\ActivityLog\Services\AlertEvaluatorService;
 
 class WriteActivityLogAction
 {
     use AsAction;
-
-    public string $jobQueue   = 'actlog';
-    public int    $jobTries   = 5;
-    public array  $jobBackoff = [3, 10, 30, 60, 120];
-    public int    $jobTimeout = 30;
 
     public function handle(LogEntryData $entry): void
     {
@@ -24,18 +18,6 @@ class WriteActivityLogAction
             $this->writeContexts($logId, $entry->context);
             $this->writeHttp($logId, $entry);
         });
-
-        // Alert evaluation ngoài transaction — không delay commit
-        app(AlertEvaluatorService::class)->evaluate($entry);
-    }
-
-    public function jobFailed(\Throwable $e, LogEntryData $entry): void
-    {
-        logger()->error('[ActivityLog] WriteActivityLogAction failed permanently', [
-            'module' => $entry->module,
-            'action' => $entry->action,
-            'error'  => $e->getMessage(),
-        ]);
     }
 
     private function writeMainLog(LogEntryData $entry): int
@@ -48,7 +30,6 @@ class WriteActivityLogAction
             'causer_type'     => $entry->actorId ? \App\Models\User::class : null,
             'causer_id'       => $entry->actorId,
             'event'           => $entry->action,
-            // Custom columns
             'organization_id' => $entry->organizationId,
             'level'           => $entry->level->value,
             'module'          => $entry->module,
@@ -78,8 +59,8 @@ class WriteActivityLogAction
     {
         if ($entry->http === null) return;
 
-        // Enrich status_code + duration từ Cache (set bởi CaptureHttpContext middleware).
-        // TTL = 60s — nếu job chạy sau 60s, status_code/duration_ms sẽ là NULL.
+        // Ghi đồng bộ — status_code/duration_ms được enrich bởi CaptureHttpContext middleware
+        // thông qua cache. Khi ghi đồng bộ trong request, cache chưa được set nên sẽ là NULL.
         $cached = Cache::pull("actlog:http_ctx:{$entry->requestId}");
 
         DB::table('activity_log_http')->insert([

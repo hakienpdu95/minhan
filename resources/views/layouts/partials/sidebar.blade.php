@@ -233,6 +233,22 @@
             </details>
             @endcan
 
+            @can('viewAny', \Modules\Task\Models\Task::class)
+            <details {{ request()->routeIs('backend.tasks.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('backend.tasks.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                    <span class="nav-label">Công việc</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('backend.tasks.index') }}" class="sub-link {{ request()->routeIs('backend.tasks.index') ? 'active' : '' }}">Danh sách công việc</a>
+                    @can('create', \Modules\Task\Models\Task::class)
+                    <a href="{{ route('backend.tasks.create') }}" class="sub-link {{ request()->routeIs('backend.tasks.create') ? 'active' : '' }}">Thêm công việc</a>
+                    @endcan
+                </div>
+            </details>
+            @endcan
+
             @can('viewAny', \Modules\OrgChart\Models\OrgChartConfig::class)
             <details {{ request()->routeIs('backend.org-charts.*') ? 'open' : '' }}>
                 <summary class="nav-summary {{ request()->routeIs('backend.org-charts.*') ? 'active' : '' }}">
@@ -465,12 +481,6 @@
                        class="sub-link {{ request()->routeIs('activitylog.index') ? 'active' : '' }}">
                        Danh sách log
                     </a>
-                    @can('activitylog.manage_alerts')
-                    <a href="{{ route('activitylog.alert-rules.index') }}"
-                       class="sub-link {{ request()->routeIs('activitylog.alert-rules.*') ? 'active' : '' }}">
-                       Alert Rules
-                    </a>
-                    @endcan
                 </div>
             </details>
             @endcan
