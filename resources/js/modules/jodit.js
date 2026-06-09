@@ -33,7 +33,12 @@
  * để tắt cleanup trước khi navigate.
  */
 import { Jodit } from 'jodit';
+import 'jodit/esm/plugins/all.js';
 import 'jodit/es2021/jodit.min.css';
+import { Dom } from 'jodit/esm/core/dom/index.js';
+import { css } from 'jodit/esm/core/helpers/utils/css.js';
+import { hAlignElement } from 'jodit/esm/core/helpers/utils/align.js';
+import { isString } from 'jodit/esm/core/helpers/checker/is-string.js';
 
 // ── Draft orphan tracking ──────────────────────────────────────────────
 // Map<editorKey, Set<uuid>>  — uuid của ảnh đã upload trong session hiện tại
@@ -65,7 +70,7 @@ function _csrfToken() {
 function _deleteMedia(uuid) {
     fetch(`/api/v1/media/jodit-upload/${uuid}`, {
         method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': _csrfToken() },
+        headers: { 'X-CSRF-TOKEN': _csrfToken(), 'Accept': 'application/json' },
     }).catch(() => {});
 }
 
@@ -103,7 +108,8 @@ window.addEventListener('pagehide', () => {
         keepalive: true,
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': _csrfToken(),
+            'Accept':        'application/json',
+            'X-CSRF-TOKEN':  _csrfToken(),
         },
         body: JSON.stringify({ uuids }),
     }).catch(() => {});
@@ -152,7 +158,7 @@ const BASE = {
                 icon: 'bin',
                 tooltip: 'Xóa ảnh',
                 exec: (editor, image) => {
-                    if (image) editor.s.removeNode(image);
+                    image && editor.s.removeNode(image);
                 },
             },
             '|',
@@ -170,11 +176,29 @@ const BASE = {
                 name: 'valign',
                 list: ['Top', 'Middle', 'Bottom', 'Normal'],
                 tooltip: 'Căn dọc',
+                exec: (editor, image, { control }) => {
+                    if (!Dom.isTag(image, 'img')) return;
+                    const command = control.args && isString(control.args[0])
+                        ? control.args[0].toLowerCase() : '';
+                    if (!command) return false;
+                    css(image, 'vertical-align', command === 'normal' ? '' : command);
+                    editor.e.fire('recalcPositionPopup');
+                },
             },
             {
                 name: 'left',
                 list: ['Left', 'Right', 'Center', 'Normal'],
                 tooltip: 'Căn ngang',
+                childTemplate: (_, __, value) => value,
+                exec: (editor, elm, { control }) => {
+                    if (!Dom.isTag(elm, new Set(['img', 'jodit', 'jodit-media']))) return;
+                    const command = control.args && isString(control.args[0])
+                        ? control.args[0].toLowerCase() : '';
+                    if (!command) return false;
+                    hAlignElement(elm, command);
+                    editor.synchronizeValues();
+                    editor.e.fire('recalcPositionPopup');
+                },
             },
         ],
     },

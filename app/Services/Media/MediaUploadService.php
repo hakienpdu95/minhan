@@ -62,10 +62,36 @@ class MediaUploadService
 
     /**
      * Delete a media record and its associated files on disk.
+     * Conversions are stored manually alongside the original (not in Spatie's
+     * conversions/ subdir), so we delete them explicitly before the record.
+     * After deletion we prune empty directories: hash folder and numeric-ID parent.
      */
     public function delete(Media $media): void
     {
-        $media->delete(); // Spatie handles file deletion via model observer
+        $disk     = $media->disk;
+        $basePath = rtrim(dirname($media->getPathRelativeToRoot()), '/');
+
+        foreach ($media->generated_conversions ?? [] as $name => $generated) {
+            if ($generated) {
+                Storage::disk($disk)->delete($basePath . '/' . $name . '.webp');
+            }
+        }
+
+        $media->delete(); // Spatie deletes original file via model observer
+
+        // Prune now-empty hash directory (e.g. 5/a569415e-…/)
+        if (empty(Storage::disk($disk)->files($basePath)) &&
+            empty(Storage::disk($disk)->directories($basePath))) {
+            Storage::disk($disk)->deleteDirectory($basePath);
+        }
+
+        // Prune parent numeric-ID directory (e.g. 5/) if also empty
+        $parent = dirname($basePath);
+        if ($parent !== '.' && $parent !== '/' &&
+            empty(Storage::disk($disk)->files($parent)) &&
+            empty(Storage::disk($disk)->directories($parent))) {
+            Storage::disk($disk)->deleteDirectory($parent);
+        }
     }
 
     /**

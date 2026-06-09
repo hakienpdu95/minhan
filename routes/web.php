@@ -10,7 +10,7 @@ Route::get('/', fn () => redirect()->route('backend.dashboard'));
 | Media API Routes — prefix: api/v1/media
 |--------------------------------------------------------------------------
 */
-Route::middleware(['api', 'auth:sanctum', 'tenant'])
+Route::middleware(['auth', 'tenant'])
     ->prefix('api/v1/media')
     ->name('api.media.')
     ->group(function () {

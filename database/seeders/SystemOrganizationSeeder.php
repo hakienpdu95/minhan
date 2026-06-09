@@ -30,7 +30,7 @@ class SystemOrganizationSeeder extends Seeder
             $org->update(['is_system' => true]);
         } else {
             Organization::create([
-                'name'      => 'Hệ thống',
+                'name'      => '#Doanh nghiệp chưa xác định / xác thực#',
                 'slug'      => 'system',
                 'status'    => 'active',
                 'is_system' => true,
