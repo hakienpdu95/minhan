@@ -128,9 +128,13 @@ class TaskController extends Controller
             'parent',
             'createdBy',
             'updatedBy',
+            'comments.user:id,name',
+            'comments.replies.user:id,name',
         ]);
 
-        return view('task::tasks.show', compact('task'));
+        $isWatching = $task->isWatchedBy(auth()->id());
+
+        return view('task::tasks.show', compact('task', 'isWatching'));
     }
 
     public function edit(Task $task)

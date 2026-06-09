@@ -112,4 +112,24 @@ class Task extends TenantAwareModel
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(TaskComment::class)->whereNull('parent_id')->orderBy('created_at');
+    }
+
+    public function watchers(): HasMany
+    {
+        return $this->hasMany(TaskWatcher::class);
+    }
+
+    public function histories(): HasMany
+    {
+        return $this->hasMany(TaskHistory::class)->orderByDesc('changed_at');
+    }
+
+    public function isWatchedBy(int $userId): bool
+    {
+        return $this->watchers()->where('user_id', $userId)->exists();
+    }
 }

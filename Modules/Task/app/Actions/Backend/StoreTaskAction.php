@@ -61,6 +61,16 @@ class StoreTaskAction
             $task->labels()->sync($data->label_ids);
         }
 
+        // Audit trail: log creation
+        DB::table('task_histories')->insert([
+            'task_id'       => $task->id,
+            'actor_id'      => auth()->id(),
+            'field_changed' => 'created',
+            'old_value'     => null,
+            'new_value'     => $task->uuid,
+            'changed_at'    => now(),
+        ]);
+
         event(new TaskCreated($task));
 
         return $task;

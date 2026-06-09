@@ -28,6 +28,19 @@
         <h1 class="text-xl font-bold text-base-content mt-2">{{ $task->title }}</h1>
     </div>
     <div class="flex items-center gap-2 shrink-0">
+
+        {{-- Watcher toggle --}}
+        <button id="btn-watch"
+                data-url="{{ route('backend.tasks.watch', $task) }}"
+                data-watching="{{ $isWatching ? '1' : '0' }}"
+                class="btn btn-sm gap-1.5 {{ $isWatching ? 'btn-neutral' : 'btn-ghost' }}">
+            <svg class="w-3.5 h-3.5" fill="{{ $isWatching ? 'currentColor' : 'none' }}" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+            <span id="btn-watch-label">{{ $isWatching ? 'Đang theo dõi' : 'Theo dõi' }}</span>
+        </button>
+
         @can('update', $task)
         <a href="{{ route('backend.tasks.edit', $task) }}" class="btn btn-warning btn-sm gap-1.5">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -96,6 +109,46 @@
             </div>
         </div>
         @endif
+
+        {{-- ── Comments ──────────────────────────────────────────────────────── --}}
+        <div class="card bg-base-100 shadow-sm border border-base-200" id="comments-section">
+            <div class="card-body p-5">
+
+                <h3 class="text-sm font-semibold text-base-content/60 uppercase tracking-wide mb-4">
+                    Bình luận
+                    <span id="comment-count-badge" class="badge badge-neutral badge-sm ml-1">{{ $task->comment_count }}</span>
+                </h3>
+
+                {{-- Comment list --}}
+                <div id="comment-list" class="space-y-4">
+                    @foreach($task->comments as $comment)
+                    @include('task::tasks._comment', ['comment' => $comment])
+                    @endforeach
+                </div>
+
+                {{-- Add comment form --}}
+                <div class="mt-5 pt-4 border-t border-base-200">
+                    <form id="comment-form" data-url="{{ route('backend.tasks.comments.store', $task) }}"
+                          class="space-y-3">
+                        @csrf
+                        <div class="form-control">
+                            <textarea id="comment-content" name="content" rows="3"
+                                      class="textarea textarea-bordered textarea-sm w-full"
+                                      placeholder="Thêm bình luận..."></textarea>
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="submit" class="btn btn-primary btn-sm gap-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                                </svg>
+                                Gửi
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
+        </div>
 
     </div>
 
@@ -197,3 +250,144 @@
 
 </div>
 @endsection
+
+@push('scripts')
+    @vite([
+        'resources/js/modules/toastify.js',
+        'Modules/Task/resources/assets/js/task.js',
+    ], 'build/backend')
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // ── Watcher toggle ──────────────────────────────────────────────────
+        const btnWatch = document.getElementById('btn-watch');
+        if (btnWatch) {
+            btnWatch.addEventListener('click', async () => {
+                const url = btnWatch.dataset.url;
+                try {
+                    const res  = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json',
+                        },
+                    });
+                    const json = await res.json();
+                    const label = document.getElementById('btn-watch-label');
+                    if (json.watching) {
+                        label.textContent = 'Đang theo dõi';
+                        btnWatch.classList.replace('btn-ghost', 'btn-neutral');
+                        btnWatch.querySelector('svg').setAttribute('fill', 'currentColor');
+                    } else {
+                        label.textContent = 'Theo dõi';
+                        btnWatch.classList.replace('btn-neutral', 'btn-ghost');
+                        btnWatch.querySelector('svg').setAttribute('fill', 'none');
+                    }
+                    if (window.Toast) Toast.success(json.message);
+                } catch {
+                    if (window.Toast) Toast.error('Có lỗi xảy ra.');
+                }
+            });
+        }
+
+        // ── Add comment form ────────────────────────────────────────────────
+        const commentForm = document.getElementById('comment-form');
+        if (commentForm) {
+            commentForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const textarea = document.getElementById('comment-content');
+                const content  = textarea.value.trim();
+                if (!content) return;
+
+                const btn = commentForm.querySelector('button[type="submit"]');
+                btn.disabled = true;
+
+                try {
+                    const res  = await fetch(commentForm.dataset.url, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({ content }),
+                    });
+
+                    if (!res.ok) {
+                        const err = await res.json();
+                        if (window.Toast) Toast.error(err.message || 'Lỗi khi gửi bình luận.');
+                        return;
+                    }
+
+                    const { comment } = await res.json();
+                    textarea.value = '';
+
+                    const list = document.getElementById('comment-list');
+                    list.insertAdjacentHTML('beforeend', _renderComment(comment));
+
+                    // Update comment count
+                    const badge = document.getElementById('comment-count-badge');
+                    if (badge) badge.textContent = parseInt(badge.textContent || '0') + 1;
+
+                    if (window.Toast) Toast.success('Đã thêm bình luận.');
+                } catch {
+                    if (window.Toast) Toast.error('Có lỗi xảy ra khi gửi bình luận.');
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        }
+
+        // ── Delete comment (event delegation) ──────────────────────────────
+        document.getElementById('comment-list')?.addEventListener('click', async (e) => {
+            const btn = e.target.closest('[data-action="delete-comment"]');
+            if (!btn) return;
+            if (!confirm('Xóa bình luận này?')) return;
+
+            const url = btn.dataset.url;
+            try {
+                const res = await fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                });
+                if (res.ok) {
+                    btn.closest('[data-comment-id]').remove();
+                    const badge = document.getElementById('comment-count-badge');
+                    if (badge) badge.textContent = Math.max(0, parseInt(badge.textContent || '1') - 1);
+                    if (window.Toast) Toast.success('Đã xóa bình luận.');
+                }
+            } catch {
+                if (window.Toast) Toast.error('Có lỗi xảy ra.');
+            }
+        });
+
+        function _renderComment(c) {
+            const escaped = c.content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const canDelete = true; // own comment
+            return `
+            <div data-comment-id="${c.id}" class="flex gap-3">
+                <div class="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-xs font-bold text-primary">
+                    ${(c.user_name || '?').charAt(0).toUpperCase()}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="bg-base-200/50 rounded-xl px-4 py-3">
+                        <div class="flex items-center justify-between gap-2 mb-1">
+                            <span class="text-xs font-semibold text-base-content/70">${c.user_name || ''}</span>
+                            <span class="text-xs text-base-content/40">${c.created_at}</span>
+                        </div>
+                        <p class="text-sm text-base-content/80 whitespace-pre-wrap">${escaped}</p>
+                    </div>
+                    ${canDelete ? `
+                    <div class="flex gap-3 mt-1 ml-1">
+                        <button data-action="delete-comment" data-url="/dashboard/tasks/{{ $task->id }}/comments/${c.id}"
+                                class="text-xs text-base-content/40 hover:text-error transition-colors">Xóa</button>
+                    </div>` : ''}
+                </div>
+            </div>`;
+        }
+    });
+    </script>
+@endpush
