@@ -3,14 +3,14 @@
 namespace App\Console\Commands;
 
 use App\Models\Media;
+use App\Services\Media\MediaUploadService;
 use App\Shared\Tenancy\OrganizationScope;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Cleanup jodit_content orphan media records that have not been associated
- * to a real entity within the TTL window (default 24 hours from last_touched_at).
+ * to a real entity within the TTL window (default 72 hours from last_touched_at).
  *
  * Also removes empty JoditDraft records (no remaining jodit_content media).
  *
@@ -25,9 +25,14 @@ class MediaCleanupOrphansCommand extends Command
 
     protected $description = 'Delete Jodit orphan media (jodit_content) older than TTL, then prune empty draft records';
 
+    public function __construct(private readonly MediaUploadService $uploadService)
+    {
+        parent::__construct();
+    }
+
     public function handle(): int
     {
-        $ttlHours = (int) config('media.jodit_orphan_ttl_hours', 24);
+        $ttlHours = (int) config('media.jodit_orphan_ttl_hours', 72);
         $cutoff   = now()->subHours($ttlHours);
         $isDryRun = $this->option('dry-run');
 
@@ -55,11 +60,7 @@ class MediaCleanupOrphansCommand extends Command
             }
 
             try {
-                $disk = $media->disk;
-                $path = rtrim(dirname($media->getPathRelativeToRoot()), '/');
-
-                Storage::disk($disk)->deleteDirectory($path);
-                $media->forceDelete();
+                $this->uploadService->delete($media);
                 $deletedMedia++;
             } catch (\Throwable $e) {
                 Log::error('media:cleanup-orphans failed for media', [

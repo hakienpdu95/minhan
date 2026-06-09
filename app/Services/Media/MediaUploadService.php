@@ -64,7 +64,7 @@ class MediaUploadService
      * Delete a media record and its associated files on disk.
      * Conversions are stored manually alongside the original (not in Spatie's
      * conversions/ subdir), so we delete them explicitly before the record.
-     * After deletion we prune empty directories: hash folder and numeric-ID parent.
+     * Prunes empty ancestor directories up to (not including) the org_id level.
      */
     public function delete(Media $media): void
     {
@@ -79,18 +79,36 @@ class MediaUploadService
 
         $media->delete(); // Spatie deletes original file via model observer
 
-        // Prune now-empty hash directory (e.g. 5/a569415e-…/)
-        if (empty(Storage::disk($disk)->files($basePath)) &&
-            empty(Storage::disk($disk)->directories($basePath))) {
-            Storage::disk($disk)->deleteDirectory($basePath);
-        }
+        $this->pruneEmptyAncestors($disk, $basePath);
+    }
 
-        // Prune parent numeric-ID directory (e.g. 5/) if also empty
-        $parent = dirname($basePath);
-        if ($parent !== '.' && $parent !== '/' &&
-            empty(Storage::disk($disk)->files($parent)) &&
-            empty(Storage::disk($disk)->directories($parent))) {
-            Storage::disk($disk)->deleteDirectory($parent);
+    /**
+     * Walk up the directory tree from $leafDir, deleting each level while empty.
+     * Stops at the org_id directory (media/{org_id}) so tenant roots are preserved.
+     * Path convention: media/{org_id}/{module}/{entity_type}/{entity_id}/{uuid}
+     * → up to 4 levels pruned: uuid, entity_id, entity_type, module.
+     */
+    public function pruneEmptyAncestors(string $disk, string $leafDir): void
+    {
+        $path = $leafDir;
+
+        for ($depth = 0; $depth < 4; $depth++) {
+            if ($path === '' || $path === '.' || $path === '/') {
+                break;
+            }
+
+            // Keep org_id dir: path has form "media/{org_id}" (2 segments)
+            if (substr_count($path, '/') < 2) {
+                break;
+            }
+
+            if (! empty(Storage::disk($disk)->files($path)) ||
+                ! empty(Storage::disk($disk)->directories($path))) {
+                break;
+            }
+
+            Storage::disk($disk)->deleteDirectory($path);
+            $path = dirname($path);
         }
     }
 
@@ -164,10 +182,20 @@ class MediaUploadService
             try {
                 $image = Image::decode($originalContent);
 
-                $originalWidth = $image->width();
+                $originalWidth  = $image->width();
+                $originalHeight = $image->height();
 
-                // Skip upscaling for scale conversions
-                if ($settings['method'] === 'scale' && $settings['width'] && $originalWidth <= $settings['width']) {
+                // Skip if resize would require upscaling
+                if ($settings['method'] === 'scale' &&
+                    $settings['width'] && $originalWidth <= $settings['width']) {
+                    $generatedConversions[$conversion] = false;
+                    continue;
+                }
+
+                // Skip crop if image is smaller than the crop target in both axes
+                if ($settings['method'] === 'crop' &&
+                    $originalWidth < $settings['width'] &&
+                    $originalHeight < $settings['height']) {
                     $generatedConversions[$conversion] = false;
                     continue;
                 }

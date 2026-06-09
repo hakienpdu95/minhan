@@ -18,7 +18,7 @@ return [
      * TTL for Jodit orphan cleanup (hours from last_touched_at).
      * 72h accounts for long editing sessions and weekend work.
      */
-    'jodit_orphan_ttl_hours' => 24,
+    'jodit_orphan_ttl_hours' => 72,
 
     /*
      * Per-collection configuration.

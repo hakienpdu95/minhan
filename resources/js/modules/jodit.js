@@ -118,17 +118,16 @@ window.addEventListener('pagehide', () => {
 // ── Editor config ──────────────────────────────────────────────────────
 
 const BASE_UPLOADER = {
-    insertImageAsBase64URI: false,
     url:       '/api/v1/media/jodit-upload',
     format:    'json',
     method:    'POST',
     fieldName: 'files[]',
-    headers: {
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
-    },
+    // Headers intentionally left without CSRF here — populated lazily per-editor
+    // in _buildOptions() so long-lived pages always send a fresh token.
+    headers:   {},
     isSuccess: (resp) => !resp.error,
     getMsg:    (resp) => resp.message ?? '',
-    // Normalize server response: files is now [{url, uuid}]
+    // Normalize server response: files is [{url, uuid}] — uuid used for orphan tracking
     process: (resp) => ({
         files:   resp.data?.files   ?? [],
         baseurl: resp.data?.baseurl ?? '',
@@ -149,6 +148,7 @@ const BASE = {
     showWordsCounter:     false,
     showXPathInStatusbar: false,
     spellcheck:           false,
+    imageDefaultWidth:    800,
     removeButtons:        ['about', 'classSpan'],
     uploader:             BASE_UPLOADER,
     popup: {
@@ -258,7 +258,12 @@ function _buildOptions(el, overrides, editorKey) {
 
     opts.uploader = {
         ...opts.uploader,
-        ...(Object.keys(ctxHeaders).length ? { headers: { ...opts.uploader.headers, ...ctxHeaders } } : {}),
+        // CSRF token read at editor-init time (not at module load) so long-lived
+        // pages always send a fresh token. ctxHeaders applied on top.
+        headers: {
+            'X-CSRF-TOKEN': _csrfToken(),
+            ...ctxHeaders,
+        },
 
         // Override success handler: insert img với data-media-uuid, track uuid
         defaultHandlerSuccess(data) {
