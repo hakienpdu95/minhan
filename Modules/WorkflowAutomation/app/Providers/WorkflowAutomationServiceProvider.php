@@ -8,10 +8,15 @@ use Modules\WorkflowAutomation\Core\ConditionEvaluator;
 use Modules\WorkflowAutomation\Core\CooldownGuard;
 use Modules\WorkflowAutomation\Core\SubjectRegistry;
 use Modules\WorkflowAutomation\Core\TriggerRegistry;
+use Modules\WorkflowAutomation\Executors\AiCallExecutor;
 use Modules\WorkflowAutomation\Executors\CallWebhookExecutor;
+use Modules\WorkflowAutomation\Executors\FlowLogExecutor;
 use Modules\WorkflowAutomation\Executors\SendEmailExecutor;
 use Modules\WorkflowAutomation\Executors\SendNotificationExecutor;
+use Modules\WorkflowAutomation\Executors\SubjectStateSetExecutor;
 use Modules\WorkflowAutomation\Executors\UpdateSubjectExecutor;
+use Modules\WorkflowAutomation\Executors\UserTaskExecutor;
+use Modules\WorkflowAutomation\Services\WorkflowEntityStateService;
 use Modules\WorkflowAutomation\Listeners\WorkflowEventSubscriber;
 use Modules\WorkflowAutomation\Triggers\GenericEventTrigger;
 use Modules\WorkflowAutomation\Triggers\ManualTrigger;
@@ -46,6 +51,8 @@ class WorkflowAutomationServiceProvider extends ModuleServiceProvider
         $this->app->singleton(CooldownGuard::class, fn ($app) =>
             new CooldownGuard($app->make(CacheRepository::class))
         );
+
+        $this->app->singleton(WorkflowEntityStateService::class);
     }
 
     public function boot(): void
@@ -66,6 +73,11 @@ class WorkflowAutomationServiceProvider extends ModuleServiceProvider
         $actionRegistry->register(app(SendNotificationExecutor::class));
         $actionRegistry->register(app(UpdateSubjectExecutor::class));
         $actionRegistry->register(app(CallWebhookExecutor::class));
+        // v2 executors
+        $actionRegistry->register(app(AiCallExecutor::class));
+        $actionRegistry->register(app(UserTaskExecutor::class));
+        $actionRegistry->register(app(FlowLogExecutor::class));
+        $actionRegistry->register(app(SubjectStateSetExecutor::class));
 
         // Bind every config trigger that declares an `event` to the application event bus.
         app('events')->subscribe(WorkflowEventSubscriber::class);

@@ -29,9 +29,10 @@ class CallWebhookExecutor implements ActionExecutor
 
     public function execute(WorkflowStep $step, TriggerPayload $payload): ActionResult
     {
-        $start = microtime(true);
+        $start  = microtime(true);
+        $config = $step->action_config ?? [];
         try {
-            $url = $payload->render($step->webhook_url ?? '');
+            $url = $payload->render($config['webhook_url'] ?? $step->webhook_url ?? '');
             if (!filter_var($url, FILTER_VALIDATE_URL)) {
                 return ActionResult::fail("Invalid URL: {$url}");
             }
@@ -48,11 +49,13 @@ class CallWebhookExecutor implements ActionExecutor
             ]);
 
             $headers = $step->headers->pluck('header_value', 'header_key')->all();
-            if ($step->webhook_secret) {
-                $headers['X-Workflow-Signature'] = hash_hmac('sha256', $body, $step->webhook_secret);
+            $secret  = $config['webhook_secret'] ?? $step->webhook_secret;
+            if ($secret) {
+                $headers['X-Workflow-Signature'] = hash_hmac('sha256', $body, $secret);
             }
 
-            $method   = match ($step->webhook_method) {
+            $webhookMethod = $config['webhook_method'] ?? $step->webhook_method;
+            $method   = match ((int) $webhookMethod) {
                 2       => 'POST',
                 3       => 'PUT',
                 4       => 'PATCH',

@@ -1,27 +1,28 @@
 /**
- * workflow-automation.js
+ * workflow-automation.js — v2
  *
- * Tầng 4 — Module asset, lazy per-page.
+ * Two Alpine components:
+ *  · wfListPage    — index listing (Tabulator)
+ *  · wfBuilderPage — wizard create/edit (5 steps)
  *
- * Covers two pages:
- *  · index.blade.php  → wfListPage  (Tabulator listing)
- *  · create/edit      → wfBuilderPage (Wizard: Cơ bản → Trigger → Điều kiện → Hành động → Cài đặt)
- *
- * Globals từ core (không cần import):
- *   window.Alpine, window.initFormValidation, window.Toast, window.Tabulator
+ * Globals: window.Alpine, window.Toast, window.Tabulator
  */
 
 import { makeWizardController } from '@shared/wizard-controller.js';
 
-// ── Constants ──────────────────────────────────────────────────────────────
-const RE_TAB_XSHOW = /currentStep\s*===\s*(\d+)/;  // compile 1 lần
+// ── Priority map ──────────────────────────────────────────────────────────
+const PRIORITY_MAP = {
+    1:  'Rất cao',
+    3:  'Cao',
+    5:  'Bình thường',
+    7:  'Thấp',
+    10: 'Rất thấp',
+};
 
-// ── Index page: DOM data island ────────────────────────────────────────────
-const LIST_CFG = JSON.parse(
-    document.getElementById('wf-list-data')?.textContent ?? 'null'
-);
+// ── Action types that should be treated as step_type = 2 (user task/pause) ─
+const USER_TASK_ACTION_TYPES = new Set(['user_task.create']);
 
-// ── HTML escape (Tabulator formatters) ────────────────────────────────────
+// ── HTML escape for Tabulator formatters ──────────────────────────────────
 function esc(v) {
     if (v == null) return '';
     return String(v)
@@ -29,16 +30,21 @@ function esc(v) {
         .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// ── Index page: module-scoped state ───────────────────────────────────────
+// ── Index data island ──────────────────────────────────────────────────────
+const LIST_CFG = JSON.parse(
+    document.getElementById('wf-list-data')?.textContent ?? 'null'
+);
+
+// ── Module-scoped index state ──────────────────────────────────────────────
 let wfTableInst     = null;
 let pendingDeleteId = null;
 
-// ── Index page: global helpers (Tabulator row formatters) ─────────────────
+// ── Row-action globals (called from Tabulator HTML) ───────────────────────
 window.wfToggle = async function (id, btn) {
     btn.disabled = true;
     try {
         const res = await fetch(`/dashboard/workflows/${id}/toggle`, {
-            method: 'PATCH',
+            method:  'PATCH',
             headers: { 'X-CSRF-TOKEN': LIST_CFG?.csrf ?? '', Accept: 'application/json' },
         });
         if (res.ok && wfTableInst) wfTableInst.replaceData();
@@ -53,7 +59,7 @@ window.wfDeleteConfirm = function (id, name) {
     document.getElementById('wfDeleteModal')?.showModal();
 };
 
-// ── Index page: delete confirm (DOM ready) ────────────────────────────────
+// ── Index: delete confirm (DOM ready) ─────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     const confirmBtn = document.getElementById('wfConfirmDelete');
     if (!confirmBtn) return;
@@ -79,9 +85,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 wfTableInst?.replaceData();
             } else {
                 const d = await res.json().catch(() => ({}));
-                window.Toast?.error(d.message || 'Xóa thất bại.') ?? alert(d.message || 'Xóa thất bại.');
+                window.Toast?.error(d.message || 'Xóa thất bại.');
             }
-        } catch { window.Toast?.error('Lỗi kết nối.') ?? alert('Lỗi kết nối.'); }
+        } catch { window.Toast?.error('Lỗi kết nối.'); }
         finally {
             btn.disabled    = false;
             btn.textContent = 'Xóa';
@@ -90,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// ── Index page: Tabulator columns ─────────────────────────────────────────
+// ── Tabulator columns (index) ──────────────────────────────────────────────
 const WF_COLUMNS = [
     {
         title: 'Tên workflow', field: 'name', minWidth: 220, sorter: 'string',
@@ -129,9 +135,11 @@ const WF_COLUMNS = [
         },
     },
     {
-        title: 'Ưu tiên', field: 'priority', width: 90, hozAlign: 'center', sorter: 'number',
+        title: 'Ưu tiên', field: 'priority', width: 110, hozAlign: 'center', sorter: 'number',
         formatter(cell) {
-            return `<span class="text-sm font-mono">${esc(cell.getValue())}</span>`;
+            const v = cell.getValue();
+            const label = PRIORITY_MAP[v] ?? v;
+            return `<span class="text-xs">${esc(label)}</span>`;
         },
     },
     {
@@ -167,7 +175,7 @@ const WF_COLUMNS = [
 // ── Alpine components ──────────────────────────────────────────────────────
 document.addEventListener('alpine:init', () => {
 
-    // ── wfListPage: index listing ─────────────────────────────────────────
+    // ── wfListPage ──────────────────────────────────────────────────────
     Alpine.data('wfListPage', () => ({
         filters: { search: '', is_active: '' },
 
@@ -187,7 +195,6 @@ document.addEventListener('alpine:init', () => {
                     return p;
                 },
                 ajaxResponse(_u, _p, res) { return res; },
-
                 pagination:             true,
                 paginationMode:         'remote',
                 paginationSize:         20,
@@ -211,14 +218,14 @@ document.addEventListener('alpine:init', () => {
         resetFilters() { this.filters = { search: '', is_active: '' }; this.refresh(); },
     }));
 
-    // ── wfBuilderPage: Wizard create/edit form ────────────────────────────
+    // ── wfBuilderPage ────────────────────────────────────────────────────
     Alpine.data('wfBuilderPage', (sd) => {
-        const metaUrl  = sd.metaUrl   ?? '';
-        const initData = sd.initData  ?? {};
+        const metaUrl  = sd.metaUrl    ?? '';
+        const initData = sd.initData   ?? {};
         const initStep = sd.initialStep ?? 1;
 
         return {
-            // ── Wizard controller (makeWizardController mixin) ────────────
+            // ── Wizard mixin ─────────────────────────────────────────────
             ...makeWizardController({
                 steps: ['Cơ bản', 'Trigger', 'Điều kiện', 'Hành động', 'Cài đặt'],
                 validators: [
@@ -229,12 +236,13 @@ document.addEventListener('alpine:init', () => {
                 initialStep: initStep,
             }),
 
-            // ── Form state ────────────────────────────────────────────────
-            meta:        { trigger_groups: {}, action_groups: {}, operators: [], cooldown_types: [], subjects: {} },
-            metaLoading: true,
-            metaError:   false,
-            loading:     false,
+            // ── State ─────────────────────────────────────────────────────
+            meta:          { trigger_groups: {}, action_groups: {}, operators: [], cooldown_types: [], subjects: {} },
+            metaLoading:   true,
+            metaError:     false,
+            loading:       false,
             triggerConfig: {},
+
             form: Object.assign({
                 name: '', description: '', trigger_type: '', trigger_params: [],
                 condition_match: 3, cooldown_type: 0, is_active: false, priority: 5,
@@ -256,11 +264,22 @@ document.addEventListener('alpine:init', () => {
                 if (!this.form.steps)      this.form.steps      = [];
                 if (!this.form.conditions) this.form.conditions = [];
 
+                // Rebuild triggerConfig from saved trigger_params
                 for (const p of this.form.trigger_params ?? []) {
                     this.triggerConfig[p.param_key] = p.param_value;
                 }
+
+                // Normalize each step to v2 shape
                 for (const s of this.form.steps) {
-                    if (!s.headers) s.headers = [];
+                    if (!s.headers)          s.headers          = [];
+                    if (!s.action_config)    s.action_config    = {};
+                    if (!s.step_type)        s.step_type        = 1;
+                    if (s.halt_on_fail == null) s.halt_on_fail  = false;
+                    if (!s.step_output_key)  s.step_output_key  = '';
+                    if (!s.step_label)       s.step_label       = '';
+                    if (!s.condition_config) s.condition_config = { match: 'ALL', conditions: [] };
+                    if (!s._show_advanced)   s._show_advanced   = false;
+                    if (!s._show_cond)       s._show_cond       = false;
                 }
 
                 this._fetchMeta();
@@ -282,7 +301,7 @@ document.addEventListener('alpine:init', () => {
 
             // ── Step validators ───────────────────────────────────────────
             _validateStep1() {
-                if (!this.form.name.trim()) {
+                if (!this.form.name?.trim()) {
                     window.Toast?.warning('Vui lòng nhập tên workflow trước khi tiếp tục', { duration: 3000 });
                     this.$nextTick(() => document.querySelector('[name="name"]')?.focus());
                     return false;
@@ -299,7 +318,12 @@ document.addEventListener('alpine:init', () => {
                 return true;
             },
 
-            // ── Trigger handling ──────────────────────────────────────────
+            // ── Priority label ────────────────────────────────────────────
+            priorityLabel(val) {
+                return PRIORITY_MAP[val] ?? `Ưu tiên ${val}`;
+            },
+
+            // ── Trigger ───────────────────────────────────────────────────
             onTriggerChange() {
                 this.triggerConfig       = {};
                 this.form.trigger_params = [];
@@ -307,46 +331,90 @@ document.addEventListener('alpine:init', () => {
             },
 
             syncTriggerParams() {
-                const params = [];
                 const fields = this.currentTrigger?.config_fields ?? [];
-                for (const f of fields) {
-                    const val = this.triggerConfig[f.key];
-                    if (val !== undefined && val !== '') {
-                        params.push({ param_key: f.key, param_value: String(val), param_type: f.type === 'number' ? 2 : 1 });
-                    }
-                }
-                this.form.trigger_params = params;
+                this.form.trigger_params = fields
+                    .filter(f => {
+                        const v = this.triggerConfig[f.key];
+                        return v !== undefined && v !== '';
+                    })
+                    .map(f => ({
+                        param_key:   f.key,
+                        param_value: String(this.triggerConfig[f.key]),
+                        param_type:  f.type === 'number' ? 2 : 1,
+                    }));
             },
 
-            // ── Conditions ────────────────────────────────────────────────
-            addCondition()     { this.form.conditions.push({ field: '', operator: '=', value: '', value_type: 1 }); },
+            // ── Conditions (workflow-level) ────────────────────────────────
+            addCondition() {
+                this.form.conditions.push({ field: '', operator: '=', value: '', value_type: 1 });
+            },
             removeCondition(i) { this.form.conditions.splice(i, 1); },
 
             // ── Steps ─────────────────────────────────────────────────────
+            _makeStep() {
+                return {
+                    action_type:      '',
+                    step_type:        1,
+                    step_label:       '',
+                    delay_minutes:    0,
+                    halt_on_fail:     false,
+                    step_output_key:  '',
+                    action_config:    {},
+                    condition_config: { match: 'ALL', conditions: [] },
+                    headers:          [],
+                    _show_advanced:   false,
+                    _show_cond:       false,
+                };
+            },
+
             addStep() {
-                this.form.steps.push({
-                    action_type: '', delay_minutes: 0, headers: [],
-                    email_to: '', email_subject: '', email_template: '',
-                    notif_title: '', notif_body: '', notif_target: '',
-                    webhook_url: '', webhook_method: 2, webhook_secret: '',
-                    update_model: '', update_field: '', update_value: '',
-                    lead_source: '', lead_status: '',
+                this.form.steps.push(this._makeStep());
+            },
+
+            removeStep(i) {
+                this.form.steps.splice(i, 1);
+            },
+
+            moveStep(i, dir) {
+                const steps = this.form.steps;
+                const j     = i + dir;
+                if (j < 0 || j >= steps.length) return;
+                [steps[i], steps[j]] = [steps[j], steps[i]];
+                this.form.steps = [...steps]; // trigger reactivity
+            },
+
+            // Called when action_type select changes on a step card
+            onStepActionChange(step) {
+                // Reset action_config when action type changes
+                step.action_config = {};
+                step.headers       = [];
+
+                // Auto-set step_type based on action_type
+                step.step_type = USER_TASK_ACTION_TYPES.has(step.action_type) ? 2 : 1;
+            },
+
+            addHeader(step) {
+                step.headers.push({ header_key: '', header_value: '' });
+            },
+
+            // ── Per-step conditions ───────────────────────────────────────
+            addStepCondition(step) {
+                if (!step.condition_config) {
+                    step.condition_config = { match: 'ALL', conditions: [] };
+                }
+                step.condition_config.conditions.push({
+                    field:    '',
+                    operator: '=',
+                    value:    '',
+                    type:     'string',
                 });
-            },
-            removeStep(i) { this.form.steps.splice(i, 1); },
-
-            resetStepConfig(step) {
-                const keys = ['email_to','email_subject','email_template','notif_title','notif_body',
-                              'notif_target','webhook_url','webhook_secret','update_model','update_field',
-                              'update_value','lead_source','lead_status'];
-                for (const k of keys) step[k] = '';
-                step.headers        = [];
-                step.webhook_method = 2;
+                step._show_advanced = true;
+                step._show_cond     = true;
             },
 
-            addHeader(step) { step.headers.push({ header_key: '', header_value: '' }); },
-
+            // ── Action config fields helper ────────────────────────────────
             stepConfigFields(actionType) {
+                if (!actionType) return [];
                 for (const [, actions] of Object.entries(this.meta.action_groups ?? {})) {
                     const action = actions.find(a => a.type === actionType);
                     if (action?.config_fields) return action.config_fields;
@@ -354,7 +422,7 @@ document.addEventListener('alpine:init', () => {
                 return [];
             },
 
-            // ── Form submit ───────────────────────────────────────────────
+            // ── Submit ────────────────────────────────────────────────────
             submitForm() {
                 this.syncTriggerParams();
                 this.loading = true;

@@ -27,11 +27,12 @@ class SendNotificationExecutor implements ActionExecutor
 
     public function execute(WorkflowStep $step, TriggerPayload $payload): ActionResult
     {
-        $start = microtime(true);
+        $start  = microtime(true);
+        $config = $step->action_config ?? [];
         try {
-            $target = $step->notif_target ?? 'admin';
-            $title  = $payload->render($step->notif_title ?? '');
-            $body   = $payload->render($step->notif_body  ?? '');
+            $target = $config['notif_target'] ?? $step->notif_target ?? 'admin';
+            $title  = $payload->render($config['notif_title'] ?? $step->notif_title ?? '');
+            $body   = $payload->render($config['notif_body']  ?? $step->notif_body  ?? '');
 
             $users = $this->resolveTargetUsers($target, $payload);
             foreach ($users as $user) {

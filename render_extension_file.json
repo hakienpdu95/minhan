@@ -238,5 +238,11 @@
     [
         "workflows///add///__///",
         "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
+    ],
+    [
+        "projects///add///__///",
+        "progress_pct///unsignedSmallInteger///__///NOT_NULL///0///__///__",
+        "task_total///unsignedSmallInteger///__///NOT_NULL///0///__///__",
+        "task_done///unsignedSmallInteger///__///NOT_NULL///0///__///__"
     ]
 ]

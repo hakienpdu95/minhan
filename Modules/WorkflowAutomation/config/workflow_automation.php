@@ -177,5 +177,71 @@ return [
                 ['key' => 'extra.overall_score', 'label' => 'Overall Score', 'type' => 'float'],
             ],
         ],
+
+        // ── HR ────────────────────────────────────────────────────────────
+        'employee.created' => [
+            'label'  => 'Nhân viên mới được tạo',
+            'module' => 'HR',
+            'fields' => [
+                ['key' => 'subject.id',                'label' => 'Employee ID',  'type' => 'integer'],
+                ['key' => 'subject.attr.full_name',    'label' => 'Họ tên',       'type' => 'string'],
+                ['key' => 'subject.attr.department_id','label' => 'Phòng ban',    'type' => 'integer'],
+                ['key' => 'subject.attr.position_id',  'label' => 'Chức vụ',     'type' => 'integer'],
+            ],
+        ],
+        'employee.terminated' => [
+            'label'  => 'Nhân viên nghỉ việc',
+            'module' => 'HR',
+            'fields' => [
+                ['key' => 'subject.id',                'label' => 'Employee ID',  'type' => 'integer'],
+                ['key' => 'subject.attr.full_name',    'label' => 'Họ tên',       'type' => 'string'],
+                ['key' => 'extra.termination_reason',  'label' => 'Lý do nghỉ',   'type' => 'string'],
+                ['key' => 'extra.last_working_date',   'label' => 'Ngày làm cuối','type' => 'string'],
+            ],
+        ],
+
+        // ── State Machine (Mô hình B — §6) ────────────────────────────────
+        'entity.state_changed' => [
+            'label'  => 'Đối tượng đổi trạng thái',
+            'module' => 'Core',
+            'config_fields' => [
+                ['key' => 'entity_type', 'label' => 'Loại đối tượng', 'type' => 'entity_type_select'],
+                ['key' => 'from_state',  'label' => 'Từ trạng thái',  'type' => 'state_select',
+                 'required' => false, 'hint' => 'Để trống = từ bất kỳ trạng thái'],
+                ['key' => 'to_state',    'label' => 'Đến trạng thái', 'type' => 'state_select'],
+            ],
+            'fields' => [
+                ['key' => 'extra.entity_type',    'label' => 'Loại entity',            'type' => 'string'],
+                ['key' => 'extra.from_state',     'label' => 'Trạng thái trước',       'type' => 'string'],
+                ['key' => 'extra.to_state',       'label' => 'Trạng thái mới',         'type' => 'string'],
+                ['key' => 'extra.transition_key', 'label' => 'Transition thực hiện',   'type' => 'string'],
+                ['key' => 'extra.comment',        'label' => 'Lý do chuyển trạng thái','type' => 'string'],
+            ],
+        ],
+
+        // ── Schedule (§6) ─────────────────────────────────────────────────
+        'schedule.daily'   => ['label' => 'Hàng ngày',   'module' => 'Schedule'],
+        'schedule.weekly'  => ['label' => 'Hàng tuần',   'module' => 'Schedule'],
+        'schedule.monthly' => ['label' => 'Hàng tháng',  'module' => 'Schedule'],
+        'schedule.hourly'  => ['label' => 'Mỗi giờ',     'module' => 'Schedule'],
+
+        // ── Webhook inbound (§6) ──────────────────────────────────────────
+        'webhook.received' => [
+            'label'  => 'Webhook từ hệ thống ngoài',
+            'module' => 'Core',
+            'config_fields' => [
+                ['key' => 'source_key', 'label' => 'Nguồn',        'type' => 'text'],
+                ['key' => 'secret',     'label' => 'HMAC Secret',   'type' => 'password', 'required' => false],
+            ],
+            'fields' => [
+                ['key' => 'extra.source_key', 'label' => 'Source Key', 'type' => 'string'],
+            ],
+        ],
+
+        // ── Manual (§6) ──────────────────────────────────────────────────
+        'manual' => [
+            'label'  => 'Kích hoạt thủ công',
+            'module' => 'Core',
+        ],
     ],
 ];

@@ -57,6 +57,7 @@ const JS_OUTPUT = {
   // Core
   'app':        'assets/app.[hash].js',
   // Widget libs
+  'echarts':    'assets/echarts.[hash].js',
   'toastify':   'assets/toastify.[hash].js',
   'tabulator':  'assets/tabulator.[hash].js',
   'filepond':   'assets/filepond.[hash].js',
@@ -246,6 +247,7 @@ export default defineConfig(({ mode }) => {
           'resources/js/app.js',
 
           /* ── WIDGET LIBS (lazy per-page) ──────────────────────── */
+          'resources/js/modules/echarts.js',
           'resources/js/modules/toastify.js',
           'resources/js/modules/tabulator.js',
           'resources/js/modules/filepond.js',

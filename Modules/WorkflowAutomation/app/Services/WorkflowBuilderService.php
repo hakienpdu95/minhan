@@ -32,28 +32,36 @@ class WorkflowBuilderService
     private function validate(Request $request): array
     {
         return $request->validate([
-            'name'                             => 'required|string|max:191',
-            'description'                      => 'nullable|string|max:500',
-            'trigger_type'                     => 'required|string|max:64',
-            'trigger_params'                   => 'nullable|array',
-            'trigger_params.*.param_key'       => 'required|string|max:64',
-            'trigger_params.*.param_value'     => 'nullable|string|max:255',
-            'trigger_params.*.param_type'      => 'required|integer|in:1,2,3,4',
-            'condition_match'                  => 'required|integer|in:1,2,3',
-            'cooldown_type'                    => 'required|integer|in:0,1,2,3,4',
-            'is_active'                        => 'boolean',
-            'priority'                         => 'integer|min:1|max:10',
-            'conditions'                       => 'nullable|array',
-            'conditions.*.field'               => 'required|string|max:128',
-            'conditions.*.operator'            => 'required|string|max:32',
-            'conditions.*.value'               => 'nullable|string|max:500',
-            'conditions.*.value_type'          => 'required|integer|in:1,2,3,4',
-            'steps'                            => 'nullable|array',
-            'steps.*.action_type'              => 'required|string|max:64',
-            'steps.*.delay_minutes'            => 'integer|min:0',
-            'steps.*.headers'                  => 'nullable|array',
-            'steps.*.headers.*.header_key'     => 'required|string|max:128',
-            'steps.*.headers.*.header_value'   => 'required|string|max:500',
+            'name'                              => 'required|string|max:191',
+            'description'                       => 'nullable|string|max:500',
+            'trigger_type'                      => 'required|string|max:64',
+            'trigger_params'                    => 'nullable|array',
+            'trigger_params.*.param_key'        => 'required|string|max:64',
+            'trigger_params.*.param_value'      => 'nullable|string|max:255',
+            'trigger_params.*.param_type'       => 'required|integer|in:1,2,3,4',
+            'condition_match'                   => 'required|integer|in:1,2,3',
+            'cooldown_type'                     => 'required|integer|in:0,1,2,3,4,5,6',
+            'is_active'                         => 'boolean',
+            'priority'                          => 'integer|min:1|max:10',
+            'conditions'                        => 'nullable|array',
+            'conditions.*.field'                => 'required|string|max:128',
+            'conditions.*.operator'             => 'required|string|max:32',
+            'conditions.*.value'                => 'nullable|string|max:500',
+            'conditions.*.value_type'           => 'required|integer|in:1,2,3,4',
+            'steps'                             => 'nullable|array',
+            'steps.*.action_type'               => 'required|string|max:64',
+            'steps.*.step_type'                 => 'nullable|integer|in:1,2,3',
+            'steps.*.step_label'                => 'nullable|string|max:191',
+            'steps.*.delay_minutes'             => 'integer|min:0',
+            'steps.*.halt_on_fail'              => 'nullable|boolean',
+            'steps.*.step_output_key'           => 'nullable|string|max:64|regex:/^[a-z0-9_]*$/',
+            'steps.*.action_config'             => 'nullable|array',
+            'steps.*.condition_config'          => 'nullable|array',
+            'steps.*.condition_config.match'    => 'nullable|string|in:ALL,ANY',
+            'steps.*.condition_config.conditions'   => 'nullable|array',
+            'steps.*.headers'                   => 'nullable|array',
+            'steps.*.headers.*.header_key'      => 'required|string|max:128',
+            'steps.*.headers.*.header_value'    => 'required|string|max:500',
         ]);
     }
 
@@ -100,10 +108,41 @@ class WorkflowBuilderService
         $workflow->steps()->delete();
 
         foreach (array_values($steps) as $i => $stepData) {
-            $headers = $stepData['headers'] ?? [];
-            unset($stepData['headers']);
+            $headers         = $stepData['headers'] ?? [];
+            $actionConfig    = $stepData['action_config'] ?? [];
+            $conditionConfig = $stepData['condition_config'] ?? null;
 
-            $step = $workflow->steps()->create(array_merge($stepData, ['sort_order' => $i]));
+            // Remove non-column keys
+            unset($stepData['headers'], $stepData['action_config'], $stepData['condition_config']);
+
+            $attrs = array_merge($stepData, [
+                'sort_order'       => $i,
+                'step_type'        => (int) ($stepData['step_type'] ?? 1),
+                'label'            => $stepData['step_label'] ?? null,
+                'halt_on_fail'     => filter_var($stepData['halt_on_fail'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                'step_output_key'  => $stepData['step_output_key'] ?? null,
+                'action_config'    => !empty($actionConfig) ? json_encode($actionConfig, JSON_UNESCAPED_UNICODE) : null,
+                'condition_config' => $conditionConfig ? json_encode($conditionConfig, JSON_UNESCAPED_UNICODE) : null,
+            ]);
+
+            // Remove duplicate/unknown keys that might not be in fillable
+            unset($attrs['step_label']);
+
+            // Map action_config back to legacy flat columns for v1 executor compatibility
+            foreach ([
+                'email_to', 'email_subject', 'email_template',
+                'notif_title', 'notif_body', 'notif_target',
+                'update_model', 'update_field', 'update_value',
+                'webhook_url', 'webhook_method', 'webhook_secret',
+                'lead_status', 'lead_source', 'lead_assigned_to',
+                'user_tag', 'user_status',
+            ] as $flatKey) {
+                if (isset($actionConfig[$flatKey])) {
+                    $attrs[$flatKey] = $actionConfig[$flatKey];
+                }
+            }
+
+            $step = $workflow->steps()->create($attrs);
 
             foreach ($headers as $h) {
                 $step->headers()->create([

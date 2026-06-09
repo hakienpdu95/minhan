@@ -106,6 +106,42 @@ class TriggerPayload extends Data
         }, $template);
     }
 
+    /**
+     * Factory for State Machine transition events (§9.3).
+     */
+    public static function forStateChange(
+        int     $organizationId,
+        string  $entityType,
+        int     $entityId,
+        ?string $fromState,
+        string  $toState,
+        string  $transitionKey,
+        ?string $comment = null,
+        ?int    $actorId = null,
+    ): self {
+        return new self(
+            triggerType:       'entity.state_changed',
+            sourceModule:      'Core',
+            organizationId:    $organizationId,
+            actorId:           $actorId,
+            actorEmail:        null,
+            actorName:         null,
+            actorRole:         null,
+            subjectType:       $entityType,
+            subjectId:         $entityId,
+            subjectLabel:      "{$entityType} #{$entityId}",
+            extra: [
+                'entity_type'    => $entityType,
+                'entity_id'      => $entityId,
+                'from_state'     => $fromState,
+                'to_state'       => $toState,
+                'transition_key' => $transitionKey,
+                'comment'        => $comment,
+            ],
+            requestId: (string) \Str::uuid(),
+        );
+    }
+
     /** Compact snapshot stored on the execution row for traceability. */
     public function toContext(): array
     {

@@ -123,6 +123,11 @@ class Task extends TenantAwareModel
         return $this->hasMany(TaskWatcher::class);
     }
 
+    public function timeLogs(): HasMany
+    {
+        return $this->hasMany(TimeLog::class);
+    }
+
     public function histories(): HasMany
     {
         return $this->hasMany(TaskHistory::class)->orderByDesc('changed_at');

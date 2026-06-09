@@ -27,9 +27,10 @@ class SendEmailExecutor implements ActionExecutor
 
     public function execute(WorkflowStep $step, TriggerPayload $payload): ActionResult
     {
-        $start = microtime(true);
+        $start  = microtime(true);
+        $config = $step->action_config ?? [];
         try {
-            $to = $payload->render($step->email_to ?? '');
+            $to = $payload->render($config['email_to'] ?? $step->email_to ?? '');
             if (empty($to)) return ActionResult::fail('email_to empty after render');
 
             $emails = array_filter(
@@ -38,8 +39,8 @@ class SendEmailExecutor implements ActionExecutor
             );
             if (empty($emails)) return ActionResult::fail("No valid email: {$to}");
 
-            $subject  = $payload->render($step->email_subject ?? '');
-            $template = $step->email_template ?? 'workflowautomation::emails.generic';
+            $subject  = $payload->render($config['email_subject'] ?? $step->email_subject ?? '');
+            $template = $config['email_template'] ?? $step->email_template ?? 'workflowautomation::emails.generic';
 
             \Mail::to($emails)->queue(new WorkflowMail($subject, $template, $payload));
 

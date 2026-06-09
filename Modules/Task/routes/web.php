@@ -32,4 +32,5 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
 // ── Backend JSON API for Tabulator ──────────────────────────────────────────
 Route::middleware(['auth'])->prefix('backend/api')->name('backend.api.')->group(function () {
     Route::get('tasks', [TaskApiController::class, 'index'])->name('tasks');
+    Route::get('projects/{project}/tasks', [TaskApiController::class, 'byProject'])->name('projects.tasks');
 });

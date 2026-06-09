@@ -37,22 +37,23 @@ class UpdateSubjectExecutor implements ActionExecutor
 
     public function execute(WorkflowStep $step, TriggerPayload $payload): ActionResult
     {
-        $start = microtime(true);
+        $start      = microtime(true);
+        $ac         = $step->action_config ?? [];
         try {
-            $subjectType = $step->update_model;
+            $subjectType = $ac['update_model'] ?? $step->update_model;
             $config      = $this->subjects->get($subjectType);
             if (!$config) return ActionResult::fail("Unknown subject type: {$subjectType}");
 
             $model = $this->subjects->resolve($subjectType, $payload);
             if (!$model) return ActionResult::fail("Cannot resolve {$subjectType} from payload");
 
-            $field         = $step->update_field;
+            $field         = $ac['update_field'] ?? $step->update_field;
             $allowedFields = array_column($config['updatableFields'], 'field');
             if (!in_array($field, $allowedFields)) {
                 return ActionResult::fail("Field '{$field}' not updatable on {$subjectType}");
             }
 
-            $value = $payload->render($step->update_value ?? '');
+            $value = $payload->render($ac['update_value'] ?? $step->update_value ?? '');
             $model->update([$field => $value]);
 
             return ActionResult::ok(

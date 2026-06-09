@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\WorkflowAutomation\Http\Controllers\WorkflowApiController;
 use Modules\WorkflowAutomation\Http\Controllers\WorkflowController;
 use Modules\WorkflowAutomation\Http\Controllers\WorkflowExecutionController;
+use Modules\WorkflowAutomation\Http\Controllers\WorkflowUserTaskController;
 
 // Web routes — admin UI
 Route::prefix('dashboard/workflows')
@@ -29,6 +30,16 @@ Route::prefix('dashboard/workflows')
             ->middleware('can:' . P::WORKFLOW_EDIT->value);
         Route::get('/{workflow}/executions',   [WorkflowExecutionController::class, 'index'])->name('executions');
         Route::get('/executions/{execution}',  [WorkflowExecutionController::class, 'show']) ->name('executions.show');
+    });
+
+// Human-in-the-Loop user task routes (§9.2 — Mô hình C)
+Route::prefix('workflow/tasks')
+    ->middleware(['web', 'auth'])
+    ->name('workflow.tasks.')
+    ->group(function () {
+        Route::get('/my',                           [WorkflowUserTaskController::class, 'myTasks']) ->name('my');
+        Route::get('/{token}',                      [WorkflowUserTaskController::class, 'show'])    ->name('show');
+        Route::post('/{token}/respond',             [WorkflowUserTaskController::class, 'respond']) ->name('respond');
     });
 
 // API routes — Tabulator + Builder
