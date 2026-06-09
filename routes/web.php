@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\MediaJoditUploadController;
+use App\Http\Controllers\Api\MediaUploadController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('backend.dashboard'));
@@ -14,11 +15,16 @@ Route::middleware(['auth', 'tenant'])
     ->prefix('api/v1/media')
     ->name('api.media.')
     ->group(function () {
+            // Jodit inline-image upload (orphan + uuid tracking)
         Route::post('jodit-upload',         [MediaJoditUploadController::class, 'store'])->name('jodit.upload');
         Route::delete('jodit-upload/{uuid}',[MediaJoditUploadController::class, 'destroy'])->name('jodit.destroy');
         Route::post('jodit-discard',        [MediaJoditUploadController::class, 'discard'])->name('jodit.discard');
         Route::patch('jodit-touch',         [MediaJoditUploadController::class, 'touch'])->name('jodit.touch');
         Route::get('{uuid}/url',            [MediaJoditUploadController::class, 'refreshUrl'])->name('url.refresh');
+
+        // FilePond form-field upload (avatar, logo, thumbnail, cover, attachments)
+        Route::post('upload',         [MediaUploadController::class, 'store'])->name('upload');
+        Route::delete('upload/{uuid}',[MediaUploadController::class, 'destroy'])->name('upload.destroy');
     });
 
 /*

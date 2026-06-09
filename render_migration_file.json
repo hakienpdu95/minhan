@@ -2194,5 +2194,16 @@
         "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
         "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật",
         "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
+    ],
+    [
+        "filepond_drafts///__///__///",
+        "organization_id///unsignedBigInteger///__///_NULL///NULL///->constrained()->onDelete('set null')///__",
+        "user_id///unsignedBigInteger///__///_NULL///NULL///->constrained()->onDelete('set null')///__",
+        "context_type///string///__///_NULL///NULL///__///Entity type that will receive the media after form save",
+        "context_id///unsignedBigInteger///__///_NULL///NULL///__///Entity ID that will receive the media after form save",
+        "__index///index///__///__///__///organization_id,user_id///__",
+        "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
+        "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật",
+        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
     ]
 ]

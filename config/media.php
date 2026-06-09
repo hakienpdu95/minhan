@@ -21,6 +21,12 @@ return [
     'jodit_orphan_ttl_hours' => 72,
 
     /*
+     * TTL for FilePond draft cleanup (hours from media.created_at).
+     * FilePond has no touch mechanism — any draft older than TTL was never submitted.
+     */
+    'filepond_orphan_ttl_hours' => 72,
+
+    /*
      * Per-collection configuration.
      * is_public:    true  → static URL via disk/CDN
      *               false → temporaryUrl (presigned, 30 min)

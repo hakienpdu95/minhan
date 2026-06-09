@@ -121,10 +121,12 @@ class MediaUploadService
     }
 
     /**
-     * Re-associate jodit_content orphan media to the real entity after content is saved.
-     * Also hard-deletes any orphans of this entity not in the provided UUID list.
+     * Re-associate Jodit orphan media (collection='jodit_content') to the real entity.
+     * Deletes any jodit_content media of this entity that is NOT in $uuids.
      *
-     * @param  string[]  $uuids  UUIDs of media that should be kept and re-associated
+     * For FilePond uploads use reassociateFilePondDrafts() — completely separate flow.
+     *
+     * @param  string[]  $uuids  UUIDs found in the saved HTML content
      */
     public function reassociateOrphans(HasMedia&Model $model, array $uuids): void
     {
@@ -142,14 +144,49 @@ class MediaUploadService
                 $media->save();
             });
 
-        // Clean up old jodit_content orphans for this entity that are no longer referenced
+        // Delete stale jodit_content media for this entity not referenced by current content
         Media::withoutTenant()
             ->where('model_type', get_class($model))
             ->where('model_id', $model->getKey())
             ->where('collection_name', 'jodit_content')
             ->whereNotIn('uuid', $uuids)
             ->get()
-            ->each(fn (Media $m) => $m->delete());
+            ->each(fn (Media $m) => $this->delete($m));
+    }
+
+    /**
+     * Re-associate FilePond draft media to the real entity after form save.
+     * Deletes any media of this entity in the same collection that is NOT in $uuids.
+     *
+     * For Jodit uploads use reassociateOrphans() — completely separate flow.
+     *
+     * @param  string[]  $uuids       UUIDs collected from FilePond bindTo / onUploaded
+     * @param  string    $collection  'avatar' | 'logo' | 'thumbnail' | 'cover' | 'attachments' | 'attachments_private'
+     */
+    public function reassociateFilePondDrafts(HasMedia&Model $model, array $uuids, string $collection): void
+    {
+        if (empty($uuids)) {
+            return;
+        }
+
+        Media::withoutTenant()
+            ->whereIn('uuid', $uuids)
+            ->where('collection_name', $collection)
+            ->get()
+            ->each(function (Media $media) use ($model) {
+                $media->model_type = get_class($model);
+                $media->model_id   = $model->getKey();
+                $media->save();
+            });
+
+        // Delete stale media for this entity in the same collection not in the new UUID list
+        Media::withoutTenant()
+            ->where('model_type', get_class($model))
+            ->where('model_id', $model->getKey())
+            ->where('collection_name', $collection)
+            ->whereNotIn('uuid', $uuids)
+            ->get()
+            ->each(fn (Media $m) => $this->delete($m));
     }
 
     /**

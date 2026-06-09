@@ -166,16 +166,48 @@ class SyncMigrationJson extends Command
         $modulesPath = base_path('Modules');
         if (File::exists($modulesPath)) {
             foreach (File::directories($modulesPath) as $moduleDir) {
-                $dir = "$moduleDir/database/migrations";
-                if (!File::exists($dir)) continue;
-                foreach (File::files($dir) as $f) {
-                    if ($f->getExtension() === 'php') $files[] = $f->getPathname();
+                // NWIDART dùng Database/Migrations (uppercase) — thử cả 2 casing
+                foreach (['Database/Migrations', 'database/migrations'] as $subDir) {
+                    $dir = "$moduleDir/$subDir";
+                    if (!File::exists($dir)) continue;
+                    foreach (File::files($dir) as $f) {
+                        if ($f->getExtension() === 'php') $files[] = $f->getPathname();
+                    }
                 }
             }
         }
 
         sort($files);
+
+        // Guard: warn if any Schema::create is found in extensions/
+        // extensions/ is for Schema::table only — new tables belong in generated/ or a Module.
+        $this->warnMisplacedCreateMigrations();
+
         return $files;
+    }
+
+    /**
+     * Detect Schema::create blocks inside database/migrations/extensions/ and warn.
+     * extensions/ is strictly for Schema::table (add columns). New tables placed there
+     * are NOT scanned by migration:sync and will be missing from the JSON.
+     */
+    private function warnMisplacedCreateMigrations(): void
+    {
+        $extensionsPath = database_path('migrations/extensions');
+        if (! File::exists($extensionsPath)) {
+            return;
+        }
+
+        foreach (File::files($extensionsPath) as $f) {
+            if ($f->getExtension() !== 'php') continue;
+            $content = File::get($f->getPathname());
+            if (preg_match('/Schema\s*::\s*create\s*\(/i', $content)) {
+                $this->warn(
+                    '⚠  Misplaced Schema::create in extensions/: ' . $f->getFilename() . PHP_EOL
+                    . '   → Move to database/migrations/generated/ or a Module migration folder.'
+                );
+            }
+        }
     }
 
     // ──────────────────────────────────────────────────────────────────────────

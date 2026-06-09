@@ -1,10 +1,25 @@
 # Đặc Tả: Media Storage System — Multi-Tenant ADR + ERD
 
-> **Phiên bản:** 1.1.0  
-> **Ngày:** 2026-06-08  
+> **Phiên bản:** 1.2.0  
+> **Ngày:** 2026-06-09  
 > **Phạm vi:** Hệ thống lưu trữ file/ảnh tập trung cho toàn bộ module  
-> **Stack:** Laravel 13 + MySQL 8 + Spatie Media Library v11 + Intervention Image v3  
+> **Stack:** Laravel 13 + MySQL 8 + Spatie Media Library v11 + Intervention Image v3 + FilePond v4  
 > **Nguyên tắc:** Multi-tenant · Không hardcode URL · Disk-agnostic · Xử lý đồng bộ (no queue)
+
+### Thay đổi v1.1.0 → v1.2.0
+
+| # | Mục | Thay đổi | Lý do |
+|---|-----|---------|-------|
+| C1 | ADR-08 | **Thêm mới**: FilePond Upload Pattern — tách rõ 2 đường upload (FilePond vs Jodit) | FilePond dùng cho form field (avatar, logo, attachment); Jodit dùng cho inline rich-text |
+| C2 | §10B | **Thêm mới**: FilePond endpoint `POST /api/v1/media/upload` + revert + controller | FilePond cần server riêng với response format khác Jodit |
+| C3 | §10B | **FilePond JS wrapper** chuẩn hóa: `initFilePondUpload()` tích hợp MediaUploadService | Hiện tại filepond.js chưa kết nối backend media system |
+| C4 | §15 | **Thêm mới**: Frontend Display Patterns — cách gọi ảnh trong Blade và JS | Cần chuẩn hóa để tránh dùng lẫn `avatar_url` vs `getMediaUrl()` |
+| C5 | §16 | **Thêm mới**: Module-by-Module Guide — trạng thái từng model và roadmap | Employee/Organization đã có HasTenantMedia nhưng vẫn fallback về cột cũ |
+| H1 | config | Sửa `jodit_orphan_ttl_hours` 24 → **72** | Bug: config sai so với spec ADR-05 |
+| H2 | MediaUploadService | Thêm crop upscaling guard — skip khi ảnh < crop target size | Tránh upscale ảnh nhỏ hơn 150×150 |
+| H3 | MediaUploadService | Extract `pruneEmptyAncestors()` public — prune 4 cấp thư mục sau xóa | Dọn sạch entity_type và module dirs khi empty |
+| H4 | MediaCleanupOrphansCommand | Dùng `MediaUploadService::delete()` thay manual disk ops | Thống nhất logic xóa file + prune dirs |
+| H5 | jodit.js | CSRF token đọc lazy tại editor-init (không tại module load) | Tránh stale token trên long-lived page |
 
 ### Thay đổi v1.0.0 → v1.1.0
 
@@ -34,11 +49,13 @@
 7. [Image Processing Pipeline](#7-image-processing-pipeline)
 8. [Upload Service Architecture](#8-upload-service-architecture)
 9. [URL Resolution Strategy](#9-url-resolution-strategy)
-10. [Jodit Upload Endpoint](#10-jodit-upload-endpoint)
+10. [Upload Endpoints — Jodit & FilePond](#10-upload-endpoints--jodit--filepond)
 11. [Migration Path: Local → S3 → CDN](#11-migration-path-local--s3--cdn)
 12. [Indexes & Performance](#12-indexes--performance)
 13. [Xung đột & Lộ trình hợp nhất](#13-xung-đột--lộ-trình-hợp-nhất)
 14. [Lộ trình triển khai](#14-lộ-trình-triển-khai)
+15. [Frontend Patterns — Display & Upload](#15-frontend-patterns--display--upload)
+16. [Module Guide — Trạng thái & Cách dùng](#16-module-guide--trạng-thái--cách-dùng)
 
 ---
 
@@ -224,6 +241,39 @@ CDN overlay: config("media.cdn_url") . "/" . storage_key   ← nếu có CDN
 ### ADR-07: Migration Path — Không Big Bang
 
 **Quyết định:** Migration 3 phase, backward-compatible, không downtime.
+
+---
+
+### ADR-08: FilePond Upload Pattern — Form Field Upload
+
+**Quyết định:** FilePond là công cụ upload cho mọi form field có ảnh/file rời (avatar, logo, thumbnail, cover, attachment). Jodit chỉ dùng cho inline images trong rich-text content.
+
+**Phân biệt rõ 2 đường upload:**
+
+| Tiêu chí | FilePond | Jodit |
+|---------|---------|-------|
+| Mục đích | Form field: avatar, logo, file đính kèm | Inline image nhúng vào rich-text HTML |
+| Upload timing | Ngay khi user chọn file (immediate) | Ngay khi user paste/kéo ảnh vào editor |
+| Association | Direct (context đã biết) hoặc UUID trả về form | Orphan → reassociate khi save content |
+| Revert | Có — DELETE trước khi form submit | Có — DELETE khi xóa ảnh khỏi editor |
+| Response | `{ uuid, url, thumb_url }` JSON | `{ error, data: { files: [{url, uuid}] } }` JSON |
+| Endpoint | `POST /api/v1/media/upload` | `POST /api/v1/media/jodit-upload` |
+| JS wrapper | `resources/js/modules/filepond.js` | `resources/js/modules/jodit.js` |
+
+**Orphan strategy cho FilePond:**
+- Nếu `X-Context-Id` được truyền (edit form) → gắn Media trực tiếp vào entity ngay khi upload
+- Nếu không có `X-Context-Id` (create form) → gắn vào `JoditDraft` tạm, TTL 72h, reassociate khi form save
+- Frontend truyền UUID về form qua hidden input `<input name="media_uuid[collection]" value="uuid">`
+
+**FilePond server protocol:**
+- `process` URL: `POST /api/v1/media/upload` → trả UUID plain text (FilePond native) + JSON qua header/body
+- `revert` URL: `DELETE /api/v1/media/upload/{uuid}` → xóa nếu chưa associate với entity thật
+- Không cần `load` hay `restore` endpoint ở Phase 1
+
+**Rejected alternatives:**
+- Upload trong form submit: UX kém, không có preview, không validate realtime
+- Dùng Jodit endpoint cho FilePond: response format khác, không có revert, orphan logic khác
+- Base64 trong hidden input: quá nặng, không resize
 
 ---
 
@@ -528,7 +578,8 @@ App\Services\Media\
     │       uploadFromUrl(url, model, collection)       → Media
     │       delete(Media)                               → void
     │       bulkDelete(model, collection)               → void
-    │       reassociateOrphans(model, joditUuids[])     → void  ← Jodit re-association
+    │       reassociateOrphans(model, uuids[])          → void  ← Jodit + FilePond re-association
+    │       pruneEmptyAncestors(disk, leafDir)          → void  ← public, tái dùng trong command
     │
     ├── MediaUrlService             ← URL resolution tập trung
     │       url(media, conversion='')                   → string
@@ -547,13 +598,24 @@ App\Models\
 App\Traits\
     └── HasTenantMedia              ← Gắn vào domain model
             Wraps HasMedia + auto-inject organization_id
-            addTenantMedia(file, collection)
-            getMediaUrl(collection, conversion)
-            getFirstMediaUrl(collection, conversion)
+            getMediaUrl(collection, conversion)       → string ('' nếu không có)
+            getFirstMediaUrl(collection, conversion)  → string (alias)
+
+App\Http\Controllers\Api\
+    ├── MediaJoditUploadController  ← Jodit inline images (orphan + uuid tracking)
+    │       store()    POST   /api/v1/media/jodit-upload
+    │       destroy()  DELETE /api/v1/media/jodit-upload/{uuid}
+    │       discard()  POST   /api/v1/media/jodit-discard
+    │       touch()    PATCH  /api/v1/media/jodit-touch
+    │
+    └── MediaUploadController       ← FilePond form field uploads
+            store()    POST   /api/v1/media/upload
+            destroy()  DELETE /api/v1/media/upload/{uuid}
 
 App\Console\Commands\
     └── MediaCleanupOrphansCommand  ← php artisan media:cleanup-orphans
             Tìm jodit_content orphan last_touched_at > 72h → xóa file + record
+            Dùng MediaUploadService::delete() (không manual disk ops)
 ```
 
 ### 8.2 Cách module dùng service
@@ -701,7 +763,9 @@ MediaUrlService::url($media, $conversion = '')
 
 ---
 
-## 10. Jodit Upload Endpoint
+## 10. Upload Endpoints — Jodit & FilePond
+
+### 10A. Jodit Upload Endpoint
 
 ### 10.1 Cấu hình Jodit (thay base64)
 
@@ -804,6 +868,214 @@ files[]*:     file, mimes:jpeg,jpg,png,gif,webp, max:10240 (KB)
 ```
 
 **TTL là 72h kể từ `last_touched_at`** (không phải `created_at`) — đảm bảo session edit dài 3–6 tiếng không bị cleanup nếu user vẫn còn active.
+
+---
+
+### 10B. FilePond Upload Endpoint
+
+### 10B.1 Route & Controller
+
+```
+POST   /api/v1/media/upload            MediaUploadController@store
+DELETE /api/v1/media/upload/{uuid}     MediaUploadController@destroy
+```
+
+Auth: `middleware(['auth', 'tenant'])` — lấy organization từ `TenantContext`.
+
+### 10B.2 Request validation — store()
+
+```
+Headers:
+  X-CSRF-TOKEN:    (bắt buộc)
+  X-Collection:    avatar | logo | thumbnail | cover | attachments | attachments_private
+                   (bắt buộc — quyết định disk, conversion, access policy)
+  X-Context-Type:  snake_case entity (employee, organization, ...) — optional
+  X-Context-Id:    numeric entity ID — optional (nếu có → gắn trực tiếp vào entity)
+
+Body (multipart):
+  file:  required, file, max theo collection config
+```
+
+> **Không truyền `collection` qua body** — tránh caller override collection name ngoài allowlist.  
+> `X-Collection` được validate trong controller: chỉ chấp nhận key có trong `config/media.php`.
+
+### 10B.3 Response format
+
+**Success:**
+```json
+{
+    "uuid":      "a1b2c3d4-...",
+    "url":       "https://example.com/storage/media/5/employee/employee/12/uuid/medium.webp",
+    "thumb_url": "https://example.com/storage/media/5/employee/employee/12/uuid/thumb.webp"
+}
+```
+
+> FilePond nhận `uuid` từ response để lưu làm file "server ID".  
+> `thumb_url` dùng cho preview trong FilePond image preview plugin.  
+> Nếu collection không có conversion → `thumb_url` = `url` = original URL.
+
+**Error:**
+```json
+{
+    "message": "File quá lớn (max 5 MB)",
+    "errors":  { "file": ["File quá lớn (max 5 MB)"] }
+}
+```
+HTTP 422 — FilePond hiển thị error dưới file item.
+
+### 10B.4 destroy() — revert trước khi save form
+
+Chỉ xóa được nếu media **chưa được re-associate** khỏi `JoditDraft` (tức là `model_type = JoditDraft`).  
+Sau khi form save và `reassociateOrphans()` chạy, endpoint này trả 403.
+
+### 10B.5 FilePond JS wrapper — `initFilePondUpload()`
+
+```javascript
+// resources/js/modules/filepond.js — hàm bổ sung (không thay initFilePond cũ)
+
+/**
+ * initFilePondUpload — FilePond gắn với MediaUploadService backend.
+ *
+ * @param {string|HTMLElement} selector   - input[type=file]
+ * @param {object}             options
+ *   collection   string  bắt buộc: 'avatar' | 'logo' | 'thumbnail' | 'cover' | 'attachments'
+ *   contextType  string  optional: 'employee' | 'organization' | ...
+ *   contextId    number  optional: entity ID nếu là edit form
+ *   maxFiles     number  default: 1 cho avatar/logo/thumbnail/cover, 10 cho attachments
+ *   onUploaded   fn(uuid, url, thumbUrl)   callback khi upload xong — gọi để gán UUID vào hidden input
+ *   onReverted   fn(uuid)                  callback khi user revert
+ *   existingUrl  string  URL ảnh hiện tại (edit form) — hiển thị làm initial preview
+ *
+ * Tự động:
+ *  · Đặt maxFileSize theo collection config (5MB/10MB/50MB)
+ *  · Đặt acceptedFileTypes theo collection config
+ *  · Gắn CSRF token lazy tại init time
+ *  · Gắn X-Collection, X-Context-Type, X-Context-Id vào headers
+ *  · Trả UUID về hidden input [name="media_uuid[{collection}]"] hoặc qua onUploaded callback
+ *
+ * Ví dụ trong Blade:
+ *   <input type="file" id="avatar-upload" accept="image/*">
+ *   <input type="hidden" name="media_uuid[avatar]" id="avatar-uuid" value="{{ $employee->getFirstMedia('avatar')?->uuid }}">
+ *   <script>
+ *     initFilePondUpload('#avatar-upload', {
+ *       collection: 'avatar',
+ *       contextType: 'employee',
+ *       contextId: {{ $employee->id }},
+ *       existingUrl: '{{ $employee->getMediaUrl('avatar', 'medium') }}',
+ *       onUploaded: (uuid) => document.getElementById('avatar-uuid').value = uuid,
+ *     });
+ *   </script>
+ */
+function initFilePondUpload(selector, options = {}) {
+    const el = typeof selector === 'string'
+        ? document.querySelector(selector)
+        : selector;
+    if (!el) { console.warn('[FilePond] Element not found:', selector); return null; }
+
+    const {
+        collection,
+        contextType,
+        contextId,
+        maxFiles    = (collection === 'attachments' || collection === 'attachments_private') ? 10 : 1,
+        onUploaded,
+        onReverted,
+        existingUrl,
+        ...rest
+    } = options;
+
+    if (!collection) throw new Error('[FilePondUpload] collection option is required');
+
+    const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+
+    // Collection → maxFileSize mapping (mirrors config/media.php)
+    const MAX_SIZE_MAP = {
+        avatar: '5MB', logo: '5MB', thumbnail: '5MB',
+        cover: '10MB', jodit_content: '10MB',
+        attachments: '50MB', attachments_private: '50MB',
+    };
+
+    const serverHeaders = () => ({
+        'X-CSRF-TOKEN':   csrfToken(),
+        'Accept':         'application/json',
+        'X-Collection':   collection,
+        ...(contextType ? { 'X-Context-Type': contextType } : {}),
+        ...(contextId   ? { 'X-Context-Id':   String(contextId) } : {}),
+    });
+
+    const pond = FilePond.create(el, {
+        ...DEFAULTS,
+        allowMultiple: maxFiles > 1,
+        maxFiles,
+        maxFileSize:   MAX_SIZE_MAP[collection] ?? '10MB',
+        server: {
+            process: {
+                url:     '/api/v1/media/upload',
+                method:  'POST',
+                headers: serverHeaders,
+                onload:  (response) => {
+                    const data = JSON.parse(response);
+                    onUploaded?.(data.uuid, data.url, data.thumb_url);
+                    return data.uuid;       // FilePond stores này làm server ID
+                },
+                onerror: (response) => {
+                    const data = JSON.parse(response);
+                    return data.message ?? 'Upload thất bại';
+                },
+            },
+            revert: {
+                url:     '/api/v1/media/upload',    // DELETE /{uuid}
+                headers: serverHeaders,
+                onload: (uuid) => {
+                    onReverted?.(uuid);
+                },
+            },
+        },
+        // Nếu có ảnh hiện tại (edit form), hiển thị làm preview không-upload
+        ...(existingUrl ? {
+            files: [{
+                source:  existingUrl,
+                options: { type: 'local' },
+            }],
+        } : {}),
+        ...rest,
+    });
+
+    FilePondInstances.set(typeof selector === 'string' ? selector : (el.id || collection), pond);
+    return pond;
+}
+
+window.initFilePondUpload = initFilePondUpload;
+export { initFilePondUpload };
+```
+
+### 10B.6 Xử lý form save — re-association
+
+**Create form (không biết entity ID khi upload):**
+
+```html
+{{-- Blade: hidden input chứa UUID trả về từ FilePond --}}
+<input type="hidden" name="media_uuid[avatar]" id="avatar-uuid">
+```
+
+```php
+// Controller store() — sau khi tạo entity
+$employee = Employee::create($validated);
+
+// Gắn avatar nếu có UUID
+if ($uuid = $request->input('media_uuid.avatar')) {
+    app(MediaUploadService::class)->reassociateOrphans($employee, [$uuid], 'avatar');
+}
+```
+
+**Edit form (biết entity ID, upload gắn trực tiếp):**
+
+Vì `X-Context-Id` được truyền từ FilePond, controller `MediaUploadController::store()` sẽ gắn trực tiếp Media vào entity mà không tạo JoditDraft. UUID vẫn trả về để frontend biết (và có thể revert).
+
+> **Lưu ý `reassociateOrphans` cho FilePond:** cùng method với Jodit nhưng thêm tham số `collection`:
+> ```php
+> MediaUploadService::reassociateOrphans($model, $uuids, $collection = 'jodit_content')
+> ```
+> Cho avatar/logo chỉ cần 1 UUID; collection `avatar`/`logo` tự động old-media cleanup (single media collection).
 
 ---
 
@@ -973,55 +1245,391 @@ Sau khi `config/media.php` có hiệu lực, xóa các key storage khỏi module
 
 ## 14. Lộ trình triển khai
 
-### Phase 1 — Foundation (Sprint 1)
+### Phase 1 — Foundation ✅ DONE
 
-| # | Task | Ghi chú |
-|---|------|---------|
-| 1 | `composer require intervention/image-laravel:^3.0` | **Bắt buộc trước mọi thứ** — chưa có trong composer.json |
-| 2 | Chạy vendor migration tạo `media` table | File đã có |
-| 3 | Tạo migration ALTER `media`: thêm `organization_id`, `uploaded_at`, `last_touched_at` | Migration mới |
-| 4 | Tạo `App\Models\Media` extends Spatie + `BelongsToOrganization` + override `newQuery()` | **Không extend TenantAwareModel** |
-| 5 | Publish + override `config/media-library.php`: set `media_model = App\Models\Media::class` | Config override |
-| 6 | Tạo `config/media.php` với đầy đủ collection definitions (public/private, conversions) | Config tập trung |
-| 7 | Viết `MediaUploadService` — upload, validate, sync conversion, delete | Core service |
-| 8 | Viết `MediaUrlService` — url(), temporaryUrl(), CDN overlay, is_public check | URL resolver |
-| 9 | Viết `HasTenantMedia` trait — gắn vào domain model | Trait |
-| 10 | Tạo Jodit upload endpoint + route + `MediaJoditUploadController` | API |
-| 11 | Viết `MediaCleanupOrphansCommand` (`media:cleanup-orphans`) + schedule | Artisan command |
-| 12 | Cập nhật `resources/js/modules/jodit.js`: tắt base64, bật uploader config | Frontend |
+| # | Task | Trạng thái |
+|---|------|-----------|
+| 1 | `composer require intervention/image-laravel:^3.0` | ✅ Done |
+| 2 | Chạy vendor migration tạo `media` table | ✅ Done |
+| 3 | Migration ALTER `media`: thêm `organization_id`, `uploaded_at`, `last_touched_at` | ✅ Done |
+| 4 | `App\Models\Media` extends Spatie + `BelongsToOrganization` + override `newQuery()` | ✅ Done |
+| 5 | Publish + override `config/media-library.php`: `media_model = App\Models\Media::class` | ✅ Done |
+| 6 | `config/media.php` với đầy đủ collection definitions | ✅ Done |
+| 7 | `MediaUploadService` — upload, validate, sync conversion, delete, pruneEmptyAncestors | ✅ Done |
+| 8 | `MediaUrlService` — url(), temporaryUrl(), CDN overlay, is_public check | ✅ Done |
+| 9 | `HasTenantMedia` trait — getMediaUrl(), getFirstMediaUrl() | ✅ Done |
+| 10 | Jodit upload endpoint + route + `MediaJoditUploadController` | ✅ Done |
+| 11 | `MediaCleanupOrphansCommand` (`media:cleanup-orphans`) — dùng service delete() | ✅ Done |
+| 12 | `jodit.js`: all plugins, CSRF lazy, imageDefaultWidth, popup toolbar | ✅ Done |
+| **13** | **`MediaUploadController` — FilePond endpoint** `POST/DELETE /api/v1/media/upload` | **⬜ TODO** |
+| **14** | **`filepond.js`: thêm `initFilePondUpload()` tích hợp MediaUploadController** | **⬜ TODO** |
 
 ### Phase 2 — Consolidation (Sprint 2)
 
 | # | Task | Ghi chú |
 |---|------|---------|
-| 13 | Gắn `HasTenantMedia` vào Employee, Organization, MktApplicant, MktApplicantPortfolio | Models |
-| 14 | Thêm eager load `with('media')` vào `ListEmployeesHandler` và các listing query tương tự | **Trước khi drop cột cũ** |
-| 15 | Refactor 5 action class (Sop, KC, Recruitment) gọi `MediaUploadService` | Backend |
-| 16 | Viết data migration: copy records 3 bảng cũ → `media` (giữ `uploaded_at` gốc) | Script |
-| 17 | Viết data migration: URL cũ của models → `media` với `disk = 'external'` | Script |
-| 18 | Dọn dẹp `config/sop.php` và `config/kc.php`: xóa storage-related keys | Config cleanup |
-| 19 | Test toàn bộ upload flow + URL resolution + orphan cleanup trên staging | QA |
-| 20 | Drop cột URL trực tiếp trên models sau verify | Migration |
+| 15 | Gắn `HasTenantMedia` vào Employee, Organization, MktApplicant, MktApplicantPortfolio | Models (đã có, cần verify) |
+| 16 | Thêm eager load `with('media')` vào `ListEmployeesHandler` và các listing query | **Trước khi drop cột cũ** |
+| 17 | Triển khai FilePond trên form avatar Employee, logo Organization | Frontend — dùng `initFilePondUpload()` |
+| 18 | Refactor 5 action class (Sop, KC, Recruitment) gọi `MediaUploadService` | Backend |
+| 19 | Viết data migration: copy records 3 bảng cũ → `media` (giữ `uploaded_at` gốc) | Script |
+| 20 | Viết data migration: URL cũ của models → `media` với `disk = 'external'` | Script |
+| 21 | Dọn dẹp `config/sop.php` và `config/kc.php`: xóa storage-related keys | Config cleanup |
+| 22 | Test toàn bộ upload flow + URL resolution + orphan cleanup trên staging | QA |
+| 23 | Drop cột URL trực tiếp trên models sau verify | Migration |
 
 ### Phase 3 — S3 + CDN + Queue (khi ready)
 
 | # | Task | Ghi chú |
 |---|------|---------|
-| 21 | Set `MEDIA_DISK=s3`, bật S3 credentials trong .env | Config |
-| 22 | Viết artisan command `media:migrate-disk` — batch migrate local → S3 | Command |
-| 23 | Cấu hình CDN, set `MEDIA_CDN_URL` | Config |
-| 24 | Wrap conversion block thành `ProcessMediaConversions extends TenantAwareJob` (nếu cần async) | Optional |
-| 25 | Rename 3 bảng cũ → `_deprecated`, drop sau 30 ngày verify | Cleanup |
+| 24 | Set `MEDIA_DISK=s3`, bật S3 credentials trong .env | Config |
+| 25 | Viết artisan command `media:migrate-disk` — batch migrate local → S3 | Command |
+| 26 | Cấu hình CDN, set `MEDIA_CDN_URL` | Config |
+| 27 | Wrap conversion block thành `ProcessMediaConversions extends TenantAwareJob` (nếu cần async) | Optional |
+| 28 | Rename 3 bảng cũ → `_deprecated`, drop sau 30 ngày verify | Cleanup |
 
 ---
 
-## Phụ lục A: Packages cần thêm
+---
 
-| Package | Version | Lý do | Khi nào |
-|---------|---------|-------|---------|
-| `intervention/image-laravel` | `^3.0` | Image resize + WebP conversion | **Phase 1, task #1** |
+## 15. Frontend Patterns — Display & Upload
 
-> Spatie Media Library v11 đã có. Không cần thêm package nào khác ở Phase 1–2.
+### 15.1 Quy tắc vàng về hiển thị ảnh
+
+> **Không bao giờ lưu hoặc render URL cứng vào DB/template.**  
+> Luôn gọi `getMediaUrl()` / `getFirstMediaUrl()` hoặc `MediaUrlService::url()` tại runtime.
+
+```php
+// ✅ ĐÚNG — URL resolve tại runtime, disk-agnostic
+$employee->getMediaUrl('avatar', 'thumb')
+
+// ❌ SAI — hardcode path, vỡ khi đổi disk/CDN
+'/storage/media/5/employee/employee/12/uuid/thumb.webp'
+
+// ❌ SAI — dùng cột cũ trực tiếp không fallback
+$employee->avatar_url
+```
+
+### 15.2 Fallback pattern trong Blade
+
+```blade
+{{-- Avatar với DiceBear fallback --}}
+@php
+    $avatarUrl = $employee->getMediaUrl('avatar', 'thumb')
+        ?: 'https://api.dicebear.com/9.x/initials/svg?seed=' . urlencode($employee->full_name);
+@endphp
+<img src="{{ $avatarUrl }}"
+     alt="{{ $employee->full_name }}"
+     class="w-10 h-10 rounded-full object-cover"
+     loading="lazy">
+
+{{-- Logo org --}}
+@php $logoUrl = $organization->getMediaUrl('logo', 'medium') @endphp
+@if($logoUrl)
+    <img src="{{ $logoUrl }}" alt="{{ $organization->name }}" class="h-8">
+@else
+    <span class="font-bold text-lg">{{ $organization->name }}</span>
+@endif
+
+{{-- Cover với placeholder --}}
+<img src="{{ $entity->getMediaUrl('cover', 'medium') ?: asset('images/cover-placeholder.svg') }}"
+     class="w-full aspect-video object-cover">
+```
+
+### 15.3 Eager loading — tránh N+1
+
+**Bắt buộc** thêm `with('media')` vào mọi query có dùng `getMediaUrl()` trong vòng lặp:
+
+```php
+// ✅ ĐÚNG
+Employee::query()->with('media')->get()->each(fn($e) => $e->getMediaUrl('avatar', 'thumb'));
+
+// ❌ SAI — N+1: mỗi getMediaUrl() chạy 1 query riêng
+Employee::query()->get()->each(fn($e) => $e->getMediaUrl('avatar', 'thumb'));
+```
+
+Trong API Resource:
+```php
+// EmployeeListResource.php — luôn giả định media đã được eager loaded
+'avatar_url' => $this->whenLoaded('media',
+    fn() => $this->getMediaUrl('avatar', 'thumb') ?: $this->avatar_url,
+    $this->avatar_url  // fallback nếu relation chưa load
+),
+```
+
+Trong Tabulator (ListEmployeesHandler):
+```php
+->with(['department', 'branch', 'media'])  // ← thêm 'media'
+```
+
+### 15.4 Upload form với FilePond — single image (avatar/logo)
+
+```blade
+{{-- Form upload avatar Employee --}}
+<div x-data="{ uuid: '{{ $employee->getFirstMedia('avatar')?->uuid ?? '' }}' }">
+    {{-- FilePond input --}}
+    <input type="file" id="avatar-upload" accept="image/jpeg,image/png,image/webp">
+
+    {{-- Hidden input truyền UUID khi form submit --}}
+    <input type="hidden" name="media_uuid[avatar]" :value="uuid">
+
+    {{-- Preview hiện tại --}}
+    @if($currentUrl = $employee->getMediaUrl('avatar', 'medium'))
+        <img src="{{ $currentUrl }}" id="current-avatar" class="w-20 h-20 rounded-full">
+    @endif
+</div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    initFilePondUpload('#avatar-upload', {
+        collection:  'avatar',
+        contextType: 'employee',
+        contextId:   {{ $employee->id }},
+        existingUrl: '{{ $employee->getMediaUrl('avatar', 'medium') }}',
+        onUploaded:  (uuid) => {
+            document.querySelector('[name="media_uuid[avatar]"]').value = uuid;
+        },
+    });
+});
+</script>
+@endpush
+```
+
+### 15.5 Upload form với FilePond — multiple files (attachments)
+
+```blade
+{{-- Attachments cho SopStep --}}
+<input type="file" id="step-attachments" multiple>
+
+{{-- Multiple UUIDs: PHP array notation --}}
+<div id="attachment-uuids"></div>
+
+@push('scripts')
+<script>
+initFilePondUpload('#step-attachments', {
+    collection:  'attachments',
+    contextType: 'sop_step',
+    contextId:   {{ $step->id }},
+    maxFiles:    10,
+    onUploaded: (uuid) => {
+        const input = document.createElement('input');
+        input.type  = 'hidden';
+        input.name  = 'media_uuids[]';
+        input.value = uuid;
+        document.getElementById('attachment-uuids').appendChild(input);
+    },
+    onReverted: (uuid) => {
+        document.querySelectorAll('[name="media_uuids[]"]')
+            .forEach(el => { if (el.value === uuid) el.remove(); });
+    },
+});
+</script>
+@endpush
+```
+
+### 15.6 Displaying media variants — khi nào dùng variant nào
+
+| Ngữ cảnh | Collection | Variant | Lý do |
+|---------|-----------|---------|-------|
+| Danh sách (table, grid) | avatar | `thumb` (150×150) | Nhỏ, tải nhanh |
+| Profile page | avatar | `medium` (800px) | Đủ rõ mà không quá nặng |
+| Logo trong header | logo | `medium` (800px) | Đủ sharp cho retina |
+| Logo thumbnail | logo | `thumb` (150×150) | List org, badge |
+| Card preview | thumbnail/cover | `medium` | Đủ cho card |
+| Lightbox / full view | cover | `preview` (1200px) | Chất lượng cao |
+| Jodit editor content | jodit_content | `medium` | Hiển thị trong editor |
+| Download link | bất kỳ | `''` (original) | Giữ chất lượng gốc |
+
+```blade
+{{-- Selector kép: medium cho desktop, thumb cho mobile --}}
+<img srcset="{{ $employee->getMediaUrl('avatar', 'thumb') }} 150w,
+             {{ $employee->getMediaUrl('avatar', 'medium') }} 800w"
+     sizes="(max-width: 640px) 150px, 800px"
+     src="{{ $employee->getMediaUrl('avatar', 'medium') }}"
+     loading="lazy"
+     alt="{{ $employee->full_name }}">
+```
+
+### 15.7 Private files — attachment_private
+
+```blade
+{{-- URL presigned tự động (30 phút), không cache --}}
+<a href="{{ $candidate->getFirstMediaUrl('attachments_private') }}"
+   target="_blank" rel="noopener">
+   Tải CV
+</a>
+
+{{-- Nếu link sắp expire → refresh via API --}}
+<a href="#" data-media-uuid="{{ $media->uuid }}"
+   @click.prevent="refreshAndOpen($event.target.dataset.mediaUuid)">
+   Tải CV
+</a>
+```
+
+```javascript
+// Alpine component cho presigned URL refresh
+async function refreshAndOpen(uuid) {
+    const resp = await fetch(`/api/v1/media/${uuid}/url`, {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken() },
+    });
+    const { url } = await resp.json();
+    window.open(url, '_blank');
+}
+```
+
+---
+
+## 16. Module Guide — Trạng thái & Cách dùng
+
+### 16.1 Trạng thái hiện tại từng model
+
+| Model | Collection | HasTenantMedia | Cột cũ | Trạng thái | Action |
+|-------|-----------|---------------|--------|-----------|--------|
+| `Employee` | `avatar` | ✅ | `avatar_url` | ⚠️ Fallback sang cột cũ | Phase 2: FilePond + data migration |
+| `Organization` | `logo` | ✅ | `logo_path` | ⚠️ Fallback sang cột cũ | Phase 2: FilePond + data migration |
+| `MktApplicant` | `avatar` | ✅ | `avatar_url` | ⚠️ Fallback sang cột cũ | Phase 2 |
+| `MktApplicantPortfolio` | `thumbnail` | ✅ | `thumbnail_url` | ⚠️ Fallback sang cột cũ | Phase 2 |
+| `JpJobPost` | `cover`, `thumbnail` | ⬜ Chưa | — | ❌ Chưa implement | Phase 2 |
+| `KcCategory` | `cover` | ⬜ Chưa | — | ❌ Chưa implement | Phase 2 |
+| `SopStep` | `attachments` | ✅ | `sop_step_attachments` | ⚠️ Bảng cũ riêng | Phase 2: migrate bảng |
+| `KcItem` | `attachments` | ✅ | `kc_item_attachments` | ⚠️ Bảng cũ riêng | Phase 2: migrate bảng |
+| `RcCandidate` | `attachments_private` | ✅ | `rc_candidate_attachments` | ⚠️ Bảng cũ riêng | Phase 2: migrate bảng |
+| `JoditDraft` | `jodit_content` | ✅ | — | ✅ Done | — |
+
+> **Trạng thái ⚠️ Fallback** = model đã có `HasTenantMedia` nhưng view/resource vẫn fallback về cột cũ.  
+> Pattern an toàn khi cả 2 song song: `getMediaUrl('avatar', 'thumb') ?: $this->avatar_url`
+
+### 16.2 Thứ tự implement cho từng module
+
+**Bước chuẩn cho mỗi module (ví dụ Employee avatar):**
+
+```
+1. Verify model có HasTenantMedia + implements HasMedia
+   class Employee extends TenantAwareModel implements HasMedia { use HasTenantMedia; }
+
+2. Thêm eager load vào query handler
+   ->with(['department', 'branch', 'media'])
+
+3. Tạo MediaUploadController (nếu chưa có) + route
+   POST   /api/v1/media/upload
+   DELETE /api/v1/media/upload/{uuid}
+
+4. Thêm initFilePondUpload() vào edit/create form
+
+5. Trong controller store/update:
+   if ($uuid = $request->input('media_uuid.avatar')) {
+       $media = Media::where('uuid', $uuid)->first();
+       if ($media && $media->model_type === JoditDraft::class) {
+           app(MediaUploadService::class)->reassociateOrphans($employee, [$uuid], 'avatar');
+       }
+       // Nếu contextId đã biết khi upload → media đã gắn trực tiếp, không cần reassociate
+   }
+
+6. Update Resource/Blade để dùng getMediaUrl() với fallback về cột cũ
+   'avatar_url' => $this->getMediaUrl('avatar', 'thumb') ?: $this->avatar_url
+
+7. Data migration: copy avatar_url cũ → media record (disk='external', storage_key=url)
+   Sau đó test kỹ → Drop cột cũ
+```
+
+### 16.3 Employee Avatar — chi tiết
+
+```php
+// Employee model — đã đúng
+class Employee extends TenantAwareModel implements HasMedia {
+    use HasTenantMedia;
+    // Giữ $fillable avatar_url trong quá trình migration
+}
+
+// EmployeeListResource — fallback pattern hiện tại (đúng)
+'avatar_url' => $this->getMediaUrl('avatar', 'thumb') ?: $this->avatar_url,
+
+// Blade show.blade.php
+$avatarUrl = $employee->getMediaUrl('avatar', 'medium')
+    ?: $employee->avatar_url
+    ?: 'https://api.dicebear.com/9.x/initials/svg?seed=' . urlencode($employee->full_name);
+```
+
+FilePond config cho Employee form:
+- `collection`: `avatar`
+- `maxFiles`: 1
+- `allowMultiple`: false
+- `acceptedFileTypes`: `['image/jpeg', 'image/png', 'image/webp']`
+
+### 16.4 Organization Logo — chi tiết
+
+```php
+// Organization model — đã đúng
+class Organization extends BaseOrganization implements HasMedia {
+    use HasTenantMedia;
+    // Giữ $fillable logo_path trong quá trình migration
+}
+
+// Blade header
+$logoUrl = $organization->getMediaUrl('logo', 'medium') ?: $organization->logo_path;
+```
+
+FilePond config cho Organization form:
+- `collection`: `logo`
+- `maxFiles`: 1
+- `contextType`: `organization`, `contextId`: `$organization->id`
+- `acceptedFileTypes`: `['image/jpeg', 'image/png', 'image/webp']`
+
+> Logo collection dùng `contain` thay `crop` cho thumb để không cắt xén logo.  
+> **TODO**: Thêm `logo_method: 'contain'` vào config và handle trong `runConversions()`.
+
+### 16.5 Jodit Content Images — summary
+
+Xem §10A đầy đủ. Tóm tắt cách dùng trong controller:
+
+```php
+// Sau khi save content có Jodit editor
+$process = SopProcess::create([...]);
+
+// Extract UUIDs từ content HTML (hoặc frontend truyền về)
+$uuids = extractMediaUuidsFromHtml($request->content);
+// Hoặc frontend truyền: $uuids = $request->input('jodit_media_uuids', []);
+
+app(MediaUploadService::class)->reassociateOrphans($process, $uuids);
+// → Media với uuid trong $uuids: model_type đổi từ JoditDraft → SopProcess
+// → Media cũ của entity này không có trong $uuids: bị xóa (lazy cleanup)
+```
+
+Helper extract UUIDs từ HTML:
+```php
+function extractMediaUuidsFromHtml(string $html): array
+{
+    preg_match_all('/data-media-uuid="([a-f0-9\-]{36})"/', $html, $matches);
+    return $matches[1] ?? [];
+}
+```
+
+### 16.6 Ràng buộc bổ sung (v1.2.0)
+
+| # | Ràng buộc | Lý do |
+|---|----------|-------|
+| B8 | `initFilePondUpload()` — truyền `X-Collection` qua header, không qua body | Body có thể bị forge; header validate trong controller |
+| B9 | FilePond `revert` chỉ được xóa media còn `model_type = JoditDraft` | Tránh xóa file đã gắn vào entity thật |
+| B10 | Mọi listing query có `getMediaUrl()` trong loop phải có `with('media')` | N+1 prevention |
+| B11 | Blade không render URL cứng — luôn qua `getMediaUrl()` với fallback | Không vỡ khi đổi disk/CDN |
+| B12 | Single-image collections (avatar, logo, thumbnail, cover): `maxFiles=1`, dùng Spatie `singleFile()` hoặc xóa media cũ trước khi thêm mới | Tránh accumulate nhiều file cùng collection |
+
+---
+
+## Phụ lục A: Packages
+
+| Package | Version | Lý do | Trạng thái |
+|---------|---------|-------|-----------|
+| `intervention/image-laravel` | `^3.0` | Image resize + WebP conversion | ✅ Đã có |
+| `spatie/laravel-medialibrary` | `^11` | Media engine | ✅ Đã có |
+| `filepond` | `^4.32` | File upload UI | ✅ Đã có (npm) |
+| `filepond-plugin-image-preview` | `^4.6` | Preview ảnh trong FilePond | ✅ Đã có (npm) |
+| `filepond-plugin-file-validate-size` | `^2.2` | Validate size phía client | ✅ Đã có (npm) |
+| `filepond-plugin-file-rename` | `^1.1` | Rename file trước upload | ✅ Đã có (npm) |
+| `filepond-plugin-image-exif-orientation` | `^1.0` | Fix EXIF rotation mobile | ✅ Đã có (npm) |
+
+> Không cần thêm package nào khác ở Phase 1–2.
 
 ---
 
@@ -1036,6 +1644,11 @@ Sau khi `config/media.php` có hiệu lực, xóa các key storage khỏi module
 | B5 | Jodit orphan TTL = 72h từ `last_touched_at` (không phải `created_at`) | Session edit dài không bị cleanup sớm |
 | B6 | Eager load `with('media')` trước khi drop cột URL cũ | Tránh N+1 trên listing pages |
 | B7 | `RcCandidate` dùng `attachments_private`, không phải `attachments` | Access policy khác nhau giữa SOP và Recruitment |
+| B8 | `initFilePondUpload()` — truyền `X-Collection` qua header, không qua body | Body có thể bị forge; header validate trong controller |
+| B9 | FilePond `revert` chỉ được xóa media còn `model_type = JoditDraft` | Tránh xóa file đã gắn vào entity thật |
+| B10 | Mọi listing query có `getMediaUrl()` trong loop phải có `with('media')` | N+1 prevention — xem §15.3 |
+| B11 | Blade không render URL cứng — luôn qua `getMediaUrl()` với fallback | Không vỡ khi đổi disk/CDN |
+| B12 | Single-image collections (avatar, logo, thumbnail, cover): `maxFiles=1`, xóa media cũ trước khi thêm mới | Tránh accumulate nhiều file cùng collection |
 
 ---
 
@@ -1044,3 +1657,17 @@ Sau khi `config/media.php` có hiệu lực, xóa các key storage khỏi module
 > - `spec/recruitment.md` — RcCandidateAttachment (hợp nhất vào `media.attachments_private`)
 > - `spec/kc.md` — KcItemAttachment (hợp nhất vào `media.attachments`)
 > - `docs/migration-pattern.md` — pattern migration chuẩn của hệ thống
+>
+> **Implementation files:**
+> - `app/Services/Media/MediaUploadService.php` — core upload/delete/conversion
+> - `app/Services/Media/MediaUrlService.php` — URL resolution
+> - `app/Services/Media/MediaPathGenerator.php` — path convention
+> - `app/Http/Controllers/Api/MediaJoditUploadController.php` — Jodit endpoint ✅
+> - `app/Http/Controllers/Api/MediaUploadController.php` — FilePond endpoint ⬜ TODO
+> - `app/Models/Media.php` — tenant-aware Spatie extension
+> - `app/Models/JoditDraft.php` — orphan holder
+> - `app/Traits/HasTenantMedia.php` — model trait
+> - `app/Console/Commands/MediaCleanupOrphansCommand.php` — orphan cleanup
+> - `config/media.php` — tất cả collection definitions
+> - `resources/js/modules/jodit.js` — Jodit wrapper ✅
+> - `resources/js/modules/filepond.js` — FilePond wrapper (cần thêm `initFilePondUpload`) ⬜
