@@ -486,11 +486,29 @@
             @endcan
 
             @can(\App\Enums\PermissionEnum::SUBSCRIPTION_VIEW->value)
-            <a href="{{ route('subscription.portal.billing') }}"
-               class="nav-link {{ request()->routeIs('subscription.portal.*') ? 'active' : '' }}">
-                <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
-                <span class="nav-label">Billing</span>
-            </a>
+            <details {{ request()->routeIs('subscription.portal.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('subscription.portal.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+                    <span class="nav-label">Billing</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('subscription.portal.billing') }}"
+                       class="sub-link {{ request()->routeIs('subscription.portal.billing') ? 'active' : '' }}">
+                        Subscription
+                    </a>
+                    <a href="{{ route('subscription.portal.plans') }}"
+                       class="sub-link {{ request()->routeIs('subscription.portal.plans') ? 'active' : '' }}">
+                        Xem các gói
+                    </a>
+                    @can(\App\Enums\PermissionEnum::SUBSCRIPTION_BILLING->value)
+                    <a href="{{ route('subscription.portal.invoices') }}"
+                       class="sub-link {{ request()->routeIs('subscription.portal.invoices*') ? 'active' : '' }}">
+                        Hóa đơn
+                    </a>
+                    @endcan
+                </div>
+            </details>
             @endcan
 
             @can(\App\Enums\PermissionEnum::SUBSCRIPTION_ADMIN->value)
@@ -508,6 +526,10 @@
                     <a href="{{ route('subscription.admin.subscriptions.index') }}"
                        class="sub-link {{ request()->routeIs('subscription.admin.subscriptions.*') ? 'active' : '' }}">
                         Subscriptions
+                    </a>
+                    <a href="{{ route('subscription.admin.invoices.index') }}"
+                       class="sub-link {{ request()->routeIs('subscription.admin.invoices.*') ? 'active' : '' }}">
+                        Invoices
                     </a>
                 </div>
             </details>

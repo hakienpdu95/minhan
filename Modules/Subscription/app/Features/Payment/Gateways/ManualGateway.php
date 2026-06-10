@@ -15,7 +15,11 @@ class ManualGateway implements PaymentGatewayInterface
 {
     public function slug(): string      { return 'manual'; }
     public function type(): GatewayType { return GatewayType::Manual; }
-    public function isEnabled(): bool   { return true; }
+    public function isEnabled(): bool
+    {
+        return app()->environment(['local', 'testing'])
+            || config('subscription.gateways.manual.enabled', false);
+    }
 
     public function buildCheckoutUrl(SubscriptionInvoice $invoice, string $returnUrl): ?string
     {
@@ -23,7 +27,15 @@ class ManualGateway implements PaymentGatewayInterface
         return null;
     }
 
-    public function verifyWebhook(Request $request): bool   { return true; }
+    public function verifyWebhook(Request $request): bool
+    {
+        if (app()->environment(['local', 'testing'])) {
+            return true;
+        }
+        $secret = config('subscription.gateways.manual.secret');
+        if (!$secret) return false;
+        return hash_equals($secret, (string) $request->header('X-Manual-Secret', ''));
+    }
     public function verifyReturn(Request $request): ?bool   { return null; }
 
     public function extractInvoiceNumber(Request $request): string

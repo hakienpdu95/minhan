@@ -20,19 +20,22 @@ class GenerateInvoiceAction
 
     public function handle(Organization $org, GenerateInvoiceData $data): SubscriptionInvoice
     {
-        // Idempotency: return existing invoice if same key
-        if ($data->idempotentKey) {
-            $existing = SubscriptionInvoice::withoutTenant()
-                ->where('organization_id', $org->id)
-                ->where('idempotent_key', $data->idempotentKey)
-                ->first();
-
-            if ($existing) {
-                return $existing;
-            }
-        }
-
         return DB::transaction(function () use ($org, $data): SubscriptionInvoice {
+            // Idempotency check inside the transaction prevents two concurrent checkouts
+            // from both missing the SELECT and creating duplicate invoices (TOCTOU).
+            // The unique constraint on idempotent_key is the final DB-level guard.
+            if ($data->idempotentKey) {
+                $existing = SubscriptionInvoice::withoutTenant()
+                    ->where('organization_id', $org->id)
+                    ->where('idempotent_key', $data->idempotentKey)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($existing) {
+                    return $existing;
+                }
+            }
+
             $number = $this->invoiceNumbers->generate($org);
 
             return SubscriptionInvoice::create([

@@ -3,6 +3,7 @@
 namespace Modules\Subscription\Features\FeatureGate\Actions;
 
 use App\Shared\Tenancy\Models\Organization;
+use Illuminate\Support\Facades\DB;
 use Laravelcm\Subscriptions\Models\Subscription;
 use Lorisleiva\Actions\Concerns\AsAction;
 
@@ -23,8 +24,13 @@ class RecordFeatureUsageAction
             return false;
         }
 
-        // Package's recordFeatureUsage handles resettable period logic
-        $sub->recordFeatureUsage($featureSlug, $uses);
+        // Pessimistic lock on the subscription row serializes concurrent usage records
+        // for the same subscription, preventing the vendor's read-modify-write from
+        // being bypassed by two simultaneous requests (quota TOCTOU race).
+        DB::transaction(function () use ($sub, $featureSlug, $uses): void {
+            Subscription::lockForUpdate()->whereKey($sub->id)->first();
+            $sub->recordFeatureUsage($featureSlug, $uses);
+        });
 
         return true;
     }

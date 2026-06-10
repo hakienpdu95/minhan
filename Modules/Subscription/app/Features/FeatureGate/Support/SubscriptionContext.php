@@ -100,7 +100,7 @@ final class SubscriptionContext
     public function isActive(): bool      { return $this->active; }
     public function isOnTrial(): bool     { return $this->onTrial; }
     public function isGracePeriod(): bool { return $this->gracePeriod; }
-    public function planSlug(): string    { return $this->subscription?->plan->slug ?? 'none'; }
+    public function planSlug(): string    { return $this->subscription?->plan?->slug ?? 'none'; }
     public function plan(): ?Plan         { return $this->subscription?->plan; }
 
     // ── Internal ──────────────────────────────────────────────────────
@@ -122,9 +122,9 @@ final class SubscriptionContext
             && $sub->plan?->hasGrace()
             && !$sub->ended();
 
-        // 1. Plan features (base)
+        // 1. Plan features (base) — use null-safe: plan may be soft-deleted
         $map = [];
-        foreach ($sub->plan->features ?? [] as $feature) {
+        foreach ($sub->plan?->features ?? [] as $feature) {
             $map[$feature->slug] = $feature->value;
         }
 

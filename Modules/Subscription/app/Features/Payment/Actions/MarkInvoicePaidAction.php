@@ -17,23 +17,31 @@ class MarkInvoicePaidAction
         string $paymentRef,
         string $paymentMethod,
     ): SubscriptionInvoice {
-        // Idempotent — safe to call multiple times (IPN can arrive more than once)
-        if ($invoice->isPaid()) {
-            return $invoice;
-        }
+        // Atomic conditional update — only one concurrent webhook call wins.
+        // The WHERE status = Pending prevents duplicate processing when the same
+        // IPN is delivered twice simultaneously (gateway retry race condition).
+        $affected = 0;
 
-        DB::transaction(function () use ($invoice, $paymentRef, $paymentMethod): void {
-            $invoice->update([
-                'status'         => InvoiceStatus::Paid,
-                'paid_at'        => now(),
-                'payment_ref'    => $paymentRef,
-                'payment_method' => $paymentMethod,
-            ]);
+        DB::transaction(function () use ($invoice, $paymentRef, $paymentMethod, &$affected): void {
+            $affected = DB::table('subscription_invoices')
+                ->where('id', $invoice->id)
+                ->where('status', InvoiceStatus::Pending->value)
+                ->update([
+                    'status'         => InvoiceStatus::Paid->value,
+                    'paid_at'        => now(),
+                    'payment_ref'    => $paymentRef,
+                    'payment_method' => $paymentMethod,
+                    'updated_at'     => now(),
+                ]);
         });
 
-        // Dispatch outside the transaction so the listener reads the committed data
-        InvoicePaid::dispatch($invoice->fresh());
+        $fresh = $invoice->fresh();
 
-        return $invoice->fresh();
+        // Only dispatch when THIS call performed the state transition
+        if ($affected > 0) {
+            InvoicePaid::dispatch($fresh);
+        }
+
+        return $fresh;
     }
 }

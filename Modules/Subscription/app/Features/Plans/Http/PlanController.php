@@ -71,7 +71,7 @@ class PlanController extends Controller
 
     public function destroy(Plan $plan): RedirectResponse
     {
-        if ($plan->planSubscriptions()->active()->count() > 0) {
+        if ($plan->planSubscriptions()->findActive()->exists()) {
             return back()->withErrors(['plan' => 'Không thể xóa plan đang có subscription active.']);
         }
 

@@ -4,6 +4,8 @@ use App\Enums\PermissionEnum as P;
 use Illuminate\Support\Facades\Route;
 use Modules\Subscription\Features\AdminSubscriptions\Http\AdminSubscriptionController;
 use Modules\Subscription\Features\Analytics\Http\AnalyticsController;
+use Modules\Subscription\Features\Payment\Http\Admin\InvoiceController;
+use Modules\Subscription\Features\Payment\Http\Portal\InvoicePortalController;
 use Modules\Subscription\Features\Cancel\Http\CancelController;
 use Modules\Subscription\Features\ChangePlan\Http\ChangePlanController;
 use Modules\Subscription\Features\Payment\Http\CheckoutController;
@@ -28,6 +30,10 @@ Route::middleware(['web', 'auth', 'can:' . P::SUBSCRIPTION_ADMIN->value])
         Route::post('subscriptions/{organization}/extend',       [AdminSubscriptionController::class, 'extend'])->name('subscriptions.extend');
         Route::post('subscriptions/{organization}/override',     [AdminSubscriptionController::class, 'override'])->name('subscriptions.override');
 
+        Route::get('invoices',                              [InvoiceController::class, 'index'])->name('invoices.index');
+        Route::post('invoices/{invoice}/mark-paid',         [InvoiceController::class, 'markPaid'])->name('invoices.mark-paid');
+        Route::post('invoices/{invoice}/void',              [InvoiceController::class, 'void'])->name('invoices.void');
+
         Route::get('analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
     });
 
@@ -44,6 +50,12 @@ Route::middleware(['web', 'auth', 'can:' . P::SUBSCRIPTION_VIEW->value])
         Route::post('downgrade',  [ChangePlanController::class, 'downgrade'])->name('downgrade');
         Route::post('cancel',     [CancelController::class, 'cancel'])->name('cancel');
         Route::post('resume',     [CancelController::class, 'resume'])->name('resume');
+
+        // Invoice portal — yêu cầu billing permission
+        Route::middleware('can:' . P::SUBSCRIPTION_BILLING->value)->group(function (): void {
+            Route::get('invoices',           [InvoicePortalController::class, 'index'])->name('invoices');
+            Route::get('invoices/{invoice}', [InvoicePortalController::class, 'show'])->name('invoices.show');
+        });
     });
 
 // ── Billing checkout + payment return (subscription.billing permission) ──

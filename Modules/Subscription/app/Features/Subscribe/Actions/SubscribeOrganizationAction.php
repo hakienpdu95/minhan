@@ -19,10 +19,10 @@ class SubscribeOrganizationAction
 
     public function handle(Organization $org, SubscribeData $data): Subscription
     {
-        // Idempotency check
+        // Idempotency check — exact match on slug to avoid false positives
         if ($data->idempotentKey) {
             $existing = $org->planSubscriptions()
-                ->where('slug', 'like', '%' . $data->idempotentKey . '%')
+                ->where('slug', $data->idempotentKey)
                 ->first();
             if ($existing) return $existing;
         }

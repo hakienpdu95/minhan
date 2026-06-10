@@ -63,6 +63,14 @@ return [
             'bank_name'      => env('SEPAY_BANK_NAME', 'MB Bank'),
             'account_name'   => env('SEPAY_ACCOUNT_NAME'),   // Account holder name
         ],
+
+        // Manual gateway — admin-only, local/testing by default.
+        // Set SUBSCRIPTION_MANUAL_GATEWAY_ENABLED=true in production only for trusted admin use.
+        // Set SUBSCRIPTION_MANUAL_GATEWAY_SECRET to require a shared secret on the webhook endpoint.
+        'manual' => [
+            'enabled' => env('SUBSCRIPTION_MANUAL_GATEWAY_ENABLED', false),
+            'secret'  => env('SUBSCRIPTION_MANUAL_GATEWAY_SECRET'),
+        ],
     ],
 
 ];
