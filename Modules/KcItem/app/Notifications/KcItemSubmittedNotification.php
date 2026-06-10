@@ -2,6 +2,7 @@
 
 namespace Modules\KcItem\Notifications;
 
+use App\Notifications\Concerns\RespectsNotificationPreferences;
 use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -11,18 +12,11 @@ use Modules\KcItem\Models\KcItem;
 
 class KcItemSubmittedNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RespectsNotificationPreferences;
 
     public function __construct(private readonly KcItem $kcItem) {}
 
-    public function via(object $notifiable): array
-    {
-        $channels = ['database', 'broadcast'];
-        if (config('webpush.vapid.public_key') && $notifiable->pushSubscriptions()->exists()) {
-            $channels[] = 'webpush';
-        }
-        return $channels;
-    }
+    protected function notificationType(): string { return 'kc_submitted'; }
 
     public function toBroadcast(object $notifiable): BroadcastMessage
     {

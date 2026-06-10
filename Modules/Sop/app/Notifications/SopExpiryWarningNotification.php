@@ -2,6 +2,7 @@
 
 namespace Modules\Sop\Notifications;
 
+use App\Notifications\Concerns\RespectsNotificationPreferences;
 use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -14,17 +15,14 @@ use Modules\Sop\Models\SopProcess;
  */
 class SopExpiryWarningNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RespectsNotificationPreferences;
 
     public function __construct(
         private readonly SopProcess $sop,
         private readonly int        $daysLeft,
     ) {}
 
-    public function via(object $notifiable): array
-    {
-        return ['database', 'mail'];
-    }
+    protected function notificationType(): string { return 'sop_expiry_warning'; }
 
     public function toDatabase(object $notifiable): array
     {

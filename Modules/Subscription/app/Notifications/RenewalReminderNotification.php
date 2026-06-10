@@ -2,6 +2,7 @@
 
 namespace Modules\Subscription\Notifications;
 
+use App\Notifications\Concerns\RespectsNotificationPreferences;
 use App\Shared\Notifications\NotificationData;
 use App\Shared\Tenancy\Models\Organization;
 use Illuminate\Bus\Queueable;
@@ -12,7 +13,7 @@ use Laravelcm\Subscriptions\Models\Subscription;
 
 class RenewalReminderNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RespectsNotificationPreferences;
 
     public function __construct(
         public readonly Organization $organization,
@@ -20,10 +21,7 @@ class RenewalReminderNotification extends Notification implements ShouldQueue
         public readonly int          $daysLeft,
     ) {}
 
-    public function via(object $notifiable): array
-    {
-        return ['database', 'mail'];
-    }
+    protected function notificationType(): string { return 'subscription_expiring_db'; }
 
     public function toDatabase(object $notifiable): array
     {

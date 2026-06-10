@@ -2,6 +2,7 @@
 
 namespace Modules\KcItem\Notifications;
 
+use App\Notifications\Concerns\RespectsNotificationPreferences;
 use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -10,17 +11,14 @@ use Modules\KcItem\Models\KcItem;
 
 class KcItemRejectedNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RespectsNotificationPreferences;
 
     public function __construct(
         private readonly KcItem  $kcItem,
         private readonly string  $reason,
     ) {}
 
-    public function via(object $notifiable): array
-    {
-        return ['database'];
-    }
+    protected function notificationType(): string { return 'kc_rejected'; }
 
     public function toDatabase(object $notifiable): array
     {

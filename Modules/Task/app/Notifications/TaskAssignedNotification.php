@@ -2,6 +2,7 @@
 
 namespace Modules\Task\Notifications;
 
+use App\Notifications\Concerns\RespectsNotificationPreferences;
 use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -12,21 +13,14 @@ use App\Models\User;
 
 class TaskAssignedNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RespectsNotificationPreferences;
 
     public function __construct(
         private readonly Task $task,
         private readonly User $assigner,
     ) {}
 
-    public function via(object $notifiable): array
-    {
-        $channels = ['database', 'broadcast'];
-        if (config('webpush.vapid.public_key') && $notifiable->pushSubscriptions()->exists()) {
-            $channels[] = 'webpush';
-        }
-        return $channels;
-    }
+    protected function notificationType(): string { return 'task_assigned'; }
 
     public function toBroadcast(object $notifiable): BroadcastMessage
     {

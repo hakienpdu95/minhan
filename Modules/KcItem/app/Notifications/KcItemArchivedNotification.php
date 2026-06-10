@@ -2,6 +2,7 @@
 
 namespace Modules\KcItem\Notifications;
 
+use App\Notifications\Concerns\RespectsNotificationPreferences;
 use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -10,16 +11,13 @@ use Modules\KcItem\Models\KcItem;
 
 class KcItemArchivedNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RespectsNotificationPreferences;
 
     public function __construct(
         private readonly KcItem $kcItem,
     ) {}
 
-    public function via(object $notifiable): array
-    {
-        return ['database'];
-    }
+    protected function notificationType(): string { return 'kc_archived'; }
 
     public function toDatabase(object $notifiable): array
     {

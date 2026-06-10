@@ -3,6 +3,7 @@
 namespace Modules\Lead\Notifications;
 
 use App\Models\User;
+use App\Notifications\Concerns\RespectsNotificationPreferences;
 use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -11,17 +12,14 @@ use Modules\Lead\Models\Lead;
 
 class LeadAssignedNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RespectsNotificationPreferences;
 
     public function __construct(
         private readonly Lead $lead,
         private readonly User $assigner,
     ) {}
 
-    public function via(object $notifiable): array
-    {
-        return ['database'];
-    }
+    protected function notificationType(): string { return 'lead_assigned'; }
 
     public function toDatabase(object $notifiable): array
     {

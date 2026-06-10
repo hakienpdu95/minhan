@@ -22,6 +22,10 @@ Route::middleware(['auth:sanctum', 'tenant', 'throttle:notifications'])
         Route::post('/read-all',    [NotificationController::class, 'markAllRead']) ->name('read-all');
         Route::delete('/{uuid}',    [NotificationController::class, 'destroy'])     ->name('destroy');
 
+        // Notification preferences
+        Route::get('/preferences',                   [NotificationController::class, 'preferences'])      ->name('preferences');
+        Route::patch('/preferences/{eventType}',     [NotificationController::class, 'updatePreference']) ->name('preferences.update');
+
         // Browser Push subscriptions
         Route::post('/push-subscribe',    [NotificationController::class, 'pushSubscribe'])
             ->withoutMiddleware('throttle:notifications')

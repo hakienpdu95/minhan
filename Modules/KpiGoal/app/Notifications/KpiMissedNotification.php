@@ -2,6 +2,7 @@
 
 namespace Modules\KpiGoal\Notifications;
 
+use App\Notifications\Concerns\RespectsNotificationPreferences;
 use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -10,14 +11,11 @@ use Modules\KpiGoal\Models\KpiGoal;
 
 class KpiMissedNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RespectsNotificationPreferences;
 
     public function __construct(private readonly KpiGoal $goal) {}
 
-    public function via(object $notifiable): array
-    {
-        return ['database'];
-    }
+    protected function notificationType(): string { return 'kpi_missed'; }
 
     public function toDatabase(object $notifiable): array
     {

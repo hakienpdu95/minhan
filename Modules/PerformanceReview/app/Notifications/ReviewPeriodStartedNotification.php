@@ -2,6 +2,7 @@
 
 namespace Modules\PerformanceReview\Notifications;
 
+use App\Notifications\Concerns\RespectsNotificationPreferences;
 use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -9,17 +10,14 @@ use Illuminate\Notifications\Notification;
 
 class ReviewPeriodStartedNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RespectsNotificationPreferences;
 
     public function __construct(
         private readonly string $period,
         private readonly ?string $periodEnd = null,
     ) {}
 
-    public function via(object $notifiable): array
-    {
-        return ['database'];
-    }
+    protected function notificationType(): string { return 'review_period_started'; }
 
     public function toDatabase(object $notifiable): array
     {

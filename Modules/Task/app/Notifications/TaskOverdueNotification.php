@@ -2,6 +2,7 @@
 
 namespace Modules\Task\Notifications;
 
+use App\Notifications\Concerns\RespectsNotificationPreferences;
 use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -10,17 +11,14 @@ use Modules\Task\Models\Task;
 
 class TaskOverdueNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RespectsNotificationPreferences;
 
     public function __construct(
         private readonly Task $task,
         private readonly bool $isCreator = false,
     ) {}
 
-    public function via(object $notifiable): array
-    {
-        return ['database'];
-    }
+    protected function notificationType(): string { return 'task_overdue'; }
 
     public function toDatabase(object $notifiable): array
     {

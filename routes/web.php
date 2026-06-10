@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\MediaUploadController;
 use App\Http\Controllers\Backend\Api\DashboardChartController;
 use App\Http\Controllers\Backend\DashboardController;
 use App\Http\Controllers\Backend\NotificationCenterController;
+use App\Http\Controllers\Backend\NotificationPreferenceController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('backend.dashboard'));
@@ -62,10 +63,11 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
 
     // ── Notification Center ───────────────────────────────────────────────
     Route::middleware('tenant')->prefix('notifications')->name('notifications.')->group(function () {
-        Route::get('/',                        [NotificationCenterController::class, 'index'])       ->name('index');
-        Route::patch('/{uuid}/read',           [NotificationCenterController::class, 'markRead'])    ->name('mark-read');
-        Route::post('/read-all',               [NotificationCenterController::class, 'markAllRead']) ->name('read-all');
-        Route::delete('/{uuid}',               [NotificationCenterController::class, 'destroy'])     ->name('destroy');
+        Route::get('/',             [NotificationCenterController::class,    'index'])       ->name('index');
+        Route::get('/preferences',  [NotificationPreferenceController::class,'index'])       ->name('preferences');
+        Route::patch('/{uuid}/read',[NotificationCenterController::class,    'markRead'])    ->name('mark-read');
+        Route::post('/read-all',    [NotificationCenterController::class,    'markAllRead']) ->name('read-all');
+        Route::delete('/{uuid}',    [NotificationCenterController::class,    'destroy'])     ->name('destroy');
     });
 
 });

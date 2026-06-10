@@ -2,6 +2,7 @@
 
 namespace Modules\Employee\Notifications;
 
+use App\Notifications\Concerns\RespectsNotificationPreferences;
 use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -10,14 +11,11 @@ use Modules\Employee\Models\Employee;
 
 class EmployeeOnboardedNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RespectsNotificationPreferences;
 
     public function __construct(private readonly Employee $employee) {}
 
-    public function via(object $notifiable): array
-    {
-        return ['database'];
-    }
+    protected function notificationType(): string { return 'employee_onboarded'; }
 
     public function toDatabase(object $notifiable): array
     {

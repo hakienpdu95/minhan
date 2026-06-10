@@ -2,6 +2,7 @@
 
 namespace Modules\WorkflowAutomation\Notifications;
 
+use App\Notifications\Concerns\RespectsNotificationPreferences;
 use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -10,17 +11,14 @@ use Illuminate\Notifications\Notification;
 
 class WorkflowNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, RespectsNotificationPreferences;
 
     public function __construct(
         public readonly string $title,
         public readonly string $body,
     ) {}
 
-    public function via(object $notifiable): array
-    {
-        return ['database'];
-    }
+    protected function notificationType(): string { return 'workflow_notification'; }
 
     public function toDatabase(object $notifiable): array
     {
