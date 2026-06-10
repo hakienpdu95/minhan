@@ -125,6 +125,12 @@ enum PermissionEnum: string
     case MARKETPLACE_EDIT   = 'marketplace.edit';   // HR — sửa/đóng listing
     case MARKETPLACE_MANAGE = 'marketplace.manage'; // System Admin — duyệt org, xem tất cả
 
+    // ══ SUBSCRIPTION ═══════════════════════════════════════════════
+    case SUBSCRIPTION_VIEW    = 'subscription.view';
+    case SUBSCRIPTION_MANAGE  = 'subscription.manage';
+    case SUBSCRIPTION_BILLING = 'subscription.billing';
+    case SUBSCRIPTION_ADMIN   = 'subscription.admin';
+
     // ══ SYSTEM ═════════════════════════════════════════════════════
     case INTEGRATION_MANAGE = 'integration.manage';
     case AUDIT_VIEW         = 'audit.view';

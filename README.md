@@ -68,4 +68,4 @@ php artisan module:make Auth
 
 # > Đọc file spec/task.md và làm phase 1 trước, implement theo đúng spec, đọc thêm file docs/module-list-pattern.md để tuân thủ đúng cấu trúc và nguyên tắc chuẩn khi thiết kế và triển khai module theo cấu trúc Advanced Vertical Slice (AVSA) + CQRS-lite + Laravel Modules + Laravel Actions, bổ sung ra mdenu sidebar để dùng, phần views hãy kế thừa và làm chuẩn @extends('layouts.backend')
 
-# > Đọc file spec/workflow-v2.md và implement theo đúng spec đó, áp dụng spec này vào module WorkflowAutomation
+# > Đọc file docs/SUBSCRIPTION_SPEC.md và làm phase 1 trước, implement theo đúng spec đó cho module Subscription

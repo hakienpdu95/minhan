@@ -9,7 +9,7 @@ use Modules\WorkflowAutomation\Http\Controllers\WorkflowUserTaskController;
 
 // Web routes — admin UI
 Route::prefix('dashboard/workflows')
-    ->middleware(['web', 'auth', 'can:' . P::WORKFLOW_MONITOR->value])
+    ->middleware(['web', 'auth', 'can:' . P::WORKFLOW_MONITOR->value, 'feature:module.workflow'])
     ->name('workflows.')
     ->group(function () {
         Route::get('/',                        [WorkflowController::class, 'index'])    ->name('index');
@@ -44,7 +44,7 @@ Route::prefix('workflow/tasks')
 
 // API routes — Tabulator + Builder
 Route::prefix('backend/api/workflows')
-    ->middleware(['web', 'auth', 'can:' . P::WORKFLOW_MONITOR->value])
+    ->middleware(['web', 'auth', 'can:' . P::WORKFLOW_MONITOR->value, 'feature:module.workflow'])
     ->name('backend.api.workflows.')
     ->group(function () {
         Route::get('/',                        [WorkflowApiController::class, 'index'])        ->name('index');

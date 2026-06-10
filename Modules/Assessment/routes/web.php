@@ -7,7 +7,7 @@ use Modules\Assessment\Http\Controllers\AssessmentPublicResultController;
 use Modules\Assessment\Http\Controllers\AssessmentResultController;
 use Modules\Assessment\Http\Middleware\ValidateAssessmentResultToken;
 
-Route::middleware(['auth', 'verified'])->prefix('dashboard/assessments')->name('assessments.')->group(function () {
+Route::middleware(['auth', 'verified', 'feature:module.assessment'])->prefix('dashboard/assessments')->name('assessments.')->group(function () {
 
     Route::get('/',                    [AssessmentController::class, 'index'])->name('index');
     Route::get('/create',              [AssessmentController::class, 'create'])->name('create');

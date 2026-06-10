@@ -8,6 +8,10 @@ return [
     R::CEO->value => [
         // CEO Dashboard: Full
         P::CEO_DASH_FULL->value,
+        // Subscription: View + Manage + Billing
+        P::SUBSCRIPTION_VIEW->value,
+        P::SUBSCRIPTION_MANAGE->value,
+        P::SUBSCRIPTION_BILLING->value,
         // CRM Leads: Full (view all + CRUD + assign + export)
         P::LEADS_VIEW_ALL->value,
         P::LEADS_CREATE->value,
@@ -72,6 +76,9 @@ return [
     ],
 
     R::OPS->value => [
+        // Subscription: View + Billing
+        P::SUBSCRIPTION_VIEW->value,
+        P::SUBSCRIPTION_BILLING->value,
         // CEO Dashboard: Limited (view, không có AI brief, không có approve)
         P::CEO_DASH_VIEW->value,
         // CRM Leads: Limited — view_all + export + manage tags, KHÔNG có edit/delete/assign
@@ -177,6 +184,11 @@ return [
     ],
 
     R::ADMIN->value => [
+        // Subscription: Full admin
+        P::SUBSCRIPTION_VIEW->value,
+        P::SUBSCRIPTION_MANAGE->value,
+        P::SUBSCRIPTION_BILLING->value,
+        P::SUBSCRIPTION_ADMIN->value,
         // Config trên tất cả module (độc lập với data)
         P::CEO_DASH_CONFIG->value,
         P::LEADS_CONFIG->value,

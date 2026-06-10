@@ -7,6 +7,16 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class OrganizationListResource extends JsonResource
 {
+    private function _subscriptionStatus(): string
+    {
+        $sub = $this->planSubscriptions->first();
+        if (!$sub) return 'none';
+        if ($sub->onTrial()) return 'trial';
+        if ($sub->active())  return 'active';
+        if ($sub->canceled()) return 'canceled';
+        return 'expired';
+    }
+
     public function toArray(Request $request): array
     {
         // status is cast to OrganizationStatus enum via BaseOrganization::casts()
@@ -36,6 +46,14 @@ class OrganizationListResource extends JsonResource
 
             // Suspended orgs can be deleted; active orgs require explicit deactivation first
             'can_delete' => $status->value !== 'active',
+
+            // Subscription badge (loaded via eager load in ListOrganizationsHandler)
+            'plan_name'           => $this->relationLoaded('planSubscriptions')
+                ? ($this->planSubscriptions->first()?->plan?->name)
+                : null,
+            'subscription_status' => $this->relationLoaded('planSubscriptions')
+                ? $this->_subscriptionStatus()
+                : 'none',
         ];
     }
 }

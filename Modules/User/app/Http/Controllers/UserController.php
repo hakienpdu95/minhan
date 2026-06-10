@@ -72,6 +72,14 @@ class UserController extends Controller
         // Guard: HR cannot assign roles beyond their allowed set
         $this->guardRoleEscalation($request->user(), $request->input('system_role'));
 
+        $orgId        = $request->user()->organization_id;
+        $currentCount = User::where('organization_id', $orgId)->count();
+        if (org_at_limit('limit.members', $currentCount)) {
+            return back()->withInput()->withErrors([
+                'limit' => 'Bạn đã đạt giới hạn người dùng (' . org_limit('limit.members') . ') của gói hiện tại. Vui lòng nâng cấp để thêm.',
+            ]);
+        }
+
         try {
             $data = StoreUserData::validateAndCreate($request->all());
             $user = $action->handle($data);

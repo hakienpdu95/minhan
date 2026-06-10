@@ -9,11 +9,13 @@
             <directory>tests/Unit</directory>
             <directory>Modules/Survey/tests/Unit</directory>
             <directory>Modules/Sop/tests/Unit</directory>
+            <directory>Modules/Subscription/tests/Unit</directory>
         </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
             <directory>Modules/Survey/tests/Feature</directory>
             <directory>Modules/Sop/tests/Feature</directory>
+            <directory>Modules/Subscription/tests/Feature</directory>
         </testsuite>
     </testsuites>
     <source>
@@ -32,7 +34,7 @@
         <env name="DB_PORT" value="3306"/>
         <env name="DB_DATABASE" value="minhan"/>
         <env name="DB_USERNAME" value="root"/>
-        <env name="DB_PASSWORD" value="Checkvn@123!"/>
+        <env name="DB_PASSWORD" value="3333"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

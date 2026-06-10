@@ -27,7 +27,11 @@ class ListOrganizationsHandler implements QueryHandlerInterface
         $q = Organization::withoutTenant()
             ->select('organizations.*')
             ->withCount('members')
-            ->with(['province:province_code,name', 'ward:ward_code,name']);
+            ->with([
+                'province:province_code,name',
+                'ward:ward_code,name',
+                'planSubscriptions' => fn ($q) => $q->with('plan:id,name,slug')->latest('starts_at')->limit(1),
+            ]);
 
         // ── Text search (OR across multiple fields) ──────────────────
         if ($query->search !== null && $query->search !== '') {

@@ -10,10 +10,18 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use Laravelcm\Subscriptions\Traits\HasPlanSubscriptions;
 
 class Organization extends Model
 {
     use HasFactory;
+    use HasPlanSubscriptions;
+
+    /** Morph alias — ensures consistent subscriber_type regardless of subclass. */
+    public function getMorphClass(): string
+    {
+        return 'organization';
+    }
 
     protected $fillable = [
         'uuid',

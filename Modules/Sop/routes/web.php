@@ -15,7 +15,7 @@ use Modules\Sop\Http\Controllers\SopAnalyticsController;
 use Modules\Sop\Http\Controllers\SopExportController;
 use Modules\Sop\Http\Controllers\SopVersionController;
 
-Route::middleware(['auth', 'web'])->group(function () {
+Route::middleware(['auth', 'web', 'feature:module.sop'])->group(function () {
 
     // ── API (JSON) ───────────────────────────────────────────────────────────
     Route::prefix('backend/api')->name('backend.api.')->group(function () {

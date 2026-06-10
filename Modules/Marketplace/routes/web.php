@@ -21,7 +21,7 @@ Route::prefix('portal/employer')->name('marketplace.employer.')->group(function 
 });
 
 // ── Backend tenant views ──────────────────────────────────────────────────
-Route::middleware(['auth'])->prefix('dashboard/marketplace')->name('backend.marketplace.')->group(function () {
+Route::middleware(['auth', 'feature:module.marketplace'])->prefix('dashboard/marketplace')->name('backend.marketplace.')->group(function () {
 
     // Listings CRUD
     Route::get('listings', [ListingController::class, 'index'])->name('listings.index');
@@ -44,6 +44,6 @@ Route::middleware(['auth'])->prefix('dashboard/marketplace')->name('backend.mark
 });
 
 // ── Backend JSON APIs ─────────────────────────────────────────────────────
-Route::middleware(['auth'])->prefix('backend/api/marketplace')->name('backend.api.marketplace.')->group(function () {
+Route::middleware(['auth', 'feature:module.marketplace'])->prefix('backend/api/marketplace')->name('backend.api.marketplace.')->group(function () {
     Route::get('listings', [MktListingApiController::class, 'index'])->name('listings');
 });

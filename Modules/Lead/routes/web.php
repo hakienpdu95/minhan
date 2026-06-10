@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Lead\Http\Controllers\LeadController;
 use Modules\Lead\Http\Controllers\LeadTagController;
 
-Route::middleware(['auth', 'verified'])->prefix('leads')->name('lead.')->group(function () {
+Route::middleware(['auth', 'verified', 'feature:module.crm'])->prefix('leads')->name('lead.')->group(function () {
 
     // ── Core CRUD ────────────────────────────────────────────────────
     Route::get('/',            [LeadController::class, 'index'])->name('index');

@@ -25,5 +25,6 @@
     "JobPosting": true,
     "Recruitment": true,
     "Marketplace": true,
-    "Task": true
+    "Task": true,
+    "Subscription": true
 }

@@ -23,7 +23,7 @@ use Modules\Recruitment\Http\Controllers\Backend\AnalyticsController;
 */
 
 // ── Backend views ─────────────────────────────────────────────────────────
-Route::middleware(['auth'])->prefix('dashboard/recruitment')->name('backend.recruitment.')->group(function () {
+Route::middleware(['auth', 'feature:module.recruitment'])->prefix('dashboard/recruitment')->name('backend.recruitment.')->group(function () {
 
     // Import từ Marketplace — phải đặt TRƯỚC resource để không bị {candidate} capture
     Route::post('candidates/import-from-marketplace', [ImportController::class, 'fromMarketplace'])->name('candidates.import-marketplace');
@@ -90,7 +90,7 @@ Route::middleware(['auth'])->prefix('dashboard/recruitment')->name('backend.recr
 });
 
 // ── Backend JSON APIs ─────────────────────────────────────────────────────
-Route::middleware(['auth'])->prefix('backend/api/recruitment')->name('backend.api.recruitment.')->group(function () {
+Route::middleware(['auth', 'feature:module.recruitment'])->prefix('backend/api/recruitment')->name('backend.api.recruitment.')->group(function () {
 
     Route::get('candidates', [CandidateApiController::class, 'index'])->name('candidates');
     Route::get('applications', [ApplicationApiController::class, 'index'])->name('applications');

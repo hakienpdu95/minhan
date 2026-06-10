@@ -147,6 +147,12 @@ class EmployeeController extends Controller
 
     public function store(Request $request, StoreEmployeeAction $action): RedirectResponse
     {
+        if (org_at_limit('limit.employees', Employee::count())) {
+            return back()->withInput()->withErrors([
+                'limit' => 'Bạn đã đạt giới hạn nhân viên (' . org_limit('limit.employees') . ') của gói hiện tại. Vui lòng nâng cấp để thêm.',
+            ]);
+        }
+
         $data     = StoreEmployeeData::validateAndCreate($request->all());
         $employee = $action->handle($data);
 

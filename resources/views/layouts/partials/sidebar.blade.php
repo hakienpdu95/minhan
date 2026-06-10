@@ -485,6 +485,34 @@
             </details>
             @endcan
 
+            @can(\App\Enums\PermissionEnum::SUBSCRIPTION_VIEW->value)
+            <a href="{{ route('subscription.portal.billing') }}"
+               class="nav-link {{ request()->routeIs('subscription.portal.*') ? 'active' : '' }}">
+                <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+                <span class="nav-label">Billing</span>
+            </a>
+            @endcan
+
+            @can(\App\Enums\PermissionEnum::SUBSCRIPTION_ADMIN->value)
+            <details {{ request()->routeIs('subscription.admin.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('subscription.admin.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                    <span class="nav-label">Subscription</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('subscription.admin.plans.index') }}"
+                       class="sub-link {{ request()->routeIs('subscription.admin.plans.*') ? 'active' : '' }}">
+                        Quản lý Plans
+                    </a>
+                    <a href="{{ route('subscription.admin.subscriptions.index') }}"
+                       class="sub-link {{ request()->routeIs('subscription.admin.subscriptions.*') ? 'active' : '' }}">
+                        Subscriptions
+                    </a>
+                </div>
+            </details>
+            @endcan
+
             @can(\App\Enums\PermissionEnum::WORKFLOW_MONITOR->value)
             <details {{ request()->routeIs('workflows.*') ? 'open' : '' }}>
                 <summary class="nav-summary {{ request()->routeIs('workflows.*') ? 'active' : '' }}">
