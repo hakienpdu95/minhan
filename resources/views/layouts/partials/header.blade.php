@@ -23,25 +23,74 @@
             <svg id="iconMoon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" style="display:none"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
         </button>
 
-        <div class="dd-wrap">
-            <button class="icon-btn" id="notifBtn" title="Thông báo">
-                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-                <span class="badge-dot"></span>
+        {{-- Bell Dropdown — Alpine component --}}
+        <div x-data="notifBell()" @click.outside="open = false" class="dd-wrap">
+
+            <button class="icon-btn" @click="toggle()" title="Thông báo">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+                <span x-show="unread > 0"
+                      x-text="unread > 99 ? '99+' : unread"
+                      class="notif-badge"></span>
             </button>
-            <div class="dd-panel notif-panel" id="notifPanel">
-                <div class="notif-hdr"><span>Thông báo</span><a href="#">Đọc tất cả</a></div>
-                <a class="notif-item" href="#">
-                    <div class="notif-icon" style="background:#3b82f6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-                    <div class="notif-txt"><p>Đơn hàng mới #1024</p><small>2 phút trước</small></div>
-                </a>
-                <a class="notif-item" href="#">
-                    <div class="notif-icon" style="background:#f59e0b"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M12 3a9 9 0 110 18A9 9 0 0112 3z"/></svg></div>
-                    <div class="notif-txt"><p>Sản phẩm sắp hết hàng</p><small>1 giờ trước</small></div>
-                </a>
-                <a class="notif-item" href="#">
-                    <div class="notif-icon" style="background:#22c55e"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
-                    <div class="notif-txt"><p>Thanh toán thành công</p><small>3 giờ trước</small></div>
-                </a>
+
+            <div x-show="open" x-transition.opacity.duration.150ms
+                 class="dd-panel notif-panel" style="display:none">
+
+                {{-- Header --}}
+                <div class="notif-hdr">
+                    <span>Thông báo
+                        <span x-show="unread > 0"
+                              x-text="'(' + unread + ' chưa đọc)'"
+                              class="notif-hdr__unread"></span>
+                    </span>
+                    <div class="notif-hdr__actions">
+                        <button x-show="unread > 0" @click.prevent="readAll()"
+                                class="notif-act-btn">Đọc tất cả</button>
+                        <a href="{{ url('/dashboard/notifications') }}" class="notif-act-link">Xem tất cả</a>
+                    </div>
+                </div>
+
+                {{-- Loading --}}
+                <div x-show="loading" class="notif-loading">
+                    <svg class="notif-spinner" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" d="M12 2a10 10 0 0 1 10 10"/>
+                    </svg>
+                </div>
+
+                {{-- Empty --}}
+                <div x-show="!loading && items.length === 0" class="notif-empty">
+                    Không có thông báo mới
+                </div>
+
+                {{-- List --}}
+                <div x-show="!loading && items.length > 0" class="notif-list">
+                    <template x-for="n in items" :key="n.uuid">
+                        <a :href="n.url || '#'"
+                           @click="markRead(n)"
+                           class="notif-item"
+                           :class="{ 'notif-item--unread': !n.read }">
+                            <div class="notif-icon" :class="'notif-icon--' + n.icon">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                                     x-html="iconPath(n.icon)"></svg>
+                            </div>
+                            <div class="notif-txt">
+                                <p :class="{ 'notif-txt--read': n.read }" x-text="n.title"></p>
+                                <small x-text="n.time_ago"></small>
+                            </div>
+                            <div x-show="!n.read" class="notif-dot"></div>
+                        </a>
+                    </template>
+                </div>
+
+                {{-- Footer --}}
+                <div x-show="!loading" class="notif-footer">
+                    <a href="{{ url('/dashboard/notifications') }}" class="notif-footer-link">
+                        Xem tất cả thông báo →
+                    </a>
+                </div>
+
             </div>
         </div>
 

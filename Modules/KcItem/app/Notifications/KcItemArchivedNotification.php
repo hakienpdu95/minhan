@@ -2,6 +2,7 @@
 
 namespace Modules\KcItem\Notifications;
 
+use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -22,11 +23,14 @@ class KcItemArchivedNotification extends Notification implements ShouldQueue
 
     public function toDatabase(object $notifiable): array
     {
-        return [
-            'item_id' => $this->kcItem->id,
-            'title'   => $this->kcItem->title,
-            'url'     => route('backend.kc-items.show', $this->kcItem->id),
-            'message' => 'Tài liệu "' . $this->kcItem->title . '" đã hết hiệu lực và được lưu trữ tự động.',
-        ];
+        return NotificationData::make(
+            type:     'kc_archived',
+            title:    "Tài liệu \"{$this->kcItem->title}\" đã được lưu trữ",
+            body:     "Tài liệu \"{$this->kcItem->title}\" đã hết hiệu lực và được lưu trữ tự động.",
+            url:      route('backend.kc-items.show', $this->kcItem->id),
+            icon:     'kc',
+            severity: 'info',
+            meta:     ['item_id' => $this->kcItem->id],
+        );
     }
 }

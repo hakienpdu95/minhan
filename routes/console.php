@@ -53,3 +53,21 @@ Schedule::command('media:cleanup-orphans')
     ->name('media:cleanup-orphans')
     ->everyFourHours()
     ->onOneServer();
+
+// Task: nhắc assignee về task đến hạn ngày mai (D-1)
+Schedule::command('notifications:task-due-soon')
+    ->name('notifications:task-due-soon')
+    ->dailyAt('08:00')
+    ->onOneServer();
+
+// Task: thông báo task quá hạn (vừa qua deadline hôm qua)
+Schedule::command('notifications:task-overdue')
+    ->name('notifications:task-overdue')
+    ->dailyAt('08:30')
+    ->onOneServer();
+
+// KPI: thông báo kpi_missed cho goals kết thúc ngày hôm qua mà chưa đạt
+Schedule::command('notifications:kpi-missed')
+    ->name('notifications:kpi-missed')
+    ->dailyAt('09:00')
+    ->onOneServer();

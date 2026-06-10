@@ -300,5 +300,21 @@
         "invoice_type///string///32///NOT_NULL///'renewal'///__///__",
         "new_plan_id///unsignedBigInteger///__///_NULL///NULL///__///__",
         "__index///index///__///__///__///new_plan_id|idx_inv_new_plan///__"
+    ],
+    [
+        "leads///add///__///",
+        "customer_id///unsignedBigInteger///__///_NULL///NULL///__///__",
+        "__index///index///__///__///__///organization_id,customer_id|idx_lead_customer///__"
+    ],
+    [
+        "customers///add///__///",
+        "secondary_email///string///255///_NULL///NULL///__///__",
+        "secondary_phone///string///30///_NULL///NULL///__///__",
+        "province_name///string///100///_NULL///NULL///__///__",
+        "ward_code///string///20///_NULL///NULL///__///__",
+        "ward_name///string///100///_NULL///NULL///__///__",
+        "address_line///string///500///_NULL///NULL///__///__",
+        "notes///string///2000///_NULL///NULL///__///__",
+        "customer_code///string///50///_NULL///NULL///__///__"
     ]
 ]

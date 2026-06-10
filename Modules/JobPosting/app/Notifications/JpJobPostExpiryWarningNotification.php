@@ -2,6 +2,7 @@
 
 namespace Modules\JobPosting\Notifications;
 
+use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -24,17 +25,20 @@ class JpJobPostExpiryWarningNotification extends Notification implements ShouldQ
 
     public function toDatabase(object $notifiable): array
     {
-        return [
-            'type'           => 'jp_job_post_expiry_warning',
-            'job_post_id'    => $this->post->id,
-            'job_post_uuid'  => $this->post->uuid,
-            'job_post_code'  => $this->post->code,
-            'job_post_title' => $this->post->title,
-            'expire_at'      => $this->post->expire_at?->toDateString(),
-            'days_left'      => $this->daysLeft,
-            'message'        => "Tin tuyển dụng [{$this->post->code}] \"{$this->post->title}\" sẽ hết hạn trong {$this->daysLeft} ngày ({$this->post->expire_at?->format('d/m/Y')}).",
-            'url'            => route('backend.job-posts.show', $this->post->id),
-        ];
+        return NotificationData::make(
+            type:     'jp_expiry_warning',
+            title:    "Tin tuyển dụng [{$this->post->code}] sắp hết hạn ({$this->daysLeft} ngày)",
+            body:     "Tin tuyển dụng \"{$this->post->title}\" sẽ hết hạn vào {$this->post->expire_at?->format('d/m/Y')}. Vui lòng gia hạn hoặc đóng tin.",
+            url:      route('backend.job-posts.show', $this->post->id),
+            icon:     'warning',
+            severity: 'warning',
+            meta:     [
+                'job_post_id'   => $this->post->id,
+                'job_post_uuid' => $this->post->uuid,
+                'expire_at'     => $this->post->expire_at?->toDateString(),
+                'days_left'     => $this->daysLeft,
+            ],
+        );
     }
 
     public function toMail(object $notifiable): MailMessage

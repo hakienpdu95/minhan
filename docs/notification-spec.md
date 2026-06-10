@@ -49,6 +49,11 @@
 | **Browser Push** | Chưa có |
 | **Mark as read / dismiss** | Chưa có UI |
 | **Unread count badge** thật | Hiện là static `.badge-dot` |
+| `routes/api.php` chưa tồn tại | File không có — 5 endpoints cần tạo mới hoàn toàn |
+| `admin-shell.js` là vanilla JS thuần | `notifBell()` Alpine component phải đăng ký trong `app.js` (`alpine:init` block), không phải trong `admin-shell.js` |
+| `WorkflowNotification` dùng `toArray()` thay `toDatabase()` | Laravel fallback vẫn ghi DB nhưng payload thiếu `url`, `icon`, `severity` |
+| `RenewalReminderNotification` chỉ có `mail` channel | Subscription sắp hết hạn không rung chuông trong app |
+| `kc_submitted` notification chưa có | Approver KC không biết có tài liệu chờ duyệt (chỉ có approved/rejected) |
 | Thông báo cho 20+ module còn lại | Lead, Customer, Task, Project, Employee, Leave... |
 
 ### 1.3 28 Modules hiện có
@@ -249,20 +254,21 @@ Naming: `{module}_{event}` — lowercase snake_case.
 
 ```
 Module SOP:          sop_submitted, sop_approved, sop_rejected, sop_expiry_warning, sop_next_approver
-Module KcItem:       kc_approved, kc_rejected, kc_expiring_soon, kc_archived
+Module KcItem:       kc_submitted, kc_approved, kc_rejected, kc_expiring_soon, kc_archived
 Module JobPosting:   jp_expiry_warning
 Module WorkflowAuto: workflow_notification
 Module Lead:         lead_assigned, lead_status_changed, lead_overdue
 Module Customer:     customer_assigned, customer_status_changed
 Module Task:         task_assigned, task_due_soon, task_overdue, task_completed, task_commented
 Module Project:      project_member_added, project_milestone_due, project_status_changed
-Module Employee:     employee_leave_approved, employee_leave_rejected, employee_review_due
+Module Employee:     employee_onboarded, employee_leave_approved, employee_leave_rejected, employee_review_due
 Module Leave:        leave_submitted, leave_approved, leave_rejected
 Module Assessment:   assessment_assigned, assessment_submitted
-Module KpiGoal:      kpi_target_approaching, kpi_completed
+Module KpiGoal:      kpi_target_approaching, kpi_completed, kpi_missed
 Module Survey:       survey_assigned, survey_deadline_approaching
 Module Recruitment:  recruitment_application_received, recruitment_interview_scheduled
 Module PerformReview: review_period_started, review_submitted, review_completed
+Module Subscription: subscription_expiring_db, subscription_expired_db
 ```
 
 ---
@@ -395,7 +401,17 @@ class NotificationController extends Controller
 }
 ```
 
-> **Lưu ý tenant scope:** Nếu user chỉ thuộc 1 org, `$user->notifications()` đã đủ scope. Nếu cần filter thêm theo `organization_id`, thêm `->when(TenantContext::getOrganizationId(), fn($q, $orgId) => $q->where('organization_id', $orgId))`.
+> **Lưu ý tenant scope:** `$user->notifications()` scope theo `notifiable_id` đã đủ cho user 1 org. Nếu user multi-org (tương lai), thêm `.where('organization_id', TenantContext::getOrganizationId())`. Notification class cần set `organization_id` trong payload `meta` — khi migration thêm cột này vào bảng, override trong từng class hoặc dùng observer.
+
+> **Rate limiting:** Thêm trong `AppServiceProvider::boot()` trước khi dùng route throttle:
+>
+> ```php
+> RateLimiter::for('notifications', fn (Request $request) =>
+>     Limit::perMinute(60)->by($request->user()?->id ?: $request->ip())
+> );
+> ```
+>
+> Và thêm `->middleware(['throttle:notifications'])` vào route group trong §5.1.
 
 ---
 
@@ -591,16 +607,26 @@ document.addEventListener('alpine:init', () => {
         },
 
         _startPolling() {
-            // Polling unread count mỗi 30 giây
-            this._pollingTimer = setInterval(() => this.fetchCount(), 30_000);
+            // Polling unread count mỗi 30 giây; skip khi tab ẩn để tránh lãng phí request
+            this._pollingTimer = setInterval(() => {
+                if (!document.hidden) this.fetchCount();
+            }, 30_000);
+            // Fetch ngay khi user quay lại tab — không chờ hết interval
+            this._visibilityHandler = () => {
+                if (!document.hidden) this.fetchCount();
+            };
+            document.addEventListener('visibilitychange', this._visibilityHandler);
         },
 
         destroy() {
             clearInterval(this._pollingTimer);
+            document.removeEventListener('visibilitychange', this._visibilityHandler);
         },
     }));
 });
 ```
+
+> **Lưu ý tích hợp Alpine.js:** Alpine đã được setup trong `resources/js/app.js` (`window.Alpine`, `alpine:init` block). Đăng ký `notifBell()` **trong `alpine:init` của `app.js`**, không phải trong `admin-shell.js` (file đó là vanilla JS thuần). Đồng thời xóa handler `toggleDD('notifPanel')` tại `admin-shell.js:104-105` vì Alpine sẽ quản lý dropdown từ đây.
 
 ### 6.3 CSS bổ sung cho `app.css`
 
@@ -863,11 +889,38 @@ class TaskAssignedNotification extends Notification implements ShouldQueue
 |---|---|---|
 | `kpi_target_approaching` | Owner | Đạt 80% target |
 | `kpi_completed` | Owner + Manager | Đạt 100% |
+| `kpi_missed` | Owner + Manager | Kỳ KPI kết thúc mà chưa đạt target (scheduled end-of-period) |
+
+#### Module KcItem — trigger `kc_submitted` (bổ sung)
+
+| Event | Người nhận | Trigger |
+|---|---|---|
+| `kc_submitted` | Users có quyền `kc.approve` trong org | Nhân viên nộp tài liệu để duyệt |
+
+> Tương tự luồng SOP: dispatch trong service/action submit KC, query user có permission `kc.approve` trong cùng `organization_id`. Hiện tại KC chỉ có approved/rejected — approver không nhận chuông khi có tài liệu chờ.
+
+#### Module Subscription — thêm `database` channel (bổ sung)
+
+| Event | Người nhận | Trigger |
+|---|---|---|
+| `subscription_expiring_db` | System Admin của org | 30/7/3 ngày trước hết hạn (scheduled) |
+| `subscription_expired_db` | System Admin của org | Ngay khi hết hạn |
+
+> `RenewalReminderNotification` hiện chỉ gửi `mail` — admin không thấy chuông trong app. Thêm `'database'` vào `via()` và implement `toDatabase()` với `NotificationData::make()`.
+
+#### Module Employee — trigger `employee_onboarded` (bổ sung)
+
+| Event | Người nhận | Trigger |
+|---|---|---|
+| `employee_onboarded` | System Admin | HR tạo bản ghi nhân viên mới |
+
+> Giúp admin biết cấp tài khoản / thiết bị kịp thời sau khi HR hoàn tất onboarding.
 
 ### Ưu tiên Phase 2
 
 - Survey: `survey_assigned`, `survey_deadline_approaching`
 - Recruitment: `recruitment_application_received`, `recruitment_interview_scheduled`
+- Subscription db channel: `subscription_expiring_db`, `subscription_expired_db`
 
 ---
 
@@ -898,7 +951,9 @@ return NotificationData::make(
 );
 ```
 
-### 10.2 WorkflowNotification (không có `url`)
+### 10.2 WorkflowNotification (`toArray()` → `toDatabase()` + thiếu `url`)
+
+> **Lưu ý:** Class hiện dùng `toArray()` — Laravel fallback vẫn ghi vào DB nhưng là anti-pattern và payload thiếu `url`, `icon`, `severity`. Phải đổi tên method sang `toDatabase()`.
 
 ```php
 // Sau
@@ -934,43 +989,61 @@ return NotificationData::make(
 
 ### Phase 1 — In-app (ưu tiên cao)
 
+> **Lý do thứ tự:** Refactor class hiện có (Bước 2) phải xong trước khi API lên (Bước 3) để `formatNotification()` parse đúng ngay từ đầu. Bell Dropdown (Bước 4) cần API sẵn để test thật.
+
 **Bước 1 — Database & shared helper (1 ngày)**
 - [ ] Migration thêm `organization_id` vào `notifications`
 - [ ] Tạo `app/Shared/Notifications/NotificationData.php`
 
-**Bước 2 — API (1 ngày)**
-- [ ] `NotificationController` với 5 endpoints
-- [ ] Register routes trong `routes/api.php`
+**Bước 2 — Refactor 11 class hiện có (1 ngày)**
+- [ ] Cập nhật toàn bộ class dùng `NotificationData::make()` (xem §10)
+- [ ] `WorkflowNotification`: đổi `toArray()` → `toDatabase()`
+- [ ] `RenewalReminderNotification`: thêm `'database'` vào `via()` + implement `toDatabase()`
 
-**Bước 3 — Bell Dropdown (1 ngày)**
-- [ ] Update `header.blade.php` — Alpine component + template
-- [ ] Register `notifBell()` Alpine data trong `admin-shell.js`
-- [ ] CSS bổ sung
-- [ ] Xóa `badge-dot` static, thay bằng dynamic badge
+**Bước 3 — API (1 ngày)**
+- [ ] Tạo `routes/api.php` (file chưa tồn tại)
+- [ ] `NotificationController` với 5 endpoints + rate limiting `throttle:notifications`
+- [ ] Thêm `RateLimiter::for('notifications', ...)` trong `AppServiceProvider::boot()`
 
-**Bước 4 — Notification Center Page (1 ngày)**
+**Bước 4 — Bell Dropdown (1 ngày)**
+- [ ] Update `header.blade.php` — Alpine `x-data="notifBell()"` + template
+- [ ] Đăng ký `notifBell()` trong `alpine:init` block của `app.js` (không phải `admin-shell.js`)
+- [ ] Xóa `toggleDD('notifPanel')` handler tại `admin-shell.js:104-105`
+- [ ] CSS bổ sung trong `app.css`
+- [ ] Xóa `badge-dot` static, thay bằng dynamic Alpine badge
+
+**Bước 5 — Notification Center Page (1 ngày)**
 - [ ] `NotificationCenterController`
 - [ ] View `resources/views/notifications/index.blade.php`
 - [ ] Route đăng ký
 - [ ] Sidebar menu link (trong `config/permissions.php`)
 
-**Bước 5 — Refactor existing notifications (1 ngày)**
-- [ ] Cập nhật 11 class hiện có dùng `NotificationData::make()`
-
 **Bước 6 — New notification classes Phase 1 (2–3 ngày)**
-- [ ] Task: `TaskAssignedNotification`, `TaskDueSoonNotification`, `TaskOverdueNotification`
-- [ ] Lead: `LeadAssignedNotification`
-- [ ] Leave: `LeaveSubmittedNotification`, `LeaveApprovedNotification`, `LeaveRejectedNotification`
-- [ ] PerformanceReview: 3 notifications
-- [ ] Scheduled commands cho due-soon/overdue
+- [x] Task: `TaskAssignedNotification`, `TaskDueSoonNotification`, `TaskOverdueNotification`
+- [x] Lead: `LeadAssignedNotification`
+- [x] Leave: `LeaveSubmittedNotification`, `LeaveApprovedNotification`, `LeaveRejectedNotification`
+- [x] KcItem: `KcItemSubmittedNotification` — gửi cho approvers khi tài liệu submitted
+- [x] PerformanceReview: `ReviewPeriodStartedNotification`, `ReviewSubmittedNotification`, `ReviewCompletedNotification`
+- [x] Employee: `EmployeeOnboardedNotification`
+- [x] KpiGoal: `KpiMissedNotification` + `notifications:kpi-missed` scheduled command
+- [x] Scheduled commands: `notifications:task-due-soon` (08:00), `notifications:task-overdue` (08:30), `notifications:kpi-missed` (09:00)
 
 ### Phase 2 — Browser Push
 
-- [ ] Install `laravel-notification-channels/webpush`
-- [ ] Migration `push_subscriptions`
-- [ ] Service Worker `/public/sw.js`
-- [ ] User preference UI
-- [ ] Thêm `webpush` channel vào các notification class quan trọng
+- [x] Install `minishlink/web-push` v10 (trực tiếp, không wrapper)
+- [x] Migration `push_subscriptions` (endpoint unique, user_id index)
+- [x] `PushSubscription` model + `User::pushSubscriptions()` relation
+- [x] `WebPushService` — `sendToUser()`, `sendToUsers()`, expired sub cleanup
+- [x] `WebPushChannel` — custom channel đăng ký qua `ChannelManager::extend('webpush')`
+- [x] `config/webpush.php` — VAPID keys, timeout, batch_size
+- [x] `php artisan webpush:vapid` — generate + ghi vào .env
+- [x] Service Worker `/public/sw.js` — push event, notificationclick, skipWaiting
+- [x] `resources/js/modules/push-notifications.js` — subscribe/unsubscribe, Alpine `pushToggle` component
+- [x] VAPID meta tag trong `layouts/backend.blade.php`
+- [x] Push toggle UI trong notification center
+- [x] `toWebPush()` + conditional `webpush` channel trong 5 notification class: `TaskAssigned`, `LeaveSubmitted`, `LeaveApproved`, `LeaveRejected`, `KcItemSubmitted`
+- [x] Rate limiter `push-subscribe` (10 req/min)
+- [x] API: `POST /api/notifications/push-subscribe`, `DELETE /api/notifications/push-unsubscribe`
 
 ### Phase 3 — Real-time (optional)
 
@@ -990,8 +1063,9 @@ return NotificationData::make(
 - [ ] Unit test cho `NotificationData`
 
 ### API
-- [ ] Tất cả endpoints có `auth:sanctum` middleware
-- [ ] Rate limiting trên `/api/notifications`
+- [ ] `routes/api.php` đã tạo với nhóm `auth:sanctum` + tenant middleware
+- [ ] Rate limiting: `RateLimiter::for('notifications', ...)` trong `AppServiceProvider`
+- [ ] Route group dùng `->middleware(['throttle:notifications'])`
 - [ ] Response format nhất quán (có `uuid`, không expose `id`)
 
 ### Notification classes
@@ -1002,7 +1076,11 @@ return NotificationData::make(
 - [ ] `via()` khai báo đúng channels
 
 ### Frontend Bell
-- [ ] Polling 30s hoạt động, không gây memory leak (clearInterval khi destroy)
+- [ ] `notifBell()` đăng ký trong `alpine:init` của `app.js` (không phải `admin-shell.js`)
+- [ ] `toggleDD('notifPanel')` đã xóa khỏi `admin-shell.js`
+- [ ] Polling 30s hoạt động, không gây memory leak (`clearInterval` + `removeEventListener` khi destroy)
+- [ ] Polling pause khi tab ẩn (Page Visibility API — `document.hidden`)
+- [ ] Fetch lại ngay khi tab quay lại (`visibilitychange` event)
 - [ ] `X-CSRF-TOKEN` đúng trên mọi mutating request
 - [ ] Badge ẩn khi `unread = 0`
 - [ ] Dropdown đóng khi click ra ngoài (`@click.outside`)

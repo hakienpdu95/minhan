@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\MediaJoditUploadController;
 use App\Http\Controllers\Api\MediaUploadController;
 use App\Http\Controllers\Backend\Api\DashboardChartController;
 use App\Http\Controllers\Backend\DashboardController;
+use App\Http\Controllers\Backend\NotificationCenterController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('backend.dashboard'));
@@ -58,5 +59,13 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
     Route::get('/categories/create',fn () => abort(503, 'Module đang phát triển'))->name('categories.create');
     Route::get('/settings',         fn () => abort(503, 'Module đang phát triển'))->name('settings.index');
     Route::get('/reports',          fn () => abort(503, 'Module đang phát triển'))->name('reports.index');
+
+    // ── Notification Center ───────────────────────────────────────────────
+    Route::middleware('tenant')->prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/',                        [NotificationCenterController::class, 'index'])       ->name('index');
+        Route::patch('/{uuid}/read',           [NotificationCenterController::class, 'markRead'])    ->name('mark-read');
+        Route::post('/read-all',               [NotificationCenterController::class, 'markAllRead']) ->name('read-all');
+        Route::delete('/{uuid}',               [NotificationCenterController::class, 'destroy'])     ->name('destroy');
+    });
 
 });

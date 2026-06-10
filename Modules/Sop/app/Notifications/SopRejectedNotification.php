@@ -2,6 +2,7 @@
 
 namespace Modules\Sop\Notifications;
 
+use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -29,18 +30,20 @@ class SopRejectedNotification extends Notification implements ShouldQueue
 
     public function toDatabase(object $notifiable): array
     {
-        return [
-            'type'           => 'sop_rejected',
-            'sop_id'         => $this->sop->id,
-            'sop_uuid'       => $this->sop->uuid,
-            'sop_code'       => $this->sop->code,
-            'sop_title'      => $this->sop->title,
-            'version_number' => $this->version->version_number,
-            'version_uuid'   => $this->version->uuid,
-            'comment'        => $this->comment,
-            'message'        => "SOP [{$this->sop->code}] \"{$this->sop->title}\" v{$this->version->version_number} đã bị từ chối.",
-            'url'            => route('backend.sop.show', $this->sop->uuid),
-        ];
+        return NotificationData::make(
+            type:     'sop_rejected',
+            title:    "SOP [{$this->sop->code}] bị từ chối",
+            body:     "SOP \"{$this->sop->title}\" v{$this->version->version_number} đã bị từ chối. Lý do: {$this->comment}",
+            url:      route('backend.sop.show', $this->sop->uuid),
+            icon:     'warning',
+            severity: 'warning',
+            meta:     [
+                'sop_id'         => $this->sop->id,
+                'sop_uuid'       => $this->sop->uuid,
+                'version_number' => $this->version->version_number,
+                'comment'        => $this->comment,
+            ],
+        );
     }
 
     public function toMail(object $notifiable): MailMessage

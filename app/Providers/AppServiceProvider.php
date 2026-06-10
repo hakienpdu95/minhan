@@ -3,9 +3,15 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Notifications\Channels\WebPushChannel;
+use App\Services\WebPushService;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
+use Illuminate\Notifications\ChannelManager;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -34,5 +40,17 @@ class AppServiceProvider extends ServiceProvider
         Gate::before(function (User $user, string $ability): ?bool {
             return $user->hasRole('super-admin') ? true : null;
         });
+
+        RateLimiter::for('notifications', fn (Request $request) =>
+            Limit::perMinute(60)->by($request->user()?->id ?: $request->ip())
+        );
+
+        RateLimiter::for('push-subscribe', fn (Request $request) =>
+            Limit::perMinute(10)->by($request->user()?->id ?: $request->ip())
+        );
+
+        // Register custom 'webpush' notification channel
+        $this->app->make(ChannelManager::class)
+            ->extend('webpush', fn ($app) => new WebPushChannel($app->make(WebPushService::class)));
     }
 }

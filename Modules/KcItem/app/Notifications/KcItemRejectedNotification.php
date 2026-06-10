@@ -2,6 +2,7 @@
 
 namespace Modules\KcItem\Notifications;
 
+use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -23,12 +24,14 @@ class KcItemRejectedNotification extends Notification implements ShouldQueue
 
     public function toDatabase(object $notifiable): array
     {
-        return [
-            'item_id' => $this->kcItem->id,
-            'title'   => $this->kcItem->title,
-            'reason'  => $this->reason,
-            'url'     => route('backend.kc-items.show', $this->kcItem->id),
-            'message' => 'Tài liệu "' . $this->kcItem->title . '" đã bị từ chối. Lý do: ' . $this->reason,
-        ];
+        return NotificationData::make(
+            type:     'kc_rejected',
+            title:    "Tài liệu \"{$this->kcItem->title}\" bị từ chối",
+            body:     "Tài liệu \"{$this->kcItem->title}\" đã bị từ chối. Lý do: {$this->reason}",
+            url:      route('backend.kc-items.show', $this->kcItem->id),
+            icon:     'warning',
+            severity: 'warning',
+            meta:     ['item_id' => $this->kcItem->id, 'reason' => $this->reason],
+        );
     }
 }

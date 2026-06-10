@@ -57,6 +57,9 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
 
+php artisan migration:sync --dry-run
+php artisan migration:sync
+
 npx vite build --config vite.config.backend.js
 
 # Sửa JSON → chạy lệnh này → DB cập nhật đầy đủ
@@ -66,9 +69,26 @@ php artisan db:seed
 
 php artisan module:make Auth
 
+To start Reverb in dev:
+php artisan reverb:start
+Then rebuild assets: npm run build or npm run dev.
+
+Reverb isn't started. Run it:
+
+  php artisan reverb:start
+
+  Keep that terminal open — it's a long-running process (like npm run dev). You'll see:
+
+    INFO  Starting server on 0.0.0.0:8080
+
+  If port 8080 is blocked by a firewall or already taken, start on a different port:
+
+  php artisan reverb:start --port=8081
+  # then update REVERB_PORT=8081 in .env
+  
 # > Đọc file docs/customer.md và làm phase 1 trước, implement theo đúng spec, đọc thêm file docs/module-list-pattern.md để tuân thủ đúng cấu trúc và nguyên tắc chuẩn khi thiết kế và triển khai module theo cấu trúc Advanced Vertical Slice (AVSA) + CQRS-lite + Laravel Modules + Laravel Actions, bổ sung ra mdenu sidebar để dùng, phần views hãy kế thừa và làm chuẩn @extends('layouts.backend')
 
-# > Đọc file docs/SUBSCRIPTION_SPEC.md và làm Phase 4 — Billing & Invoices, implement theo đúng spec đó cho trong module Subscription
+# > Đọc file docs/notification-spec.md và làm Phase 1, implement theo đúng spec đó cho trong module Notification
 
 # > Đọc file docs/form-ui-spec.md và implement theo đúng spec đó, áp dụng spec này vào module Customer, review và tối ưu UI/UX form chuẩn để hành vi người dùng dễ thao tác và sử dụng linh hoạt, thuận tiện
 

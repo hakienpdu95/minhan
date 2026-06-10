@@ -2,6 +2,7 @@
 
 namespace Modules\WorkflowAutomation\Notifications;
 
+use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -21,13 +22,16 @@ class WorkflowNotification extends Notification implements ShouldQueue
         return ['database'];
     }
 
-    public function toArray(object $notifiable): array
+    public function toDatabase(object $notifiable): array
     {
-        return [
-            'title' => $this->title,
-            'body'  => $this->body,
-            'type'  => 'workflow',
-        ];
+        return NotificationData::make(
+            type:     'workflow_notification',
+            title:    $this->title,
+            body:     $this->body,
+            url:      '',
+            icon:     'bell',
+            severity: 'info',
+        );
     }
 
     public function toMail(object $notifiable): MailMessage

@@ -2,6 +2,7 @@
 
 namespace Modules\Sop\Notifications;
 
+use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -27,17 +28,20 @@ class SopExpiryWarningNotification extends Notification implements ShouldQueue
 
     public function toDatabase(object $notifiable): array
     {
-        return [
-            'type'         => 'sop_expiry_warning',
-            'sop_id'       => $this->sop->id,
-            'sop_uuid'     => $this->sop->uuid,
-            'sop_code'     => $this->sop->code,
-            'sop_title'    => $this->sop->title,
-            'expired_date' => $this->sop->expired_date?->toDateString(),
-            'days_left'    => $this->daysLeft,
-            'message'      => "SOP [{$this->sop->code}] \"{$this->sop->title}\" sẽ hết hạn trong {$this->daysLeft} ngày ({$this->sop->expired_date?->format('d/m/Y')}).",
-            'url'          => route('backend.sop.show', $this->sop->uuid),
-        ];
+        return NotificationData::make(
+            type:     'sop_expiry_warning',
+            title:    "SOP [{$this->sop->code}] sắp hết hạn ({$this->daysLeft} ngày)",
+            body:     "SOP \"{$this->sop->title}\" sẽ hết hạn vào {$this->sop->expired_date?->format('d/m/Y')}. Vui lòng gia hạn hoặc thay thế.",
+            url:      route('backend.sop.show', $this->sop->uuid),
+            icon:     'warning',
+            severity: 'warning',
+            meta:     [
+                'sop_id'       => $this->sop->id,
+                'sop_uuid'     => $this->sop->uuid,
+                'expired_date' => $this->sop->expired_date?->toDateString(),
+                'days_left'    => $this->daysLeft,
+            ],
+        );
     }
 
     public function toMail(object $notifiable): MailMessage

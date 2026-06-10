@@ -2,6 +2,7 @@
 
 namespace Modules\Sop\Notifications;
 
+use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -28,17 +29,19 @@ class SopApprovedNotification extends Notification implements ShouldQueue
 
     public function toDatabase(object $notifiable): array
     {
-        return [
-            'type'           => 'sop_approved',
-            'sop_id'         => $this->sop->id,
-            'sop_uuid'       => $this->sop->uuid,
-            'sop_code'       => $this->sop->code,
-            'sop_title'      => $this->sop->title,
-            'version_number' => $this->version->version_number,
-            'version_uuid'   => $this->version->uuid,
-            'message'        => "SOP [{$this->sop->code}] \"{$this->sop->title}\" v{$this->version->version_number} đã được duyệt.",
-            'url'            => route('backend.sop.show', $this->sop->uuid),
-        ];
+        return NotificationData::make(
+            type:     'sop_approved',
+            title:    "SOP [{$this->sop->code}] đã được duyệt",
+            body:     "SOP \"{$this->sop->title}\" v{$this->version->version_number} đã được duyệt thành công và có hiệu lực.",
+            url:      route('backend.sop.show', $this->sop->uuid),
+            icon:     'sop',
+            severity: 'success',
+            meta:     [
+                'sop_id'         => $this->sop->id,
+                'sop_uuid'       => $this->sop->uuid,
+                'version_number' => $this->version->version_number,
+            ],
+        );
     }
 
     public function toMail(object $notifiable): MailMessage

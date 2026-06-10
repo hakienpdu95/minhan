@@ -2,6 +2,7 @@
 
 namespace Modules\KcItem\Notifications;
 
+use App\Shared\Notifications\NotificationData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -22,11 +23,14 @@ class KcItemApprovedNotification extends Notification implements ShouldQueue
 
     public function toDatabase(object $notifiable): array
     {
-        return [
-            'item_id' => $this->kcItem->id,
-            'title'   => $this->kcItem->title,
-            'url'     => route('backend.kc-items.show', $this->kcItem->id),
-            'message' => 'Tài liệu "' . $this->kcItem->title . '" đã được duyệt.',
-        ];
+        return NotificationData::make(
+            type:     'kc_approved',
+            title:    "Tài liệu \"{$this->kcItem->title}\" đã được duyệt",
+            body:     "Tài liệu \"{$this->kcItem->title}\" vừa được duyệt thành công.",
+            url:      route('backend.kc-items.show', $this->kcItem->id),
+            icon:     'kc',
+            severity: 'success',
+            meta:     ['item_id' => $this->kcItem->id],
+        );
     }
 }

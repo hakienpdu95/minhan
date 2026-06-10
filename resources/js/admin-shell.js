@@ -101,9 +101,7 @@ function initDropdowns() {
         if (!wasOpen) panel?.classList.add('open');
     }
 
-    document.getElementById('notifBtn')
-        ?.addEventListener('click', e => { e.stopPropagation(); toggleDD('notifPanel'); });
-
+    // notifPanel is managed by Alpine notifBell() component — no handler here
     document.getElementById('userBtn')
         ?.addEventListener('click',  e => { e.stopPropagation(); toggleDD('userPanel'); });
 
