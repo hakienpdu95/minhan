@@ -84,6 +84,22 @@
                 </div>
             </details>
 
+            @if(auth()->user()?->hasAnyPermission(['customers.view_all','customers.view_assigned']))
+            <details {{ request()->routeIs('customer.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('customer.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    <span class="nav-label">Khách hàng</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('customer.index') }}" class="sub-link {{ request()->routeIs('customer.index') ? 'active' : '' }}">Danh sách khách hàng</a>
+                    @can('customers.create')
+                    <a href="{{ route('customer.create') }}" class="sub-link {{ request()->routeIs('customer.create') ? 'active' : '' }}">Thêm khách hàng</a>
+                    @endcan
+                </div>
+            </details>
+            @endif
+
         </div>
         @endif
 

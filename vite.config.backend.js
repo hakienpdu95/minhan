@@ -227,6 +227,8 @@ const MODULE_ENTRIES = [
   // Subscription
   'Modules/Subscription/resources/assets/sass/subscription.scss',
   'Modules/Subscription/resources/assets/js/subscription.js',
+  // Customer
+  'Modules/Customer/resources/assets/js/customer.js',
 ];
 
 // ─────────────────────────────────────────────────────────────────────

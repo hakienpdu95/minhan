@@ -24,6 +24,16 @@ enum PermissionEnum: string
     case LEADS_MANAGE_SOURCES  = 'leads.manage_sources';   // System Admin — thêm/sửa/xóa sources
     case LEADS_MANAGE_TAGS     = 'leads.manage_tags';      // Ops, System Admin — quản lý tags
 
+    // ══ CRM CUSTOMERS ═════════════════════════════════════════════
+    // CEO=Full | Sales=Assigned | Ops=View+Edit | Marketing=View | Admin=Config
+    case CUSTOMERS_VIEW_ALL      = 'customers.view_all';      // CEO, Ops, Marketing, AI_OP
+    case CUSTOMERS_VIEW_ASSIGNED = 'customers.view_assigned'; // Sales
+    case CUSTOMERS_CREATE        = 'customers.create';        // CEO, Sales, Ops
+    case CUSTOMERS_EDIT          = 'customers.edit';          // CEO, Sales(own), Ops
+    case CUSTOMERS_DELETE        = 'customers.delete';        // CEO only
+    case CUSTOMERS_EXPORT        = 'customers.export';        // CEO, Ops
+    case CUSTOMERS_CONFIG        = 'customers.config';        // System Admin — custom fields
+
     // ══ SALES AI ═══════════════════════════════════════════════════
     // CEO=Full | Sales=Use | Marketing=Limited | AI_OP=Config prompt | Admin=Config
     case SALES_AI_VIEW          = 'sales_ai.view';          // CEO(full), Marketing(limited)

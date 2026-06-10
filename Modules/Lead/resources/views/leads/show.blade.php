@@ -631,6 +631,35 @@
                 </div>
             </div>
 
+            {{-- Linked Customer --}}
+            @if($lead->customer)
+            <div class="card bg-base-100 shadow-sm border border-success/30 bg-success/5">
+                <div class="card-body py-3 px-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-semibold text-sm text-success">Khách hàng đã chuyển đổi</h3>
+                        <span class="badge badge-xs badge-success">Converted</span>
+                    </div>
+                    <a href="{{ route('customer.show', $lead->customer) }}"
+                       class="flex items-center gap-2.5 group">
+                        <div class="w-8 h-8 rounded-full bg-success/15 text-success font-bold text-xs flex items-center justify-center shrink-0">
+                            {{ mb_strtoupper(mb_substr($lead->customer->display_name, 0, 1)) }}
+                        </div>
+                        <div class="min-w-0">
+                            <p class="font-medium text-sm group-hover:text-primary transition-colors truncate">
+                                {{ $lead->customer->display_name }}
+                            </p>
+                            <p class="text-xs text-base-content/50">
+                                {{ $lead->customer->lifecycle_stage->label() }}
+                            </p>
+                        </div>
+                        <svg class="w-3.5 h-3.5 text-base-content/30 group-hover:text-primary ml-auto shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+            @endif
+
             {{-- Tags --}}
             <div class="card bg-base-100 shadow-sm border border-base-200">
                 <div class="card-body py-3 px-4">

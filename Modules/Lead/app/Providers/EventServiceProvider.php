@@ -10,6 +10,7 @@ use Modules\Lead\Events\LeadUpdated;
 use Modules\Lead\Events\TagCreated;
 use Modules\Lead\Events\TagDeleted;
 use Modules\Lead\Events\TagUpdated;
+use Modules\Lead\Listeners\ConvertLeadOnWon;
 use Modules\Lead\Listeners\FlushTagsCache;
 use Modules\Lead\Listeners\LogLeadAssigned;
 use Modules\Lead\Listeners\LogLeadStageChanged;
@@ -29,6 +30,7 @@ class EventServiceProvider extends ServiceProvider
         ],
         LeadStageChanged::class => [
             LogLeadStageChanged::class,
+            ConvertLeadOnWon::class,
         ],
         LeadAssigned::class => [
             LogLeadAssigned::class,

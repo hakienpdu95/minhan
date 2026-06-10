@@ -19,6 +19,7 @@ class GetLeadHandler implements QueryHandlerInterface
             'assignee:id,name',
             'contact',
             'tags',
+            'customer:id,display_name,lifecycle_stage,customer_type',
             'notes'        => fn ($q) => $q->orderByDesc('is_pinned')->orderByDesc('created_at'),
             'activities'   => fn ($q) => $q->orderByDesc('created_at')->limit(50),
             'stageHistory',

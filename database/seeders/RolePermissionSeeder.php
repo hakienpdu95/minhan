@@ -66,6 +66,12 @@ class RolePermissionSeeder extends Seeder
                 P::LEADS_ASSIGN->value,
                 P::LEADS_EXPORT->value,
 
+                P::CUSTOMERS_VIEW_ALL->value,
+                P::CUSTOMERS_CREATE->value,
+                P::CUSTOMERS_EDIT->value,
+                P::CUSTOMERS_DELETE->value,
+                P::CUSTOMERS_EXPORT->value,
+
                 P::SALES_AI_VIEW->value,
 
                 P::TASKS_VIEW_ALL->value,
@@ -115,6 +121,10 @@ class RolePermissionSeeder extends Seeder
                 P::LEADS_CREATE->value,
                 P::LEADS_EDIT->value,
 
+                P::CUSTOMERS_VIEW_ASSIGNED->value,
+                P::CUSTOMERS_CREATE->value,
+                P::CUSTOMERS_EDIT->value,
+
                 P::SALES_AI_USE->value,
 
                 P::TASKS_VIEW_ASSIGNED->value,
@@ -137,6 +147,11 @@ class RolePermissionSeeder extends Seeder
                 P::LEADS_VIEW_ALL->value,
                 P::LEADS_EXPORT->value,
                 P::LEADS_MANAGE_TAGS->value,
+
+                P::CUSTOMERS_VIEW_ALL->value,
+                P::CUSTOMERS_CREATE->value,
+                P::CUSTOMERS_EDIT->value,
+                P::CUSTOMERS_EXPORT->value,
 
                 P::TASKS_VIEW_ALL->value,
                 P::TASKS_CREATE->value,
@@ -165,6 +180,8 @@ class RolePermissionSeeder extends Seeder
             // ─────────────────────────────────────────────────────────
             RoleEnum::MARKETING->value => [
                 P::LEADS_VIEW_SOURCE->value,
+
+                P::CUSTOMERS_VIEW_ALL->value,
 
                 P::SALES_AI_VIEW->value,
 
@@ -223,6 +240,8 @@ class RolePermissionSeeder extends Seeder
 
                 P::LEADS_VIEW_ALL->value,
 
+                P::CUSTOMERS_VIEW_ALL->value,
+
                 P::TASKS_VIEW_LIMITED->value,
 
                 P::SOP_VIEW->value,
@@ -256,6 +275,9 @@ class RolePermissionSeeder extends Seeder
                 P::LEADS_MANAGE_PIPELINE->value,
                 P::LEADS_MANAGE_SOURCES->value,
                 P::LEADS_MANAGE_TAGS->value,
+
+                P::CUSTOMERS_CONFIG->value,
+                P::CUSTOMERS_VIEW_ALL->value,
 
                 P::SALES_AI_CONFIG->value,
 

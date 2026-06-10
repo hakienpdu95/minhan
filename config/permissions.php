@@ -19,6 +19,12 @@ return [
         P::LEADS_DELETE->value,
         P::LEADS_ASSIGN->value,
         P::LEADS_EXPORT->value,
+        // CRM Customers: Full
+        P::CUSTOMERS_VIEW_ALL->value,
+        P::CUSTOMERS_CREATE->value,
+        P::CUSTOMERS_EDIT->value,
+        P::CUSTOMERS_DELETE->value,
+        P::CUSTOMERS_EXPORT->value,
         // Sales AI: Full (view + use)
         P::SALES_AI_VIEW->value,
         P::SALES_AI_USE->value,
@@ -61,6 +67,10 @@ return [
         P::LEADS_VIEW_ASSIGNED->value,
         P::LEADS_CREATE->value,
         P::LEADS_EDIT->value,       // Policy: chỉ edit lead assigned_to === user->id
+        // CRM Customers: Assigned
+        P::CUSTOMERS_VIEW_ASSIGNED->value,
+        P::CUSTOMERS_CREATE->value,
+        P::CUSTOMERS_EDIT->value,
         // Sales AI: Use (dùng output, không config)
         P::SALES_AI_USE->value,
         // Tasks: Assigned
@@ -85,6 +95,11 @@ return [
         P::LEADS_VIEW_ALL->value,
         P::LEADS_EXPORT->value,
         P::LEADS_MANAGE_TAGS->value,
+        // CRM Customers: View + Create + Edit + Export
+        P::CUSTOMERS_VIEW_ALL->value,
+        P::CUSTOMERS_CREATE->value,
+        P::CUSTOMERS_EDIT->value,
+        P::CUSTOMERS_EXPORT->value,
         // Tasks: Full team (view all + full CRUD + assign)
         P::TASKS_VIEW_ALL->value,
         P::TASKS_CREATE->value,
@@ -113,6 +128,8 @@ return [
         // CRM Leads: SOURCE VIEW — KHÔNG phải Limited
         // Chỉ xem lead có lead_source, ẩn phone/email
         P::LEADS_VIEW_SOURCE->value,
+        // CRM Customers: View only
+        P::CUSTOMERS_VIEW_ALL->value,
         // Sales AI: Limited (view, không use/config)
         P::SALES_AI_VIEW->value,
         // Tasks: Limited (visibility=public only)
@@ -161,6 +178,8 @@ return [
         P::CEO_DASH_VIEW->value,
         // CRM Leads: Limited (view, không edit)
         P::LEADS_VIEW_ALL->value,
+        // CRM Customers: View only
+        P::CUSTOMERS_VIEW_ALL->value,
         // Sales AI: Config prompt
         P::SALES_AI_CONFIG_PROMPT->value,
         // Tasks: Limited
@@ -196,6 +215,9 @@ return [
         P::LEADS_MANAGE_PIPELINE->value,   // Quản lý pipeline stages
         P::LEADS_MANAGE_SOURCES->value,    // Quản lý lead sources
         P::LEADS_MANAGE_TAGS->value,       // Quản lý tags
+        // CRM Customers: Config (custom fields) + View
+        P::CUSTOMERS_CONFIG->value,
+        P::CUSTOMERS_VIEW_ALL->value,
         P::SALES_AI_CONFIG->value,
         P::TASKS_CONFIG->value,
         P::SOP_CONFIG->value,
