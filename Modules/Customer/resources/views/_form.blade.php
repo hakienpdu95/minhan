@@ -1,14 +1,28 @@
 @extends('layouts.backend')
 @section('title', isset($customer) ? 'Sửa khách hàng' : 'Thêm khách hàng mới')
 
+@push('styles')
+@vite(['Modules/Customer/resources/assets/sass/customer.scss'], 'build/backend')
+@endpush
+
+@push('scripts')
+@vite([
+    'resources/js/modules/toastify.js',
+    'resources/js/modules/flatpickr.js',
+    'resources/js/modules/tom-select.js',
+    'Modules/Customer/resources/assets/js/customer.js',
+], 'build/backend')
+@endpush
+
 @section('content')
 <div x-data="{
     type: {{ old('customer_type', $customer->customer_type->value ?? 1) }},
     tab: 'basic',
+    submitting: false,
     tabFields: {
         basic:    ['customer_type', 'first_name', 'last_name', 'company_name'],
         contact:  ['primary_email', 'primary_phone'],
-        classify: ['tag_ids', 'lifecycle_stage'],
+        classify: ['tag_ids'],
     },
     errs: {{ Js::from($errors->keys()) }},
     errCount(t) { return this.tabFields[t].filter(f => this.errs.includes(f)).length; },
@@ -53,50 +67,61 @@
 
 <form method="POST"
       action="{{ isset($customer) ? route('customer.update', $customer) : route('customer.store') }}"
-      novalidate>
+      data-customer-form
+      novalidate
+      @submit="submitting = true">
     @csrf
     @if(isset($customer)) @method('PUT') @endif
 
     <div class="grid grid-cols-1 xl:grid-cols-[1fr_268px] gap-6 items-start">
 
-        {{-- ── Main card ─────────────────────────────────────────────── --}}
+        {{-- ── Card chính: tab nav + panels ──────────────────────────────── --}}
         <div class="card bg-base-100 shadow-sm border border-base-200">
 
-            {{-- Tab nav --}}
+            {{-- Tab navigation --}}
             <div class="border-b border-base-200 px-6">
-                <nav class="flex -mb-px" role="tablist">
+                <nav class="flex -mb-px" role="tablist" aria-label="Form sections">
 
-                    @php $navTabs = [
-                        ['id'=>'basic',    'label'=>'Thông tin cơ bản', 'icon'=>'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'],
-                        ['id'=>'contact',  'label'=>'Liên hệ & Địa chỉ', 'icon'=>'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'],
-                        ['id'=>'classify', 'label'=>'Phân loại', 'icon'=>'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z'],
-                    ]; @endphp
-
-                    @foreach($navTabs as $nt)
-                    <button type="button" role="tab"
-                            :aria-selected="tab === '{{ $nt['id'] }}'"
-                            @click="tab = '{{ $nt['id'] }}'"
+                    <button type="button" role="tab" :aria-selected="tab === 'basic'"
+                            @click="tab = 'basic'"
                             class="flex items-center gap-1.5 px-1 py-4 mr-6 text-sm font-medium border-b-2 transition-colors"
-                            :class="tab === '{{ $nt['id'] }}'
+                            :class="tab === 'basic'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-content/20'">
-                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $nt['icon'] }}"/>
-                        </svg>
-                        {{ $nt['label'] }}
-                        <span x-show="errCount('{{ $nt['id'] }}') > 0" x-text="errCount('{{ $nt['id'] }}')"
+                        Thông tin cơ bản
+                        <span x-show="errCount('basic') > 0" x-text="errCount('basic')"
                               class="badge badge-error badge-xs"></span>
                     </button>
-                    @endforeach
+
+                    <button type="button" role="tab" :aria-selected="tab === 'contact'"
+                            @click="tab = 'contact'"
+                            class="flex items-center gap-1.5 px-1 py-4 mr-6 text-sm font-medium border-b-2 transition-colors"
+                            :class="tab === 'contact'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-content/20'">
+                        Liên hệ & Địa chỉ
+                        <span x-show="errCount('contact') > 0" x-text="errCount('contact')"
+                              class="badge badge-error badge-xs"></span>
+                    </button>
+
+                    <button type="button" role="tab" :aria-selected="tab === 'classify'"
+                            @click="tab = 'classify'"
+                            class="flex items-center gap-1.5 px-1 py-4 mr-6 text-sm font-medium border-b-2 transition-colors"
+                            :class="tab === 'classify'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-content/20'">
+                        Phân loại
+                        <span x-show="errCount('classify') > 0" x-text="errCount('classify')"
+                              class="badge badge-error badge-xs"></span>
+                    </button>
 
                 </nav>
             </div>
 
-            {{-- Tab panels --}}
             <div class="p-6">
 
                 {{-- ── Panel: Thông tin cơ bản ─────────────────────── --}}
-                <div x-show="tab === 'basic'" class="space-y-4">
+                <div x-show="tab === 'basic'" data-tab-label="Thông tin cơ bản" class="space-y-4">
 
                     {{-- Loại khách hàng --}}
                     <div class="form-control">
@@ -120,7 +145,7 @@
                         @error('customer_type')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
-                    {{-- Individual fields --}}
+                    {{-- Cá nhân --}}
                     <div x-show="type === 1" class="space-y-4">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div class="form-control">
@@ -129,6 +154,7 @@
                                 </label>
                                 <input type="text" name="first_name"
                                        value="{{ old('first_name', $customer->first_name ?? '') }}"
+                                       data-req="Vui lòng nhập họ"
                                        class="input input-bordered input-sm w-full @error('first_name') input-error @enderror"
                                        placeholder="VD: Nguyễn">
                                 @error('first_name')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
@@ -139,6 +165,7 @@
                                 </label>
                                 <input type="text" name="last_name"
                                        value="{{ old('last_name', $customer->last_name ?? '') }}"
+                                       data-req="Vui lòng nhập tên"
                                        class="input input-bordered input-sm w-full @error('last_name') input-error @enderror"
                                        placeholder="VD: Văn A">
                                 @error('last_name')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
@@ -150,7 +177,9 @@
                                 <label class="label py-0 pb-1.5">
                                     <span class="label-text font-medium">Giới tính</span>
                                 </label>
-                                <select name="gender" class="select select-bordered select-sm w-full">
+                                <select name="gender" id="ts-gender"
+                                        class="select select-bordered select-sm w-full ts-init"
+                                        data-ts-placeholder="— Không chọn —">
                                     <option value="">— Không chọn —</option>
                                     <option value="M" {{ old('gender', $customer->gender ?? '') === 'M' ? 'selected' : '' }}>Nam</option>
                                     <option value="F" {{ old('gender', $customer->gender ?? '') === 'F' ? 'selected' : '' }}>Nữ</option>
@@ -161,16 +190,16 @@
                                 <label class="label py-0 pb-1.5">
                                     <span class="label-text font-medium">Ngày sinh</span>
                                 </label>
-                                <input type="text" name="date_of_birth" id="customer-dob"
-                                       value="{{ old('date_of_birth', isset($customer) && $customer->date_of_birth ? $customer->date_of_birth->format('d/m/Y') : '') }}"
-                                       class="input input-bordered input-sm w-full @error('date_of_birth') input-error @enderror"
-                                       placeholder="DD/MM/YYYY" readonly>
+                                <input type="text" name="date_of_birth" id="fp-date-of-birth"
+                                       value="{{ old('date_of_birth', isset($customer) && $customer->date_of_birth ? $customer->date_of_birth->format('Y-m-d') : '') }}"
+                                       class="input input-bordered input-sm w-full fp-init @error('date_of_birth') input-error @enderror"
+                                       placeholder="DD/MM/YYYY">
                                 @error('date_of_birth')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                             </div>
                         </div>
                     </div>
 
-                    {{-- Business fields --}}
+                    {{-- Doanh nghiệp --}}
                     <div x-show="type === 2" class="space-y-4">
                         <div class="form-control">
                             <label class="label py-0 pb-1.5">
@@ -178,6 +207,7 @@
                             </label>
                             <input type="text" name="company_name"
                                    value="{{ old('company_name', $customer->company_name ?? '') }}"
+                                   data-req="Vui lòng nhập tên doanh nghiệp"
                                    class="input input-bordered input-sm w-full @error('company_name') input-error @enderror"
                                    placeholder="VD: Công ty TNHH ABC">
                             @error('company_name')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
@@ -190,7 +220,7 @@
                                 </label>
                                 <input type="text" name="tax_code"
                                        value="{{ old('tax_code', $customer->tax_code ?? '') }}"
-                                       class="input input-bordered input-sm w-full @error('tax_code') input-error @enderror"
+                                       class="input input-bordered input-sm w-full font-mono @error('tax_code') input-error @enderror"
                                        placeholder="VD: 0123456789">
                                 @error('tax_code')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                             </div>
@@ -198,7 +228,9 @@
                                 <label class="label py-0 pb-1.5">
                                     <span class="label-text font-medium">Quy mô công ty</span>
                                 </label>
-                                <select name="company_size" class="select select-bordered select-sm w-full">
+                                <select name="company_size" id="ts-company-size"
+                                        class="select select-bordered select-sm w-full ts-init"
+                                        data-ts-placeholder="— Chọn quy mô —">
                                     <option value="">— Chọn quy mô —</option>
                                     @foreach($sizes as $size)
                                     <option value="{{ $size['value'] }}"
@@ -246,7 +278,6 @@
                     @if($fieldDefs->count())
                     <div class="divider my-1 text-xs text-base-content/30">Trường tùy chỉnh</div>
                     @foreach($fieldDefs as $def)
-                    @if($def->applies_to === 0 || true){{-- applies_to filtered client-side via x-show --}}
                     @php
                         $metaVal = isset($customer) ? $customer->meta->firstWhere('definition_id', $def->id)?->getValue() : null;
                         $oldKey  = 'meta.'.$def->field_key;
@@ -258,15 +289,15 @@
                         @if($def->value_type->value === 4)
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" name="meta[{{ $def->field_key }}]" value="1"
-                                   class="checkbox checkbox-sm"
+                                   class="checkbox checkbox-sm checkbox-primary"
                                    {{ old($oldKey, $metaVal) ? 'checked' : '' }}>
                             <span class="text-sm text-base-content/60">{{ $def->label }}</span>
                         </label>
                         @elseif($def->value_type->value === 5)
                         <input type="text" name="meta[{{ $def->field_key }}]"
-                               value="{{ old($oldKey, $metaVal ? \Carbon\Carbon::parse($metaVal)->format('d/m/Y') : '') }}"
-                               class="input input-bordered input-sm w-full flatpickr-date"
-                               placeholder="DD/MM/YYYY" readonly>
+                               value="{{ old($oldKey, $metaVal ? \Carbon\Carbon::parse($metaVal)->format('Y-m-d') : '') }}"
+                               class="input input-bordered input-sm w-full fp-init"
+                               placeholder="DD/MM/YYYY">
                         @elseif($def->value_type->value === 2 || $def->value_type->value === 3)
                         <input type="number" name="meta[{{ $def->field_key }}]"
                                value="{{ old($oldKey, $metaVal) }}"
@@ -278,13 +309,12 @@
                                class="input input-bordered input-sm w-full">
                         @endif
                     </div>
-                    @endif
                     @endforeach
                     @endif
 
                     <div class="flex justify-end pt-2">
                         <button type="button" @click="tab = 'contact'" class="btn btn-ghost btn-sm gap-1.5">
-                            Tiếp theo: Liên hệ
+                            Tiếp theo: Liên hệ & Địa chỉ
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                             </svg>
@@ -294,7 +324,7 @@
                 </div>
 
                 {{-- ── Panel: Liên hệ & Địa chỉ ────────────────────── --}}
-                <div x-show="tab === 'contact'" class="space-y-4">
+                <div x-show="tab === 'contact'" data-tab-label="Liên hệ & Địa chỉ" class="space-y-4">
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="form-control">
@@ -303,6 +333,7 @@
                             </label>
                             <input type="email" name="primary_email"
                                    value="{{ old('primary_email', $customer->primary_email ?? '') }}"
+                                   data-val-email="Email không đúng định dạng"
                                    class="input input-bordered input-sm w-full @error('primary_email') input-error @enderror"
                                    placeholder="email@company.com">
                             @error('primary_email')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
@@ -313,6 +344,7 @@
                             </label>
                             <input type="email" name="secondary_email"
                                    value="{{ old('secondary_email', $customer->secondary_email ?? '') }}"
+                                   data-val-email="Email không đúng định dạng"
                                    class="input input-bordered input-sm w-full @error('secondary_email') input-error @enderror"
                                    placeholder="alt@company.com">
                             @error('secondary_email')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
@@ -324,7 +356,7 @@
                             <label class="label py-0 pb-1.5">
                                 <span class="label-text font-medium">Điện thoại chính</span>
                             </label>
-                            <input type="text" name="primary_phone"
+                            <input type="tel" name="primary_phone"
                                    value="{{ old('primary_phone', $customer->primary_phone ?? '') }}"
                                    class="input input-bordered input-sm w-full @error('primary_phone') input-error @enderror"
                                    placeholder="0901 234 567">
@@ -334,7 +366,7 @@
                             <label class="label py-0 pb-1.5">
                                 <span class="label-text font-medium">Điện thoại phụ</span>
                             </label>
-                            <input type="text" name="secondary_phone"
+                            <input type="tel" name="secondary_phone"
                                    value="{{ old('secondary_phone', $customer->secondary_phone ?? '') }}"
                                    class="input input-bordered input-sm w-full"
                                    placeholder="0901 234 568">
@@ -347,6 +379,7 @@
                         </label>
                         <input type="url" name="website"
                                value="{{ old('website', $customer->website ?? '') }}"
+                               data-val-url="URL phải bắt đầu bằng https://"
                                class="input input-bordered input-sm w-full @error('website') input-error @enderror"
                                placeholder="https://company.vn">
                         @error('website')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
@@ -360,9 +393,9 @@
                                 <span class="label-text font-medium">Tỉnh / Thành phố</span>
                             </label>
                             <select id="ts-province" name="province_code"
-                                    class="select select-bordered select-sm w-full @error('province_code') select-error @enderror"
-                                    data-selected-province="{{ old('province_code', $customer->province_code ?? '') }}">
-                                <option value="">Chọn tỉnh / thành phố...</option>
+                                    class="select select-bordered select-sm w-full ts-init @error('province_code') select-error @enderror"
+                                    data-ts-placeholder="Chọn tỉnh/thành...">
+                                <option value="">Chọn tỉnh/thành...</option>
                                 @foreach($provinces ?? [] as $p)
                                 <option value="{{ $p->province_code }}"
                                         {{ old('province_code', $customer->province_code ?? '') === $p->province_code ? 'selected' : '' }}>
@@ -372,6 +405,7 @@
                             </select>
                             <input type="hidden" name="province_name" id="customer-province-name"
                                    value="{{ old('province_name', $customer->province_name ?? '') }}">
+                            @error('province_code')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
                         <div class="form-control">
                             <label class="label py-0 pb-1.5">
@@ -379,13 +413,13 @@
                             </label>
                             <select id="ts-ward" name="ward_code"
                                     class="select select-bordered select-sm w-full @error('ward_code') select-error @enderror"
-                                    data-ward-init="{{ old('ward_code', $customer->ward_code ?? '') }}"
-                                    data-ward-name-init="{{ old('ward_name', $customer->ward_name ?? '') }}"
+                                    data-selected-ward="{{ old('ward_code', $customer->ward_code ?? '') }}"
                                     {{ !old('province_code', $customer->province_code ?? null) ? 'disabled' : '' }}>
-                                <option value="">Chọn phường / xã...</option>
+                                <option value="">{{ old('province_code', $customer->province_code ?? null) ? 'Chọn phường/xã...' : 'Chọn tỉnh trước...' }}</option>
                             </select>
                             <input type="hidden" name="ward_name" id="customer-ward-name"
                                    value="{{ old('ward_name', $customer->ward_name ?? '') }}">
+                            @error('ward_code')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
                     </div>
 
@@ -417,7 +451,7 @@
                 </div>
 
                 {{-- ── Panel: Phân loại ─────────────────────────────── --}}
-                <div x-show="tab === 'classify'" class="space-y-4">
+                <div x-show="tab === 'classify'" data-tab-label="Phân loại" class="space-y-4">
 
                     @if($tags->count())
                     <div class="form-control">
@@ -454,7 +488,7 @@
                             </svg>
                             Liên hệ & Địa chỉ
                         </button>
-                        <span class="text-xs text-base-content/40">Nhấn <strong>Lưu</strong> ở bên phải khi xong</span>
+                        <span class="text-xs text-base-content/40">Nhấn <strong>{{ isset($customer) ? 'Lưu lại' : 'Tạo khách hàng' }}</strong> ở bên phải khi xong</span>
                     </div>
 
                 </div>
@@ -462,21 +496,22 @@
             </div>{{-- /tab panels --}}
         </div>{{-- /main card --}}
 
-        {{-- ── Sidebar card ──────────────────────────────────────────── --}}
+        {{-- ── Sidebar sticky ──────────────────────────────────────────── --}}
         <div class="xl:sticky xl:top-4 space-y-4">
-
             <div class="card bg-base-100 shadow-sm border border-base-200">
                 <div class="card-body p-4">
 
-                    <p class="text-xs font-semibold text-base-content/40 uppercase tracking-wide mb-3">CRM</p>
+                    <p class="text-xs font-semibold text-base-content/40 uppercase tracking-wide mb-3">Xuất bản</p>
 
                     {{-- Lifecycle stage --}}
                     <div class="form-control mb-3">
                         <label class="label py-0 pb-1">
                             <span class="label-text text-xs font-medium">Tình trạng <span class="text-error">*</span></span>
                         </label>
-                        <select name="lifecycle_stage"
-                                class="select select-bordered select-sm w-full @error('lifecycle_stage') select-error @enderror">
+                        <select name="lifecycle_stage" id="ts-lifecycle-stage"
+                                class="select select-bordered select-sm w-full ts-init @error('lifecycle_stage') select-error @enderror"
+                                data-ts-placeholder="— Chọn tình trạng —">
+                            <option value="">— Chọn tình trạng —</option>
                             @foreach($stages as $stage)
                             <option value="{{ $stage['value'] }}"
                                     {{ old('lifecycle_stage', $customer->lifecycle_stage->value ?? 1) == $stage['value'] ? 'selected' : '' }}>
@@ -492,8 +527,9 @@
                         <label class="label py-0 pb-1">
                             <span class="label-text text-xs font-medium">Nguồn</span>
                         </label>
-                        <select name="source_id"
-                                class="select select-bordered select-sm w-full">
+                        <select name="source_id" id="ts-source-id"
+                                class="select select-bordered select-sm w-full ts-init"
+                                data-ts-placeholder="— Chọn nguồn —">
                             <option value="">— Chọn nguồn —</option>
                             @foreach($sources as $source)
                             <option value="{{ $source->id }}"
@@ -510,21 +546,32 @@
                             <span class="label-text text-xs font-medium">Người phụ trách</span>
                         </label>
                         <select name="assigned_to" id="customer-assigned"
-                                class="select select-bordered select-sm w-full">
+                                class="select select-bordered select-sm w-full"
+                                data-assignable-url="{{ route('api.api.lead.assignable-users') }}"
+                                data-selected-id="{{ old('assigned_to', $customer->assigned_to ?? '') }}">
                             <option value="">— Chưa phân công —</option>
                         </select>
                     </div>
 
-                    <div class="divider my-2"></div>
+                    @isset($customer)
+                    <div class="flex justify-between text-xs text-base-content/40 mb-4 px-0.5">
+                        <span>Tạo {{ $customer->created_at->format('d/m/Y') }}</span>
+                        <span>Sửa {{ $customer->updated_at->diffForHumans() }}</span>
+                    </div>
+                    @endisset
 
                     <div class="flex gap-2">
                         <a href="{{ isset($customer) ? route('customer.show', $customer) : route('customer.index') }}"
                            class="btn btn-ghost btn-sm flex-1">Hủy</a>
-                        <button type="submit" class="btn btn-primary btn-sm flex-1 gap-1.5">
-                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        <button type="submit" class="btn btn-primary btn-sm flex-1 gap-1.5"
+                                :disabled="submitting"
+                                :class="{ 'btn-disabled': submitting }">
+                            <span x-show="submitting" class="loading loading-spinner loading-xs"></span>
+                            <svg x-show="!submitting" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="{{ isset($customer) ? 'M5 13l4 4L19 7' : 'M12 4v16m8-8H4' }}"/>
                             </svg>
-                            {{ isset($customer) ? 'Cập nhật' : 'Tạo khách hàng' }}
+                            <span x-text="submitting ? 'Đang lưu...' : '{{ isset($customer) ? 'Lưu lại' : 'Tạo khách hàng' }}'"></span>
                         </button>
                     </div>
 
@@ -534,7 +581,6 @@
 
                 </div>
             </div>
-
         </div>{{-- /sidebar --}}
 
     </div>{{-- /grid --}}
@@ -542,10 +588,3 @@
 </form>
 </div>{{-- /x-data --}}
 @endsection
-
-@push('scripts')
-@vite([
-    'resources/js/modules/tom-select.js',
-    'resources/js/modules/flatpickr.js',
-], 'build/backend')
-@endpush

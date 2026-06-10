@@ -228,6 +228,7 @@ const MODULE_ENTRIES = [
   'Modules/Subscription/resources/assets/sass/subscription.scss',
   'Modules/Subscription/resources/assets/js/subscription.js',
   // Customer
+  'Modules/Customer/resources/assets/sass/customer.scss',
   'Modules/Customer/resources/assets/js/customer.js',
 ];
 

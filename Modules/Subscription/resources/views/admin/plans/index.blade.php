@@ -159,7 +159,7 @@
     </div>
 
     {{-- Confirm delete modal --}}
-    <div x-show="confirmDelete !== null" x-cloak class="modal modal-open">
+    <div x-cloak class="modal" :class="{ 'modal-open': confirmDelete !== null }">
         <div class="modal-box max-w-sm">
             <h3 class="font-bold text-base mb-2">Xóa plan?</h3>
             <p class="text-sm text-base-content/70 mb-4">Hành động này không thể hoàn tác. Plan có subscription active sẽ không thể xóa.</p>

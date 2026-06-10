@@ -17,9 +17,9 @@ class CheckSubscription
             return $next($request);
         }
 
-        // Super-admin users manage the system itself — no subscription gate applies
+        // super-admin và system_admin bypass subscription gate hoàn toàn
         $user = $request->user();
-        if ($user?->hasRole('super-admin')) {
+        if ($user?->hasAnyRole(['super-admin', 'system_admin'])) {
             return $next($request);
         }
 

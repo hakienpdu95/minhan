@@ -6,7 +6,7 @@ use Modules\Customer\Http\Controllers\Api\CustomerApiController;
 use Modules\Customer\Http\Controllers\Api\CustomerActivityApiController;
 use Modules\Customer\Http\Controllers\Api\CustomerNoteApiController;
 
-Route::middleware(['auth', 'verified', 'feature:module.crm'])
+Route::middleware(['auth', 'verified', 'feature:module.customer'])
     ->prefix('customers')
     ->name('customer.')
     ->group(function () {

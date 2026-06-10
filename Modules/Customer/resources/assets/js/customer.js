@@ -7,6 +7,7 @@
  */
 
 import './pages/customer-show.js';
+import './pages/customer-form.js';
 
 // ── Config từ DOM ──────────────────────────────────────────────────────────
 
@@ -24,8 +25,6 @@ const {
 
 if (apiListing) {
     initListPage();
-} else if (!document.querySelector('[data-customer-show]')) {
-    initFormPage();
 }
 
 // ── List page ──────────────────────────────────────────────────────────────
@@ -298,25 +297,3 @@ function initListPage() {
     };
 }
 
-// ── Form page ──────────────────────────────────────────────────────────────
-
-function initFormPage() {
-    // Flatpickr for DOB field
-    document.querySelectorAll('.flatpickr-date').forEach(el => {
-        if (window.flatpickr) {
-            window.flatpickr(el, {
-                dateFormat: 'd/m/Y',
-                allowInput: false,
-            });
-        }
-    });
-
-    // Flatpickr for DOB with id customer-dob
-    const dob = document.getElementById('customer-dob');
-    if (dob && window.flatpickr) {
-        window.flatpickr(dob, {
-            dateFormat: 'd/m/Y',
-            allowInput: false,
-        });
-    }
-}

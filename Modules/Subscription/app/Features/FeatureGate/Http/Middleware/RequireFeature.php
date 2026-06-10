@@ -11,6 +11,12 @@ class RequireFeature
 {
     public function handle(Request $request, Closure $next, string $featureSlug): Response
     {
+        // system_admin và super-admin bypass tất cả feature gate
+        $user = $request->user();
+        if ($user?->hasAnyRole(['super-admin', 'system_admin'])) {
+            return $next($request);
+        }
+
         $ctx     = SubscriptionContext::get();
         $allowed = $ctx?->canUse($featureSlug) ?? false;
 

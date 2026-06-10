@@ -70,4 +70,6 @@ php artisan module:make Auth
 
 # > Đọc file docs/SUBSCRIPTION_SPEC.md và làm Phase 4 — Billing & Invoices, implement theo đúng spec đó cho trong module Subscription
 
-# > Đọc file docs/form-ui-spec.md và implement theo đúng spec đó, áp dụng spec này vào module Subscription, review và tối ưu UI/UX form chuẩn để hành vi người dùng dễ thao tác và sử dụng linh hoạt, thuận tiện
+# > Đọc file docs/form-ui-spec.md và implement theo đúng spec đó, áp dụng spec này vào module Customer, review và tối ưu UI/UX form chuẩn để hành vi người dùng dễ thao tác và sử dụng linh hoạt, thuận tiện
+
+Notification Thông báo in-app  + push — (thông báo trên chuông) tất cả module đều cần

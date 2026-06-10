@@ -19,7 +19,8 @@ class FeatureSeeder extends Seeder
             'module.task'         => '1',
             'module.sop'          => '1',
             'module.hr'           => '1',
-            'module.crm'          => '0',
+            'module.lead'         => '0',
+            'module.customer'     => '0',
             'module.workflow'     => '0',
             'module.ai'           => '0',
             'module.recruitment'  => '0',
@@ -48,7 +49,8 @@ class FeatureSeeder extends Seeder
             'module.task'         => '1',
             'module.sop'          => '1',
             'module.hr'           => '1',
-            'module.crm'          => '1',
+            'module.lead'         => '1',
+            'module.customer'     => '1',
             'module.workflow'     => '1',
             'module.ai'           => '1',
             'module.recruitment'  => '1',
@@ -74,7 +76,8 @@ class FeatureSeeder extends Seeder
             'module.task'         => '1',
             'module.sop'          => '1',
             'module.hr'           => '1',
-            'module.crm'          => '1',
+            'module.lead'         => '1',
+            'module.customer'     => '1',
             'module.workflow'     => '1',
             'module.ai'           => '1',
             'module.recruitment'  => '1',
@@ -100,7 +103,8 @@ class FeatureSeeder extends Seeder
             'module.task'         => '1',
             'module.sop'          => '1',
             'module.hr'           => '1',
-            'module.crm'          => '1',
+            'module.lead'         => '1',
+            'module.customer'     => '1',
             'module.workflow'     => '1',
             'module.ai'           => '1',
             'module.recruitment'  => '1',
@@ -130,7 +134,7 @@ class FeatureSeeder extends Seeder
             $plan = Plan::where('slug', $planSlug)->first();
             if (!$plan) continue;
 
-            Feature::where('plan_id', $plan->id)->delete();
+            Feature::where('plan_id', $plan->id)->forceDelete();
 
             $sortOrder = 0;
             foreach ($features as $slug => $value) {

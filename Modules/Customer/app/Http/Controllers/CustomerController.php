@@ -19,6 +19,7 @@ use Modules\Customer\Models\CustomerFieldDefinition;
 use Modules\Customer\Models\CustomerTag;
 use Modules\Customer\Queries\GetCustomerHandler;
 use Modules\Customer\Queries\GetCustomerQuery;
+use App\Models\Province;
 use Modules\LeadSource\Models\LeadSource;
 
 class CustomerController extends Controller
@@ -40,16 +41,17 @@ class CustomerController extends Controller
     {
         $this->authorize('create', Customer::class);
 
-        $orgId    = TenantContext::getOrganizationId();
-        $sources  = LeadSource::where('is_active', true)->orderBy('sort_order')->get(['id', 'label']);
-        $tags     = CustomerTag::where('organization_id', $orgId)->orderBy('name')->get(['id', 'name', 'color']);
-        $sizes    = collect(CompanySize::cases())->map(fn ($s) => ['value' => $s->value, 'label' => $s->label()]);
-        $stages   = collect(CustomerLifecycleStage::cases())->map(fn ($s) => ['value' => $s->value, 'label' => $s->label()]);
+        $orgId     = TenantContext::getOrganizationId();
+        $sources   = LeadSource::where('is_active', true)->orderBy('sort_order')->get(['id', 'label']);
+        $tags      = CustomerTag::where('organization_id', $orgId)->orderBy('name')->get(['id', 'name', 'color']);
+        $sizes     = collect(CompanySize::cases())->map(fn ($s) => ['value' => $s->value, 'label' => $s->label()]);
+        $stages    = collect(CustomerLifecycleStage::cases())->map(fn ($s) => ['value' => $s->value, 'label' => $s->label()]);
+        $provinces = Province::where('is_active', true)->orderBy('name')->get(['province_code', 'name']);
         $fieldDefs = CustomerFieldDefinition::where('organization_id', $orgId)
             ->active()->orderBy('sort_order')->get();
         $customer  = null;
 
-        return view('customer::_form', compact('customer', 'sources', 'tags', 'sizes', 'stages', 'fieldDefs'));
+        return view('customer::_form', compact('customer', 'sources', 'tags', 'sizes', 'stages', 'provinces', 'fieldDefs'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -78,16 +80,17 @@ class CustomerController extends Controller
     {
         $this->authorize('update', $customer);
 
-        $orgId    = TenantContext::getOrganizationId();
+        $orgId     = TenantContext::getOrganizationId();
         $customer->load(['tags', 'meta.definition']);
-        $sources  = LeadSource::where('is_active', true)->orderBy('sort_order')->get(['id', 'label']);
-        $tags     = CustomerTag::where('organization_id', $orgId)->orderBy('name')->get(['id', 'name', 'color']);
-        $sizes    = collect(CompanySize::cases())->map(fn ($s) => ['value' => $s->value, 'label' => $s->label()]);
-        $stages   = collect(CustomerLifecycleStage::cases())->map(fn ($s) => ['value' => $s->value, 'label' => $s->label()]);
+        $sources   = LeadSource::where('is_active', true)->orderBy('sort_order')->get(['id', 'label']);
+        $tags      = CustomerTag::where('organization_id', $orgId)->orderBy('name')->get(['id', 'name', 'color']);
+        $sizes     = collect(CompanySize::cases())->map(fn ($s) => ['value' => $s->value, 'label' => $s->label()]);
+        $stages    = collect(CustomerLifecycleStage::cases())->map(fn ($s) => ['value' => $s->value, 'label' => $s->label()]);
+        $provinces = Province::where('is_active', true)->orderBy('name')->get(['province_code', 'name']);
         $fieldDefs = CustomerFieldDefinition::where('organization_id', $orgId)
             ->active()->orderBy('sort_order')->get();
 
-        return view('customer::_form', compact('customer', 'sources', 'tags', 'sizes', 'stages', 'fieldDefs'));
+        return view('customer::_form', compact('customer', 'sources', 'tags', 'sizes', 'stages', 'provinces', 'fieldDefs'));
     }
 
     public function update(Request $request, Customer $customer): RedirectResponse
