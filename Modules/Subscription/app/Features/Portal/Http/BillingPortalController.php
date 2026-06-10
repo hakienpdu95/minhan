@@ -16,7 +16,8 @@ class BillingPortalController extends Controller
 
     public function billing(Request $request)
     {
-        $orgId = $request->user()->organization_id;
+        $orgId = $request->user()->current_organization_id;
+        abort_unless($orgId, 403, 'No organization context.');
         $data  = $this->dashboardHandler->handle(new GetBillingDashboardQuery($orgId));
 
         return view('subscription::portal.billing', $data);
@@ -24,7 +25,8 @@ class BillingPortalController extends Controller
 
     public function plans(Request $request)
     {
-        $orgId = $request->user()->organization_id;
+        $orgId = $request->user()->current_organization_id;
+        abort_unless($orgId, 403, 'No organization context.');
         $data  = $this->dashboardHandler->handle(new GetBillingDashboardQuery($orgId));
 
         $plans = Plan::where('is_active', true)

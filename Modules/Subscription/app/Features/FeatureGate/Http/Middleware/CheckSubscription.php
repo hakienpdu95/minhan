@@ -12,8 +12,14 @@ class CheckSubscription
 {
     public function handle(Request $request, Closure $next): Response
     {
-        // Webhook routes are server-to-server calls — no tenant or subscription context
-        if ($request->is('billing/webhook/*')) {
+        // Billing portal, webhook, and subscription admin routes bypass subscription check
+        if ($request->is('billing') || $request->is('billing/*') || $request->is('dashboard/subscription/admin/*')) {
+            return $next($request);
+        }
+
+        // Super-admin users manage the system itself — no subscription gate applies
+        $user = $request->user();
+        if ($user?->hasRole('super-admin')) {
             return $next($request);
         }
 

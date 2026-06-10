@@ -93,7 +93,7 @@ const JS_OUTPUT = {
   'marketplace':            'assets/modules/marketplace.[hash].js',
   'recruitment':            'assets/modules/recruitment.[hash].js',
   'task':                   'assets/modules/task.[hash].js',
-
+  'subscription':           'assets/modules/subscription.[hash].js',
 };
 
 /** CSS asset name → output path.
@@ -137,6 +137,7 @@ const CSS_OUTPUT = {
   'marketplace.css':            'assets/modules/marketplace.[hash].css',
   'recruitment.css':            'assets/modules/recruitment.[hash].css',
   'task.css':                   'assets/modules/task.[hash].css',
+  'subscription.css':           'assets/modules/subscription.[hash].css',
 };
 
 // ─── Module input entries ─────────────────────────────────────────────
@@ -223,6 +224,9 @@ const MODULE_ENTRIES = [
   // Task
   'Modules/Task/resources/assets/sass/task.scss',
   'Modules/Task/resources/assets/js/task.js',
+  // Subscription
+  'Modules/Subscription/resources/assets/sass/subscription.scss',
+  'Modules/Subscription/resources/assets/js/subscription.js',
 ];
 
 // ─────────────────────────────────────────────────────────────────────

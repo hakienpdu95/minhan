@@ -25,6 +25,7 @@ Route::middleware(['web', 'auth', 'can:' . P::SUBSCRIPTION_ADMIN->value])
 
         Route::get('subscriptions',                              [AdminSubscriptionController::class, 'index'])->name('subscriptions.index');
         Route::post('subscriptions/{organization}/assign',       [AdminSubscriptionController::class, 'assign'])->name('subscriptions.assign');
+        Route::post('subscriptions/{organization}/extend',       [AdminSubscriptionController::class, 'extend'])->name('subscriptions.extend');
         Route::post('subscriptions/{organization}/override',     [AdminSubscriptionController::class, 'override'])->name('subscriptions.override');
 
         Route::get('analytics', [AnalyticsController::class, 'index'])->name('analytics.index');

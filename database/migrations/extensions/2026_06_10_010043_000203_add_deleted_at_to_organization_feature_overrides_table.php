@@ -10,8 +10,8 @@ use Carbon\Carbon;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::table('workflows', function (Blueprint $table) {
-            if (!Schema::hasColumn('workflows', 'deleted_at')) {
+        Schema::table('organization_feature_overrides', function (Blueprint $table) {
+            if (!Schema::hasColumn('organization_feature_overrides', 'deleted_at')) {
                 $table->timestamp('deleted_at')->nullable()->comment('Thời gian xóa mềm');
             }
         });
@@ -19,8 +19,8 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::table('workflows', function (Blueprint $table) {
-            $cols = array_filter(['deleted_at'], fn($c) => Schema::hasColumn('workflows', $c));
+        Schema::table('organization_feature_overrides', function (Blueprint $table) {
+            $cols = array_filter(['deleted_at'], fn($c) => Schema::hasColumn('organization_feature_overrides', $c));
             if (!empty($cols)) $table->dropColumn(array_values($cols));
         });
     }
