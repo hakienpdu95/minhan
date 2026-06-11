@@ -60,8 +60,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // AI Sandbox
     Route::prefix('dashboard/sandbox')->name('backend.sandbox.')->group(function () {
-        Route::get('/',                  [SandboxSessionController::class, 'index'])->name('index');
-        Route::get('/{sandboxSession}',  [SandboxSessionController::class, 'show'])->name('show');
+        Route::get('/',                                   [SandboxSessionController::class, 'index'])->name('index');
+        Route::post('/tasks/{sandboxTask}/start',         [SandboxSessionController::class, 'start'])->name('task.start');
+        Route::post('/{sandboxSession}/submit',             [SandboxSessionController::class, 'submit'])->name('submit');
+        Route::post('/{sandboxSession}/evaluate',         [SandboxSessionController::class, 'evaluate'])->name('evaluate');
+        Route::get('/{sandboxSession}',                   [SandboxSessionController::class, 'show'])->name('show');
     });
 
     // Certifications

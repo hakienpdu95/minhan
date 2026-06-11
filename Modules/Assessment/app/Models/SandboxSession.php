@@ -11,6 +11,17 @@ class SandboxSession extends TenantAwareModel
 {
     protected $table = 'sandbox_sessions';
 
+    /**
+     * Bypass tenant scope during route model binding so the controller
+     * can handle authorization explicitly (user_id check + policy).
+     */
+    public function resolveRouteBinding($value, $field = null): ?static
+    {
+        return $this->withoutTenant()
+            ->where($field ?? $this->getRouteKeyName(), $value)
+            ->first();
+    }
+
     protected $fillable = [
         'uuid',
         'organization_id',

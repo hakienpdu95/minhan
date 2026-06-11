@@ -11,6 +11,13 @@ class WorkforceProfile extends TenantAwareModel
 {
     protected $table = 'workforce_profiles';
 
+    public function resolveRouteBinding($value, $field = null): ?static
+    {
+        return $this->withoutTenant()
+            ->where($field ?? $this->getRouteKeyName(), $value)
+            ->first();
+    }
+
     protected $fillable = [
         'uuid',
         'organization_id',
