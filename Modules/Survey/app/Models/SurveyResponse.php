@@ -23,6 +23,11 @@ class SurveyResponse extends Model implements ScoringSubjectInterface
         'survey_id',
         'respondent_ref',
         'respondent_ip',
+        'source_type',
+        'subject_user_id',
+        'evaluator_user_id',
+        'source_weight',
+        'requires_human_review',
         'status',
         'submitted_at',
     ];
@@ -30,9 +35,11 @@ class SurveyResponse extends Model implements ScoringSubjectInterface
     protected function casts(): array
     {
         return [
-            'status'       => ResponseStatus::class,
-            'submitted_at' => 'datetime',
-            'deleted_at'   => 'datetime',
+            'status'                => ResponseStatus::class,
+            'submitted_at'          => 'datetime',
+            'deleted_at'            => 'datetime',
+            'source_weight'         => 'float',
+            'requires_human_review' => 'boolean',
         ];
     }
 

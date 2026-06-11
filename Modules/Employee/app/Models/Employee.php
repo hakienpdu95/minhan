@@ -55,6 +55,10 @@ class Employee extends TenantAwareModel implements HasMedia
         'resigned_at',
         'resignation_reason',
         'notes',
+        'digital_competency_score',
+        'digital_maturity_level',
+        'latest_assessment_result_id',
+        'last_assessed_at',
         'snap_branch_name',
         'snap_dept_name',
         'snap_job_title',
@@ -74,8 +78,11 @@ class Employee extends TenantAwareModel implements HasMedia
         'contract_end'       => 'date',
         'left_at'            => 'date',
         'resigned_at'        => 'date',
-        'salary_base'        => 'decimal:2',
-        'snap_job_level'     => 'integer',
+        'salary_base'                  => 'decimal:2',
+        'snap_job_level'               => 'integer',
+        'digital_competency_score'     => 'decimal:2',
+        'last_assessed_at'             => 'datetime',
+        'latest_assessment_result_id'  => 'integer',
     ];
 
     protected static function booted(): void

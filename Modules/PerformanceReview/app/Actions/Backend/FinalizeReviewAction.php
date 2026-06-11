@@ -3,6 +3,7 @@
 namespace Modules\PerformanceReview\Actions\Backend;
 
 use Lorisleiva\Actions\Concerns\AsAction;
+use Modules\PerformanceReview\Events\PerformanceReviewFinalized;
 use Modules\PerformanceReview\Events\PerformanceReviewUpdated;
 use Modules\PerformanceReview\Models\PerformanceReview;
 
@@ -35,8 +36,10 @@ class FinalizeReviewAction
             'reviewed_at'    => now(),
         ]);
 
-        event(new PerformanceReviewUpdated($review->refresh()));
+        $refreshed = $review->refresh();
+        event(new PerformanceReviewUpdated($refreshed));
+        event(new PerformanceReviewFinalized($refreshed));
 
-        return $review->refresh();
+        return $refreshed;
     }
 }

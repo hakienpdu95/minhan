@@ -33,6 +33,10 @@ class MktListing extends Model
         'application_count', 'view_count', 'bookmark_count',
         'jp_job_post_id', 'jp_sync_status', 'auto_close_on_jp',
         'expire_at', 'closed_at',
+        'required_workforce_score',
+        'required_cert_level',
+        'required_ai_readiness_score',
+        'required_cert_type_code',
     ];
 
     protected $casts = [

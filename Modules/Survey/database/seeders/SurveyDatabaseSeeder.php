@@ -12,6 +12,7 @@ class SurveyDatabaseSeeder extends Seeder
             SurveyPermissionSeeder::class,
             AiReadinessSurveySeeder::class,
             ScoringConfigSeeder::class,
+            SpecializedSurveySetSeeder::class,
         ]);
     }
 }

@@ -39,6 +39,10 @@ class KpiGoal extends TenantAwareModel
         'approved_by',
         'approved_at',
         'created_by',
+        'ai_impact_category',
+        'ai_impact_type',
+        'baseline_value',
+        'investment_cost',
     ];
 
     protected $casts = [

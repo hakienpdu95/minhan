@@ -13,6 +13,7 @@ class ReviewCriteria extends Model
         'template_id',
         'criteria_key',
         'criteria_name',
+        'tdwcf_domain_code',
         'weight',
         'max_score',
         'description',

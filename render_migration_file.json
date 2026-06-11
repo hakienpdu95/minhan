@@ -2648,5 +2648,30 @@
         "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
         "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật",
         "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
+    ],
+    [
+        "push_subscriptions///__///__///",
+        "user_id///unsignedBigInteger///__///NOT_NULL///__///->constrained()->onDelete('cascade')///__",
+        "endpoint///string///500///NOT_NULL///__///__///__",
+        "public_key///string///500///_NULL///NULL///__///__",
+        "auth_token///string///255///_NULL///NULL///__///__",
+        "content_encoding///string///20///_NULL///'aesgcm'///__///__",
+        "__index///unique///__///__///__///endpoint|push_sub_endpoint_unique///__",
+        "__index///index///__///__///__///user_id|push_sub_user_idx///__",
+        "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
+        "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật"
+    ],
+    [
+        "notification_preferences///__///__///",
+        "user_id///unsignedBigInteger///__///NOT_NULL///__///__///__",
+        "organization_id///unsignedBigInteger///__///NOT_NULL///__///__///__",
+        "event_type///string///100///NOT_NULL///__///__///__",
+        "channel_db///boolean///__///NOT_NULL///true///__///__",
+        "channel_mail///boolean///__///NOT_NULL///false///__///__",
+        "channel_push///boolean///__///NOT_NULL///false///__///__",
+        "__index///unique///__///__///__///user_id,organization_id,event_type|notif_pref_user_org_type_unique///__",
+        "__index///index///__///__///__///user_id,organization_id///__",
+        "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
+        "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật"
     ]
 ]

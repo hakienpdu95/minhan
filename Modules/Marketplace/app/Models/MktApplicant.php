@@ -27,6 +27,10 @@ class MktApplicant extends Authenticatable implements HasMedia
         'salary_currency', 'status', 'availability',
         'is_profile_public', 'is_email_public',
         'profile_complete_pct', 'total_applications', 'hired_count', 'avg_rating',
+        'workforce_profile_id',
+        'ai_readiness_score',
+        'highest_cert_level',
+        'career_goal',
     ];
 
     protected $hidden = ['password_hash', 'remember_token'];

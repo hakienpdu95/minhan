@@ -6,11 +6,14 @@ use Illuminate\Database\Seeder;
 
 class AssessmentDatabaseSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // $this->call([]);
+        $this->call([
+            TdwcfAssessmentSeeder::class,
+            FivePillarAssessmentSeeder::class,
+            CertificationDefinitionSeeder::class,
+            SandboxEnvironmentSeeder::class,
+            CareerPathwaySeeder::class,
+        ]);
     }
 }
