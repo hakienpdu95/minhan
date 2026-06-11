@@ -2,9 +2,9 @@
 
 namespace Modules\Assessment\Services;
 
+use Modules\Assessment\Events\SandboxCompleted;
 use Modules\Assessment\Models\SandboxSession;
 use Modules\Assessment\Models\SandboxSubmission;
-use Modules\Assessment\Models\WorkforceProfile;
 
 /**
  * Auto-scores a sandbox session immediately after submission.
@@ -41,35 +41,8 @@ class SandboxScoringService
             'feedback'           => $this->generateFeedback($quality, $productivity, $aiAdoption, $final),
         ]);
 
-        $this->syncProfileStats($session);
-    }
-
-    private function syncProfileStats(SandboxSession $session): void
-    {
-        if (! $session->workforce_profile_id) {
-            return;
-        }
-
-        $profile = WorkforceProfile::withoutTenant()
-            ->find($session->workforce_profile_id);
-
-        if (! $profile) {
-            return;
-        }
-
-        $sessions = SandboxSession::withoutTenant()
-            ->where('workforce_profile_id', $profile->id)
-            ->where('status', 'completed')
-            ->get(['final_score', 'passed', 'duration_minutes']);
-
-        $profile->update([
-            'sandbox_sessions_total'    => $sessions->count(),
-            'sandbox_hours_total'       => round($sessions->sum('duration_minutes') / 60, 2),
-            'sandbox_score_avg'         => $sessions->avg('final_score')
-                ? round($sessions->avg('final_score'), 2)
-                : null,
-            'sandbox_last_completed_at' => now(),
-        ]);
+        // Fire event — listener chain handles: stats sync → cert check → career level advance
+        event(new SandboxCompleted($session->fresh()));
     }
 
     // ── Quality: depth of submitted content ──────────────────────────────────

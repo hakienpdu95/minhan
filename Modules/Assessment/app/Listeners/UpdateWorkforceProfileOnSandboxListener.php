@@ -5,6 +5,7 @@ namespace Modules\Assessment\Listeners;
 use Modules\Assessment\Actions\CheckCertificationEligibilityAction;
 use Modules\Assessment\Events\SandboxCompleted;
 use Modules\Assessment\Models\WorkforceProfileHistory;
+use Modules\Assessment\Services\CareerLevelService;
 
 class UpdateWorkforceProfileOnSandboxListener
 {
@@ -57,5 +58,8 @@ class UpdateWorkforceProfileOnSandboxListener
 
         // Kiểm tra điều kiện cấp chứng nhận
         $this->checkCert->handle($profile->fresh());
+
+        // Sau khi cert có thể đã được cấp, kiểm tra thăng cấp độ nghề nghiệp
+        app(CareerLevelService::class)->checkAndAdvance($profile->fresh());
     }
 }

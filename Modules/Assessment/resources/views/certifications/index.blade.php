@@ -13,10 +13,18 @@
         <h1 class="text-2xl font-bold text-base-content">Chứng nhận AI Workforce</h1>
         <p class="text-sm text-base-content/50 mt-0.5">Hành trình chứng nhận năng lực AI của bạn</p>
     </div>
-    <a href="{{ route('backend.workforce.me') }}" class="btn btn-ghost btn-sm gap-1.5">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-        Hồ sơ của tôi
-    </a>
+    <div class="flex gap-2">
+        @can('assessment.config')
+        <a href="{{ route('backend.certs-admin.index') }}" class="btn btn-ghost btn-sm gap-1.5">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            Quản lý
+        </a>
+        @endcan
+        <a href="{{ route('backend.workforce.me') }}" class="btn btn-ghost btn-sm gap-1.5">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            Hồ sơ của tôi
+        </a>
+    </div>
 </div>
 
 {{-- ── Earned certifications ────────────────────────────────────────────────── --}}
@@ -51,7 +59,7 @@
                 </div>
                 <div class="flex-1">
                     <div class="flex items-start justify-between gap-2">
-                        <h3 class="font-semibold text-sm leading-snug">{{ $cert->definition?->name ?? $cert->cert_code }}</h3>
+                        <h3 class="font-semibold text-sm leading-snug">{{ $cert->definition?->name ?? $cert->definition?->cert_code ?? '—' }}</h3>
                         <span class="badge {{ $statusBadge[1] }} badge-xs shrink-0">{{ $statusBadge[0] }}</span>
                     </div>
                     <div class="flex flex-wrap items-center gap-2 mt-1.5">
@@ -81,14 +89,14 @@
                             </span>
                         </div>
                     </div>
-                    @if($cert->composite_score)
+                    @if($cert->composite_score_at_issue !== null)
                     <div class="mt-2">
                         <div class="flex justify-between text-xs mb-1">
-                            <span class="text-base-content/40">Điểm tổng hợp</span>
-                            <span class="font-semibold">{{ number_format($cert->composite_score, 1) }}</span>
+                            <span class="text-base-content/40">Điểm tổng hợp khi cấp</span>
+                            <span class="font-semibold">{{ number_format($cert->composite_score_at_issue, 1) }}</span>
                         </div>
                         <div class="h-1.5 bg-base-200 rounded-full overflow-hidden">
-                            <div class="h-1.5 bg-success rounded-full" style="width: {{ min($cert->composite_score, 100) }}%"></div>
+                            <div class="h-1.5 bg-success rounded-full" style="width: {{ min($cert->composite_score_at_issue, 100) }}%"></div>
                         </div>
                     </div>
                     @endif
@@ -101,6 +109,80 @@
         </div>
     </div>
 </div>
+@endif
+
+{{-- ── Readiness indicator (Part 3) ────────────────────────────────────────── --}}
+@if($profile && count($readiness))
+@php
+    $unearned = collect($readiness)->filter(fn($r) => ! ($r['earned'] ?? false));
+    $almostReady = $unearned->filter(fn($r) => ($r['ready'] ?? false));
+    $withConditions = $unearned->filter(fn($r) => ! empty($r['conditions']));
+@endphp
+@if($withConditions->count())
+<div class="card bg-base-100 shadow-sm border border-base-200 mb-5">
+    <div class="card-body">
+        <h2 class="card-title text-base mb-1">
+            <svg class="w-4 h-4 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            Tiến độ đạt chứng nhận
+        </h2>
+        <p class="text-sm text-base-content/40 mb-4">Tình trạng các điều kiện còn thiếu cho từng chứng nhận</p>
+        <div class="space-y-4">
+            @foreach($available as $def)
+            @php
+                $r = $readiness[$def->cert_code] ?? null;
+                if (! $r || ($r['earned'] ?? false) || empty($r['conditions'])) continue;
+                $metCount   = collect($r['conditions'])->where('met', true)->count();
+                $totalCount = count($r['conditions']);
+                $pct        = $totalCount > 0 ? round($metCount / $totalCount * 100) : 0;
+                $isReady    = $r['ready'] ?? false;
+            @endphp
+            <div class="border {{ $isReady ? 'border-success/30 bg-success/5' : 'border-base-200' }} rounded-xl p-4">
+                <div class="flex items-center justify-between gap-3 mb-3">
+                    <div>
+                        <h3 class="font-medium text-sm">{{ $def->name }}</h3>
+                        <div class="flex gap-1.5 mt-0.5">
+                            @php
+                                $lb = match($def->level_code) {
+                                    'FOUNDATION'   => ['Foundation','badge-info'],
+                                    'PRACTITIONER' => ['Practitioner','badge-warning'],
+                                    'PROFESSIONAL' => ['Professional','badge-success'],
+                                    'LEADER'       => ['Leader','badge-accent'],
+                                    default        => [$def->level_code,'badge-ghost'],
+                                };
+                            @endphp
+                            <span class="badge {{ $lb[1] }} badge-xs">{{ $lb[0] }}</span>
+                            <span class="text-xs text-base-content/30 font-mono">{{ $def->cert_code }}</span>
+                        </div>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <span class="text-lg font-bold {{ $isReady ? 'text-success' : 'text-base-content/50' }}">{{ $metCount }}/{{ $totalCount }}</span>
+                        <p class="text-xs text-base-content/30">điều kiện</p>
+                    </div>
+                </div>
+                <div class="h-1.5 bg-base-200 rounded-full overflow-hidden mb-3">
+                    <div class="h-1.5 {{ $isReady ? 'bg-success' : 'bg-primary' }} rounded-full transition-all" style="width: {{ $pct }}%"></div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    @foreach($r['conditions'] as $cond)
+                    <div class="flex items-center gap-2 text-xs {{ $cond['met'] ? 'text-success' : 'text-base-content/50' }}">
+                        @if($cond['met'])
+                        <svg class="w-3.5 h-3.5 shrink-0 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                        @else
+                        <svg class="w-3.5 h-3.5 shrink-0 text-base-content/20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        @endif
+                        <span>{{ $cond['label'] }}</span>
+                        @if(! $cond['met'] && $cond['current'] !== null && $cond['required'] !== null)
+                        <span class="text-base-content/30">(hiện: {{ $cond['current'] }}{{ $cond['unit'] ? ' '.$cond['unit'] : '' }})</span>
+                        @endif
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+</div>
+@endif
 @endif
 
 {{-- ── Available certifications ─────────────────────────────────────────────── --}}
@@ -123,20 +205,27 @@
                 @php
                     $def     = $defs->firstWhere('level_code', $lvl);
                     $earned  = $def && in_array($def->cert_code, $earnedCodes);
+                    $r       = $def ? ($readiness[$def->cert_code] ?? null) : null;
+                    $isReady = $r && ($r['ready'] ?? false);
                     $btnClass = $earned
                         ? 'bg-success/10 border-success text-success'
-                        : 'bg-base-200 border-base-300 text-base-content/40';
+                        : ($isReady ? 'bg-warning/10 border-warning text-warning' : 'bg-base-200 border-base-300 text-base-content/40');
                 @endphp
                 <div class="flex items-center">
-                    <div class="border {{ $btnClass }} rounded-lg px-3 py-2 text-center min-w-28">
+                    <div class="border {{ $btnClass }} rounded-lg px-3 py-2 text-center min-w-28 relative">
                         @if($earned)
                         <svg class="w-4 h-4 mx-auto mb-1 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"/></svg>
+                        @elseif($isReady)
+                        <svg class="w-4 h-4 mx-auto mb-1 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                         @else
                         <div class="w-4 h-4 mx-auto mb-1 rounded-full border-2 border-current opacity-30"></div>
                         @endif
                         <p class="text-xs font-medium">{{ $levelLabels[$lvl] ?? $lvl }}</p>
                         @if($def)
                         <p class="text-xs opacity-50">≥ {{ $def->min_workforce_score }}</p>
+                        @endif
+                        @if($isReady && ! $earned)
+                        <span class="absolute -top-1.5 -right-1.5 badge badge-warning badge-xs font-medium">Sẵn sàng</span>
                         @endif
                     </div>
                     @if(!$loop->last)

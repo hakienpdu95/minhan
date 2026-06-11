@@ -4,6 +4,7 @@ namespace Modules\Assessment\Listeners;
 
 use Modules\Assessment\Events\CertificationIssued;
 use Modules\Assessment\Models\WorkforceProfileHistory;
+use Modules\Assessment\Services\CareerLevelService;
 
 class UpdateWorkforceProfileOnCertificationListener
 {
@@ -41,5 +42,8 @@ class UpdateWorkforceProfileOnCertificationListener
         // Cập nhật trust score
         $profile->refresh();
         $profile->update(['workforce_trust_score' => $profile->recalculateTrustScore()]);
+
+        // Cert vừa được cấp → kiểm tra xem có thể thăng cấp độ nghề nghiệp không
+        app(CareerLevelService::class)->checkAndAdvance($profile->fresh());
     }
 }

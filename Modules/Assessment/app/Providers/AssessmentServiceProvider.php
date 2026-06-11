@@ -2,6 +2,7 @@
 
 namespace Modules\Assessment\Providers;
 
+use Modules\Assessment\Console\Commands\ExpireCertificationsCommand;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class AssessmentServiceProvider extends ModuleServiceProvider
@@ -14,7 +15,9 @@ class AssessmentServiceProvider extends ModuleServiceProvider
         RouteServiceProvider::class,
     ];
 
-    // The `assessment.result_calculated` trigger is now declared in
-    // config('workflow_automation.triggers'); AssessmentCompleted implements
-    // ProvidesWorkflowContext, so no manual registration is required here.
+    public function boot(): void
+    {
+        parent::boot();
+        $this->commands([ExpireCertificationsCommand::class]);
+    }
 }

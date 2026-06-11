@@ -58,6 +58,11 @@ class WorkforceCertification extends TenantAwareModel
         2);
     }
 
+    public function resolveRouteBinding($value, $field = null)
+    {
+        return $this->withoutTenant()->where($field ?? $this->getRouteKeyName(), $value)->firstOrFail();
+    }
+
     public function definition(): BelongsTo
     {
         return $this->belongsTo(CertificationDefinition::class, 'cert_definition_id');
