@@ -26,7 +26,6 @@ return new class extends Migration
             $table->decimal('kpi_total_score', 6, 2)->nullable();
             $table->foreignId('snapped_by')->constrained('users');
             $table->timestamp('snapped_at');
-            
 
             // Indexes
             $table->index(['employee_id', 'cycle_label'], 'idx_kpi_snapshots_emp_cycle');

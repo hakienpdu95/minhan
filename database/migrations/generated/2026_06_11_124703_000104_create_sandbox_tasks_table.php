@@ -3,6 +3,9 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 return new class extends Migration
 {
@@ -10,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('sandbox_tasks', function (Blueprint $table) {
             $table->id();
-            $table->uuid()->nullable()->unique();
+            $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+            $table->unsignedInteger('order_column')->nullable()->index()->comment('Thứ tự sắp xếp — Spatie Sortable / ORDER BY');
             $table->unsignedBigInteger('sandbox_env_id');
             $table->string('target_position_code', 50)->nullable()->comment('B1_SALES|B2_HR|... null=universal');
             $table->string('title', 255);
@@ -22,10 +26,13 @@ return new class extends Migration
             $table->unsignedSmallInteger('sort_order')->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+            
 
-            $table->foreign('sandbox_env_id')->references('id')->on('sandbox_environments')->cascadeOnDelete();
+            // Indexes
             $table->index(['sandbox_env_id', 'target_position_code'], 'idx_sandtask_env_pos');
         });
+
+        
     }
 
     public function down(): void

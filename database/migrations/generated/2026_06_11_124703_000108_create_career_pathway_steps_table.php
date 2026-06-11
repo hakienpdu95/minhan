@@ -3,6 +3,9 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 return new class extends Migration
 {
@@ -10,6 +13,8 @@ return new class extends Migration
     {
         Schema::create('career_pathway_steps', function (Blueprint $table) {
             $table->id();
+            $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
+            $table->unsignedInteger('order_column')->nullable()->index()->comment('Thứ tự sắp xếp — Spatie Sortable / ORDER BY');
             $table->unsignedBigInteger('organization_id')->nullable()->comment('null = global template');
             $table->string('from_level', 64)->nullable()->comment('DIGITAL_BEGINNER|DIGITAL_AWARE|...');
             $table->string('to_level', 64)->comment('Level cần đạt');
@@ -22,10 +27,14 @@ return new class extends Migration
             $table->unsignedSmallInteger('estimated_weeks')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+            
 
+            // Indexes
             $table->index(['from_level', 'to_level'], 'idx_cps_from_to');
             $table->index('organization_id', 'idx_cps_org');
         });
+
+        
     }
 
     public function down(): void

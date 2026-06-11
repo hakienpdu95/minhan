@@ -9,6 +9,8 @@
     $authUser  = auth()->user();
     $roleName  = $primary_role ?? 'viewer';
     $roleLabel = \App\Enums\RoleEnum::tryFrom($roleName)?->label() ?? ucfirst($roleName);
+    $greeting  = $greeting  ?? (function () { $h = (int) now()->format('H'); return $h < 12 ? 'Chào buổi sáng' : ($h < 18 ? 'Chào buổi chiều' : 'Chào buổi tối'); })();
+    $today_str = $today_str ?? \Illuminate\Support\Carbon::now()->isoFormat('dddd, D MMMM YYYY');
 
     // KPI card icon paths (Heroicons outline)
     $iconPaths = [
