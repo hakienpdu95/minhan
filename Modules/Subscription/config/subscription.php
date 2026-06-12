@@ -29,16 +29,19 @@ return [
         'limit.workflows'  => 'Workflow',
         'limit.projects'   => 'Dự án',
         'limit.storage_gb' => 'Dung lượng (GB)',
+        'limit.ai_agents'  => 'AI Agents',
     ],
 
     'quota_slugs' => [
         'quota.ai_requests',
+        'quota.ai_tokens',
         'quota.workflow_runs',
         'quota.email_notifications',
     ],
 
     'quota_labels' => [
         'quota.ai_requests'         => 'AI requests / tháng',
+        'quota.ai_tokens'           => 'AI tokens / tháng',
         'quota.workflow_runs'       => 'Workflow executions / tháng',
         'quota.email_notifications' => 'Email notifications / tháng',
     ],

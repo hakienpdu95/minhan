@@ -32,6 +32,7 @@ return new class extends Migration
             $table->unsignedBigInteger('created_by')->nullable();
             $table->timestamps();
             $table->softDeletes();
+            
 
             // Indexes
             $table->index(['organization_id', 'impact_category'], 'idx_ais_org_category');

@@ -1,10 +1,12 @@
-# AiCopilot Module — Đặc tả kỹ thuật v1.0.0
+# AiCopilot Module — Đặc tả kỹ thuật v1.1.0
 
 > **Scope**: Tích hợp AI API để thực hiện các tác vụ chỉ định trong hệ thống, có tracking chi tiết và giới hạn sử dụng theo gói subscription.
 >
 > **Pattern**: AVSA + CQRS-lite — nhất quán với Branch, Leave, KpiGoal.
 >
-> **Status**: Spec sẵn sàng implement · Chưa có code.
+> **Status**: Spec đã chuẩn hoá theo hệ thống thực tế · Chưa có code · Sẵn sàng implement.
+>
+> **v1.1.0 changes**: Đồng bộ namespace, middleware, quota API, Jobs/Actions separation, RecordAiUsageAction DB pattern, AiAgent::findBySlug scope, permissions command, queue connection.
 
 ---
 
@@ -41,8 +43,10 @@ AiPrompt         Template prompt gắn với một Agent
 
 AiRequest        Bản ghi mỗi lần gọi AI API (audit trail bất biến)
 
-AiMonthlyUsage   Tổng hợp usage theo tháng per org (denorm, dùng cho quota bar)
+AiMonthlyUsage   Tổng hợp usage theo tháng per org (denorm, dùng cho cost dashboard)
 ```
+
+> **Lưu ý quota**: Quota remaining (`quota.ai_requests`) được track bởi **Subscription module** qua `RecordFeatureUsageAction`. `AiMonthlyUsage` là bảng aggregate bổ sung cho cost/token dashboard — không phải nguồn truth của quota.
 
 ### 2.1 Luồng thực hiện một AI Task
 
@@ -52,12 +56,12 @@ AiMonthlyUsage   Tổng hợp usage theo tháng per org (denorm, dùng cho quota
        ▼
 ExecuteAiTaskAction          ← entry point duy nhất
   ├─ 1. Check module gate:   org_can('module.ai')
-  ├─ 2. Check quota:         org_at_limit('quota.ai_requests', current_month_count)
+  ├─ 2. Check quota:         org_quota('quota.ai_requests') <= 0 → throw
   ├─ 3. Load Agent + Prompt  (cache per request)
   ├─ 4. Render prompt        (replace {{variables}})
-  ├─ 5. Dispatch AiRequestJob → queue 'ai'
-  │       OR call inline if agent->sync_mode = true
-  ├─ 6. Record AiRequest     (status=pending → processing → done/failed)
+  ├─ 5. Create AiRequest     (status=pending)
+  ├─ 6. Dispatch ProcessAiRequestJob → queue 'ai'
+  │       OR dispatchSync nếu agent->sync_mode = true
   └─ 7. Return AiRequest UUID cho frontend poll hoặc trả kết quả ngay
 ```
 
@@ -67,9 +71,11 @@ ExecuteAiTaskAction          ← entry point duy nhất
 
 ### 3.1 `ai_agents`
 
-Định nghĩa các "agent" AI trong hệ thống. Có hai loại:
-- **system** (`is_system = true`): ship cùng module, không thể xóa
+Định nghĩa các "agent" AI trong hệ thống. Hai loại:
+- **system** (`is_system = true`, `organization_id = NULL`): ship cùng module, không thể xóa
 - **custom** (`is_system = false`): org tự tạo thêm
+
+> Extends `TenantAwareModel` → tự động có `deleted_at` (soft deletes) và `OrganizationScope`.
 
 ```sql
 CREATE TABLE ai_agents (
@@ -91,7 +97,7 @@ CREATE TABLE ai_agents (
   created_by          BIGINT UNSIGNED NULL,
   created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at          TIMESTAMP,
-  deleted_at          TIMESTAMP NULL,
+  deleted_at          TIMESTAMP NULL,               -- soft delete (TenantAwareModel)
 
   INDEX idx_agents_org_slug (organization_id, slug),
   INDEX idx_agents_task_type (task_type)
@@ -103,20 +109,22 @@ CREATE TABLE ai_agents (
 | slug | task_type | model | Mô tả |
 |------|-----------|-------|-------|
 | `sop.step_draft` | sop | claude-sonnet-4-6 | Draft nội dung một bước SOP |
-| `sop.summarize` | sop | claude-haiku-4-5 | Tóm tắt toàn bộ SOP |
+| `sop.summarize` | sop | claude-haiku-4-5-20251001 | Tóm tắt toàn bộ SOP |
 | `kpi.analysis` | kpi | claude-sonnet-4-6 | Phân tích KPI, gợi ý cải thiện |
 | `hr.feedback_draft` | hr | claude-sonnet-4-6 | Draft feedback đánh giá nhân viên |
 | `hr.job_description` | hr | claude-sonnet-4-6 | Viết JD từ tiêu chí |
-| `lead.score_analysis` | lead | claude-haiku-4-5 | Phân tích và chấm điểm lead |
-| `email.draft` | email | claude-haiku-4-5 | Draft email chuyên nghiệp |
-| `general.summarize` | general | claude-haiku-4-5 | Tóm tắt văn bản bất kỳ |
-| `general.translate` | general | claude-haiku-4-5 | Dịch thuật đa ngôn ngữ |
+| `lead.score_analysis` | lead | claude-haiku-4-5-20251001 | Phân tích và chấm điểm lead |
+| `email.draft` | email | claude-haiku-4-5-20251001 | Draft email chuyên nghiệp |
+| `general.summarize` | general | claude-haiku-4-5-20251001 | Tóm tắt văn bản bất kỳ |
+| `general.translate` | general | claude-haiku-4-5-20251001 | Dịch thuật đa ngôn ngữ |
 
 ---
 
 ### 3.2 `ai_prompts`
 
 Template prompt gắn với agent. Một agent có thể có nhiều prompt version; dùng `is_default = true` để chọn active.
+
+> Extends `TenantAwareModel` → tự động có `deleted_at` và `OrganizationScope`.
 
 ```sql
 CREATE TABLE ai_prompts (
@@ -135,7 +143,7 @@ CREATE TABLE ai_prompts (
   created_by          BIGINT UNSIGNED NULL,
   created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at          TIMESTAMP,
-  deleted_at          TIMESTAMP NULL,
+  deleted_at          TIMESTAMP NULL,               -- soft delete (TenantAwareModel)
 
   INDEX idx_prompts_agent_default (agent_id, is_default),
   FOREIGN KEY (agent_id) REFERENCES ai_agents(id)
@@ -154,7 +162,9 @@ Yêu cầu thêm: {{user_note}}
 
 ### 3.3 `ai_requests`
 
-Log bất biến mỗi lần gọi AI. Không UPDATE sau khi `status = done | failed`.
+Log bất biến mỗi lần gọi AI. **Không UPDATE sau khi `status = done | failed`**.
+
+> **Không extend TenantAwareModel** — immutable audit trail, không cần soft delete hay org scope tự động. Implement như plain Eloquent Model.
 
 ```sql
 CREATE TABLE ai_requests (
@@ -205,13 +215,13 @@ CREATE TABLE ai_requests (
 );
 ```
 
-> **Không có `deleted_at`** — request log là immutable audit trail.
-
 ---
 
 ### 3.4 `ai_monthly_usages`
 
-Denormalized aggregate — reset đầu tháng. Dùng cho quota bar và dashboard.
+Denormalized aggregate — dùng cho cost dashboard và token breakdown. **Không phải nguồn truth của quota** (quota được track bởi Subscription module).
+
+> Plain `Model` (không extend TenantAwareModel) — không cần soft delete.
 
 ```sql
 CREATE TABLE ai_monthly_usages (
@@ -237,66 +247,79 @@ CREATE TABLE ai_monthly_usages (
 
 ## 4. Quota & Subscription Integration
 
-### 4.1 Feature keys (thêm vào Subscription plans)
+### 4.1 Feature keys
+
+`quota.ai_requests` **đã có sẵn** trong hệ thống (config, seeder, quota bar). Cần **thêm mới** `quota.ai_tokens` và `limit.ai_agents`.
 
 | Feature slug | Type | Starter | Growth | Scale | Enterprise |
 |---|---|---|---|---|---|
 | `module.ai` | bool | `false` | `true` | `true` | `true` |
-| `quota.ai_requests` | int/month | 0 | 200 | 2000 | 0 (unlimited) |
-| `quota.ai_tokens` | int/month | 0 | 500_000 | 5_000_000 | 0 |
-| `limit.ai_agents` | int | 0 | 5 | 20 | 0 |
+| `quota.ai_requests` | int/month | **20** | **500** | **5 000** | 0 (unlimited) |
+| `quota.ai_tokens` | int/month | 0 | 500 000 | 5 000 000 | 0 (**mới — cần thêm**) |
+| `limit.ai_agents` | int | 0 | 5 | 20 | 0 (**mới — cần thêm**) |
 
-> `quota.ai_requests` đã có sẵn trong `config/subscription.php`. Cần thêm `quota.ai_tokens` và `limit.ai_agents`.
+> Các giá trị `quota.ai_requests` lấy từ `FeatureSeeder` thực tế. `quota.ai_tokens` và `limit.ai_agents` cần bổ sung vào `Modules/Subscription/config/subscription.php` và `FeatureSeeder.php`.
 
-### 4.2 Gate checks trong ExecuteAiTaskAction
+**Files cần sửa khi thêm quota mới:**
+```
+Modules/Subscription/config/subscription.php  → quota_slugs[], limit_labels[]
+Modules/Subscription/database/seeders/FeatureSeeder.php  → thêm vào featureMatrix mỗi plan
+```
+
+### 4.2 Quota helpers (hệ thống thực tế)
 
 ```php
-// 1. Module enabled?
-if (!org_can('module.ai')) {
-    throw new FeatureNotAvailableException('module.ai');
-}
+// Helpers từ Modules/Subscription/app/Helpers/subscription.php
 
-// 2. Request quota
-$monthRequests = AiMonthlyUsage::currentMonth($orgId)->sum('total_requests');
-if (org_at_limit('quota.ai_requests', $monthRequests)) {
-    throw new QuotaExceededException('quota.ai_requests');
-}
+org_can('module.ai')                    // bool — module enabled cho org
+org_quota('quota.ai_requests')          // int — số request còn lại tháng này (0 = hết)
+org_quota('quota.ai_tokens')            // int — tokens còn lại
+org_limit('limit.ai_agents')            // int — giới hạn số agents (0 = unlimited)
+org_at_limit('limit.ai_agents', $cnt)   // bool — dùng cho LIMIT (giới hạn số bản ghi)
+```
 
-// 3. Token quota (ước tính trước khi gọi, check lại sau)
-$monthTokens = AiMonthlyUsage::currentMonth($orgId)->sum('total_tokens');
-if (org_at_limit('quota.ai_tokens', $monthTokens)) {
-    throw new QuotaExceededException('quota.ai_tokens');
+> **Phân biệt**:
+> - `org_quota()` → dùng cho **quota.*** (monthly resettable, track via RecordFeatureUsageAction)
+> - `org_at_limit()` + `org_limit()` → dùng cho **limit.*** (hard cap per plan, so sánh count hiện tại)
+> - `org_can()` → dùng cho **module.*** và **flag.*** (boolean feature flags)
+
+### 4.3 Gate checks trong ExecuteAiTaskAction
+
+```php
+private function checkGates(Organization $org): void
+{
+    // 1. Module enabled?
+    if (!org_can('module.ai')) {
+        throw new FeatureNotAvailableException('module.ai');
+    }
+
+    // 2. Request quota còn không? (nguồn truth: Subscription module)
+    if (org_quota('quota.ai_requests') <= 0) {
+        throw new QuotaExceededException('quota.ai_requests');
+    }
+
+    // 3. Token quota (check trước, deduct sau khi AI trả về)
+    if (org_quota('quota.ai_tokens') <= 0) {
+        throw new QuotaExceededException('quota.ai_tokens');
+    }
 }
 ```
 
-### 4.3 Recording usage (sau khi AI trả về)
+### 4.4 Recording usage (sau khi AI trả về)
+
+Dùng `RecordFeatureUsageAction` (đã có, tại `Modules/Subscription/.../RecordFeatureUsageAction.php`):
 
 ```php
-// Dùng DB transaction + pessimistic lock (pattern từ Subscription module)
-DB::transaction(function () use ($orgId, $agentId, $taskType, $tokens, $cost, $yearMonth) {
-    // Upsert monthly total
-    AiMonthlyUsage::lockForUpdate()
-        ->updateOrCreate(
-            ['organization_id' => $orgId, 'year_month' => $yearMonth, 'agent_id' => null],
-            []
-        )
-        ->increment('total_requests')
-        ->incrementBy('total_tokens', $tokens)
-        ->incrementBy('total_cost_usd', $cost);
+// Trong RecordAiUsageAction::handle() sau khi AiRequest status = 'done'
 
-    // Upsert per-agent breakdown
-    AiMonthlyUsage::lockForUpdate()
-        ->updateOrCreate(
-            ['organization_id' => $orgId, 'year_month' => $yearMonth, 'agent_id' => $agentId],
-            ['task_type' => $taskType]
-        )
-        ->increment('total_requests')
-        ->incrementBy('total_tokens', $tokens);
-});
+$org = TenantContext::resolve();
 
-// Notify SubscriptionContext để flush cache
+// Deduct từ subscription quota (source of truth)
 RecordFeatureUsageAction::run($org, 'quota.ai_requests', 1);
-RecordFeatureUsageAction::run($org, 'quota.ai_tokens', $tokens);
+RecordFeatureUsageAction::run($org, 'quota.ai_tokens', $request->total_tokens);
+
+// Cập nhật AiMonthlyUsage (cost/token aggregate cho dashboard)
+$this->updateMonthlyAggregate($request, $yearMonth);
 ```
 
 ---
@@ -354,15 +377,27 @@ readonly class AiCompletionResult
 
 ```
 Modules/AiCopilot/app/Drivers/
-├── ClaudeDriver.php    ← Anthropic SDK (anthropic-php/sdk)
-├── OpenAiDriver.php    ← openai-php/laravel
+├── ClaudeDriver.php    ← Anthropic PHP SDK (anthropic-php/sdk — cần composer require)
+├── OpenAiDriver.php    ← openai-php/laravel (cần composer require)
 └── MockDriver.php      ← Testing (trả về fixed content)
 ```
 
+> **Dependency**: `anthropic-php/sdk` và `openai-php/laravel` **chưa có** trong `composer.json`.
+> Cần chạy: `composer require anthropic-php/sdk openai-php/laravel` ở **root project** (không phải module-level composer.json).
+
 **ClaudeDriver.php** (tóm tắt):
 ```php
+use Anthropic\Anthropic;
+
 class ClaudeDriver implements AiDriverContract
 {
+    private Anthropic $client;
+
+    public function __construct(string $apiKey)
+    {
+        $this->client = Anthropic::factory()->withApiKey($apiKey)->make();
+    }
+
     public function complete(AiCompletionRequest $req): AiCompletionResult
     {
         $start = microtime(true);
@@ -397,15 +432,22 @@ class ClaudeDriver implements AiDriverContract
             default                        => ['input' =>  0.25, 'output' =>  1.25], // haiku
         };
     }
+
+    public function estimateTokens(string $text): int
+    {
+        return (int) ceil(mb_strlen($text) / 4);
+    }
 }
 ```
 
 ### 5.4 AiDriverManager (Service Locator)
 
+Đặt trong `Services/` (nhất quán với project pattern):
+
 ```php
+// Modules/AiCopilot/app/Services/AiDriverManager.php
 class AiDriverManager
 {
-    /** @var array<string, AiDriverContract> */
     private array $resolved = [];
 
     public function driver(string $provider): AiDriverContract
@@ -433,6 +475,9 @@ $this->app->singleton(AiDriverManager::class);
 
 ```php
 // Modules/AiCopilot/app/Actions/ExecuteAiTaskAction.php
+use App\Shared\Tenancy\TenantContext;
+use Lorisleiva\Actions\Concerns\AsAction;
+
 class ExecuteAiTaskAction
 {
     use AsAction;
@@ -443,9 +488,9 @@ class ExecuteAiTaskAction
         ?Model   $subject = null,    // SopStep, Employee, KpiGoal…
         bool     $forceSync = false,
     ): AiRequest {
-        $org   = TenantContext::resolve();
+        $org   = TenantContext::resolve();  // throws TenantNotSetException nếu chưa set
         $user  = auth()->user();
-        $agent = $this->loadAgent($agentSlug, $org->id);
+        $agent = AiAgent::findBySlug($agentSlug, $org->id);
         $prompt = $agent->defaultPrompt();
 
         // Gate checks
@@ -468,6 +513,7 @@ class ExecuteAiTaskAction
             'provider'        => $agent->provider,
             'model'           => $agent->model,
             'status'          => 'pending',
+            'queued_at'       => now(),
         ]);
 
         // Dispatch
@@ -488,11 +534,12 @@ class ExecuteAiTaskAction
             throw new FeatureNotAvailableException('module.ai');
         }
 
-        $ctx = SubscriptionContext::get();
-        $monthUsage = AiMonthlyUsage::currentMonth($org->id)->value('total_requests') ?? 0;
+        if (org_quota('quota.ai_requests') <= 0) {
+            throw new QuotaExceededException('quota.ai_requests');
+        }
 
-        if (org_at_limit('quota.ai_requests', $monthUsage)) {
-            throw new QuotaExceededException('quota.ai_requests', org_limit('quota.ai_requests'));
+        if (org_quota('quota.ai_tokens') <= 0) {
+            throw new QuotaExceededException('quota.ai_tokens');
         }
     }
 
@@ -508,8 +555,14 @@ class ExecuteAiTaskAction
 
 ### 6.2 ProcessAiRequestJob — Queue Worker
 
+> **Vị trí**: `Modules/AiCopilot/app/Jobs/ProcessAiRequestJob.php` — đây là **Job**, không phải Action.
+> Extends `App\Foundation\Jobs\TenantAwareJob` (không phải `TenantAwareJob` hay `TenantAwareAction`).
+
 ```php
 // Modules/AiCopilot/app/Jobs/ProcessAiRequestJob.php
+use App\Foundation\Jobs\TenantAwareJob;
+use Modules\AiCopilot\Services\AiDriverManager;
+
 class ProcessAiRequestJob extends TenantAwareJob
 {
     public int $tries   = 2;
@@ -517,34 +570,34 @@ class ProcessAiRequestJob extends TenantAwareJob
 
     public function __construct(private readonly int $aiRequestId)
     {
-        parent::__construct();
+        parent::__construct();  // captures organizationId from TenantContext
         $this->onQueue('ai');
     }
 
     public function handle(AiDriverManager $manager): void
     {
         $this->withTenant(function () use ($manager) {
-            $request = AiRequest::findOrFail($this->aiRequestId);
+            $aiRequest = AiRequest::findOrFail($this->aiRequestId);
 
-            if ($request->status !== 'pending') return;
+            if ($aiRequest->status !== 'pending') return;
 
-            $request->update(['status' => 'processing', 'started_at' => now()]);
+            $aiRequest->update(['status' => 'processing', 'started_at' => now()]);
 
             try {
-                $agent  = $request->agent;
-                $prompt = $request->prompt ?? $agent->defaultPrompt();
+                $agent  = $aiRequest->agent;
+                $prompt = $aiRequest->prompt ?? $agent->defaultPrompt();
                 $driver = $manager->driver($agent->provider);
 
                 $result = $driver->complete(new AiCompletionRequest(
                     model:        $agent->model,
                     systemPrompt: $prompt->system_prompt,
-                    userMessage:  $request->rendered_prompt,
+                    userMessage:  $aiRequest->rendered_prompt,
                     temperature:  $agent->temperature,
                     maxTokens:    $agent->max_tokens,
                     timeoutSec:   $agent->timeout_seconds,
                 ));
 
-                $request->update([
+                $aiRequest->update([
                     'status'        => 'done',
                     'ai_output'     => $result->content,
                     'finish_reason' => $result->finishReason,
@@ -556,22 +609,28 @@ class ProcessAiRequestJob extends TenantAwareJob
                     'completed_at'  => now(),
                 ]);
 
-                RecordAiUsageAction::run($request);
+                RecordAiUsageAction::run($aiRequest);
+
+                ActivityLogger::info('ai_copilot', 'task_executed', $aiRequest, [
+                    'agent_slug'   => $agent->slug,
+                    'total_tokens' => $result->totalTokens,
+                    'duration_ms'  => $result->durationMs,
+                ]);
 
             } catch (\Throwable $e) {
-                $request->update([
+                $aiRequest->update([
                     'status'        => 'failed',
                     'error_message' => $e->getMessage(),
                     'completed_at'  => now(),
                 ]);
 
-                ActivityLogger::error('ai_copilot', 'request_failed', $request, [
-                    'agent_slug' => $agent->slug,
+                ActivityLogger::error('ai_copilot', 'request_failed', $aiRequest, [
+                    'agent_slug' => $agent->slug ?? '?',
                     'error'      => $e->getMessage(),
                 ]);
 
                 if ($this->attempts() >= $this->tries) {
-                    throw $e; // Đưa vào failed_jobs
+                    throw $e; // vào failed_jobs
                 }
             }
         });
@@ -589,51 +648,60 @@ class ProcessAiRequestJob extends TenantAwareJob
 ### 6.3 RecordAiUsageAction
 
 ```php
+// Modules/AiCopilot/app/Actions/RecordAiUsageAction.php
+use Lorisleiva\Actions\Concerns\AsAction;
+use Illuminate\Support\Facades\DB;
+use Modules\Subscription\Features\FeatureGate\Actions\RecordFeatureUsageAction;
+use App\Shared\Tenancy\TenantContext;
+
 class RecordAiUsageAction
 {
     use AsAction;
 
-    public function handle(AiRequest $request): void
+    public function handle(AiRequest $aiRequest): void
     {
         $yearMonth = now()->format('Y-m');
-        $orgId     = $request->organization_id;
-        $agentId   = $request->agent_id;
+        $orgId     = $aiRequest->organization_id;
+        $agentId   = $aiRequest->agent_id;
 
-        DB::transaction(function () use ($orgId, $agentId, $request, $yearMonth) {
-            // Update monthly aggregate (total)
-            AiMonthlyUsage::lockForUpdate()->updateOrCreate(
+        // ── Deduct từ subscription quota (nguồn truth) ──────────────
+        $org = TenantContext::get() ?? \App\Shared\Tenancy\Models\Organization::find($orgId);
+        if ($org) {
+            RecordFeatureUsageAction::run($org, 'quota.ai_requests', 1);
+            RecordFeatureUsageAction::run($org, 'quota.ai_tokens', $aiRequest->total_tokens);
+        }
+
+        // ── Cập nhật monthly aggregate (cost/token dashboard) ───────
+        DB::transaction(function () use ($orgId, $agentId, $aiRequest, $yearMonth) {
+            // Org-level total
+            $total = AiMonthlyUsage::lockForUpdate()->firstOrCreate(
                 ['organization_id' => $orgId, 'year_month' => $yearMonth, 'agent_id' => null],
                 ['task_type' => null]
-            )->increment('total_requests');
-
-            AiMonthlyUsage::where('organization_id', $orgId)
-                ->where('year_month', $yearMonth)
-                ->whereNull('agent_id')
-                ->update([
-                    'successful_requests' => DB::raw('successful_requests + 1'),
-                    'total_input_tokens'  => DB::raw("total_input_tokens + {$request->input_tokens}"),
-                    'total_output_tokens' => DB::raw("total_output_tokens + {$request->output_tokens}"),
-                    'total_tokens'        => DB::raw("total_tokens + {$request->total_tokens}"),
-                    'total_cost_usd'      => DB::raw("total_cost_usd + {$request->cost_usd}"),
-                ]);
-
-            // Update per-agent breakdown
-            AiMonthlyUsage::lockForUpdate()->updateOrCreate(
-                ['organization_id' => $orgId, 'year_month' => $yearMonth, 'agent_id' => $agentId],
-                ['task_type' => $request->agent->task_type]
             );
-            // same increments...
+            $total->increment('total_requests');
+            $total->increment('successful_requests');
+            $total->increment('total_input_tokens', $aiRequest->input_tokens);
+            $total->increment('total_output_tokens', $aiRequest->output_tokens);
+            $total->increment('total_tokens', $aiRequest->total_tokens);
+            $total->increment('total_cost_usd', $aiRequest->cost_usd);
+
+            // Per-agent breakdown
+            $byAgent = AiMonthlyUsage::lockForUpdate()->firstOrCreate(
+                ['organization_id' => $orgId, 'year_month' => $yearMonth, 'agent_id' => $agentId],
+                ['task_type' => $aiRequest->agent->task_type]
+            );
+            $byAgent->increment('total_requests');
+            $byAgent->increment('successful_requests');
+            $byAgent->increment('total_input_tokens', $aiRequest->input_tokens);
+            $byAgent->increment('total_output_tokens', $aiRequest->output_tokens);
+            $byAgent->increment('total_tokens', $aiRequest->total_tokens);
+            $byAgent->increment('total_cost_usd', $aiRequest->cost_usd);
         });
-
-        // Sync quota with SubscriptionContext
-        $org = TenantContext::get()?->getOrganization()
-            ?? Organization::find($orgId);
-
-        RecordFeatureUsageAction::run($org, 'quota.ai_requests', 1);
-        RecordFeatureUsageAction::run($org, 'quota.ai_tokens', $request->total_tokens);
     }
 }
 ```
+
+> **Lưu ý pattern**: `lockForUpdate()` + `firstOrCreate()` trả về model instance — gọi `increment()` riêng từng dòng, **không chain** liên tiếp.
 
 ### 6.4 Các Action phụ trợ
 
@@ -641,14 +709,14 @@ class RecordAiUsageAction
 Actions/
 ├── ExecuteAiTaskAction.php        ← Entry point (public)
 ├── RecordAiUsageAction.php        ← Ghi usage sau mỗi request thành công
+├── RetryAiRequestAction.php       ← Retry failed request
+├── CancelAiRequestAction.php      ← Cancel pending request
 ├── StoreAiAgentAction.php         ← CRUD agent (AI_OP)
 ├── UpdateAiAgentAction.php
 ├── DestroyAiAgentAction.php
 ├── StoreAiPromptAction.php        ← CRUD prompt template
 ├── UpdateAiPromptAction.php
-├── SetDefaultPromptAction.php     ← Đặt prompt làm default
-├── RetryAiRequestAction.php       ← Retry failed request
-└── CancelAiRequestAction.php      ← Cancel pending request
+└── SetDefaultPromptAction.php     ← Đặt prompt làm default
 ```
 
 ---
@@ -658,6 +726,8 @@ Actions/
 ### 7.1 AiAgent
 
 ```php
+use App\Foundation\Models\TenantAwareModel;
+
 class AiAgent extends TenantAwareModel
 {
     protected $table = 'ai_agents';
@@ -693,18 +763,28 @@ class AiAgent extends TenantAwareModel
         return $this->hasMany(AiRequest::class, 'agent_id');
     }
 
-    // Override global scope cho system agents (organization_id = null)
     protected static function booted(): void
     {
         static::addGlobalScope('active', fn ($q) => $q->where('is_active', true));
     }
 
+    /**
+     * Tìm agent theo slug — ưu tiên org-specific, fallback system agent.
+     *
+     * Cần bypass cả OrganizationScope (để tìm system agents với org_id=NULL)
+     * và scope 'active' (để load inactive agents khi cần). Dùng withoutTenant()
+     * từ BelongsToOrganization trait + withoutGlobalScope('active').
+     */
     public static function findBySlug(string $slug, ?int $orgId): self
     {
-        return static::withoutGlobalScope('active')
+        return static::withoutTenant()
+            ->withoutGlobalScope('active')
             ->where('slug', $slug)
-            ->where(fn ($q) => $q->where('organization_id', $orgId)->orWhereNull('organization_id'))
-            ->orderByRaw('organization_id IS NULL ASC') // org override wins
+            ->where(function ($q) use ($orgId) {
+                $q->where('organization_id', $orgId)
+                  ->orWhereNull('organization_id');
+            })
+            ->orderByRaw('organization_id IS NULL ASC') // 0=org-specific (wins), 1=system (fallback)
             ->firstOrFail();
     }
 }
@@ -713,40 +793,34 @@ class AiAgent extends TenantAwareModel
 ### 7.2 AiRequest
 
 ```php
-class AiRequest extends Model // KHÔNG extend TenantAwareModel — immutable, không softDelete
+use Illuminate\Database\Eloquent\Model; // KHÔNG extend TenantAwareModel
+
+class AiRequest extends Model
 {
     protected $table = 'ai_requests';
     public $timestamps = true;
 
-    // Guard mutability
+    protected $casts = [
+        'input_variables' => 'array',
+        'queued_at'       => 'datetime',
+        'started_at'      => 'datetime',
+        'completed_at'    => 'datetime',
+        'cost_usd'        => 'decimal:6',
+    ];
+
+    // Guard mutability — AiRequest là immutable audit trail
     public function save(array $options = []): bool
     {
-        // Allow saves only on status transitions
         if ($this->exists && in_array($this->getOriginal('status'), ['done', 'failed'])) {
             throw new \RuntimeException('AiRequest is immutable after completion.');
         }
         return parent::save($options);
     }
 
-    public function agent(): BelongsTo
-    {
-        return $this->belongsTo(AiAgent::class);
-    }
-
-    public function prompt(): BelongsTo
-    {
-        return $this->belongsTo(AiPrompt::class);
-    }
-
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    public function subject(): MorphTo
-    {
-        return $this->morphTo();
-    }
+    public function agent(): BelongsTo  { return $this->belongsTo(AiAgent::class); }
+    public function prompt(): BelongsTo { return $this->belongsTo(AiPrompt::class); }
+    public function user(): BelongsTo   { return $this->belongsTo(\App\Models\User::class); }
+    public function subject(): MorphTo  { return $this->morphTo(); }
 
     // Scopes
     public function scopeCurrentMonth(Builder $q): Builder
@@ -759,30 +833,25 @@ class AiRequest extends Model // KHÔNG extend TenantAwareModel — immutable, k
         return $q->where('organization_id', $orgId);
     }
 
-    public function scopeDone(Builder $q): Builder
-    {
-        return $q->where('status', 'done');
-    }
+    public function scopeDone(Builder $q): Builder  { return $q->where('status', 'done'); }
 
-    // Computed
-    public function isPending(): bool { return $this->status === 'pending'; }
-    public function isDone(): bool    { return $this->status === 'done'; }
-    public function isFailed(): bool  { return $this->status === 'failed'; }
-
-    public function costFormatted(): string
-    {
-        return '$' . number_format($this->cost_usd, 4);
-    }
+    // Helpers
+    public function isPending(): bool  { return $this->status === 'pending'; }
+    public function isDone(): bool     { return $this->status === 'done'; }
+    public function isFailed(): bool   { return $this->status === 'failed'; }
+    public function costFormatted(): string { return '$' . number_format($this->cost_usd, 4); }
 }
 ```
 
 ### 7.3 AiMonthlyUsage
 
 ```php
+use Illuminate\Database\Eloquent\Model; // KHÔNG extend TenantAwareModel
+
 class AiMonthlyUsage extends Model
 {
-    protected $table    = 'ai_monthly_usages';
-    public $timestamps  = false; // chỉ có updated_at managed by DB
+    protected $table   = 'ai_monthly_usages';
+    public $timestamps = false; // updated_at managed by DB ON UPDATE
 
     public function scopeCurrentMonth(Builder $q, int $orgId): Builder
     {
@@ -803,45 +872,55 @@ class AiMonthlyUsage extends Model
 
 ### 8.1 Routes
 
+> **Middleware pattern**: dùng `['auth', 'verified', 'feature:module.ai']` — nhất quán với Assessment module.
+> `'feature:module.ai'` là middleware tích hợp sẵn trong Subscription module, check `org_can('module.ai')`.
+
 ```php
 // Modules/AiCopilot/routes/web.php
-Route::middleware(['auth', 'tenant'])->prefix('dashboard/ai')->name('ai_copilot.')->group(function () {
+use App\Enums\PermissionEnum as P;
+
+Route::middleware(['auth', 'verified', 'feature:module.ai'])
+    ->prefix('dashboard/ai')
+    ->name('ai_copilot.')
+    ->group(function () {
 
     // ── Task execution (end-user facing) ─────────────────────────────
-    Route::post('execute',              [AiTaskController::class, 'execute'])   ->name('execute');
-    Route::get('requests/{uuid}',       [AiTaskController::class, 'poll'])      ->name('requests.poll');
+    Route::post('/execute',              [AiTaskController::class, 'execute'])   ->name('execute');
+    Route::get('/requests/{uuid}',       [AiTaskController::class, 'poll'])      ->name('requests.poll');
 
     // ── Usage dashboard ───────────────────────────────────────────────
-    Route::get('usage',                 [AiUsageController::class, 'index'])    ->name('usage.index');
+    Route::get('/usage',                 [AiUsageController::class, 'index'])    ->name('usage.index');
 
     // ── Prompt Library (AI_OP) ────────────────────────────────────────
-    Route::middleware('can:prompt.full')->prefix('prompts')->name('prompts.')->group(function () {
-        Route::get('/',                 [AiPromptController::class, 'index'])   ->name('index');
-        Route::get('/create',           [AiPromptController::class, 'create'])  ->name('create');
-        Route::post('/',                [AiPromptController::class, 'store'])   ->name('store');
-        Route::get('/{prompt}/edit',    [AiPromptController::class, 'edit'])    ->name('edit');
-        Route::put('/{prompt}',         [AiPromptController::class, 'update'])  ->name('update');
-        Route::post('/{prompt}/default',[AiPromptController::class, 'setDefault'])->name('setDefault');
-        Route::delete('/{prompt}',      [AiPromptController::class, 'destroy']) ->name('destroy');
+    Route::prefix('/prompts')->name('prompts.')->group(function () {
+        Route::get('/',                  [AiPromptController::class, 'index'])   ->name('index');
+        Route::get('/create',            [AiPromptController::class, 'create'])  ->name('create');
+        Route::post('/',                 [AiPromptController::class, 'store'])   ->name('store');
+        Route::get('/{prompt}/edit',     [AiPromptController::class, 'edit'])    ->name('edit');
+        Route::put('/{prompt}',          [AiPromptController::class, 'update'])  ->name('update');
+        Route::post('/{prompt}/default', [AiPromptController::class, 'setDefault'])->name('setDefault');
+        Route::delete('/{prompt}',       [AiPromptController::class, 'destroy']) ->name('destroy');
     });
 
     // ── Agent Config (AI_OP) ──────────────────────────────────────────
-    Route::middleware('can:ai_copilot.config')->prefix('agents')->name('agents.')->group(function () {
-        Route::get('/',                 [AiAgentController::class, 'index'])    ->name('index');
-        Route::get('/{agent}/edit',     [AiAgentController::class, 'edit'])     ->name('edit');
-        Route::put('/{agent}',          [AiAgentController::class, 'update'])   ->name('update');
-        Route::post('/',                [AiAgentController::class, 'store'])    ->name('store');
-        Route::delete('/{agent}',       [AiAgentController::class, 'destroy'])  ->name('destroy');
+    Route::prefix('/agents')->name('agents.')->group(function () {
+        Route::get('/',                  [AiAgentController::class, 'index'])    ->name('index');
+        Route::get('/{agent}/edit',      [AiAgentController::class, 'edit'])     ->name('edit');
+        Route::put('/{agent}',           [AiAgentController::class, 'update'])   ->name('update');
+        Route::post('/',                 [AiAgentController::class, 'store'])    ->name('store');
+        Route::delete('/{agent}',        [AiAgentController::class, 'destroy'])  ->name('destroy');
     });
 
     // ── Request Logs (AI_OP, Admin) ───────────────────────────────────
-    Route::middleware('can:ai_logs.full')->prefix('logs')->name('logs.')->group(function () {
-        Route::get('/',                 [AiRequestLogController::class, 'index'])   ->name('index');
-        Route::get('/{request}',        [AiRequestLogController::class, 'show'])    ->name('show');
-        Route::post('/{request}/retry', [AiRequestLogController::class, 'retry'])   ->name('retry');
+    Route::prefix('/logs')->name('logs.')->group(function () {
+        Route::get('/',                  [AiRequestLogController::class, 'index'])   ->name('index');
+        Route::get('/{aiRequest}',       [AiRequestLogController::class, 'show'])    ->name('show');
+        Route::post('/{aiRequest}/retry',[AiRequestLogController::class, 'retry'])   ->name('retry');
     });
 });
 ```
+
+> **Permission checks**: dùng `$this->authorize()` trong controller body — không dùng `middleware('can:...')` trong route definition (nhất quán với Assessment, KpiGoal, Branch).
 
 ### 8.2 AiTaskController
 
@@ -849,9 +928,9 @@ Route::middleware(['auth', 'tenant'])->prefix('dashboard/ai')->name('ai_copilot.
 class AiTaskController extends Controller
 {
     // POST /dashboard/ai/execute
-    public function execute(AiTaskRequest $request, ExecuteAiTaskAction $action): JsonResponse
+    public function execute(Request $request, ExecuteAiTaskAction $action): JsonResponse
     {
-        $this->authorize('ai_copilot.use');
+        $this->authorize(P::AI_COPILOT_USE->value);
 
         $data      = AiTaskData::validateAndCreate($request->all());
         $aiRequest = $action->handle(
@@ -870,33 +949,35 @@ class AiTaskController extends Controller
     // GET /dashboard/ai/requests/{uuid}  — polling endpoint
     public function poll(string $uuid): JsonResponse
     {
-        $request = AiRequest::where('uuid', $uuid)
+        $aiRequest = AiRequest::where('uuid', $uuid)
             ->where('organization_id', TenantContext::getOrganizationId())
             ->firstOrFail();
 
         return response()->json([
-            'uuid'         => $request->uuid,
-            'status'       => $request->status,
-            'output'       => $request->ai_output,
-            'total_tokens' => $request->total_tokens,
-            'duration_ms'  => $request->duration_ms,
-            'error'        => $request->error_message,
+            'uuid'         => $aiRequest->uuid,
+            'status'       => $aiRequest->status,
+            'output'       => $aiRequest->ai_output,
+            'total_tokens' => $aiRequest->total_tokens,
+            'duration_ms'  => $aiRequest->duration_ms,
+            'error'        => $aiRequest->error_message,
         ]);
     }
 }
 ```
 
-### 8.3 Request Data (Validation)
+### 8.3 Request Data (Spatie LaravelData)
 
 ```php
 // Modules/AiCopilot/app/Data/Requests/AiTaskData.php
+use Spatie\LaravelData\Data;
+
 class AiTaskData extends Data
 {
     public function __construct(
-        #[Required, StringType, Max(80)]   public readonly string $agent_slug,
-        #[Required, ArrayType]             public readonly array  $variables,
-        #[Nullable, StringType, Max(150)]  public readonly ?string $subject_type = null,
-        #[Nullable, IntegerType]           public readonly ?int    $subject_id   = null,
+        public readonly string  $agent_slug,
+        public readonly array   $variables,
+        public readonly ?string $subject_type = null,
+        public readonly ?int    $subject_id   = null,
     ) {}
 
     public static function rules(): array
@@ -916,66 +997,90 @@ class AiTaskData extends Data
 
 ## 9. RBAC & Permissions
 
-### 9.1 Permissions mới (thêm vào PermissionEnum)
+### 9.1 Permissions mới (thêm vào `app/Enums/PermissionEnum.php`)
 
 ```php
-// Thêm vào app/Enums/PermissionEnum.php
 // ══ AI COPILOT ════════════════════════════════════════════════════
-// CEO=View Usage | Ops=View Usage | AI_OP=Config+Logs | Admin=Full
-case AI_COPILOT_USE          = 'ai_copilot.use';          // Trigger AI tasks
-case AI_COPILOT_CONFIG       = 'ai_copilot.config';       // Config agents (AI_OP)
-case AI_COPILOT_VIEW_USAGE   = 'ai_copilot.view_usage';   // View usage dashboard
+// CEO=Use+View | Sales/Ops/HR/Marketing=Use | AI_OP=Config+Logs | Admin=Full
+case AI_COPILOT_USE        = 'ai_copilot.use';        // Trigger AI tasks
+case AI_COPILOT_CONFIG     = 'ai_copilot.config';     // Config agents (AI_OP)
+case AI_COPILOT_VIEW_USAGE = 'ai_copilot.view_usage'; // View usage dashboard
 ```
 
-### 9.2 Role mapping (thêm vào config/permissions.php)
+> `prompt.full`, `ai_logs.full` đã có sẵn trong `PermissionEnum` → AI_OP tái sử dụng.
+
+### 9.2 Role mapping (thêm vào `config/permissions.php`)
 
 ```php
 R::CEO->value => [
+    // ...existing...
     P::AI_COPILOT_USE->value,
     P::AI_COPILOT_VIEW_USAGE->value,
-    // prompt.view đã có
 ],
 
 R::SALES->value => [
-    P::AI_COPILOT_USE->value,   // Dùng email.draft, lead.score_analysis
+    // ...existing...
+    P::AI_COPILOT_USE->value,   // email.draft, lead.score_analysis
 ],
 
 R::OPS->value => [
+    // ...existing...
     P::AI_COPILOT_USE->value,
     P::AI_COPILOT_VIEW_USAGE->value,
 ],
 
 R::HR->value => [
+    // ...existing...
     P::AI_COPILOT_USE->value,   // hr.feedback_draft, hr.job_description
 ],
 
 R::MARKETING->value => [
+    // ...existing...
     P::AI_COPILOT_USE->value,
 ],
 
 R::AI_OP->value => [
+    // ...existing...
     P::AI_COPILOT_USE->value,
     P::AI_COPILOT_CONFIG->value,
     P::AI_COPILOT_VIEW_USAGE->value,
-    // ai_logs.full đã có → xem AiRequest logs
-    // prompt.full đã có → quản lý prompts
+    // prompt.full, ai_logs.full đã có → quản lý prompts + xem request logs
 ],
 
 R::ADMIN->value => [
+    // ...existing...
     P::AI_COPILOT_USE->value,
     P::AI_COPILOT_CONFIG->value,
     P::AI_COPILOT_VIEW_USAGE->value,
     // ai_logs.full đã có
-    // prompt.admin_config đã có
 ],
 ```
 
-### 9.3 Policy
+### 9.3 Sync permissions
+
+> Không có artisan command `permissions:sync`. Sau khi sửa `PermissionEnum` và `config/permissions.php`:
+
+```bash
+php artisan db:seed --class="Database\Seeders\RolePermissionSeeder"
+```
+
+Seeder này đọc `PermissionEnum::cases()` để tạo permission mới và `config/permissions.php` để sync roles.
+
+### 9.4 RoleEnum::visibleModules() (thêm `ai_copilot`)
 
 ```php
-// AiAgentPolicy — chỉ cần cho config, dùng Permission thay Policy cho simplicity
-// AiPrompt → dùng permission prompt.full (đã có)
-// AiRequest execute → permission ai_copilot.use
+// app/Enums/RoleEnum.php
+public function visibleModules(): array
+{
+    return match($this) {
+        self::CEO    => [...existing..., 'ai_copilot'],
+        self::OPS    => [...existing..., 'ai_copilot'],
+        self::AI_OP  => [...existing..., 'ai_copilot'],
+        self::ADMIN  => [...existing..., 'ai_copilot'],
+        // Sales, Marketing, HR: dùng AI nhưng không có riêng module entry trong sidebar
+        ...
+    };
+}
 ```
 
 ---
@@ -1018,12 +1123,24 @@ function aiTask({ agentSlug, variables, subjectType, subjectId, onDone }) {
             try {
                 const res = await fetch('/dashboard/ai/execute', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken() },
-                    body: JSON.stringify({ agent_slug: agentSlug, variables, subject_type: subjectType, subject_id: subjectId }),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({
+                        agent_slug: agentSlug,
+                        variables,
+                        subject_type: subjectType,
+                        subject_id: subjectId,
+                    }),
                 });
 
                 if (res.status === 402) {
                     this.error = 'Đã hết quota AI tháng này. Vui lòng nâng cấp gói.';
+                    return;
+                }
+                if (res.status === 403) {
+                    this.error = 'Bạn không có quyền sử dụng tính năng AI.';
                     return;
                 }
 
@@ -1057,14 +1174,16 @@ function aiTask({ agentSlug, variables, subjectType, subjectId, onDone }) {
 
                 if (data.status === 'done') {
                     clearInterval(this.pollInterval);
+                    this.pollInterval = null;
                     this.loading = false;
                     onDone(data.output);
                 } else if (data.status === 'failed') {
                     clearInterval(this.pollInterval);
+                    this.pollInterval = null;
                     this.loading = false;
                     this.error = 'AI xử lý thất bại. Thử lại hoặc liên hệ admin.';
                 }
-            }, 1000); // poll mỗi 1s
+            }, 1000);
         },
     };
 }
@@ -1075,8 +1194,8 @@ function aiTask({ agentSlug, variables, subjectType, subjectId, onDone }) {
 **Route**: `GET /dashboard/ai/usage`
 
 **View sections**:
-1. **Quota bar** — `quota.ai_requests` current / limit (reuse `quota-bar` partial)
-2. **Monthly stats** — requests, tokens, cost (line chart qua 6 tháng)
+1. **Quota bar** — `quota.ai_requests` current / limit (reuse `quota-bar` partial, đã có trong Subscription module views)
+2. **Monthly stats** — requests, tokens, cost (line chart ECharts qua 6 tháng — dùng `window.ECharts`, event `echarts:ready`)
 3. **Top agents** — breakdown per agent slug (table)
 4. **Recent requests** — last 20 requests với status, duration, cost
 
@@ -1089,18 +1208,18 @@ function aiTask({ agentSlug, variables, subjectType, subjectId, onDone }) {
 return [
     'providers' => [
         'claude' => [
-            'api_key'     => env('ANTHROPIC_API_KEY'),
-            'default_model' => 'claude-haiku-4-5-20251001',
+            'api_key'       => env('ANTHROPIC_API_KEY'),
+            'default_model' => 'claude-haiku-4-5-20251001',  // haiku cho tasks thường
         ],
         'openai' => [
-            'api_key'     => env('OPENAI_API_KEY'),
+            'api_key'       => env('OPENAI_API_KEY'),
             'default_model' => 'gpt-4o-mini',
         ],
     ],
 
     'queue' => [
-        'connection' => env('AI_QUEUE_CONNECTION', 'redis'),
-        'name'       => 'ai',
+        'connection'  => env('AI_QUEUE_CONNECTION', 'database'), // default: database (không phải redis)
+        'name'        => 'ai',
         'retry_after' => 90,
     ],
 
@@ -1110,15 +1229,15 @@ return [
         'timeout_seconds' => 30,
     ],
 
-    'cost_alert_usd' => env('AI_COST_ALERT_USD', 50.0), // Alert khi cost/month > $50
+    'cost_alert_usd' => env('AI_COST_ALERT_USD', 50.0),
 ];
 ```
 
 **.env additions**:
-```
+```env
 ANTHROPIC_API_KEY=sk-ant-...
 OPENAI_API_KEY=sk-...
-AI_QUEUE_CONNECTION=redis
+AI_QUEUE_CONNECTION=database   # hoặc redis nếu có Redis setup
 ```
 
 ---
@@ -1126,7 +1245,10 @@ AI_QUEUE_CONNECTION=redis
 ## 12. ActivityLog Integration
 
 ```php
-// Các events cần log
+use Modules\ActivityLog\Core\ActivityLogger;
+
+// Signature: ActivityLogger::info/warning/error(module, action, subject, context)
+
 ActivityLogger::info('ai_copilot', 'task_executed', $aiRequest, [
     'agent_slug'   => $agent->slug,
     'subject_type' => $aiRequest->subject_type,
@@ -1135,13 +1257,13 @@ ActivityLogger::info('ai_copilot', 'task_executed', $aiRequest, [
 ]);
 
 ActivityLogger::warning('ai_copilot', 'quota_approaching', null, [
-    'current'  => $monthRequests,
-    'limit'    => org_limit('quota.ai_requests'),
-    'pct'      => round($monthRequests / org_limit('quota.ai_requests') * 100),
+    'current' => $monthRequests,
+    'limit'   => org_limit('quota.ai_requests'),
+    'pct'     => round($monthRequests / max(1, org_limit('quota.ai_requests')) * 100),
 ]);
 
 ActivityLogger::error('ai_copilot', 'request_failed', $aiRequest, [
-    'agent_slug' => $agent->slug,
+    'agent_slug' => $agent->slug ?? '?',
     'provider'   => $aiRequest->provider,
     'error'      => $aiRequest->error_message,
 ]);
@@ -1152,6 +1274,8 @@ ActivityLogger::info('ai_copilot', 'prompt_updated', $prompt, [
 ]);
 ```
 
+> `ActivityLogger::error()` nhận 4 params (module, action, subject, context) — signature khớp với `ActivityLogger.php` thực tế.
+
 ---
 
 ## 13. Module Structure
@@ -1161,9 +1285,9 @@ Modules/AiCopilot/
 ├── app/
 │   ├── Actions/
 │   │   ├── ExecuteAiTaskAction.php       ← Entry point chính
-│   │   ├── ProcessAiRequestJob.php       ← Queue job (trong Actions vì AsAction)
-│   │   ├── RecordAiUsageAction.php
+│   │   ├── RecordAiUsageAction.php       ← Deduct quota + cập nhật aggregate
 │   │   ├── RetryAiRequestAction.php
+│   │   ├── CancelAiRequestAction.php
 │   │   ├── StoreAiAgentAction.php
 │   │   ├── UpdateAiAgentAction.php
 │   │   ├── DestroyAiAgentAction.php
@@ -1195,18 +1319,18 @@ Modules/AiCopilot/
 │   │       ├── AiPromptController.php
 │   │       └── AiRequestLogController.php
 │   ├── Jobs/
-│   │   └── ProcessAiRequestJob.php
+│   │   └── ProcessAiRequestJob.php      ← Queue job (extends TenantAwareJob, KHÔNG phải Action)
 │   ├── Models/
-│   │   ├── AiAgent.php
-│   │   ├── AiPrompt.php
-│   │   ├── AiRequest.php
-│   │   └── AiMonthlyUsage.php
+│   │   ├── AiAgent.php                  ← extends TenantAwareModel
+│   │   ├── AiPrompt.php                 ← extends TenantAwareModel
+│   │   ├── AiRequest.php                ← extends Model (immutable, NO soft delete)
+│   │   └── AiMonthlyUsage.php           ← extends Model (aggregate)
 │   ├── Queries/
 │   │   ├── ListAiAgentsQuery.php
 │   │   ├── ListAiRequestsQuery.php
 │   │   └── GetUsageSummaryQuery.php
 │   ├── Services/
-│   │   └── AiDriverManager.php
+│   │   └── AiDriverManager.php          ← Service locator cho drivers
 │   └── Providers/
 │       ├── AiCopilotServiceProvider.php
 │       └── RouteServiceProvider.php
@@ -1248,54 +1372,63 @@ Modules/AiCopilot/
 
 ### Phase 1 — Core Engine (tuần 1)
 
+- [ ] Composer: `composer require anthropic-php/sdk openai-php/laravel` (root project)
 - [ ] Migrations (4 tables)
 - [ ] Models: AiAgent, AiPrompt, AiRequest, AiMonthlyUsage
-- [ ] Driver abstraction: Contract + ClaudeDriver + MockDriver
+- [ ] Driver abstraction: Contract + DTOs + ClaudeDriver + MockDriver
 - [ ] AiDriverManager service
 - [ ] ExecuteAiTaskAction (sync mode first)
-- [ ] ProcessAiRequestJob (queue)
-- [ ] RecordAiUsageAction
+- [ ] ProcessAiRequestJob (extends TenantAwareJob)
+- [ ] RecordAiUsageAction (quota deduct + aggregate)
 - [ ] Exceptions: FeatureNotAvailableException, QuotaExceededException
-- [ ] ServiceProvider + config
+- [ ] ServiceProvider (extends `Nwidart\Modules\Support\ModuleServiceProvider`) + config
 
 ### Phase 2 — Quota & Subscription wiring (tuần 1-2)
 
-- [ ] Thêm `quota.ai_tokens` và `limit.ai_agents` vào Subscription config
-- [ ] Gate checks trong ExecuteAiTaskAction
+- [ ] Thêm `quota.ai_tokens` và `limit.ai_agents` vào `subscription.php` + `FeatureSeeder`
+- [ ] Verify gate checks trong ExecuteAiTaskAction
 - [ ] Seeder: 9 system agents + default prompts
 - [ ] AiTaskController (execute + poll endpoints)
-- [ ] Thêm permissions vào PermissionEnum + config/permissions.php
-- [ ] `php artisan permissions:sync`
+- [ ] Thêm permissions vào `PermissionEnum` + `config/permissions.php`
+- [ ] Chạy: `php artisan db:seed --class="Database\Seeders\RolePermissionSeeder"`
 
 ### Phase 3 — Prompt & Agent Management UI (tuần 2)
 
-- [ ] AiPromptController CRUD
-- [ ] AiAgentController CRUD (override system agents per org)
+- [ ] AiPromptController CRUD (authorize `prompt.full`)
+- [ ] AiAgentController CRUD (authorize `ai_copilot.config`)
 - [ ] Blade views: agents/index, agents/edit, prompts/index, prompts/create, prompts/edit
 - [ ] ActivityLogger integration
 
 ### Phase 4 — Usage Dashboard (tuần 2-3)
 
 - [ ] GetUsageSummaryQuery
-- [ ] AiUsageController
-- [ ] Views: usage/index với quota bar + charts
-- [ ] AiRequestLogController + views: logs/index, logs/show
-- [ ] Retry action cho failed requests
+- [ ] AiUsageController (authorize `ai_copilot.view_usage`)
+- [ ] Views: usage/index với quota bar + ECharts line chart
+- [ ] AiRequestLogController (authorize `ai_logs.full`) + views: logs/index, logs/show
+- [ ] RetryAiRequestAction cho failed requests
 
 ### Phase 5 — Widget Integration (tuần 3)
 
-- [ ] Alpine.js `aiTask()` component
+- [ ] Alpine.js `aiTask()` component → `resources/js/components/aiTask.js`
 - [ ] Nhúng vào SOP step editor
 - [ ] Nhúng vào Employee performance form
 - [ ] Nhúng vào KPI analysis section
 - [ ] Nhúng vào Lead score panel
+- [ ] Thêm sidebar entry trong `resources/views/layouts/partials/sidebar.blade.php`
 
 ---
 
 ## 15. Composer & Dependencies
 
+> Thêm vào **root `composer.json`** (không phải module-level):
+
+```bash
+composer require anthropic-php/sdk openai-php/laravel
+```
+
+Module-level `composer.json` chỉ khai báo cho metadata:
+
 ```json
-// Modules/AiCopilot/composer.json
 {
     "name": "minhan/ai-copilot",
     "require": {
@@ -1311,23 +1444,24 @@ Modules/AiCopilot/
 }
 ```
 
-```bash
-composer require anthropic-php/sdk openai-php/laravel
-```
-
 ---
 
 ## 16. Queue Setup
 
 ```bash
 # Worker riêng cho AI queue (tránh block queue chính)
-php artisan queue:work --queue=ai --timeout=90 --tries=2 --sleep=1
+# Default connection: database — dùng Redis nếu có
+php artisan queue:work --queue=ai,default --timeout=90 --tries=2 --sleep=1
 
-# Trong production: supervisor config
+# Supervisor config (production)
 [program:minhan-ai-worker]
 command=php /var/www/html/minhan/artisan queue:work --queue=ai --timeout=90 --tries=2
 numprocs=2
+autostart=true
+autorestart=true
 ```
+
+> **Queue connection**: mặc định `database` (`.env: QUEUE_CONNECTION=database`). Nâng lên `redis` khi cần throughput cao hơn.
 
 ---
 
@@ -1335,32 +1469,38 @@ numprocs=2
 
 | Tình huống | Xử lý |
 |---|---|
-| API key sai / provider down | Catch → `status=failed`, log error, không retry |
-| Timeout (>30s) | Job timeout → `failed()` hook → `status=failed` |
-| Rate limit 429 từ provider | Retry với exponential backoff (2 tries) |
-| Quota vượt giới hạn | Exception ngay lập tức, KHÔNG gọi API |
-| Token > max_tokens của model | Truncate prompt trước khi gửi |
-| Subject không tồn tại | Validate `subject_id` trong Data class |
+| API key sai / provider down | Catch `\Throwable` → `status=failed`, log error, không retry |
+| Timeout (>60s job timeout) | `failed()` hook → `status=failed` |
+| Rate limit 429 từ provider | Retry với exponential backoff (2 tries, $this->release()) |
+| Quota vượt giới hạn | Exception ngay trong ExecuteAiTaskAction, KHÔNG gọi API |
+| Token > max_tokens của model | Truncate `rendered_prompt` trước khi gửi (ở ClaudeDriver) |
+| Subject không tồn tại | Validate `subject_id` trong Data class (rules method) |
 | Kết quả AI rỗng | `finish_reason=max_tokens` → lưu partial output |
+| `org_quota()` trả về 0 | QuotaExceededException — return HTTP 402 từ controller |
 
 ---
 
 ## 18. Matching với hệ thống hiện tại
 
-| Điểm tích hợp | Cách match |
-|---|---|
-| **TenantAwareModel** | AiAgent, AiPrompt, AiMonthlyUsage extend TenantAwareModel |
-| **TenantAwareJob** | ProcessAiRequestJob extend TenantAwareJob |
-| **SubscriptionContext** | `org_can('module.ai')`, `org_at_limit('quota.ai_requests')` |
-| **RecordFeatureUsageAction** | Gọi sau mỗi request thành công |
-| **ActivityLogger** | Log execute, fail, prompt_updated |
-| **PermissionEnum** | 3 cases mới trong block AI COPILOT |
-| **config/permissions.php** | Map roles → permissions như pattern hiện có |
-| **AVSA Actions** | Tất cả business logic trong Action classes với `AsAction` |
-| **Spatie LaravelData** | AiTaskData, StoreAiAgentData extend Data |
-| **RoleEnum::visibleModules()** | Thêm `'ai_copilot'` cho CEO, OPS, AI_OP, ADMIN |
-| **Sidebar config** | Thêm entry trong `config/permissions.php` sidebar section |
+| Điểm tích hợp | Cách match | Ghi chú |
+|---|---|---|
+| **TenantAwareModel** | `use App\Foundation\Models\TenantAwareModel` | AiAgent, AiPrompt extend. AiRequest, AiMonthlyUsage: plain Model |
+| **TenantAwareJob** | `use App\Foundation\Jobs\TenantAwareJob` | ProcessAiRequestJob extend, gọi `withTenant(fn)` |
+| **TenantContext::resolve()** | `TenantContext::resolve()` → trả Organization hoặc throws | Dùng trong ExecuteAiTaskAction |
+| **org_can / org_quota** | `org_can('module.ai')`, `org_quota('quota.ai_requests')` | Helper trong Subscription/Helpers/subscription.php |
+| **RecordFeatureUsageAction** | `RecordFeatureUsageAction::run($org, $slug, $uses)` | Dùng trong RecordAiUsageAction để deduct quota |
+| **ActivityLogger** | `ActivityLogger::info/warning/error(module, action, subject, context)` | Import từ `Modules\ActivityLog\Core\ActivityLogger` |
+| **PermissionEnum** | 3 cases mới: AI_COPILOT_USE, CONFIG, VIEW_USAGE | prompt.full và ai_logs.full tái sử dụng cho AI_OP |
+| **config/permissions.php** | Map roles → permissions theo pattern hiện có | Không dùng inline `middleware('can:...')` trong routes |
+| **AVSA Actions** | Business logic trong Action classes với `use AsAction` | Job riêng trong `Jobs/`, không trộn với Actions |
+| **Spatie LaravelData** | Data classes extend `Spatie\LaravelData\Data` với `rules()` static | Nhất quán với KpiGoal, Branch |
+| **ServiceProvider** | Extends `Nwidart\Modules\Support\ModuleServiceProvider` | Nhất quán với Branch, Assessment |
+| **Route middleware** | `['auth', 'verified', 'feature:module.ai']` | Không dùng `'tenant'` (không tồn tại) |
+| **Sidebar** | `@can('ai_copilot.use')` block trong sidebar.blade.php | Tham khảo Assessment section pattern |
+| **Queue** | `'database'` default, worker riêng queue `ai` | Redis khi scaling |
+| **Permissions sync** | `php artisan db:seed --class="Database\Seeders\RolePermissionSeeder"` | Không có `permissions:sync` command |
+| **withoutTenant()** | `AiAgent::withoutTenant()` trong findBySlug | Bypass OrganizationScope để tìm system agents (org_id=NULL) |
 
 ---
 
-*Spec v1.0.0 — 2026-06-11 · Minhan Platform*
+*Spec v1.1.0 — 2026-06-12 · Minhan Platform*

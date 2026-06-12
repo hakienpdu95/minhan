@@ -98,6 +98,42 @@
                             <label class="label" for="description">
                                 <span class="label-text font-medium">Mô tả tổng quan</span>
                             </label>
+                            @can('ai_copilot.use')
+                            <div class="mb-1.5"
+                                 x-data="{
+                                     ...aiTask({
+                                         agentSlug:   'sop.draft',
+                                         variables:   { sop_title: @js($sop->title), department: @js($sop->department?->name ?? ''), type: @js($sop->type?->value ?? '') },
+                                         subjectType: 'Modules\\Sop\\Models\\Sop',
+                                         subjectId:   {{ $sop->id }},
+                                     }),
+                                     apply() {
+                                         if (!this.output) return;
+                                         const jodit = window.Jodit?.instances?.description;
+                                         if (jodit) { jodit.value = this.output; }
+                                         else { const ta = document.getElementById('description'); if (ta) ta.value = this.output; }
+                                     }
+                                 }">
+                                <button type="button" @click="run()" :disabled="loading"
+                                        class="btn btn-xs btn-outline btn-primary gap-1">
+                                    <svg x-show="!loading" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                    </svg>
+                                    <span x-show="loading" class="loading loading-spinner loading-xs"></span>
+                                    <span x-show="!loading">✨ AI gợi ý mô tả</span>
+                                </button>
+                                <div x-show="error" class="text-xs text-error mt-1" x-text="error"></div>
+                                <template x-if="output">
+                                    <div class="mt-2 p-3 bg-primary/5 border border-primary/20 rounded-lg text-sm">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="text-xs font-medium text-primary">Gợi ý từ AI</span>
+                                            <button type="button" @click="apply()" class="btn btn-xs btn-primary">Dùng gợi ý</button>
+                                        </div>
+                                        <p x-text="output" class="text-base-content/70 whitespace-pre-wrap max-h-40 overflow-y-auto"></p>
+                                    </div>
+                                </template>
+                            </div>
+                            @endcan
                             <textarea id="description" name="description"
                                       class="jodit-editor textarea textarea-bordered textarea-sm w-full @error('description') textarea-error @enderror"
                                       data-jodit-preset="compact"

@@ -136,6 +136,42 @@
         </div>
         @endif
 
+        {{-- AI Feedback suggestion --}}
+        @can('ai_copilot.use')
+        <div class="card bg-base-100 shadow-sm border border-base-200"
+             x-data="aiTask({
+                 agentSlug:   'hr.feedback_draft',
+                 variables:   {
+                     employee_name: '{{ addslashes($review->employee?->full_name ?? '') }}',
+                     position:      '{{ addslashes($review->snap_job_title ?? '') }}',
+                     period:        '{{ addslashes($review->period) }}',
+                     overall_score: '{{ $review->overall_score !== null ? number_format($review->overall_score, 2) : '' }}',
+                     strengths:     '{{ addslashes($review->strengths ?? '') }}',
+                     improvements:  '{{ addslashes($review->improvements ?? '') }}',
+                 },
+                 subjectType: 'Modules\\PerformanceReview\\Models\\PerformanceReview',
+                 subjectId:   {{ $review->id }},
+             })">
+            <div class="card-body p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-base font-semibold">✨ AI Gợi ý nhận xét</h2>
+                    <button type="button" @click="run()" :disabled="loading"
+                            class="btn btn-sm btn-outline btn-primary gap-1.5">
+                        <svg x-show="!loading" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        <span x-show="loading" class="loading loading-spinner loading-xs"></span>
+                        <span x-show="!loading">Tạo gợi ý</span>
+                        <span x-show="loading">Đang xử lý…</span>
+                    </button>
+                </div>
+                <p class="text-xs text-base-content/50 mb-2">Gợi ý nhận xét tổng hợp dựa trên dữ liệu đánh giá kỳ này.</p>
+                <div x-show="error" class="alert alert-error py-2 px-3 text-xs" x-text="error"></div>
+                <div x-show="output" class="mt-2 prose prose-sm max-w-none bg-base-200 rounded-lg p-3 max-h-72 overflow-y-auto whitespace-pre-wrap text-sm" x-text="output"></div>
+            </div>
+        </div>
+        @endcan
+
     </div>
 
     {{-- Right: Meta info --}}

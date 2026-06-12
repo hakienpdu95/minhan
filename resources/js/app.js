@@ -280,6 +280,14 @@ import { initPushNotifications, pushToggleComponent } from './modules/push-notif
  */
 import './modules/form-validation.js';
 
+/* ── 6. AI Copilot task widget ──────────────────────────────────────
+ * Exposed on window so blade templates can use:
+ *   x-data="aiTask({agentSlug:'xxx', variables:{...}})"
+ *   x-data="{ ...aiTask({...}), extraMethod() { ... } }"
+ */
+import { aiTask } from './components/aiTask.js';
+window.aiTask = aiTask;
+
 document.addEventListener('DOMContentLoaded', () => {
     initAdminShell();
     initPushNotifications(); // register SW on every page

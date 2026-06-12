@@ -35,7 +35,7 @@ return new class extends Migration
             $table->unsignedBigInteger('human_reviewer_id')->nullable()->comment('Chuyên gia Human-in-the-Loop');
             $table->timestamp('reviewed_at')->nullable();
             $table->timestamps();
-            $table->softDeletes();
+            
 
             // Indexes
             $table->index(['workforce_profile_id', 'status'], 'idx_wfcert_profile_status');

@@ -137,6 +137,42 @@
     </div>
     @endif
 
+    {{-- AI Analysis --}}
+    @can('ai_copilot.use')
+    <div class="card bg-base-100 shadow-sm border border-base-200 mb-4"
+         x-data="aiTask({
+             agentSlug:   'kpi.analysis',
+             variables:   {
+                 employee_name:   '{{ addslashes($goal->employee?->full_name ?? '') }}',
+                 cycle_label:     '{{ addslashes($goal->cycle_label) }}',
+                 kpi_title:       '{{ addslashes($goal->title) }}',
+                 target_value:    '{{ $goal->target_value }}',
+                 current_value:   '{{ $goal->current_value }}',
+                 achievement_pct: '{{ number_format((float)$goal->achievement_pct, 1) }}',
+                 unit:            '{{ addslashes($goal->unit ?? '') }}',
+             },
+             subjectType: 'Modules\\KpiGoal\\Models\\KpiGoal',
+             subjectId:   {{ $goal->id }},
+         })">
+        <div class="card-body p-4">
+            <div class="flex items-center justify-between">
+                <h2 class="text-sm font-semibold">✨ AI Phân tích KPI</h2>
+                <button type="button" @click="run()" :disabled="loading"
+                        class="btn btn-sm btn-outline btn-primary gap-1.5">
+                    <svg x-show="!loading" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    <span x-show="loading" class="loading loading-spinner loading-xs"></span>
+                    <span x-show="!loading">Phân tích</span>
+                    <span x-show="loading">Đang xử lý…</span>
+                </button>
+            </div>
+            <div x-show="error" class="alert alert-error py-2 px-3 text-xs mt-2" x-text="error"></div>
+            <div x-show="output" class="mt-3 prose prose-sm max-w-none bg-base-200 rounded-lg p-3 max-h-60 overflow-y-auto whitespace-pre-wrap text-sm" x-text="output"></div>
+        </div>
+    </div>
+    @endcan
+
     {{-- Actions --}}
     <div class="flex flex-wrap gap-3">
         @if($goal->isDraft())

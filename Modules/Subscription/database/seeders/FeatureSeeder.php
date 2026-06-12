@@ -43,7 +43,10 @@ class FeatureSeeder extends Seeder
             'flag.custom_domain'  => '0',
             // Quotas
             'quota.ai_requests'   => '20',
+            'quota.ai_tokens'     => '0',
             'quota.workflow_runs' => '50',
+            // AI limits
+            'limit.ai_agents'     => '0',
         ],
         'growth' => [
             'module.task'         => '1',
@@ -70,7 +73,9 @@ class FeatureSeeder extends Seeder
             'flag.white_label'    => '0',
             'flag.custom_domain'  => '0',
             'quota.ai_requests'   => '500',
+            'quota.ai_tokens'     => '500000',
             'quota.workflow_runs' => '2000',
+            'limit.ai_agents'     => '5',
         ],
         'scale' => [
             'module.task'         => '1',
@@ -97,7 +102,9 @@ class FeatureSeeder extends Seeder
             'flag.white_label'    => '0',
             'flag.custom_domain'  => '0',
             'quota.ai_requests'   => '5000',
+            'quota.ai_tokens'     => '5000000',
             'quota.workflow_runs' => '0',
+            'limit.ai_agents'     => '20',
         ],
         'enterprise' => [
             'module.task'         => '1',
@@ -124,7 +131,9 @@ class FeatureSeeder extends Seeder
             'flag.white_label'    => '1',
             'flag.custom_domain'  => '1',
             'quota.ai_requests'   => '0',
+            'quota.ai_tokens'     => '0',
             'quota.workflow_runs' => '0',
+            'limit.ai_agents'     => '0',
         ],
     ];
 

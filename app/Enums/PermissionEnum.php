@@ -85,6 +85,12 @@ enum PermissionEnum: string
     case AI_LOGS_FULL    = 'ai_logs.full';    // AI Operator, Admin
     case AI_LOGS_VIEW    = 'ai_logs.view';    // CEO(summary), Ops(limited)
 
+    // ══ AI COPILOT ═════════════════════════════════════════════════
+    // CEO=Use+ViewUsage | Sales=Use | Ops=Use | HR=Use | Marketing=Use | AI_OP=Use+Config | Admin=Use+Config
+    case AI_COPILOT_USE        = 'ai_copilot.use';        // Sử dụng AI task execution
+    case AI_COPILOT_CONFIG     = 'ai_copilot.config';     // Quản lý agents + prompts
+    case AI_COPILOT_VIEW_USAGE = 'ai_copilot.view_usage'; // Xem usage stats / logs
+
     // ══ USERS ══════════════════════════════════════════════════════
     // CEO=View | HR=Limited | Admin=Full
     case USERS_VIEW   = 'users.view';   // CEO

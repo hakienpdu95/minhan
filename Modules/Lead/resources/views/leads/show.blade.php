@@ -688,6 +688,38 @@
                 </div>
             </div>
 
+            {{-- AI Lead analysis --}}
+            @can('ai_copilot.use')
+            <div class="card bg-base-100 shadow-sm border border-base-200"
+                 x-data="aiTask({
+                     agentSlug:   'lead.score_analysis',
+                     variables:   {
+                         lead_name: '{{ addslashes($lead->displayTitle()) }}',
+                         company:   '{{ addslashes($lead->contact_company ?? '') }}',
+                         source:    '{{ addslashes($lead->source?->label ?? '') }}',
+                         notes:     '{{ addslashes($lead->description ?? '') }}',
+                     },
+                     subjectType: 'Modules\\Lead\\Models\\Lead',
+                     subjectId:   {{ $lead->id }},
+                 })">
+                <div class="card-body py-3 px-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-semibold text-sm">✨ AI Phân tích Lead</h3>
+                        <button type="button" @click="run()" :disabled="loading"
+                                class="btn btn-xs btn-outline btn-primary gap-1">
+                            <svg x-show="!loading" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                            <span x-show="loading" class="loading loading-spinner loading-xs"></span>
+                            <span x-show="!loading">Phân tích</span>
+                        </button>
+                    </div>
+                    <div x-show="error" class="alert alert-error py-1.5 px-2 text-xs" x-text="error"></div>
+                    <div x-show="output" class="mt-2 bg-base-200 rounded-lg p-2.5 text-xs whitespace-pre-wrap max-h-48 overflow-y-auto" x-text="output"></div>
+                </div>
+            </div>
+            @endcan
+
         </div>{{-- /sidebar --}}
 
     </div>{{-- /grid --}}

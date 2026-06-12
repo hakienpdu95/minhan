@@ -28,7 +28,7 @@ return new class extends Migration
             $table->text('rejection_reason')->nullable();
             $table->unsignedSmallInteger('sort_order')->default(0);
             $table->timestamps();
-            $table->softDeletes();
+            
 
             // Indexes
             $table->index(['workforce_profile_id', 'item_type'], 'idx_wfport_profile_type');

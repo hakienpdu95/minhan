@@ -88,7 +88,7 @@ Reverb isn't started. Run it:
   
 # > Đọc file docs/customer.md và làm phase 1 trước, implement theo đúng spec, đọc thêm file docs/module-list-pattern.md để tuân thủ đúng cấu trúc và nguyên tắc chuẩn khi thiết kế và triển khai module theo cấu trúc Advanced Vertical Slice (AVSA) + CQRS-lite + Laravel Modules + Laravel Actions, bổ sung ra mdenu sidebar để dùng, phần views hãy kế thừa và làm chuẩn @extends('layouts.backend')
 
-# > Đọc file docs/thuchoc-system-spec.md và làm phase 0, implement theo đúng và sát spec đó, tuân thủ quy tắc và nguyên tắc hệ thống hiện tại để build
+# > Đọc file docs/ai-copilot-spec.md và làm phase 1, implement theo đúng và sát spec đó, tuân thủ quy tắc và nguyên tắc hệ thống hiện tại để build
 
 # > Đọc file docs/form-ui-spec.md và implement theo đúng spec đó, áp dụng spec này vào module Customer, review và tối ưu UI/UX form chuẩn để hành vi người dùng dễ thao tác và sử dụng linh hoạt, thuận tiện
 

@@ -7,6 +7,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
+        "anthropic-ai/sdk": "^0.29.1",
         "intervention/image-laravel": "^4.0",
         "laravel/fortify": "^1.36",
         "laravel/framework": "^13.7",
@@ -17,6 +18,7 @@
         "lorisleiva/laravel-actions": "^2.10",
         "minishlink/web-push": "^10.1",
         "nwidart/laravel-modules": "^13.0",
+        "openai-php/laravel": "^0.19.1",
         "predis/predis": "^3.4",
         "rap2hpoutre/fast-excel": "^5.7",
         "ringlesoft/laravel-process-approval": "^1.1",

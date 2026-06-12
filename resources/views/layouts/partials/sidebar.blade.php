@@ -249,6 +249,30 @@
             </details>
             @endcan
 
+            @if(auth()->user()?->hasAnyPermission(['ai_copilot.use','ai_copilot.config','prompt.full']))
+            <details {{ request()->routeIs('ai.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('ai.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    <span class="nav-label">AI Copilot</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    @can('ai_copilot.view_usage')
+                    <a href="{{ route('ai.usage.index') }}" class="sub-link {{ request()->routeIs('ai.usage.*') ? 'active' : '' }}">Usage Dashboard</a>
+                    @endcan
+                    @can('ai_logs.full')
+                    <a href="{{ route('ai.logs.index') }}" class="sub-link {{ request()->routeIs('ai.logs.*') ? 'active' : '' }}">Request Logs</a>
+                    @endcan
+                    @can('ai_copilot.config')
+                    <a href="{{ route('ai.agents.index') }}" class="sub-link {{ request()->routeIs('ai.agents.*') ? 'active' : '' }}">AI Agents</a>
+                    @endcan
+                    @can('prompt.full')
+                    <a href="{{ route('ai.prompts.index') }}" class="sub-link {{ request()->routeIs('ai.prompts.*') ? 'active' : '' }}">Prompt Library</a>
+                    @endcan
+                </div>
+            </details>
+            @endif
+
             @can('viewAny', \Modules\Task\Models\Task::class)
             <details {{ request()->routeIs('backend.tasks.*') ? 'open' : '' }}>
                 <summary class="nav-summary {{ request()->routeIs('backend.tasks.*') ? 'active' : '' }}">

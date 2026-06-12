@@ -33,7 +33,7 @@ return new class extends Migration
             $table->timestamp('evaluated_at')->nullable();
             $table->text('feedback')->nullable();
             $table->timestamps();
-            $table->softDeletes();
+            
 
             // Indexes
             $table->index(['workforce_profile_id', 'status'], 'idx_sandsess_profile_status');

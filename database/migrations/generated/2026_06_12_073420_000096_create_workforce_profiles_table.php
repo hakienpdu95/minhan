@@ -49,6 +49,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('profile_completeness_pct')->default(0);
             $table->timestamps();
             $table->softDeletes();
+            
 
             // Indexes
             $table->unique(['organization_id', 'user_id'], 'uq_wfp_org_user');

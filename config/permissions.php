@@ -43,6 +43,9 @@ return [
         P::PROMPT_VIEW->value,
         // AI Logs: View summary
         P::AI_LOGS_VIEW->value,
+        // AI Copilot: Use + View usage
+        P::AI_COPILOT_USE->value,
+        P::AI_COPILOT_VIEW_USAGE->value,
         // Users: View
         P::USERS_VIEW->value,
         // Reports: Full
@@ -73,6 +76,8 @@ return [
         P::CUSTOMERS_EDIT->value,
         // Sales AI: Use (dùng output, không config)
         P::SALES_AI_USE->value,
+        // AI Copilot: Use
+        P::AI_COPILOT_USE->value,
         // Tasks: Assigned
         P::TASKS_VIEW_ASSIGNED->value,
         P::TASKS_CREATE->value,
@@ -115,6 +120,9 @@ return [
         P::WORKFLOW_EDIT->value,
         // AI Logs: Limited (view, không full)
         P::AI_LOGS_VIEW->value,
+        // AI Copilot: Use + View usage
+        P::AI_COPILOT_USE->value,
+        P::AI_COPILOT_VIEW_USAGE->value,
         // Reports: Operations scope
         P::REPORTS_OPS->value,
         // Assessment: View + Results
@@ -138,6 +146,8 @@ return [
         P::SOP_VIEW_RELATED->value,
         // Workflow: Limited
         P::WORKFLOW_VIEW_LIMITED->value,
+        // AI Copilot: Use
+        P::AI_COPILOT_USE->value,
         // Reports: Marketing scope
         P::REPORTS_MARKETING->value,
         // Marketplace: View (Marketing monitors public listings)
@@ -153,6 +163,8 @@ return [
         P::SOP_CREATE_HR->value,
         // Workflow: Limited
         P::WORKFLOW_VIEW_LIMITED->value,
+        // AI Copilot: Use
+        P::AI_COPILOT_USE->value,
         // Users: Limited (tạo user nội bộ, onboarding)
         P::USERS_HR->value,
         // Reports: HR scope
@@ -193,6 +205,10 @@ return [
         P::PROMPT_FULL->value,
         // AI Logs: Full
         P::AI_LOGS_FULL->value,
+        // AI Copilot: Use + Config + View usage
+        P::AI_COPILOT_USE->value,
+        P::AI_COPILOT_CONFIG->value,
+        P::AI_COPILOT_VIEW_USAGE->value,
         // Reports: AI usage scope
         P::REPORTS_AI_USAGE->value,
         // Assessment: Config + Reprocess
@@ -226,6 +242,10 @@ return [
         P::WORKFLOW_FULL_CONFIG->value,
         P::PROMPT_ADMIN_CONFIG->value,
         P::AI_LOGS_FULL->value,
+        // AI Copilot: Use + Config + View usage
+        P::AI_COPILOT_USE->value,
+        P::AI_COPILOT_CONFIG->value,
+        P::AI_COPILOT_VIEW_USAGE->value,
         // User & roles management
         P::USERS_MANAGE->value,
         P::ROLES_MANAGE->value,

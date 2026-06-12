@@ -27,5 +27,6 @@
     "Marketplace": true,
     "Task": true,
     "Subscription": true,
-    "Customer": true
+    "Customer": true,
+    "AiCopilot": true
 }
