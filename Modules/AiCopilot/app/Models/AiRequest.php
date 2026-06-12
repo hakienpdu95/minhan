@@ -3,6 +3,7 @@
 namespace Modules\AiCopilot\Models;
 
 use App\Models\User;
+use App\Shared\Tenancy\Traits\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class AiRequest extends Model
 {
+    use BelongsToOrganization;
+
     protected $table    = 'ai_requests';
     public $timestamps  = true;
 
@@ -46,11 +49,6 @@ class AiRequest extends Model
     public function scopeCurrentMonth(Builder $q): Builder
     {
         return $q->where('created_at', '>=', now()->startOfMonth());
-    }
-
-    public function scopeForOrg(Builder $q, int $orgId): Builder
-    {
-        return $q->where('organization_id', $orgId);
     }
 
     public function scopeDone(Builder $q): Builder { return $q->where('status', 'done'); }

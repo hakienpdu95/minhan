@@ -74,8 +74,7 @@ class SandboxAdminController extends Controller
             ? Organization::where('is_system', false)->orderBy('name')->get()
             : collect();
 
-        return view('assessment::sandbox.admin.env-form', [
-            'env'           => null,
+        return view('assessment::sandbox.admin.env.create', [
             'isSuperAdmin'  => $isSuperAdmin,
             'currentOrg'    => $currentOrg,
             'organizations' => $organizations,
@@ -103,7 +102,27 @@ class SandboxAdminController extends Controller
             $rules['organization_id'] = 'required_if:scope,org|nullable|exists:organizations,id';
         }
 
-        $data = $request->validate($rules);
+        $messages = [
+            'name.required'               => 'Vui lòng nhập tên môi trường.',
+            'name.max'                    => 'Tên không được vượt quá :max ký tự.',
+            'env_code.required'           => 'Vui lòng nhập mã môi trường.',
+            'env_code.max'                => 'Mã không được vượt quá :max ký tự.',
+            'env_code.regex'              => 'Mã chỉ được dùng CHỮ HOA, số và gạch dưới.',
+            'type.required'               => 'Vui lòng chọn loại kỹ năng.',
+            'type.in'                     => 'Loại kỹ năng không hợp lệ.',
+            'tier.required'               => 'Vui lòng chọn cấp độ.',
+            'tier.integer'                => 'Cấp độ phải là số nguyên.',
+            'tier.min'                    => 'Cấp độ phải từ :min trở lên.',
+            'tier.max'                    => 'Cấp độ không được vượt quá :max.',
+            'description.max'             => 'Mô tả không được vượt quá :max ký tự.',
+            'sort_order.integer'          => 'Thứ tự phải là số nguyên.',
+            'sort_order.min'              => 'Thứ tự không được âm.',
+            'scope.required'              => 'Vui lòng chọn phạm vi.',
+            'scope.in'                    => 'Phạm vi không hợp lệ.',
+            'organization_id.required_if' => 'Vui lòng chọn tổ chức khi phạm vi là "Riêng tổ chức cụ thể".',
+            'organization_id.exists'      => 'Tổ chức được chọn không hợp lệ.',
+        ];
+        $data = $request->validate($rules, $messages);
 
         // Determine organization_id:
         //   super-admin + scope=global          → NULL (template dùng chung)
@@ -138,15 +157,15 @@ class SandboxAdminController extends Controller
         $this->authorize('assessment.config');
         $this->authorizeEnvAccess($sandboxEnvironment);
 
-        $isSuperAdmin  = request()->user()?->hasRole('super-admin');
-        $currentOrg    = TenantContext::resolve();
-        $organizations = collect(); // not needed on edit (scope is fixed)
+        $isSuperAdmin = request()->user()?->hasRole('super-admin');
+        $envOrgName   = $sandboxEnvironment->organization_id
+            ? (Organization::withoutTenant()->find($sandboxEnvironment->organization_id)?->name ?? 'Tổ chức #'.$sandboxEnvironment->organization_id)
+            : null;
 
-        return view('assessment::sandbox.admin.env-form', [
-            'env'           => $sandboxEnvironment,
-            'isSuperAdmin'  => $isSuperAdmin,
-            'currentOrg'    => $currentOrg,
-            'organizations' => $organizations,
+        return view('assessment::sandbox.admin.env.edit', [
+            'env'          => $sandboxEnvironment,
+            'isSuperAdmin' => $isSuperAdmin,
+            'envOrgName'   => $envOrgName,
         ]);
     }
 
@@ -162,6 +181,18 @@ class SandboxAdminController extends Controller
             'description' => 'nullable|string|max:500',
             'sort_order'  => 'nullable|integer|min:0',
             'is_active'   => 'boolean',
+        ], [
+            'name.required'      => 'Vui lòng nhập tên môi trường.',
+            'name.max'           => 'Tên không được vượt quá :max ký tự.',
+            'type.required'      => 'Vui lòng chọn loại kỹ năng.',
+            'type.in'            => 'Loại kỹ năng không hợp lệ.',
+            'tier.required'      => 'Vui lòng chọn cấp độ.',
+            'tier.integer'       => 'Cấp độ phải là số nguyên.',
+            'tier.min'           => 'Cấp độ phải từ :min trở lên.',
+            'tier.max'           => 'Cấp độ không được vượt quá :max.',
+            'description.max'    => 'Mô tả không được vượt quá :max ký tự.',
+            'sort_order.integer' => 'Thứ tự phải là số nguyên.',
+            'sort_order.min'     => 'Thứ tự không được âm.',
         ]);
 
         $sandboxEnvironment->update([
@@ -201,7 +232,7 @@ class SandboxAdminController extends Controller
         $this->authorize('assessment.config');
         $this->authorizeEnvAccess($sandboxEnvironment);
 
-        return view('assessment::sandbox.admin.task-form', ['env' => $sandboxEnvironment, 'task' => null]);
+        return view('assessment::sandbox.admin.task.create', ['env' => $sandboxEnvironment]);
     }
 
     public function storeTask(Request $request, SandboxEnvironment $sandboxEnvironment): RedirectResponse
@@ -228,7 +259,7 @@ class SandboxAdminController extends Controller
         $this->authorize('assessment.config');
         $this->authorizeEnvAccess($sandboxTask->environment);
 
-        return view('assessment::sandbox.admin.task-form', ['env' => $sandboxTask->environment, 'task' => $sandboxTask]);
+        return view('assessment::sandbox.admin.task.edit', ['env' => $sandboxTask->environment, 'task' => $sandboxTask]);
     }
 
     public function updateTask(Request $request, SandboxTask $sandboxTask): RedirectResponse
@@ -300,6 +331,21 @@ class SandboxAdminController extends Controller
             'target_position_code' => 'nullable|string|max:50',
             'sort_order'           => 'nullable|integer|min:0',
             'is_active'            => 'boolean',
+        ], [
+            'title.required'              => 'Vui lòng nhập tiêu đề nhiệm vụ.',
+            'title.max'                   => 'Tiêu đề không được vượt quá :max ký tự.',
+            'instruction.required'        => 'Vui lòng nhập hướng dẫn nhiệm vụ.',
+            'instruction.max'             => 'Hướng dẫn không được vượt quá :max ký tự.',
+            'expected_output.max'         => 'Kết quả mong đợi không được vượt quá :max ký tự.',
+            'scoring_rubric.max'          => 'Tiêu chí chấm điểm không được vượt quá :max ký tự.',
+            'time_limit_minutes.required' => 'Vui lòng nhập giới hạn thời gian.',
+            'time_limit_minutes.integer'  => 'Giới hạn thời gian phải là số nguyên.',
+            'time_limit_minutes.min'      => 'Giới hạn thời gian phải ít nhất :min phút.',
+            'time_limit_minutes.max'      => 'Giới hạn thời gian không được vượt quá :max phút.',
+            'ai_tools_allowed.max'        => 'Công cụ AI không được vượt quá :max ký tự.',
+            'target_position_code.max'    => 'Mã vị trí không được vượt quá :max ký tự.',
+            'sort_order.integer'          => 'Thứ tự phải là số nguyên.',
+            'sort_order.min'              => 'Thứ tự không được âm.',
         ]);
     }
 }

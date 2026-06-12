@@ -3,6 +3,7 @@
 namespace Modules\Assessment\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\Models\Organization;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -60,18 +61,27 @@ class AiImpactController extends Controller
 
     // ── Create ────────────────────────────────────────────────────────────────
 
-    public function create(Request $request): View
+    public function create(): View
     {
         $this->authorize('assessment.results');
 
+        $isSuperAdmin  = request()->user()?->hasRole('super-admin');
+        $currentOrg    = TenantContext::resolve();
+        $organizations = $isSuperAdmin
+            ? Organization::where('is_system', false)->orderBy('name')->get()
+            : collect();
+        $employees = $isSuperAdmin
+            ? Employee::orderBy('full_name')->get(['id', 'full_name'])
+            : Employee::where('organization_id', TenantContext::getOrganizationId())
+                ->orderBy('full_name')->get(['id', 'full_name']);
         $categories = ImpactCategory::cases();
-        $employees  = Employee::where('organization_id', TenantContext::getOrganizationId())
-            ->orderBy('full_name')->get(['id', 'full_name']);
 
-        return view('assessment::ai-impact.form', [
-            'snap'       => null,
-            'categories' => $categories,
-            'employees'  => $employees,
+        return view('assessment::ai-impact.create', [
+            'categories'    => $categories,
+            'employees'     => $employees,
+            'isSuperAdmin'  => $isSuperAdmin,
+            'currentOrg'    => $currentOrg,
+            'organizations' => $organizations,
         ]);
     }
 
@@ -79,9 +89,12 @@ class AiImpactController extends Controller
     {
         $this->authorize('assessment.results');
 
+        $isSuperAdmin = $request->user()?->hasRole('super-admin');
         $data = $this->validateSnapshot($request);
-        $data['organization_id'] = TenantContext::getOrganizationId();
-        $data['created_by']      = $request->user()->id;
+        $data['organization_id'] = $isSuperAdmin
+            ? (int) $request->input('organization_id')
+            : TenantContext::getOrganizationId();
+        $data['created_by'] = $request->user()->id;
 
         AiImpactSnapshot::create($data);
 
@@ -95,14 +108,18 @@ class AiImpactController extends Controller
     {
         $this->authorize('assessment.results');
 
+        $snapOrgName = $aiImpactSnapshot->organization_id
+            ? (Organization::withoutTenant()->find($aiImpactSnapshot->organization_id)?->name ?? 'Không xác định')
+            : null;
         $categories = ImpactCategory::cases();
-        $employees  = Employee::where('organization_id', TenantContext::getOrganizationId())
+        $employees  = Employee::where('organization_id', $aiImpactSnapshot->organization_id ?? TenantContext::getOrganizationId())
             ->orderBy('full_name')->get(['id', 'full_name']);
 
-        return view('assessment::ai-impact.form', [
-            'snap'       => $aiImpactSnapshot,
-            'categories' => $categories,
-            'employees'  => $employees,
+        return view('assessment::ai-impact.edit', [
+            'snap'        => $aiImpactSnapshot,
+            'categories'  => $categories,
+            'employees'   => $employees,
+            'snapOrgName' => $snapOrgName,
         ]);
     }
 
@@ -275,7 +292,7 @@ class AiImpactController extends Controller
 
     private function validateSnapshot(Request $request): array
     {
-        return $request->validate([
+        $rules = [
             'impact_category' => 'required|string',
             'impact_type'     => 'required|string|max:100',
             'period_start'    => 'required|date',
@@ -286,6 +303,38 @@ class AiImpactController extends Controller
             'benefit_value'   => 'nullable|numeric|min:0',
             'employee_id'     => 'nullable|exists:employees,id',
             'notes'           => 'nullable|string|max:1000',
-        ]);
+        ];
+
+        $isSuperAdmin = $request->user()?->hasRole('super-admin');
+        if ($isSuperAdmin && ! $request->route('aiImpactSnapshot')) {
+            $rules['organization_id'] = 'required|exists:organizations,id';
+        }
+
+        $messages = [
+            'impact_category.required'        => 'Vui lòng chọn danh mục tác động.',
+            'impact_type.required'            => 'Vui lòng nhập chỉ số đo lường.',
+            'impact_type.max'                 => 'Chỉ số đo lường không được vượt quá 100 ký tự.',
+            'period_start.required'           => 'Vui lòng chọn kỳ bắt đầu.',
+            'period_start.date'               => 'Kỳ bắt đầu không đúng định dạng ngày.',
+            'period_end.required'             => 'Vui lòng chọn kỳ kết thúc.',
+            'period_end.date'                 => 'Kỳ kết thúc không đúng định dạng ngày.',
+            'period_end.after_or_equal'       => 'Kỳ kết thúc phải sau hoặc bằng kỳ bắt đầu.',
+            'baseline_value.required'         => 'Vui lòng nhập giá trị trước AI.',
+            'baseline_value.numeric'          => 'Giá trị trước AI phải là số.',
+            'baseline_value.min'              => 'Giá trị trước AI không được âm.',
+            'achieved_value.required'         => 'Vui lòng nhập giá trị sau AI.',
+            'achieved_value.numeric'          => 'Giá trị sau AI phải là số.',
+            'achieved_value.min'              => 'Giá trị sau AI không được âm.',
+            'investment_cost.numeric'         => 'Chi phí đầu tư phải là số.',
+            'investment_cost.min'             => 'Chi phí đầu tư không được âm.',
+            'benefit_value.numeric'           => 'Giá trị lợi ích phải là số.',
+            'benefit_value.min'               => 'Giá trị lợi ích không được âm.',
+            'employee_id.exists'              => 'Nhân viên được chọn không hợp lệ.',
+            'notes.max'                       => 'Ghi chú không được vượt quá 1000 ký tự.',
+            'organization_id.required'        => 'Vui lòng chọn tổ chức.',
+            'organization_id.exists'          => 'Tổ chức được chọn không hợp lệ.',
+        ];
+
+        return $request->validate($rules, $messages);
     }
 }

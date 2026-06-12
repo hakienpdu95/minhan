@@ -16,7 +16,7 @@ class StoreAiPromptAction
 
     public function handle(StoreAiPromptData $data): AiPrompt
     {
-        $orgId = TenantContext::getOrganizationId();
+        $orgId = $data->organization_id ?? TenantContext::getOrganizationId();
 
         // Bump version: find max version for this agent in this org
         $maxVersion = AiPrompt::withoutTenant()

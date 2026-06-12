@@ -4,7 +4,6 @@ namespace Modules\AiCopilot\Http\Controllers;
 
 use App\Enums\PermissionEnum as P;
 use App\Http\Controllers\Controller;
-use App\Shared\Tenancy\TenantContext;
 use Modules\AiCopilot\Queries\GetUsageSummaryQuery;
 
 class AiUsageController extends Controller
@@ -13,8 +12,7 @@ class AiUsageController extends Controller
     {
         $this->authorize(P::AI_COPILOT_VIEW_USAGE->value);
 
-        $orgId   = TenantContext::getOrganizationId();
-        $summary = (new GetUsageSummaryQuery($orgId))->run();
+        $summary = (new GetUsageSummaryQuery())->run();
 
         return view('ai_copilot::usage.index', $summary);
     }

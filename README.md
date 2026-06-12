@@ -93,3 +93,9 @@ Reverb isn't started. Run it:
 # > Đọc file docs/form-ui-spec.md và implement theo đúng spec đó, áp dụng spec này vào module Customer, review và tối ưu UI/UX form chuẩn để hành vi người dùng dễ thao tác và sử dụng linh hoạt, thuận tiện
 
 Notification Thông báo in-app  + push — (thông báo trên chuông) tất cả module đều cần
+
+Đọc file docs/form-ui-spec.md và implement theo đúng spec đó, áp dụng spec này vào module AiCopilot
+
+# > Thêm org selector theo pattern _resolveOrganizations() vào form create/edit của  module X
+
+# > Áp dụng pattern org selector của career-pathway-admin create vào form [tên module].

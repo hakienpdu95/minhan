@@ -59,8 +59,7 @@ class CertificationAdminController extends Controller
             ? Organization::where('is_system', false)->orderBy('name')->get()
             : collect();
 
-        return view('assessment::certifications.admin.definition-form', [
-            'def'           => null,
+        return view('assessment::certifications.admin.definition.create', [
             'isSuperAdmin'  => $isSuperAdmin,
             'currentOrg'    => $currentOrg,
             'organizations' => $organizations,
@@ -111,13 +110,15 @@ class CertificationAdminController extends Controller
         $this->authorizeDefAccess($certificationDefinition);
 
         $isSuperAdmin = request()->user()?->hasRole('super-admin');
-        $currentOrg   = TenantContext::resolve();
+        $defOrgName   = $certificationDefinition->organization_id
+            ? (Organization::withoutTenant()->find($certificationDefinition->organization_id)?->name
+                ?? 'Tổ chức #'.$certificationDefinition->organization_id)
+            : null;
 
-        return view('assessment::certifications.admin.definition-form', [
-            'def'           => $certificationDefinition,
-            'isSuperAdmin'  => $isSuperAdmin,
-            'currentOrg'    => $currentOrg,
-            'organizations' => collect(),
+        return view('assessment::certifications.admin.definition.edit', [
+            'def'          => $certificationDefinition,
+            'isSuperAdmin' => $isSuperAdmin,
+            'defOrgName'   => $defOrgName,
         ]);
     }
 
@@ -208,6 +209,12 @@ class CertificationAdminController extends Controller
             'workforce_profile_id' => 'required|exists:workforce_profiles,id',
             'cert_definition_id'   => 'required|exists:certification_definitions,id',
             'notes'                => 'nullable|string|max:500',
+        ], [
+            'workforce_profile_id.required' => 'Vui lòng chọn nhân viên.',
+            'workforce_profile_id.exists'   => 'Nhân viên được chọn không hợp lệ.',
+            'cert_definition_id.required'   => 'Vui lòng chọn định nghĩa chứng nhận.',
+            'cert_definition_id.exists'     => 'Định nghĩa chứng nhận không hợp lệ.',
+            'notes.max'                     => 'Ghi chú không được vượt quá :max ký tự.',
         ]);
 
         $orgId   = TenantContext::getOrganizationId();
@@ -265,6 +272,9 @@ class CertificationAdminController extends Controller
 
         $data = $request->validate([
             'revoked_reason' => 'required|string|max:300',
+        ], [
+            'revoked_reason.required' => 'Vui lòng nhập lý do thu hồi.',
+            'revoked_reason.max'      => 'Lý do thu hồi không được vượt quá :max ký tự.',
         ]);
 
         if ($workforceCertification->status === 'revoked') {
@@ -307,7 +317,6 @@ class CertificationAdminController extends Controller
     {
         $rules = [
             'name'                        => 'required|string|max:200',
-            'level_code'                  => 'required|in:FOUNDATION,PRACTITIONER,PROFESSIONAL,LEADER',
             'description'                 => 'nullable|string|max:500',
             'validity_months'             => 'required|integer|min:1|max:120',
             'min_workforce_score'         => 'nullable|numeric|min:0|max:100',
@@ -322,6 +331,7 @@ class CertificationAdminController extends Controller
         if (! $editing) {
             $rules['cert_code']      = 'required|string|max:50|regex:/^[A-Z0-9_]+$/|unique:certification_definitions,cert_code';
             $rules['cert_type_code'] = 'required|string|max:30|regex:/^[A-Z0-9_]+$/';
+            $rules['level_code']     = 'required|in:FOUNDATION,PRACTITIONER,PROFESSIONAL,LEADER';
         }
 
         if ($isSuperAdmin && ! $editing) {
@@ -329,6 +339,37 @@ class CertificationAdminController extends Controller
             $rules['organization_id'] = 'required_if:scope,org|nullable|exists:organizations,id';
         }
 
-        return $request->validate($rules);
+        $messages = [
+            'name.required'                    => 'Vui lòng nhập tên chứng nhận.',
+            'name.max'                         => 'Tên không được vượt quá :max ký tự.',
+            'validity_months.required'         => 'Vui lòng nhập thời hạn hiệu lực.',
+            'validity_months.integer'          => 'Thời hạn hiệu lực phải là số nguyên.',
+            'validity_months.min'              => 'Thời hạn hiệu lực phải ít nhất :min tháng.',
+            'validity_months.max'              => 'Thời hạn hiệu lực không được vượt quá :max tháng.',
+            'min_workforce_score.numeric'      => 'Điểm TDWCF tối thiểu phải là số.',
+            'min_workforce_score.min'          => 'Điểm TDWCF không được âm.',
+            'min_workforce_score.max'          => 'Điểm TDWCF không được vượt quá :max.',
+            'min_kpi_achievement_pct.numeric'  => 'KPI tối thiểu phải là số.',
+            'min_kpi_achievement_pct.max'      => 'KPI tối thiểu không được vượt quá :max%.',
+            'min_sandbox_hours.integer'        => 'Số giờ sandbox phải là số nguyên.',
+            'min_sandbox_hours.min'            => 'Số giờ sandbox không được âm.',
+            'min_sandbox_score.numeric'        => 'Điểm sandbox tối thiểu phải là số.',
+            'min_sandbox_score.max'            => 'Điểm sandbox không được vượt quá :max.',
+            'cert_code.required'               => 'Vui lòng nhập cert code.',
+            'cert_code.max'                    => 'Cert code không được vượt quá :max ký tự.',
+            'cert_code.regex'                  => 'Cert code chỉ được dùng CHỮ HOA, số và gạch dưới.',
+            'cert_code.unique'                 => 'Cert code này đã tồn tại trong hệ thống.',
+            'cert_type_code.required'          => 'Vui lòng nhập type code.',
+            'cert_type_code.max'               => 'Type code không được vượt quá :max ký tự.',
+            'cert_type_code.regex'             => 'Type code chỉ được dùng CHỮ HOA, số và gạch dưới.',
+            'level_code.required'              => 'Vui lòng chọn cấp độ.',
+            'level_code.in'                    => 'Cấp độ không hợp lệ.',
+            'scope.required'                   => 'Vui lòng chọn phạm vi.',
+            'scope.in'                         => 'Phạm vi không hợp lệ.',
+            'organization_id.required_if'      => 'Vui lòng chọn tổ chức khi phạm vi là "Riêng tổ chức cụ thể".',
+            'organization_id.exists'           => 'Tổ chức được chọn không hợp lệ.',
+        ];
+
+        return $request->validate($rules, $messages);
     }
 }

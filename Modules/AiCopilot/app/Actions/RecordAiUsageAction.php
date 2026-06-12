@@ -28,9 +28,11 @@ class RecordAiUsageAction
         }
 
         // Cập nhật monthly aggregate (cost/token dashboard)
+        // withoutTenant(): $orgId đã biết chắc từ $aiRequest — bypass global scope để tránh
+        // double-filter và an toàn khi chạy trong job context.
         DB::transaction(function () use ($orgId, $agentId, $aiRequest, $yearMonth) {
             // Org-level total
-            $total = AiMonthlyUsage::lockForUpdate()->firstOrCreate(
+            $total = AiMonthlyUsage::withoutTenant()->lockForUpdate()->firstOrCreate(
                 ['organization_id' => $orgId, 'year_month' => $yearMonth, 'agent_id' => null],
                 ['task_type' => null]
             );
@@ -42,7 +44,7 @@ class RecordAiUsageAction
             $total->increment('total_cost_usd', (float) $aiRequest->cost_usd);
 
             // Per-agent breakdown
-            $byAgent = AiMonthlyUsage::lockForUpdate()->firstOrCreate(
+            $byAgent = AiMonthlyUsage::withoutTenant()->lockForUpdate()->firstOrCreate(
                 ['organization_id' => $orgId, 'year_month' => $yearMonth, 'agent_id' => $agentId],
                 ['task_type' => $aiRequest->agent?->task_type]
             );

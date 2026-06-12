@@ -2,12 +2,15 @@
 
 namespace Modules\AiCopilot\Models;
 
+use App\Shared\Tenancy\Traits\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AiMonthlyUsage extends Model
 {
+    use BelongsToOrganization;
+
     protected $table   = 'ai_monthly_usages';
     public $timestamps = false; // updated_at managed by DB ON UPDATE
 
@@ -18,10 +21,9 @@ class AiMonthlyUsage extends Model
         'total_cost_usd',
     ];
 
-    public function scopeCurrentMonth(Builder $q, int $orgId): Builder
+    public function scopeCurrentMonth(Builder $q): Builder
     {
-        return $q->where('organization_id', $orgId)
-                 ->where('year_month', now()->format('Y-m'));
+        return $q->where('year_month', now()->format('Y-m'));
     }
 
     public function scopeAggregate(Builder $q): Builder

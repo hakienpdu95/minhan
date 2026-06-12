@@ -11,6 +11,7 @@ class StoreAiPromptData extends Data
         public readonly string  $name,
         public readonly string  $system_prompt,
         public readonly string  $user_template,
+        public readonly ?int    $organization_id  = null,
         public readonly ?string $description       = null,
         public readonly ?array  $variables_schema  = null,
         public readonly bool    $is_default        = false,
@@ -20,6 +21,7 @@ class StoreAiPromptData extends Data
     public static function rules(): array
     {
         return [
+            'organization_id'   => ['nullable', 'integer', 'exists:organizations,id'],
             'agent_id'          => ['required', 'integer', 'exists:ai_agents,id'],
             'name'              => ['required', 'string', 'max:120'],
             'system_prompt'     => ['required', 'string'],

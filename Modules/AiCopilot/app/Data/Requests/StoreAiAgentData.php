@@ -12,6 +12,7 @@ class StoreAiAgentData extends Data
         public readonly string  $task_type,
         public readonly string  $provider,
         public readonly string  $model,
+        public readonly ?int    $organization_id = null,
         public readonly float   $temperature    = 0.7,
         public readonly int     $max_tokens     = 1024,
         public readonly int     $timeout_seconds = 30,
@@ -23,6 +24,7 @@ class StoreAiAgentData extends Data
     public static function rules(): array
     {
         return [
+            'organization_id' => ['nullable', 'integer', 'exists:organizations,id'],
             'name'            => ['required', 'string', 'max:120'],
             'slug'            => ['required', 'string', 'max:80', 'regex:/^[a-z0-9_.]+$/'],
             'task_type'       => ['required', 'string', 'in:sop,kpi,hr,lead,email,general,custom'],

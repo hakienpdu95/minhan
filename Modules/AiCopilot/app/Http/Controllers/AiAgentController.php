@@ -8,11 +8,13 @@ use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Modules\AiCopilot\Actions\DestroyAiAgentAction;
 use Modules\AiCopilot\Actions\StoreAiAgentAction;
 use Modules\AiCopilot\Actions\UpdateAiAgentAction;
 use Modules\AiCopilot\Data\Requests\StoreAiAgentData;
 use Modules\AiCopilot\Models\AiAgent;
+use Modules\Organization\Models\Organization;
 
 class AiAgentController extends Controller
 {
@@ -50,10 +52,15 @@ class AiAgentController extends Controller
     {
         $this->authorize(P::AI_COPILOT_CONFIG->value);
 
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
+
         return view('ai_copilot::agents.create', [
-            'providers'  => self::PROVIDERS,
-            'taskTypes'  => self::TASK_TYPES,
+            'providers'        => self::PROVIDERS,
+            'taskTypes'        => self::TASK_TYPES,
             'modelsByProvider' => self::MODELS,
+            'organizations'    => $organizations,
+            'defaultOrgId'     => $defaultOrgId,
+            'orgLocked'        => $orgLocked,
         ]);
     }
 
@@ -73,9 +80,11 @@ class AiAgentController extends Controller
         $this->authorize(P::AI_COPILOT_CONFIG->value);
 
         $agent->load('prompts');
+        $orgName = Organization::withoutTenant()->find($agent->organization_id)?->name ?? '(system)';
 
         return view('ai_copilot::agents.edit', [
             'agent'            => $agent,
+            'orgName'          => $orgName,
             'providers'        => self::PROVIDERS,
             'taskTypes'        => self::TASK_TYPES,
             'modelsByProvider' => self::MODELS,
@@ -91,6 +100,16 @@ class AiAgentController extends Controller
 
         return redirect()->route('ai.agents.index')
             ->with('success', "Đã cập nhật agent \"{$agent->name}\".");
+    }
+
+    /** @return array{Collection, ?int, bool} [$organizations, $defaultOrgId, $orgLocked] */
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::withoutTenant()->where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::withoutTenant()->active()->orderBy('name')->get(['id', 'name']), null, false];
     }
 
     public function destroy(Request $request, AiAgent $agent, DestroyAiAgentAction $action): RedirectResponse|JsonResponse

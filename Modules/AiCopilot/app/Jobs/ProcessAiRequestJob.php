@@ -86,7 +86,9 @@ class ProcessAiRequestJob extends TenantAwareJob
 
     public function failed(\Throwable $e): void
     {
-        AiRequest::where('id', $this->aiRequestId)
+        // failed() runs outside withTenant() — bypass global scope
+        AiRequest::withoutTenant()
+            ->where('id', $this->aiRequestId)
             ->where('status', 'processing')
             ->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
     }

@@ -8,12 +8,14 @@ use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Modules\AiCopilot\Actions\SetDefaultPromptAction;
 use Modules\AiCopilot\Actions\StoreAiPromptAction;
 use Modules\AiCopilot\Actions\UpdateAiPromptAction;
 use Modules\AiCopilot\Data\Requests\StoreAiPromptData;
 use Modules\AiCopilot\Models\AiAgent;
 use Modules\AiCopilot\Models\AiPrompt;
+use Modules\Organization\Models\Organization;
 
 class AiPromptController extends Controller
 {
@@ -50,7 +52,9 @@ class AiPromptController extends Controller
     {
         $this->authorize(P::PROMPT_FULL->value);
 
-        $orgId  = TenantContext::getOrganizationId();
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
+
+        $orgId  = $defaultOrgId ?? TenantContext::getOrganizationId();
         $agents = AiAgent::withoutTenant()
             ->withoutGlobalScope('active')
             ->where(fn ($q) => $q->where('organization_id', $orgId)->orWhereNull('organization_id'))
@@ -59,7 +63,10 @@ class AiPromptController extends Controller
 
         $selectedAgentId = $request->integer('agent_id', 0) ?: null;
 
-        return view('ai_copilot::prompts.create', compact('agents', 'selectedAgentId'));
+        return view('ai_copilot::prompts.create', compact(
+            'agents', 'selectedAgentId',
+            'organizations', 'defaultOrgId', 'orgLocked'
+        ));
     }
 
     public function store(Request $request, StoreAiPromptAction $action): RedirectResponse
@@ -77,16 +84,10 @@ class AiPromptController extends Controller
     {
         $this->authorize(P::PROMPT_FULL->value);
 
-        $orgId  = TenantContext::getOrganizationId();
-        $agents = AiAgent::withoutTenant()
-            ->withoutGlobalScope('active')
-            ->where(fn ($q) => $q->where('organization_id', $orgId)->orWhereNull('organization_id'))
-            ->orderBy('name')
-            ->get(['id', 'name', 'slug', 'task_type', 'is_system']);
-
         $prompt->load('agent:id,name,slug,is_system');
+        $orgName = Organization::withoutTenant()->find($prompt->organization_id)?->name ?? '(system)';
 
-        return view('ai_copilot::prompts.edit', compact('prompt', 'agents'));
+        return view('ai_copilot::prompts.edit', compact('prompt', 'orgName'));
     }
 
     public function update(Request $request, AiPrompt $prompt, UpdateAiPromptAction $action): RedirectResponse
@@ -111,6 +112,16 @@ class AiPromptController extends Controller
         }
 
         return back()->with('success', "Đã đặt \"{$prompt->name}\" làm prompt mặc định.");
+    }
+
+    /** @return array{Collection, ?int, bool} [$organizations, $defaultOrgId, $orgLocked] */
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::withoutTenant()->where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::withoutTenant()->active()->orderBy('name')->get(['id', 'name']), null, false];
     }
 
     public function destroy(Request $request, AiPrompt $prompt): RedirectResponse|JsonResponse

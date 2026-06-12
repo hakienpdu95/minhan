@@ -1,5 +1,5 @@
 @extends('layouts.backend')
-@section('title', $snap ? 'Sửa bản ghi tác động AI' : 'Ghi nhận tác động AI')
+@section('title', 'Sửa bản ghi tác động AI')
 
 @push('styles')
     @vite(['Modules/Assessment/resources/assets/sass/assessment.scss'], 'build/backend')
@@ -9,10 +9,10 @@
 
 <div class="flex items-center justify-between gap-3 mb-6">
     <div>
-        <h1 class="text-2xl font-bold text-base-content">
-            {{ $snap ? 'Sửa bản ghi tác động AI' : 'Ghi nhận tác động AI' }}
-        </h1>
-        <p class="text-sm text-base-content/50 mt-0.5">Ghi lại kết quả cải thiện từ việc ứng dụng AI vào công việc</p>
+        <h1 class="text-2xl font-bold text-base-content">Sửa bản ghi tác động AI</h1>
+        <p class="text-sm text-base-content/50 mt-0.5">
+            {{ $snapOrgName ? "Tổ chức: {$snapOrgName}" : 'Ghi lại kết quả cải thiện từ việc ứng dụng AI vào công việc' }}
+        </p>
     </div>
     <a href="{{ route('backend.ai-impact.index') }}" class="btn btn-ghost btn-sm gap-1.5">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
@@ -20,15 +20,28 @@
     </a>
 </div>
 
+@if($errors->any())
+<div class="alert alert-error py-3 px-4 mb-5 flex items-start gap-3 text-sm">
+    <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+    </svg>
+    <div>
+        <p class="font-semibold">Có {{ $errors->count() }} lỗi cần kiểm tra:</p>
+        <ul class="mt-1.5 list-disc list-inside space-y-0.5 text-xs opacity-90">
+            @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+        </ul>
+    </div>
+</div>
+@endif
+
 <div x-data="aiImpactForm()" class="max-w-2xl">
     <div class="card bg-base-100 shadow-sm border border-base-200">
         <div class="card-body">
 
-            <form method="POST"
-                  action="{{ $snap ? route('backend.ai-impact.update', $snap) : route('backend.ai-impact.store') }}"
-                  id="ai-impact-form">
+            <form method="POST" action="{{ route('backend.ai-impact.update', $snap) }}"
+                  novalidate data-ai-impact-form>
                 @csrf
-                @if($snap) @method('PUT') @endif
+                @method('PUT')
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
@@ -37,19 +50,17 @@
                         <label class="label py-1" for="ts-employee_id">
                             <span class="label-text text-xs font-medium">Nhân viên</span>
                         </label>
-                        <select id="ts-employee_id" name="employee_id" class="ts-init w-full"
-                                placeholder="— Tất cả / chính mình —">
+                        <select id="ts-employee_id" name="employee_id"
+                                class="select select-bordered select-sm w-full ts-init @error('employee_id') select-error @enderror"
+                                data-ts-placeholder="— Chọn nhân viên —">
                             <option value=""></option>
                             @foreach($employees as $emp)
-                            <option value="{{ $emp->id }}"
-                                    {{ old('employee_id', $snap?->employee_id) == $emp->id ? 'selected' : '' }}>
+                            <option value="{{ $emp->id }}" {{ old('employee_id', $snap->employee_id) == $emp->id ? 'selected' : '' }}>
                                 {{ $emp->full_name }}
                             </option>
                             @endforeach
                         </select>
-                        @error('employee_id')
-                        <label class="label py-0.5"><span class="label-text-alt text-error text-xs">{{ $message }}</span></label>
-                        @enderror
+                        @error('employee_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
                     {{-- Danh mục tác động --}}
@@ -57,11 +68,12 @@
                         <label class="label py-1" for="ts-impact_category">
                             <span class="label-text text-xs font-medium">Danh mục <span class="text-error">*</span></span>
                         </label>
-                        <select id="ts-impact_category" name="impact_category" class="ts-init w-full" required>
+                        <select id="ts-impact_category" name="impact_category"
+                                class="select select-bordered select-sm w-full ts-init @error('impact_category') select-error @enderror"
+                                data-ts-placeholder="— Chọn danh mục —">
                             <option value=""></option>
                             @foreach($categories as $cat)
-                            <option value="{{ $cat->value }}"
-                                    {{ old('impact_category', $snap?->impact_category) === $cat->value ? 'selected' : '' }}>
+                            <option value="{{ $cat->value }}" {{ old('impact_category', $snap->impact_category) === $cat->value ? 'selected' : '' }}>
                                 {{ match($cat->value) {
                                     'learning'     => 'Học tập & Phát triển',
                                     'productivity' => 'Năng suất làm việc',
@@ -73,9 +85,7 @@
                             </option>
                             @endforeach
                         </select>
-                        @error('impact_category')
-                        <label class="label py-0.5"><span class="label-text-alt text-error text-xs">{{ $message }}</span></label>
-                        @enderror
+                        @error('impact_category')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
                     {{-- Loại chỉ số --}}
@@ -84,41 +94,34 @@
                             <span class="label-text text-xs font-medium">Chỉ số đo lường <span class="text-error">*</span></span>
                         </label>
                         <input type="text" id="impact_type" name="impact_type"
-                               class="input input-bordered input-sm w-full"
-                               value="{{ old('impact_type', $snap?->impact_type) }}"
-                               required
+                               class="input input-bordered input-sm w-full @error('impact_type') input-error @enderror"
+                               value="{{ old('impact_type', $snap->impact_type) }}"
                                placeholder="VD: time_saving, productivity_gain...">
-                        @error('impact_type')
-                        <label class="label py-0.5"><span class="label-text-alt text-error text-xs">{{ $message }}</span></label>
-                        @enderror
+                        @error('impact_type')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
                     {{-- Kỳ từ --}}
                     <div class="form-control">
-                        <label class="label py-1" for="period_start">
+                        <label class="label py-1" for="fp-period-start">
                             <span class="label-text text-xs font-medium">Kỳ bắt đầu <span class="text-error">*</span></span>
                         </label>
-                        <input type="date" id="period_start" name="period_start"
-                               class="input input-bordered input-sm w-full"
-                               value="{{ old('period_start', $snap?->period_start?->format('Y-m-d')) }}"
-                               required>
-                        @error('period_start')
-                        <label class="label py-0.5"><span class="label-text-alt text-error text-xs">{{ $message }}</span></label>
-                        @enderror
+                        <input type="text" name="period_start" id="fp-period-start"
+                               class="input input-bordered input-sm w-full fp-init @error('period_start') input-error @enderror"
+                               value="{{ old('period_start', $snap->period_start?->format('Y-m-d') ?? '') }}"
+                               placeholder="DD/MM/YYYY">
+                        @error('period_start')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
                     {{-- Kỳ đến --}}
                     <div class="form-control">
-                        <label class="label py-1" for="period_end">
+                        <label class="label py-1" for="fp-period-end">
                             <span class="label-text text-xs font-medium">Kỳ kết thúc <span class="text-error">*</span></span>
                         </label>
-                        <input type="date" id="period_end" name="period_end"
-                               class="input input-bordered input-sm w-full"
-                               value="{{ old('period_end', $snap?->period_end?->format('Y-m-d')) }}"
-                               required>
-                        @error('period_end')
-                        <label class="label py-0.5"><span class="label-text-alt text-error text-xs">{{ $message }}</span></label>
-                        @enderror
+                        <input type="text" name="period_end" id="fp-period-end"
+                               class="input input-bordered input-sm w-full fp-init @error('period_end') input-error @enderror"
+                               value="{{ old('period_end', $snap->period_end?->format('Y-m-d') ?? '') }}"
+                               placeholder="DD/MM/YYYY">
+                        @error('period_end')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
                     {{-- Giá trị baseline --}}
@@ -127,13 +130,11 @@
                             <span class="label-text text-xs font-medium">Giá trị trước AI <span class="text-error">*</span></span>
                         </label>
                         <input type="number" id="baseline_value" name="baseline_value" step="0.01" min="0"
-                               class="input input-bordered input-sm w-full"
-                               value="{{ old('baseline_value', $snap?->baseline_value) }}"
+                               class="input input-bordered input-sm w-full @error('baseline_value') input-error @enderror"
+                               value="{{ old('baseline_value', $snap->baseline_value) }}"
                                x-model.number="baselineVal"
-                               required placeholder="0">
-                        @error('baseline_value')
-                        <label class="label py-0.5"><span class="label-text-alt text-error text-xs">{{ $message }}</span></label>
-                        @enderror
+                               placeholder="0">
+                        @error('baseline_value')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
                     {{-- Giá trị đạt được --}}
@@ -142,16 +143,12 @@
                             <span class="label-text text-xs font-medium">Giá trị sau AI <span class="text-error">*</span></span>
                         </label>
                         <input type="number" id="achieved_value" name="achieved_value" step="0.01" min="0"
-                               class="input input-bordered input-sm w-full"
-                               value="{{ old('achieved_value', $snap?->achieved_value) }}"
+                               class="input input-bordered input-sm w-full @error('achieved_value') input-error @enderror"
+                               value="{{ old('achieved_value', $snap->achieved_value) }}"
                                x-model.number="achievedVal"
-                               required placeholder="0">
-                        <label class="label py-0.5">
-                            <span class="label-text-alt text-xs text-base-content/40">Hệ thống tự tính % cải thiện</span>
-                        </label>
-                        @error('achieved_value')
-                        <label class="label py-0.5"><span class="label-text-alt text-error text-xs">{{ $message }}</span></label>
-                        @enderror
+                               placeholder="0">
+                        <p class="mt-1 text-xs text-base-content/40">Hệ thống tự tính % cải thiện</p>
+                        @error('achieved_value')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
                     {{-- Chi phí đầu tư --}}
@@ -160,13 +157,11 @@
                             <span class="label-text text-xs font-medium">Chi phí đầu tư AI (VND)</span>
                         </label>
                         <input type="number" id="investment_cost" name="investment_cost" step="1000" min="0"
-                               class="input input-bordered input-sm w-full"
-                               value="{{ old('investment_cost', $snap?->investment_cost) }}"
+                               class="input input-bordered input-sm w-full @error('investment_cost') input-error @enderror"
+                               value="{{ old('investment_cost', $snap->investment_cost) }}"
                                x-model.number="investCost"
                                placeholder="0">
-                        @error('investment_cost')
-                        <label class="label py-0.5"><span class="label-text-alt text-error text-xs">{{ $message }}</span></label>
-                        @enderror
+                        @error('investment_cost')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
                     {{-- Giá trị lợi ích --}}
@@ -175,16 +170,12 @@
                             <span class="label-text text-xs font-medium">Giá trị lợi ích thu về (VND)</span>
                         </label>
                         <input type="number" id="benefit_value" name="benefit_value" step="1000" min="0"
-                               class="input input-bordered input-sm w-full"
-                               value="{{ old('benefit_value', $snap?->benefit_value) }}"
+                               class="input input-bordered input-sm w-full @error('benefit_value') input-error @enderror"
+                               value="{{ old('benefit_value', $snap->benefit_value) }}"
                                x-model.number="benefitVal"
                                placeholder="0">
-                        <label class="label py-0.5">
-                            <span class="label-text-alt text-xs text-base-content/40">ROI = (lợi ích − đầu tư) / đầu tư × 100%</span>
-                        </label>
-                        @error('benefit_value')
-                        <label class="label py-0.5"><span class="label-text-alt text-error text-xs">{{ $message }}</span></label>
-                        @enderror
+                        <p class="mt-1 text-xs text-base-content/40">ROI = (lợi ích − đầu tư) / đầu tư × 100%</p>
+                        @error('benefit_value')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
                     {{-- Ghi chú --}}
@@ -193,11 +184,9 @@
                             <span class="label-text text-xs font-medium">Ghi chú / Mô tả</span>
                         </label>
                         <textarea id="notes" name="notes" rows="3"
-                                  class="textarea textarea-bordered text-sm w-full"
-                                  placeholder="Mô tả cách bạn đã ứng dụng AI và kết quả cụ thể...">{{ old('notes', $snap?->notes) }}</textarea>
-                        @error('notes')
-                        <label class="label py-0.5"><span class="label-text-alt text-error text-xs">{{ $message }}</span></label>
-                        @enderror
+                                  class="textarea textarea-bordered textarea-sm w-full @error('notes') textarea-error @enderror"
+                                  placeholder="Mô tả cách bạn đã ứng dụng AI và kết quả cụ thể...">{{ old('notes', $snap->notes) }}</textarea>
+                        @error('notes')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
                 </div>
@@ -218,9 +207,7 @@
                 </div>
 
                 <div class="flex gap-3 mt-6">
-                    <button type="submit" class="btn btn-primary btn-sm">
-                        {{ $snap ? 'Cập nhật' : 'Lưu bản ghi' }}
-                    </button>
+                    <button type="submit" class="btn btn-primary btn-sm">Cập nhật</button>
                     <a href="{{ route('backend.ai-impact.index') }}" class="btn btn-ghost btn-sm">Hủy</a>
                 </div>
             </form>
@@ -232,5 +219,10 @@
 @endsection
 
 @push('scripts')
-    @vite(['Modules/Assessment/resources/assets/js/assessment.js'], 'build/backend')
+    @vite([
+        'resources/js/modules/toastify.js',
+        'resources/js/modules/flatpickr.js',
+        'resources/js/modules/tom-select.js',
+        'Modules/Assessment/resources/assets/js/assessment.js',
+    ], 'build/backend')
 @endpush

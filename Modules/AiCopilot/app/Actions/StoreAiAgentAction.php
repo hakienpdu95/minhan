@@ -15,7 +15,7 @@ class StoreAiAgentAction
 
     public function handle(StoreAiAgentData $data): AiAgent
     {
-        $orgId = TenantContext::getOrganizationId();
+        $orgId = $data->organization_id ?? TenantContext::getOrganizationId();
 
         $agent = AiAgent::create([
             'uuid'             => Str::uuid(),

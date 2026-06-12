@@ -9,7 +9,7 @@ use Modules\AiCopilot\Models\AiRequest;
 
 class GetUsageSummaryQuery
 {
-    public function __construct(private readonly int $orgId) {}
+    public function __construct() {}
 
     public function run(): array
     {
@@ -17,8 +17,8 @@ class GetUsageSummaryQuery
         $yearMonth = $now->format('Y-m');
 
         // ── Current month totals (from aggregate) ─────────────────────────
-        $monthTotal = AiMonthlyUsage::where('organization_id', $this->orgId)
-            ->where('year_month', $yearMonth)
+        // OrganizationScope (global) handles tenant filtering — no need for explicit org_id
+        $monthTotal = AiMonthlyUsage::where('year_month', $yearMonth)
             ->whereNull('agent_id')
             ->first();
 
@@ -34,8 +34,7 @@ class GetUsageSummaryQuery
         $tokensLimit       = $tokensRemaining + $tokensThisMonth;
 
         // ── 6-month trend ──────────────────────────────────────────────────
-        $trend = AiMonthlyUsage::where('organization_id', $this->orgId)
-            ->whereNull('agent_id')
+        $trend = AiMonthlyUsage::whereNull('agent_id')
             ->where('year_month', '>=', $now->copy()->subMonths(5)->format('Y-m'))
             ->orderBy('year_month')
             ->get(['year_month', 'total_requests', 'total_tokens', 'total_cost_usd', 'successful_requests'])
@@ -49,8 +48,7 @@ class GetUsageSummaryQuery
             ->values();
 
         // ── Per-agent breakdown (current month) ────────────────────────────
-        $byAgent = AiMonthlyUsage::where('organization_id', $this->orgId)
-            ->where('year_month', $yearMonth)
+        $byAgent = AiMonthlyUsage::where('year_month', $yearMonth)
             ->whereNotNull('agent_id')
             ->with('agent:id,name,slug,task_type')
             ->orderByDesc('total_requests')
@@ -67,16 +65,14 @@ class GetUsageSummaryQuery
             ]);
 
         // ── Status breakdown (current month live count) ────────────────────
-        $statusCounts = AiRequest::where('organization_id', $this->orgId)
-            ->where('created_at', '>=', $now->copy()->startOfMonth())
+        $statusCounts = AiRequest::where('created_at', '>=', $now->copy()->startOfMonth())
             ->select('status', DB::raw('count(*) as cnt'))
             ->groupBy('status')
             ->pluck('cnt', 'status')
             ->toArray();
 
         // ── Recent requests ────────────────────────────────────────────────
-        $recentRequests = AiRequest::where('organization_id', $this->orgId)
-            ->with('agent:id,name,slug')
+        $recentRequests = AiRequest::with('agent:id,name,slug')
             ->orderByDesc('created_at')
             ->limit(20)
             ->get(['id', 'uuid', 'agent_id', 'status', 'model', 'provider',

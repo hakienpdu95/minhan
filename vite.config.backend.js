@@ -94,6 +94,7 @@ const JS_OUTPUT = {
   'recruitment':            'assets/modules/recruitment.[hash].js',
   'task':                   'assets/modules/task.[hash].js',
   'subscription':           'assets/modules/subscription.[hash].js',
+  'ai-copilot':             'assets/modules/ai-copilot.[hash].js',
 };
 
 /** CSS asset name → output path.
@@ -138,6 +139,7 @@ const CSS_OUTPUT = {
   'recruitment.css':            'assets/modules/recruitment.[hash].css',
   'task.css':                   'assets/modules/task.[hash].css',
   'subscription.css':           'assets/modules/subscription.[hash].css',
+  'ai-copilot.css':             'assets/modules/ai-copilot.[hash].css',
 };
 
 // ─── Module input entries ─────────────────────────────────────────────
@@ -230,6 +232,9 @@ const MODULE_ENTRIES = [
   // Customer
   'Modules/Customer/resources/assets/sass/customer.scss',
   'Modules/Customer/resources/assets/js/customer.js',
+  // AiCopilot
+  'Modules/AiCopilot/resources/assets/sass/ai-copilot.scss',
+  'Modules/AiCopilot/resources/assets/js/ai-copilot.js',
 ];
 
 // ─────────────────────────────────────────────────────────────────────

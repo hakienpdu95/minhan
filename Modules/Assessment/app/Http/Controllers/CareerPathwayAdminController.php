@@ -60,8 +60,7 @@ class CareerPathwayAdminController extends Controller
 
         [$envCodes, $certCodes] = $this->loadSelectors();
 
-        return view('assessment::career-pathway.admin.form', [
-            'step'          => null,
+        return view('assessment::career-pathway.admin.create', [
             'levels'        => self::LEVELS,
             'envCodes'      => $envCodes,
             'certCodes'     => $certCodes,
@@ -111,20 +110,18 @@ class CareerPathwayAdminController extends Controller
         $this->authorize('assessment.config');
         $this->authorizeStepAccess($careerPathwayStep);
 
-        $isSuperAdmin  = request()->user()?->hasRole('super-admin');
-        $currentOrg    = TenantContext::resolve();
-        $organizations = collect();
+        $stepOrgName = $careerPathwayStep->organization_id
+            ? (Organization::withoutTenant()->find($careerPathwayStep->organization_id)?->name ?? 'Không xác định')
+            : null;
 
         [$envCodes, $certCodes] = $this->loadSelectors();
 
-        return view('assessment::career-pathway.admin.form', [
-            'step'          => $careerPathwayStep,
-            'levels'        => self::LEVELS,
-            'envCodes'      => $envCodes,
-            'certCodes'     => $certCodes,
-            'isSuperAdmin'  => $isSuperAdmin,
-            'currentOrg'    => $currentOrg,
-            'organizations' => $organizations,
+        return view('assessment::career-pathway.admin.edit', [
+            'step'        => $careerPathwayStep,
+            'levels'      => self::LEVELS,
+            'envCodes'    => $envCodes,
+            'certCodes'   => $certCodes,
+            'stepOrgName' => $stepOrgName,
         ]);
     }
 
@@ -207,7 +204,12 @@ class CareerPathwayAdminController extends Controller
             $rules['organization_id'] = 'required_if:scope,org|nullable|exists:organizations,id';
         }
 
-        return $request->validate($rules);
+        $messages = [
+            'organization_id.required_if' => 'Vui lòng chọn tổ chức khi phạm vi là "Riêng tổ chức cụ thể".',
+            'organization_id.exists'      => 'Tổ chức được chọn không hợp lệ.',
+        ];
+
+        return $request->validate($rules, $messages);
     }
 
     private function loadSelectors(): array

@@ -35,6 +35,7 @@
 24. [Class reference](#24-class-reference)
 25. [Anti-patterns](#25-anti-patterns)
 26. [Checklist trước khi merge](#26-checklist)
+27. **[Org Selector — Multi-tenant Form Pattern](#27-org-selector--multi-tenant-form-pattern)** ← NEW
 
 ---
 
@@ -477,8 +478,11 @@ Tab state quản lý bằng Alpine inline (đủ đơn giản, không cần file
 
 **Nguyên tắc:**
 - `tabFields` khai báo đúng tên field của từng tab → dùng cho `errCount()`
-- Chỉ khai báo field có validation (required, format) — không cần khai báo field tùy chọn
+- **Phải khai báo ĐẦY ĐỦ tất cả field có server-side validation** (required, format, exists...) — nếu thiếu, `errCount()` trả về 0 → badge lỗi không hiện → `init()` không tự chuyển đúng tab → user bị mắc
+- Field tùy chọn (nullable, không validate) không cần khai báo
 - `errs` là `$errors->keys()` từ server — tự động map về đúng tab
+
+> **⚠️ Lỗi thường gặp:** Thêm field vào form nhưng quên thêm vào `tabFields` → server trả lỗi nhưng tab badge không hiện, người dùng không biết lỗi ở đâu. **Mỗi khi thêm rule validation server, kiểm tra lại `tabFields`.**
 
 ### 10.3 Tab navigation bar
 
@@ -976,7 +980,64 @@ initDatePicker(form.querySelector('[name="special_date"]'), { minDate: 'today' }
 @error('field')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
 ```
 
-### 16.3 Client-side — data attributes
+### 16.3 Custom messages tiếng Việt — bắt buộc
+
+> **⚠️ Không bao giờ để Laravel dùng message mặc định tiếng Anh** (VD: "The impact category field is required."). Luôn truyền `$messages` vào `validate()`.
+
+```php
+// Controller
+return $request->validate($rules, [
+    // required
+    'name.required'              => 'Vui lòng nhập tên.',
+    'category.required'          => 'Vui lòng chọn danh mục.',
+    'organization_id.required'   => 'Vui lòng chọn tổ chức.',
+    // required_if
+    'organization_id.required_if' => 'Vui lòng chọn tổ chức khi phạm vi là "Riêng tổ chức cụ thể".',
+    // string
+    'name.max'                   => 'Tên không được vượt quá :max ký tự.',
+    'name.min'                   => 'Tên phải có ít nhất :min ký tự.',
+    // number
+    'amount.numeric'             => 'Số tiền phải là số.',
+    'amount.min'                 => 'Số tiền phải ≥ :min.',
+    'amount.max'                 => 'Số tiền không được vượt quá :max.',
+    // date
+    'period_start.date'          => 'Kỳ bắt đầu không đúng định dạng ngày.',
+    'period_end.after_or_equal'  => 'Kỳ kết thúc phải sau hoặc bằng kỳ bắt đầu.',
+    // relation
+    'employee_id.exists'         => 'Nhân viên được chọn không hợp lệ.',
+    'organization_id.exists'     => 'Tổ chức được chọn không hợp lệ.',
+    // unique
+    'code.unique'                => 'Mã này đã tồn tại trong hệ thống.',
+    // email / url
+    'email.email'                => 'Email không đúng định dạng.',
+    'website.url'                => 'URL phải bắt đầu bằng https://',
+]);
+```
+
+**Bảng rule → message template:**
+
+| Rule | Template |
+|---|---|
+| `required` | `Vui lòng nhập/chọn [tên field].` |
+| `required_if:field,value` | `Vui lòng nhập/chọn [tên field] khi [điều kiện].` |
+| `max` (string) | `[Tên field] không được vượt quá :max ký tự.` |
+| `min` (string) | `[Tên field] phải có ít nhất :min ký tự.` |
+| `numeric` | `[Tên field] phải là số.` |
+| `min` (number) | `[Tên field] không được âm.` hoặc `phải ≥ :min.` |
+| `max` (number) | `[Tên field] không được vượt quá :max.` |
+| `date` | `[Tên field] không đúng định dạng ngày.` |
+| `after_or_equal` | `[Tên field] phải sau hoặc bằng [field kia].` |
+| `exists` | `[Tên field] được chọn không hợp lệ.` |
+| `unique` | `[Tên field] này đã tồn tại.` |
+| `in` | `[Tên field] không hợp lệ.` |
+| `email` | `[Tên field] không đúng định dạng email.` |
+| `url` | `[Tên field] phải bắt đầu bằng https://.` |
+| `integer` | `[Tên field] phải là số nguyên.` |
+| `boolean` | `[Tên field] không hợp lệ.` |
+| `mimes` | `File phải là định dạng: :values.` |
+| `max` (file) | `File không được vượt quá :max KB.` |
+
+### 16.4 Client-side — data attributes
 
 ```blade
 data-req="Vui lòng nhập tên"
@@ -993,7 +1054,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 ```
 
-### 16.4 Validation trong tab form
+### 16.5 Validation trong tab form
 
 `initFormValidation` validate **toàn bộ form** khi submit, kể cả field ở tab ẩn. Kết hợp với Tab-Aware Submit Guard ([Section 17](#17-tab-aware-submit-guard)) để:
 1. Guard chạy trước (capture phase) → phát hiện lỗi ở tab ẩn → chuyển tab + Toast
@@ -1080,6 +1141,84 @@ Submit
       - Tab đã switch → field giờ visible
       - Validate, highlight inline error, scrollIntoView ✓
 ```
+
+### 17.5 Giới hạn của Tab Guard — field visible nhưng conditionally required
+
+`_collectHiddenErrors` chỉ bắt field nằm trong **x-show panel đang ẩn** (`style.display === 'none'`). Nó **không bắt** được:
+
+- Field **visible** nhưng value trống (có `data-req` → `initFormValidation` sẽ highlight, nhưng không Toast)
+- Field **visible** nhưng **conditionally required** (nằm trong `x-show="scope === 'org'"` — khi scope='org' element này visible, Guard bỏ qua)
+
+Ví dụ điển hình: `#ts-organization_id` trong scope selector (`x-show="scope === 'org'"`). Khi user chọn scope='org' nhưng không chọn org, field này **visible** → Guard không bắt → form submit → server error.
+
+**Giải pháp:** Guard riêng cho mỗi trường hợp conditional required.
+
+### 17.6 Conditional Required Field Guard
+
+Pattern cho field có điều kiện (không phải tab-hidden):
+
+```js
+// Dùng khi field luôn visible (không trong x-show ẩn của tab)
+// nhưng required theo điều kiện (scope, type, checkbox...)
+
+function _setupOrgValidation(form) {
+    const orgEl = form.querySelector('#ts-organization_id');
+    if (!orgEl) return; // không phải super-admin → bỏ qua
+
+    form.addEventListener('submit', (e) => {
+        if (orgEl.value.trim()) return; // đã chọn → pass
+        e.preventDefault();
+        if (window.Toast) {
+            Toast.warning('Vui lòng chọn tổ chức.', { duration: 4000 });
+        }
+    }, true); // capture=true để chạy trước initFormValidation
+}
+```
+
+**Khi có scope radio (global/org):**
+
+```js
+// Chỉ validate organization_id khi scope = 'org'
+function _setupScopeOrgValidation(form) {
+    const orgEl = form.querySelector('#ts-organization_id');
+    if (!orgEl) return;
+
+    form.addEventListener('submit', (e) => {
+        // Đọc radio checked hoặc hidden input
+        const scopeEl = form.querySelector('[name="scope"]:checked')
+            ?? form.querySelector('[name="scope"][type="hidden"]');
+        if (scopeEl?.value !== 'org') return; // scope global → không cần org
+
+        if (orgEl.value.trim()) return;
+        e.preventDefault();
+
+        // Switch về tab chứa field org
+        const wrapper = form.closest('[x-data]') ?? document.querySelector('[x-data]');
+        _switchAlpineTab(wrapper, 'basic'); // tên tab key chứa field org
+
+        if (window.Toast) {
+            Toast.warning('Vui lòng chọn tổ chức khi phạm vi là "Riêng tổ chức cụ thể".', { duration: 4000 });
+        }
+    }, true);
+}
+```
+
+**Gọi sau `_setupTabGuard`:**
+
+```js
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.querySelector(FORM_SEL);
+    if (!form) return;
+
+    initFormValidation(FORM_SEL);
+    _setupTabGuard(form);            // bắt lỗi tab ẩn
+    _setupScopeOrgValidation(form);  // bắt org khi scope=org (conditional visible)
+    initAllTomSelects(form);
+    _setupScopeOrgSelect(form);
+});
+```
+
+> **Nguyên tắc:** Mỗi conditional required field cần 1 guard riêng. Đặt tên theo pattern `_setup[Field]Validation(form)`.
 
 ---
 
@@ -1370,7 +1509,62 @@ function _initCascadeSelects(form) {
 }
 ```
 
-### 22.6 SCSS
+### 22.6 TomSelect trong `x-show` ẩn — KHÔNG dùng `ts-init`
+
+Khi select nằm trong `x-show` bắt đầu ở trạng thái **ẩn** (`display: none`), `initAllTomSelects` sẽ init TomSelect khi element không có kích thước → dropdown width = 0 → layout vỡ.
+
+**Vấn đề:**
+```blade
+{{-- ❌ SAI: ts-init trên element ẩn --}}
+<div x-show="scope === 'org'" x-cloak>
+    <select id="ts-organization_id" name="organization_id"
+            class="select select-bordered select-sm ts-init">  {{-- ts-init gây lỗi --}}
+```
+
+**Giải pháp:** Bỏ `ts-init`, init thủ công bằng `createTs()` sau khi Alpine reveal:
+
+```blade
+{{-- ✅ ĐÚNG: không có ts-init --}}
+<div x-show="scope === 'org'" x-cloak>
+    <select id="ts-organization_id" name="organization_id"
+            class="select select-bordered select-sm"
+            data-ts-placeholder="— Chọn tổ chức —">
+```
+
+```js
+// pages/[entity]-form.js
+import { createTs, initAllTomSelects } from '@shared/tom-select-factory.js';
+
+function _setupScopeOrgSelect(form) {
+    const orgEl = form.querySelector('#ts-organization_id');
+    if (!orgEl) return;
+
+    const scopeWrapper = orgEl.closest('[x-show]');
+
+    // Trường hợp old('scope') = 'org' (validation lỗi redirect back)
+    // → element đã visible khi page load → init ngay
+    if (scopeWrapper && scopeWrapper.style.display !== 'none') {
+        requestAnimationFrame(() => { if (!orgEl.tomselect) createTs(orgEl); });
+        return;
+    }
+
+    // Lắng nghe scope radio change → init khi user chọn 'org'
+    form.querySelectorAll('[name="scope"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (radio.value === 'org' && !orgEl.tomselect) {
+                requestAnimationFrame(() => createTs(orgEl)); // rAF để Alpine render trước
+            }
+        });
+    });
+}
+```
+
+**Quy tắc:**
+- `requestAnimationFrame` bắt buộc — đảm bảo Alpine đã set `display: block` trước khi TomSelect đo kích thước
+- Guard `if (!orgEl.tomselect)` — tránh init lại khi radio toggle nhiều lần
+- Xử lý cả trường hợp redirect back (scope đã='org' → element visible ngay từ đầu)
+
+### 22.7 SCSS
 
 Mọi module SCSS dùng TomSelect phải `@use 'tom-select'`:
 
@@ -1380,7 +1574,7 @@ Mọi module SCSS dùng TomSelect phải `@use 'tom-select'`:
 @use 'tom-select';   // ← bắt buộc khi form có select
 ```
 
-### 22.7 Blade scripts — thứ tự load
+### 22.8 Blade scripts — thứ tự load
 
 `tom-select.js` phải load **trước** module JS:
 
@@ -1539,6 +1733,26 @@ Slug:  "ten-slug-vd"
 | Dùng tab form cho 5 trường cùng ngữ cảnh | Flat form — tab thừa với form nhỏ |
 | Dùng tab khi thứ tự bắt buộc (không được skip) | Wizard — tab cho phép nhảy tự do |
 
+### Validation
+
+| ❌ Sai | ✅ Đúng |
+|---|---|
+| `return $request->validate($rules)` không có `$messages` | Luôn truyền `$messages` với message tiếng Việt |
+| Message mặc định: "The X field is required." | Custom: "Vui lòng nhập/chọn X." |
+| `tabFields` thiếu field so với server rules | `tabFields` khai báo đầy đủ mọi field có server validation |
+| `tabFields.edit` giống `tabFields.create` (gồm `organization_id`) | Edit: bỏ `organization_id` khỏi tabFields (field không submit trong edit) |
+
+### Org Selector — Multi-tenant
+
+| ❌ Sai | ✅ Đúng |
+|---|---|
+| Dùng `TenantContext::resolve()` để lấy tên org trong edit controller | `Organization::withoutTenant()->find($model->organization_id)` |
+| `#ts-organization_id` có `ts-init` khi nằm trong `x-show` ẩn | Bỏ `ts-init`, init thủ công qua `_setupScopeOrgSelect` |
+| Dùng `'{{ old('scope') }}'` trong Alpine x-data | `scope: {{ Js::from(old('scope', 'global')) }}` — dùng `Js::from()` |
+| Không có Toast khi org trống (chỉ rely vào server) | Guard `_setupScopeOrgValidation` / `_setupOrgValidation` cho client-side Toast |
+| Form dùng shared `form.blade.php` cho cả create và edit | Tách riêng `create.blade.php` + `edit.blade.php` |
+| Edit form có scope selector để đổi org | Org lock trong edit — chỉ hiển thị tên org, không cho đổi |
+
 ---
 
 ## 26. Checklist trước khi merge
@@ -1611,3 +1825,344 @@ Slug:  "ten-slug-vd"
 - [ ] Mọi label tiếng Việt, placeholder có `VD:` hoặc ví dụ cụ thể
 - [ ] Test dark mode
 - [ ] Submit button có loading state nếu async
+
+### Org Selector (khi form có field organization_id)
+
+- [ ] Super-admin thấy org selector; business user thấy hidden input + tên org
+- [ ] Select `#ts-organization_id` **không** có `ts-init` nếu nằm trong `x-show` ẩn — init thủ công qua `_setupScopeOrgSelect`
+- [ ] Select `#ts-organization_id` **có** `ts-init` nếu luôn visible (không có scope radio)
+- [ ] Có guard riêng (`_setupScopeOrgValidation` hoặc `_setupOrgValidation`) cho client-side Toast
+- [ ] Controller: super-admin lấy org từ request, business user lấy từ `TenantContext`
+- [ ] Edit form: org lấy từ `Organization::withoutTenant()->find($model->organization_id)` — không dùng `TenantContext::resolve()` (null với super-admin)
+- [ ] Validation rules: `required_if:scope,org` hoặc `required` kèm custom message tiếng Việt
+- [ ] `organization_id` trong `tabFields.basic` nếu form dùng tab (create) — **không có** trong edit tabFields
+
+### Validation — custom messages
+
+- [ ] Mọi `$request->validate($rules)` đều có `$messages` array tiếng Việt
+- [ ] Không có message nào tiếng Anh trong `$errors->all()`
+
+---
+
+## 27. Org Selector — Multi-tenant Form Pattern ← NEW
+
+### 27.1 Bối cảnh
+
+Trong hệ thống multi-tenant, nhiều entity được gắn với `organization_id`. Khi super-admin tạo/sửa entity, họ cần chọn org sở hữu. Business user luôn gắn với org của mình (TenantContext).
+
+### 27.2 Hai biến thể
+
+| Biến thể | Dùng khi | Ví dụ |
+|---|---|---|
+| **Scope radio** (global / org) | Entity có thể thuộc toàn hệ thống HOẶC 1 org cụ thể | CareerPathwayStep, CertificationDefinition, SandboxEnvironment |
+| **Org select trực tiếp** | Entity luôn thuộc 1 org (không có global) | AiImpactSnapshot, Employee, Branch |
+
+### 27.3 Biến thể A — Scope radio (global / org)
+
+**Blade (create.blade.php):**
+
+```blade
+{{-- Phạm vi block — nằm trong tab 'basic', trước các field chính --}}
+<div class="p-4 rounded-lg {{ $isSuperAdmin ? 'bg-warning/5 border border-warning/20' : 'bg-base-200/50 border border-base-200' }}">
+    <p class="text-xs font-semibold uppercase tracking-wide text-base-content/50 mb-3">Phạm vi</p>
+
+    @if($isSuperAdmin)
+    {{-- Radio chọn scope --}}
+    <div class="flex gap-6 flex-wrap mb-3">
+        <label class="flex items-start gap-2.5 cursor-pointer select-none">
+            <input type="radio" name="scope" value="global"
+                   class="radio radio-sm radio-info mt-0.5"
+                   x-model="scope">
+            <div>
+                <p class="text-sm font-medium">Toàn hệ thống</p>
+                <p class="text-xs text-base-content/40">Áp dụng cho tất cả tổ chức</p>
+            </div>
+        </label>
+        <label class="flex items-start gap-2.5 cursor-pointer select-none">
+            <input type="radio" name="scope" value="org"
+                   class="radio radio-sm radio-primary mt-0.5"
+                   x-model="scope">
+            <div>
+                <p class="text-sm font-medium">Riêng tổ chức cụ thể</p>
+                <p class="text-xs text-base-content/40">Chỉ tổ chức được chọn mới thấy</p>
+            </div>
+        </label>
+    </div>
+
+    {{-- Select org — hiện khi scope='org', KHÔNG dùng ts-init (nằm trong x-show ẩn) --}}
+    <div x-show="scope === 'org'" x-cloak>
+        <div class="form-control max-w-xs">
+            <label class="label py-0 pb-1.5">
+                <span class="label-text font-medium">Tổ chức <span class="text-error">*</span></span>
+            </label>
+            <select id="ts-organization_id" name="organization_id"
+                    class="select select-bordered select-sm w-full @error('organization_id') select-error @enderror"
+                    data-ts-placeholder="— Chọn tổ chức —">
+                <option value="">— Chọn tổ chức —</option>
+                @foreach($organizations as $org)
+                <option value="{{ $org->id }}" {{ old('organization_id') == $org->id ? 'selected' : '' }}>
+                    {{ $org->name }}
+                </option>
+                @endforeach
+            </select>
+            @error('organization_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+        </div>
+    </div>
+
+    @else
+    {{-- Business user: hidden input + hiển thị tên org --}}
+    <input type="hidden" name="scope" value="org">
+    <div class="flex items-center gap-2 text-sm text-base-content/70">
+        <svg class="w-4 h-4 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16"/>
+        </svg>
+        Riêng cho: <strong>{{ $currentOrg?->name }}</strong>
+    </div>
+    @endif
+</div>
+```
+
+**x-data Alpine (create form):**
+
+```blade
+<div x-data="{
+    tab: 'basic',
+    tabFields: {
+        basic: ['title', 'from_level', 'to_level', 'organization_id'],  {{-- organization_id PHẢI có --}}
+        ...
+    },
+    errs: {{ Js::from($errors->keys()) }},
+    errCount(t) { return this.tabFields[t].filter(f => this.errs.includes(f)).length; },
+    init() { ... },
+    scope: {{ Js::from(old('scope', 'global')) }},  {{-- Dùng Js::from(), không dùng '{{ }}' trong attribute --}}
+}">
+```
+
+**Blade (edit.blade.php):**
+
+```blade
+{{-- Edit: org đã lock, không thể đổi — hiện tên org trong header thay vì selector --}}
+<p class="text-sm text-base-content/50 mt-0.5">
+    {{ $stepOrgName ? "Tổ chức: {$stepOrgName}" : 'Toàn hệ thống' }}
+</p>
+```
+
+> Edit form: **không có** scope radio, không có org selector, `organization_id` không có trong `tabFields`.
+
+### 27.4 Biến thể B — Org select trực tiếp (luôn org-specific)
+
+**Blade (create.blade.php):**
+
+```blade
+{{-- Tổ chức block — luôn visible, không cần scope radio --}}
+<div class="form-control sm:col-span-2">
+    <div class="p-4 rounded-lg {{ $isSuperAdmin ? 'bg-warning/5 border border-warning/20' : 'bg-base-200/50 border border-base-200' }}">
+        <p class="text-xs font-semibold uppercase tracking-wide text-base-content/50 mb-3">Tổ chức</p>
+
+        @if($isSuperAdmin)
+        <div class="form-control max-w-xs">
+            <label class="label py-0 pb-1.5">
+                <span class="label-text font-medium">Chọn tổ chức <span class="text-error">*</span></span>
+            </label>
+            {{-- ts-init OK vì luôn visible --}}
+            <select id="ts-organization_id" name="organization_id"
+                    class="select select-bordered select-sm w-full ts-init @error('organization_id') select-error @enderror"
+                    data-ts-placeholder="— Chọn tổ chức —"
+                    data-req="Vui lòng chọn tổ chức">
+                <option value="">— Chọn tổ chức —</option>
+                @foreach($organizations as $org)
+                <option value="{{ $org->id }}" {{ old('organization_id') == $org->id ? 'selected' : '' }}>
+                    {{ $org->name }}
+                </option>
+                @endforeach
+            </select>
+            @error('organization_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+        </div>
+        @else
+        <div class="flex items-center gap-2 text-sm text-base-content/70">
+            <svg class="w-4 h-4 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16"/>
+            </svg>
+            Thuộc: <strong>{{ $currentOrg?->name }}</strong>
+        </div>
+        @endif
+    </div>
+</div>
+```
+
+### 27.5 Controller — create()
+
+```php
+public function create(): View
+{
+    $this->authorize('[permission]');
+
+    $isSuperAdmin  = request()->user()?->hasRole('super-admin');
+    $currentOrg    = TenantContext::resolve();                    // org của business user
+    $organizations = $isSuperAdmin
+        ? Organization::where('is_system', false)->orderBy('name')->get()
+        : collect();
+
+    return view('[module]::[entity].create', [
+        'isSuperAdmin'  => $isSuperAdmin,
+        'currentOrg'    => $currentOrg,
+        'organizations' => $organizations,
+        // ... các variables khác
+    ]);
+}
+```
+
+### 27.6 Controller — store()
+
+**Biến thể A (scope radio):**
+
+```php
+public function store(Request $request): RedirectResponse
+{
+    $isSuperAdmin = $request->user()?->hasRole('super-admin');
+    $data = $this->validate($request);
+
+    if ($isSuperAdmin) {
+        $organizationId = $request->input('scope') === 'global'
+            ? null
+            : (int) $request->input('organization_id');
+    } else {
+        $organizationId = TenantContext::getOrganizationId();
+    }
+
+    Entity::create([...$data, 'organization_id' => $organizationId]);
+    ...
+}
+```
+
+**Biến thể B (luôn org-specific):**
+
+```php
+public function store(Request $request): RedirectResponse
+{
+    $isSuperAdmin = $request->user()?->hasRole('super-admin');
+    $data = $this->validate($request);
+
+    $data['organization_id'] = $isSuperAdmin
+        ? (int) $request->input('organization_id')
+        : TenantContext::getOrganizationId();
+
+    Entity::create($data);
+    ...
+}
+```
+
+### 27.7 Controller — edit()
+
+```php
+public function edit(Entity $entity): View
+{
+    // Dùng withoutTenant() để bypass global OrganizationScope
+    // TenantContext::resolve() trả null với super-admin → không dùng
+    $orgName = $entity->organization_id
+        ? (Organization::withoutTenant()->find($entity->organization_id)?->name ?? 'Không xác định')
+        : null;  // null = global (biến thể A)
+
+    return view('[module]::[entity].edit', [
+        'entity'  => $entity,
+        'orgName' => $orgName,
+        // ... không truyền $organizations (org không thể đổi trong edit)
+    ]);
+}
+```
+
+> **⚠️ Không dùng `TenantContext::resolve()`** để lấy tên org trong edit controller — super-admin không có tenant context, trả về `null`.
+
+### 27.8 Validation rules
+
+**Biến thể A (scope radio):**
+
+```php
+// Chỉ áp dụng khi tạo mới (không có route model binding)
+if ($isSuperAdmin && ! $request->route('[entity]')) {
+    $rules['scope']           = 'required|in:global,org';
+    $rules['organization_id'] = 'required_if:scope,org|nullable|exists:organizations,id';
+}
+
+$messages = [
+    'organization_id.required_if' => 'Vui lòng chọn tổ chức khi phạm vi là "Riêng tổ chức cụ thể".',
+    'organization_id.exists'      => 'Tổ chức được chọn không hợp lệ.',
+];
+```
+
+**Biến thể B (luôn org-specific):**
+
+```php
+if ($isSuperAdmin && ! $request->route('[entity]')) {
+    $rules['organization_id'] = 'required|exists:organizations,id';
+}
+
+$messages = [
+    'organization_id.required' => 'Vui lòng chọn tổ chức.',
+    'organization_id.exists'   => 'Tổ chức được chọn không hợp lệ.',
+];
+```
+
+### 27.9 JS — đầy đủ cho biến thể A
+
+```js
+import { createTs, initAllTomSelects } from '@shared/tom-select-factory.js';
+
+const FORM_SEL     = '[data-[entity]-form]';
+const RE_TAB_XSHOW = /tab\s*===\s*['"](\w+)['"]/;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.querySelector(FORM_SEL);
+    if (!form) return;
+
+    initFormValidation(FORM_SEL);
+    _setupTabGuard(form);             // Section 17.2
+    _setupScopeOrgValidation(form);   // Section 17.6 — conditional required guard
+    initAllTomSelects(form);          // init tất cả select.ts-init (KHÔNG bao gồm #ts-organization_id)
+    _setupScopeOrgSelect(form);       // Section 22.6 — init TomSelect cho org select ẩn
+});
+
+function _setupScopeOrgValidation(form) {
+    const orgEl = form.querySelector('#ts-organization_id');
+    if (!orgEl) return;
+    form.addEventListener('submit', (e) => {
+        const scopeEl = form.querySelector('[name="scope"]:checked')
+            ?? form.querySelector('[name="scope"][type="hidden"]');
+        if (scopeEl?.value !== 'org') return;
+        if (orgEl.value.trim()) return;
+        e.preventDefault();
+        const wrapper = form.closest('[x-data]') ?? document.querySelector('[x-data]');
+        _switchAlpineTab(wrapper, 'basic');
+        window.Toast?.warning('Vui lòng chọn tổ chức khi phạm vi là "Riêng tổ chức cụ thể".', { duration: 4000 });
+    }, true);
+}
+
+function _setupScopeOrgSelect(form) {
+    const orgEl = form.querySelector('#ts-organization_id');
+    if (!orgEl) return;
+    const scopeWrapper = orgEl.closest('[x-show]');
+    if (scopeWrapper && scopeWrapper.style.display !== 'none') {
+        requestAnimationFrame(() => { if (!orgEl.tomselect) createTs(orgEl); });
+        return;
+    }
+    form.querySelectorAll('[name="scope"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (radio.value === 'org' && !orgEl.tomselect) {
+                requestAnimationFrame(() => createTs(orgEl));
+            }
+        });
+    });
+}
+```
+
+### 27.10 Tóm tắt khác biệt create vs edit
+
+| | Create | Edit |
+|---|---|---|
+| Scope selector | ✅ Hiện (super-admin) | ❌ Không có |
+| Org select | ✅ Hiện khi scope='org' | ❌ Không có |
+| Org name display | Hiện tên org business user | Hiện `$orgName` trong subtitle |
+| `organization_id` trong tabFields | ✅ Có trong `basic` | ❌ Không có |
+| `#ts-organization_id` dùng `ts-init` | ❌ Không (nằm trong x-show ẩn — biến thể A) | ❌ Không có field |
+| JS `_setupScopeOrgSelect` | ✅ Gọi | ❌ Không cần |
+| JS `_setupScopeOrgValidation` | ✅ Gọi | ❌ Không cần |
