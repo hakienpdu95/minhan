@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\UserOptionsController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -11,6 +12,10 @@ use Illuminate\Support\Facades\Route;
 | → auth:sanctum works with session cookie from browser AJAX calls.
 | Auto-prefix: /api  (set by withRouting api: in bootstrap/app.php)
 */
+
+Route::middleware(['auth:sanctum', 'tenant'])
+    ->get('v1/users/options', UserOptionsController::class)
+    ->name('api.users.options');
 
 Route::middleware(['auth:sanctum', 'tenant', 'throttle:notifications'])
     ->prefix('notifications')

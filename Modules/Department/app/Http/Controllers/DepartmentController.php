@@ -169,6 +169,24 @@ class DepartmentController extends Controller
             ->with('success', 'Cập nhật phòng ban thành công.');
     }
 
+    public function options(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Department::class);
+
+        $orgId = TenantContext::getOrganizationId();
+        $q     = $request->input('q', '');
+
+        $rows = Department::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('status', 'active')
+            ->when($q, fn ($query) => $query->where('name', 'like', "%{$q}%"))
+            ->orderBy('name')
+            ->limit(30)
+            ->get(['id', 'name']);
+
+        return response()->json($rows->map(fn ($d) => ['id' => $d->id, 'text' => $d->name]));
+    }
+
     public function destroy(Request $request, Department $department, DestroyDepartmentAction $action): RedirectResponse|JsonResponse
     {
         $name = $action->handle($department);

@@ -125,12 +125,12 @@
                                     <span class="label-text font-medium">Người phụ trách <span class="text-error">*</span></span>
                                 </label>
                                 <select id="ts-owner" name="owner_id"
-                                        class="select select-bordered select-sm w-full ts-init @error('owner_id') select-error @enderror"
+                                        class="select select-bordered select-sm w-full @error('owner_id') select-error @enderror"
+                                        data-ts-remote-url="{{ route('api.users.options') }}"
                                         data-ts-placeholder="Chọn người phụ trách...">
-                                    <option value="">Chọn người phụ trách...</option>
-                                    @foreach($owners as $u)
-                                    <option value="{{ $u->id }}" {{ old('owner_id') == $u->id ? 'selected' : '' }}>{{ $u->name }}</option>
-                                    @endforeach
+                                    @if($selectedOwner)
+                                    <option value="{{ $selectedOwner->id }}" selected>{{ $selectedOwner->name }}</option>
+                                    @endif
                                 </select>
                                 @error('owner_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                             </div>
@@ -140,12 +140,12 @@
                                     <span class="label-text font-medium">Phòng ban áp dụng</span>
                                 </label>
                                 <select id="ts-department" name="department_id"
-                                        class="select select-bordered select-sm w-full ts-init"
+                                        class="select select-bordered select-sm w-full"
+                                        data-ts-remote-url="{{ route('api.departments.options') }}"
                                         data-ts-placeholder="Tất cả phòng ban...">
-                                    <option value="">Tất cả phòng ban...</option>
-                                    @foreach($departments as $d)
-                                    <option value="{{ $d->id }}" {{ old('department_id') == $d->id ? 'selected' : '' }}>{{ $d->name }}</option>
-                                    @endforeach
+                                    @if($selectedDept)
+                                    <option value="{{ $selectedDept->id }}" selected>{{ $selectedDept->name }}</option>
+                                    @endif
                                 </select>
                                 @error('department_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                             </div>
@@ -155,12 +155,12 @@
                                     <span class="label-text font-medium">Chi nhánh áp dụng</span>
                                 </label>
                                 <select id="ts-branch" name="branch_id"
-                                        class="select select-bordered select-sm w-full ts-init"
+                                        class="select select-bordered select-sm w-full"
+                                        data-ts-remote-url="{{ route('api.branches.options') }}"
                                         data-ts-placeholder="Tất cả chi nhánh...">
-                                    <option value="">Tất cả chi nhánh...</option>
-                                    @foreach($branches as $b)
-                                    <option value="{{ $b->id }}" {{ old('branch_id') == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
-                                    @endforeach
+                                    @if($selectedBranch)
+                                    <option value="{{ $selectedBranch->id }}" selected>{{ $selectedBranch->name }}</option>
+                                    @endif
                                 </select>
                                 @error('branch_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                             </div>

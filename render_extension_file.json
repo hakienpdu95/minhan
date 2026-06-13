@@ -324,5 +324,9 @@
     [
         "workforce_certifications///add///__///",
         "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
+    ],
+    [
+        "notifications///add///__///",
+        "organization_id///unsignedBigInteger///__///_NULL///NULL///->index()///__"
     ]
 ]

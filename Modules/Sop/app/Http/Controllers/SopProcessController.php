@@ -64,31 +64,18 @@ class SopProcessController extends Controller
     {
         [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
 
-        $filterOrgId = auth()->user()->organization_id ?? TenantContext::getOrganizationId();
-
         $types = collect(SopType::cases())
             ->map(fn ($t) => ['value' => $t->value, 'text' => $t->label()])
             ->all();
 
-        $departments = Department::withoutTenant()
-            ->where('organization_id', $filterOrgId)
-            ->where('status', 'active')
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
-        $branches = Branch::withoutTenant()
-            ->where('organization_id', $filterOrgId)
-            ->where('status', 'active')
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
-        $owners = User::where('organization_id', $filterOrgId)
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        // Resolve only when validation fails and old() values exist
+        $selectedOwner  = old('owner_id')      ? User::find(old('owner_id'), ['id', 'name'])                          : null;
+        $selectedDept   = old('department_id') ? Department::withoutTenant()->find(old('department_id'), ['id', 'name']) : null;
+        $selectedBranch = old('branch_id')     ? Branch::withoutTenant()->find(old('branch_id'), ['id', 'name'])       : null;
 
         return view('sop::create', compact(
             'organizations', 'defaultOrgId', 'orgLocked',
-            'types', 'departments', 'branches', 'owners'
+            'types', 'selectedOwner', 'selectedDept', 'selectedBranch'
         ));
     }
 
@@ -122,33 +109,20 @@ class SopProcessController extends Controller
     {
         [$organizations, , $orgLocked] = $this->_resolveOrganizations();
 
-        $filterOrgId = $sop->organization_id;
-
         $types = collect(SopType::cases())
             ->map(fn ($t) => ['value' => $t->value, 'text' => $t->label()])
             ->all();
 
-        $departments = Department::withoutTenant()
-            ->where('organization_id', $filterOrgId)
-            ->where('status', 'active')
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
-        $branches = Branch::withoutTenant()
-            ->where('organization_id', $filterOrgId)
-            ->where('status', 'active')
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
-        $owners = User::where('organization_id', $filterOrgId)
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
         $sop->load(['department', 'branch', 'owner']);
+
+        // Override with old() values only when validation fails on re-render
+        $selectedOwner  = old('owner_id')      ? User::find(old('owner_id'), ['id', 'name'])                          : null;
+        $selectedDept   = old('department_id') ? Department::withoutTenant()->find(old('department_id'), ['id', 'name']) : null;
+        $selectedBranch = old('branch_id')     ? Branch::withoutTenant()->find(old('branch_id'), ['id', 'name'])       : null;
 
         return view('sop::edit', compact(
             'sop', 'organizations', 'orgLocked',
-            'types', 'departments', 'branches', 'owners'
+            'types', 'selectedOwner', 'selectedDept', 'selectedBranch'
         ));
     }
 

@@ -20,7 +20,7 @@ class CandidateAttachmentController extends Controller
         $this->authorize('update', $candidate);
 
         $validated = $request->validate([
-            'file'           => ['required', 'file', 'max:10240'],
+            'file'           => ['required', 'file', 'max:10240', 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,webp,txt,csv,zip'],
             'file_type'      => ['required', 'string', 'in:' . implode(',', array_column(AttachmentFileType::cases(), 'value'))],
             'application_id' => ['nullable', 'integer', 'exists:rc_applications,id'],
         ]);

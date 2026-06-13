@@ -31,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // có thể dùng session cookie từ browser (SPA/Tabulator AJAX calls).
         // Không có middleware này, sanctum chỉ nhận Bearer token → 401.
         $middleware->prependToGroup('api', \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class);
+        $middleware->appendToGroup('api', \Illuminate\Routing\Middleware\ThrottleRequests::class . ':api');
         $middleware->appendToGroup('api', \Modules\ActivityLog\Http\Middleware\CaptureHttpContext::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -280,9 +280,19 @@ async function _syncTags(tagIds, csrf, syncUrl, errEl) {
         if (data.ok) {
             const display = document.getElementById('tags-display');
             if (display) {
-                display.innerHTML = data.tags?.length
-                    ? data.tags.map(t => `<span class="badge badge-sm font-medium text-white" style="background:${t.color}">${t.name}</span>`).join('')
-                    : '<span class="text-xs text-base-content/40">Chưa có tag</span>';
+                if (data.tags?.length) {
+                    display.innerHTML = data.tags.map(t => {
+                        const span = document.createElement('span');
+                        span.className = 'badge badge-sm font-medium text-white';
+                        // Only allow safe CSS color values (hex, rgb, named colors)
+                        const safeColor = /^(#[0-9a-fA-F]{3,8}|rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)|[a-zA-Z]+)$/.test(t.color ?? '') ? t.color : '#6b7280';
+                        span.style.background = safeColor;
+                        span.textContent = t.name ?? '';
+                        return span.outerHTML;
+                    }).join('');
+                } else {
+                    display.innerHTML = '<span class="text-xs text-base-content/40">Chưa có tag</span>';
+                }
             }
         } else if (errEl) {
             errEl.textContent = 'Lỗi khi cập nhật tag.';

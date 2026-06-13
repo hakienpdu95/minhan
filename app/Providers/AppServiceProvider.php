@@ -41,6 +41,13 @@ class AppServiceProvider extends ServiceProvider
             return $user->hasRole('super-admin') ? true : null;
         });
 
+        // Global API limiter — 120 req/min per authenticated user, 30/min for guests
+        RateLimiter::for('api', fn (Request $request) =>
+            $request->user()
+                ? Limit::perMinute(120)->by($request->user()->id)
+                : Limit::perMinute(30)->by($request->ip())
+        );
+
         RateLimiter::for('notifications', fn (Request $request) =>
             Limit::perMinute(60)->by($request->user()?->id ?: $request->ip())
         );

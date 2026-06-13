@@ -2,9 +2,11 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Employee\Http\Controllers\Api\EmployeeAvatarController;
+use Modules\Employee\Http\Controllers\Api\EmployeeOptionsController;
 use Modules\Employee\Http\Controllers\EmployeeController;
 
-Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
+Route::middleware(['auth:sanctum', 'tenant'])->prefix('v1')->group(function () {
+    Route::get('employees/options', EmployeeOptionsController::class)->name('employees.options');
     Route::apiResource('employees', EmployeeController::class)->names('employee');
 
     // Avatar upload / delete

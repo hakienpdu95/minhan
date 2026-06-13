@@ -147,15 +147,15 @@
                                 <span class="label-text font-medium">Nhân viên được đánh giá <span class="text-error">*</span></span>
                             </label>
                             <select id="ts-employee" name="employee_id"
-                                    class="select select-bordered select-sm w-full ts-init @error('employee_id') select-error @enderror"
+                                    class="select select-bordered select-sm w-full @error('employee_id') select-error @enderror"
+                                    data-ts-remote-url="{{ route('api.employees.options') }}"
                                     data-ts-placeholder="— Chọn nhân viên —"
                                     data-req="Vui lòng chọn nhân viên được đánh giá">
-                                <option value="">— Chọn nhân viên —</option>
-                                @foreach($employees as $emp)
-                                <option value="{{ $emp->id }}" {{ old('employee_id') == $emp->id ? 'selected' : '' }}>
-                                    {{ $emp->full_name }} ({{ $emp->employee_code }}){{ $emp->snap_dept_name ? ' — ' . $emp->snap_dept_name : '' }}
+                                @if($selectedEmployee)
+                                <option value="{{ $selectedEmployee->id }}" selected>
+                                    {{ $selectedEmployee->full_name }} ({{ $selectedEmployee->employee_code }})
                                 </option>
-                                @endforeach
+                                @endif
                             </select>
                             @error('employee_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
@@ -165,15 +165,15 @@
                                 <span class="label-text font-medium">Người đánh giá <span class="text-error">*</span></span>
                             </label>
                             <select id="ts-reviewer" name="reviewer_id"
-                                    class="select select-bordered select-sm w-full ts-init @error('reviewer_id') select-error @enderror"
+                                    class="select select-bordered select-sm w-full @error('reviewer_id') select-error @enderror"
+                                    data-ts-remote-url="{{ route('api.employees.options') }}"
                                     data-ts-placeholder="— Chọn người đánh giá —"
                                     data-req="Vui lòng chọn người đánh giá">
-                                <option value="">— Chọn người đánh giá —</option>
-                                @foreach($employees as $emp)
-                                <option value="{{ $emp->id }}" {{ old('reviewer_id') == $emp->id ? 'selected' : '' }}>
-                                    {{ $emp->full_name }} ({{ $emp->employee_code }})
+                                @if($selectedReviewer)
+                                <option value="{{ $selectedReviewer->id }}" selected>
+                                    {{ $selectedReviewer->full_name }} ({{ $selectedReviewer->employee_code }})
                                 </option>
-                                @endforeach
+                                @endif
                             </select>
                             @error('reviewer_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>

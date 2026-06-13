@@ -148,12 +148,17 @@ export function initAllTomSelects(container = document, afterInit) {
         console.warn('[TS] TomSelect chưa load. Thêm @vite tom-select.js trước module JS.');
         return;
     }
-    for (const el of container.querySelectorAll('select.ts-init')) {
+    for (const el of container.querySelectorAll('select.ts-init, select[data-ts-remote-url]')) {
         if (el.tomselect) continue;
         const placeholder = el.dataset.tsPlaceholder
             || el.querySelector('option[value=""]')?.textContent.trim()
             || '— Chọn —';
-        createTs(el, { placeholder });
+        const remoteUrl = el.dataset.tsRemoteUrl;
+        if (remoteUrl) {
+            createTsRemote(el, { url: remoteUrl, placeholder });
+        } else {
+            createTs(el, { placeholder });
+        }
     }
     afterInit?.();
 }

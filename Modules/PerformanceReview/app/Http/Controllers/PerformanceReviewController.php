@@ -79,12 +79,6 @@ class PerformanceReviewController extends Controller
 
         [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
 
-        $employees = Employee::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->where('status', EmployeeStatus::Active->value)
-            ->orderBy('full_name')
-            ->get(['id', 'full_name', 'employee_code', 'snap_dept_name', 'snap_job_title']);
-
         $templates = ReviewTemplate::withoutTenant()
             ->where('organization_id', $orgId)
             ->where('is_active', true)
@@ -92,7 +86,14 @@ class PerformanceReviewController extends Controller
             ->with('criteria')
             ->get();
 
-        return view('performancereview::create', compact('employees', 'templates', 'organizations', 'defaultOrgId', 'orgLocked'));
+        // Resolve only on validation-failed re-render
+        $selectedEmployee = old('employee_id') ? Employee::withoutTenant()->find(old('employee_id'), ['id', 'full_name', 'employee_code']) : null;
+        $selectedReviewer = old('reviewer_id') ? Employee::withoutTenant()->find(old('reviewer_id'), ['id', 'full_name', 'employee_code']) : null;
+
+        return view('performancereview::create', compact(
+            'templates', 'organizations', 'defaultOrgId', 'orgLocked',
+            'selectedEmployee', 'selectedReviewer'
+        ));
     }
 
     public function store(Request $request, StorePerformanceReviewAction $action): RedirectResponse
@@ -118,15 +119,9 @@ class PerformanceReviewController extends Controller
 
     public function edit(PerformanceReview $performanceReview)
     {
-        $orgId = TenantContext::getOrganizationId();
-
         [$organizations, , $orgLocked] = $this->_resolveOrganizations();
 
-        $employees = Employee::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->where('status', EmployeeStatus::Active->value)
-            ->orderBy('full_name')
-            ->get(['id', 'full_name', 'employee_code', 'snap_dept_name', 'snap_job_title']);
+        $orgId = TenantContext::getOrganizationId();
 
         $templates = ReviewTemplate::withoutTenant()
             ->where('organization_id', $orgId)
@@ -137,12 +132,17 @@ class PerformanceReviewController extends Controller
 
         $performanceReview->load(['scores', 'template.criteria', 'reviewer']);
 
+        // Override with old() values only when validation fails on re-render
+        $selectedReviewer = old('reviewer_id')
+            ? Employee::withoutTenant()->find(old('reviewer_id'), ['id', 'full_name', 'employee_code'])
+            : null;
+
         return view('performancereview::edit', [
-            'review'        => $performanceReview,
-            'employees'     => $employees,
-            'templates'     => $templates,
-            'organizations' => $organizations,
-            'orgLocked'     => $orgLocked,
+            'review'           => $performanceReview,
+            'templates'        => $templates,
+            'organizations'    => $organizations,
+            'orgLocked'        => $orgLocked,
+            'selectedReviewer' => $selectedReviewer,
         ]);
     }
 

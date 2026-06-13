@@ -1,0 +1,36 @@
+<?php
+
+namespace Modules\Employee\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\TenantContext;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Modules\Employee\Enums\EmployeeStatus;
+use Modules\Employee\Models\Employee;
+
+class EmployeeOptionsController extends Controller
+{
+    public function __invoke(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Employee::class);
+
+        $orgId = TenantContext::getOrganizationId();
+        $q     = $request->input('q', '');
+
+        $rows = Employee::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('status', EmployeeStatus::Active->value)
+            ->when($q, fn ($query) => $query->where('full_name', 'like', "%{$q}%")
+                ->orWhere('employee_code', 'like', "%{$q}%"))
+            ->orderBy('full_name')
+            ->limit(30)
+            ->get(['id', 'full_name', 'employee_code', 'snap_dept_name']);
+
+        return response()->json($rows->map(fn ($e) => [
+            'id'   => $e->id,
+            'text' => $e->full_name . ' (' . $e->employee_code . ')'
+                . ($e->snap_dept_name ? ' — ' . $e->snap_dept_name : ''),
+        ]));
+    }
+}

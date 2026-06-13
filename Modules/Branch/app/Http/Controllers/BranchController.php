@@ -181,6 +181,24 @@ class BranchController extends Controller
             ->with('success', 'Cập nhật chi nhánh thành công.');
     }
 
+    public function options(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Branch::class);
+
+        $orgId = TenantContext::getOrganizationId();
+        $q     = $request->input('q', '');
+
+        $rows = Branch::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('status', 'active')
+            ->when($q, fn ($query) => $query->where('name', 'like', "%{$q}%"))
+            ->orderBy('name')
+            ->limit(30)
+            ->get(['id', 'name']);
+
+        return response()->json($rows->map(fn ($b) => ['id' => $b->id, 'text' => $b->name]));
+    }
+
     public function destroy(Request $request, Branch $branch, DestroyBranchAction $action): RedirectResponse|JsonResponse
     {
         $name = $action->handle($branch);
