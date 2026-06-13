@@ -1,0 +1,24 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void
+    {
+        Schema::table('sandbox_sessions', function (Blueprint $table) {
+            if (!Schema::hasColumn('sandbox_sessions', 'deleted_at')) {
+                $table->timestamp('deleted_at')->nullable()->comment('Thời gian xóa mềm');
+            }
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('sandbox_sessions', function (Blueprint $table) {
+            $cols = array_filter(['deleted_at'], fn($c) => Schema::hasColumn('sandbox_sessions', $c));
+            if (!empty($cols)) $table->dropColumn(array_values($cols));
+        });
+    }
+};

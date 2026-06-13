@@ -316,5 +316,13 @@
         "address_line///string///500///_NULL///NULL///__///__",
         "notes///string///2000///_NULL///NULL///__///__",
         "customer_code///string///50///_NULL///NULL///__///__"
+    ],
+    [
+        "sandbox_sessions///add///__///",
+        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
+    ],
+    [
+        "workforce_certifications///add///__///",
+        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
     ]
 ]
