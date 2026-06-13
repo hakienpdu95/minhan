@@ -19,8 +19,8 @@ final class TaskProgressQuery
     {
         return new self(
             orgId:        TenantContext::getOrganizationId(),
-            projectId:    $params['project_id']    ? (int) $params['project_id']    : null,
-            departmentId: $params['department_id'] ? (int) $params['department_id'] : null,
+            projectId:    !empty($params['project_id'])    ? (int) $params['project_id']    : null,
+            departmentId: !empty($params['department_id']) ? (int) $params['department_id'] : null,
             status:       $params['status']        ?? null,
         );
     }

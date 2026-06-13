@@ -24,15 +24,15 @@ final class ProjectOverviewQuery
             orgId:        TenantContext::getOrganizationId(),
             dateFrom:     $params['date_from']     ?? now()->startOfYear()->toDateString(),
             dateTo:       $params['date_to']       ?? now()->toDateString(),
-            branchId:     $params['branch_id']     ? (int) $params['branch_id']     : null,
-            departmentId: $params['department_id'] ? (int) $params['department_id'] : null,
+            branchId:     !empty($params['branch_id'])     ? (int) $params['branch_id']     : null,
+            departmentId: !empty($params['department_id']) ? (int) $params['department_id'] : null,
             status:       $params['status']        ?? null,
         );
     }
 
     private function base()
     {
-        return Project::where('organization_id', $this->orgId)
+        return Project::where('projects.organization_id', $this->orgId)
             ->when($this->branchId,     fn ($q) => $q->where('branch_id',     $this->branchId))
             ->when($this->departmentId, fn ($q) => $q->where('department_id', $this->departmentId))
             ->when($this->status,       fn ($q) => $q->where('status',        $this->status));

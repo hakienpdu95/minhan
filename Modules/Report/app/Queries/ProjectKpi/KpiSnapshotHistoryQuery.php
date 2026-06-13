@@ -19,8 +19,8 @@ final class KpiSnapshotHistoryQuery
     {
         return new self(
             orgId:        TenantContext::getOrganizationId(),
-            employeeId:   $params['employee_id']   ? (int) $params['employee_id']   : null,
-            departmentId: $params['department_id'] ? (int) $params['department_id'] : null,
+            employeeId:   !empty($params['employee_id'])   ? (int) $params['employee_id']   : null,
+            departmentId: !empty($params['department_id']) ? (int) $params['department_id'] : null,
         );
     }
 

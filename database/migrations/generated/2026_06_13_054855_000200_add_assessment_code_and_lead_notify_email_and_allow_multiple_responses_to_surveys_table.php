@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::table('surveys', function (Blueprint $table) {
             if (!Schema::hasColumn('surveys', 'assessment_code')) {
-                $table->string('assessment_code', 50)->nullable()->unique()->comment('Mã định danh cho Scoring Engine — nullable nếu survey không có scoring');
+                $table->string('assessment_code', 50)->nullable()->comment('Mã định danh cho Scoring Engine — nullable nếu survey không có scoring');
             }
             if (!Schema::hasColumn('surveys', 'lead_notify_email')) {
                 $table->string('lead_notify_email', 255)->nullable()->after('assessment_code')->comment('Email nhận alert khi hot lead nộp bài — để trống = không gửi');
@@ -23,6 +23,12 @@ return new class extends Migration {
             if (!Schema::hasColumn('surveys', 'organization_id')) {
                 $table->foreignId('organization_id')->nullable()->constrained()->restrictOnDelete()->after('allow_multiple_responses');
             }
+            if (!Schema::hasColumn('surveys', 'specialized_set_code')) {
+                $table->string('specialized_set_code', 50)->nullable()->after('organization_id');
+            }
+            if (!Schema::hasIndex('surveys', 'surveys_assessment_specialized_unique')) {
+                $table->unique(['assessment_code', 'specialized_set_code'], 'surveys_assessment_specialized_unique');
+            }
         });
     }
 
@@ -30,7 +36,7 @@ return new class extends Migration {
     {
         Schema::table('surveys', function (Blueprint $table) {
             if (Schema::hasColumn('surveys', 'organization_id')) $table->dropForeign(['organization_id']);
-            $cols = array_filter(['assessment_code', 'lead_notify_email', 'allow_multiple_responses', 'organization_id'], fn($c) => Schema::hasColumn('surveys', $c));
+            $cols = array_filter(['assessment_code', 'lead_notify_email', 'allow_multiple_responses', 'organization_id', 'specialized_set_code'], fn($c) => Schema::hasColumn('surveys', $c));
             if (!empty($cols)) $table->dropColumn(array_values($cols));
         });
     }

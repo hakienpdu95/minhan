@@ -23,8 +23,8 @@ final class PipelineFunnelQuery
             orgId:      TenantContext::getOrganizationId(),
             dateFrom:   $params['date_from']   ?? now()->startOfMonth()->toDateString(),
             dateTo:     $params['date_to']     ?? now()->toDateString(),
-            assignedTo: $params['assigned_to'] ? (int) $params['assigned_to'] : null,
-            sourceId:   $params['source_id']   ? (int) $params['source_id']   : null,
+            assignedTo: !empty($params['assigned_to']) ? (int) $params['assigned_to'] : null,
+            sourceId:   !empty($params['source_id'])   ? (int) $params['source_id']   : null,
         );
     }
 
@@ -88,12 +88,27 @@ final class PipelineFunnelQuery
             ->orderBy('sort_order')
             ->get();
 
-        // Avg days in stage from history
-        $avgDays = LeadStageHistory::join('leads', 'leads.id', '=', 'lead_stage_history.lead_id')
+        // Avg days a lead spends in each stage (stage_from_id = stage being exited).
+        // Time in stage = from when lead entered it (prev changed_at or lead created_at) to when it left (current changed_at).
+        $avgDays = LeadStageHistory::from('lead_stage_history as lsh')
+            ->join('leads', 'leads.id', '=', 'lsh.lead_id')
             ->where('leads.organization_id', $this->orgId)
-            ->whereNotNull('lead_stage_history.exited_at')
-            ->selectRaw('lead_stage_history.stage_id, AVG(TIMESTAMPDIFF(HOUR, lead_stage_history.entered_at, lead_stage_history.exited_at) / 24) as avg_days')
-            ->groupBy('lead_stage_history.stage_id')
+            ->whereNotNull('lsh.stage_from_id')
+            ->selectRaw('
+                lsh.stage_from_id as stage_id,
+                AVG(TIMESTAMPDIFF(HOUR,
+                    COALESCE(
+                        (SELECT MAX(lsh2.changed_at)
+                         FROM lead_stage_history lsh2
+                         WHERE lsh2.lead_id = lsh.lead_id
+                           AND lsh2.stage_to_id = lsh.stage_from_id
+                           AND lsh2.changed_at < lsh.changed_at),
+                        leads.created_at
+                    ),
+                    lsh.changed_at
+                ) / 24) as avg_days
+            ')
+            ->groupBy('lsh.stage_from_id')
             ->pluck('avg_days', 'stage_id');
 
         $total = $stageCounts->sum('count');

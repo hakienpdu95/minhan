@@ -21,8 +21,8 @@ final class KpiCycleQuery
         return new self(
             orgId:        TenantContext::getOrganizationId(),
             cycleLabel:   $params['cycle_label']   ?? null,
-            departmentId: $params['department_id'] ? (int) $params['department_id'] : null,
-            employeeId:   $params['employee_id']   ? (int) $params['employee_id']   : null,
+            departmentId: !empty($params['department_id']) ? (int) $params['department_id'] : null,
+            employeeId:   !empty($params['employee_id'])   ? (int) $params['employee_id']   : null,
         );
     }
 

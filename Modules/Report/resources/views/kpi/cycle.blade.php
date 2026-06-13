@@ -47,8 +47,8 @@
                     <select id="filter-cycle" x-model="filters.cycle_label"
                             class="select select-sm select-bordered w-full">
                         <option value="">-- Tất cả cycle --</option>
-                        <template x-for="cycle in availableCycles" :key="cycle.value">
-                            <option :value="cycle.value" x-text="cycle.label"></option>
+                        <template x-for="cycle in cycles" :key="cycle">
+                            <option :value="cycle" x-text="cycle"></option>
                         </template>
                     </select>
                 </div>
@@ -270,7 +270,7 @@
                     <span class="loading loading-spinner loading-md text-primary"></span>
                 </div>
 
-                <div x-show="!loading && topPerformers.length === 0"
+                <div x-show="!loading && topList.length === 0"
                      class="flex flex-col items-center justify-center py-10 text-base-content/40">
                     <svg class="w-10 h-10 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -279,7 +279,7 @@
                     <p class="text-sm">Không có dữ liệu</p>
                 </div>
 
-                <div x-show="!loading && topPerformers.length > 0" class="overflow-x-auto">
+                <div x-show="!loading && topList.length > 0" class="overflow-x-auto">
                     <table class="table table-sm w-full">
                         <thead>
                             <tr class="text-xs text-base-content/60 border-b border-base-200">
@@ -291,7 +291,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <template x-for="(row, index) in topPerformers" :key="row.employee_id ?? index">
+                            <template x-for="(row, index) in topList" :key="row.employee_id ?? index">
                                 <tr class="border-b border-base-100 hover:bg-base-50 transition-colors">
                                     <td class="py-2.5 pl-0">
                                         <span class="text-xs font-bold"

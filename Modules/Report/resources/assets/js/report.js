@@ -334,117 +334,197 @@ document.addEventListener('alpine:init', function () {
 
     /* ── Sales: Pipeline ─────────────────────────────────────────────── */
     Alpine.data('reportSalesPipeline', function () {
-        var chartFunnel = null;
-        var chartTrend  = null;
-        var fpInst      = null;
+        var _funnelChart = null;
+        var _trendChart  = null;
+        var _fpFrom      = null;
+        var _fpTo        = null;
+        var _tomSource   = null;
 
         return {
-            loading:  false,
-            error:    null,
-            summary:  {},
-            funnel:   [],
-            sources:  [],
-            assignees:[],
-            winLoss:  {},
-            filters: { date_from: '', date_to: '', source_id: '' },
+            loading:    false,
+            filters:    { date_from: '', date_to: '', source_id: '' },
+            summary:    {},
+            bySource:   [],
+            byAssignee: [],
 
             init() {
-                var self = this;
-                var now  = new Date();
-                this.filters.date_from = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString().slice(0,10);
-                this.filters.date_to   = now.toISOString().slice(0,10);
-
-                document.addEventListener('DOMContentLoaded', function () {
-                    self._setup();
-                    self.load();
-                }, { once: true });
+                this._initFlatpickr();
+                this._initTomSelect();
+                this.load();
             },
 
-            _setup() {
+            _initFlatpickr() {
                 var self = this;
-                if (window.initDateRangePicker) {
-                    fpInst = window.initDateRangePicker('#rpt-sp-date', {
-                        disableMobile: true,
-                        onChange(dates) {
-                            if (dates.length === 2) {
-                                self.filters.date_from = dates[0].toISOString().slice(0,10);
-                                self.filters.date_to   = dates[1].toISOString().slice(0,10);
-                                self.load();
-                            }
-                        },
-                    });
+                var opts = {
+                    dateFormat: 'd/m/Y',
+                    allowInput: false,
+                };
+                if (window.flatpickr) {
+                    _fpFrom = flatpickr(this.$refs.dateFrom, Object.assign({}, opts, {
+                        onChange: function (dates, dateStr) { self.filters.date_from = dateStr; },
+                    }));
+                    _fpTo = flatpickr(this.$refs.dateTo, Object.assign({}, opts, {
+                        onChange: function (dates, dateStr) { self.filters.date_to = dateStr; },
+                    }));
                 }
+            },
+
+            _initTomSelect() {
+                var self = this;
+                var el   = this.$refs.sourceSelect;
+                if (!el || !window.TomSelect) return;
+                _tomSource = new TomSelect(el, {
+                    valueField:       'id',
+                    labelField:       'name',
+                    searchField:      ['name'],
+                    placeholder:      'Tất cả nguồn...',
+                    allowEmptyOption: true,
+                    load: function (query, callback) {
+                        var url = document.querySelector('[data-source-options-url]')?.dataset.sourceOptionsUrl;
+                        if (!url) return callback([]);
+                        fetch(url + (query ? '?q=' + encodeURIComponent(query) : ''), {
+                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) { callback(Array.isArray(data) ? data : (data.data || [])); })
+                        .catch(function () { callback([]); });
+                    },
+                    onChange: function (val) { self.filters.source_id = val; },
+                });
+            },
+
+            applyFilters() { this.load(); },
+
+            resetFilters() {
+                this.filters = { date_from: '', date_to: '', source_id: '' };
+                if (_fpFrom) _fpFrom.clear();
+                if (_fpTo)   _fpTo.clear();
+                if (_tomSource) _tomSource.clear();
+                this.load();
             },
 
             async load() {
                 this.loading = true;
-                this.error   = null;
                 try {
                     var params = new URLSearchParams();
                     if (this.filters.date_from) params.set('date_from', this.filters.date_from);
                     if (this.filters.date_to)   params.set('date_to',   this.filters.date_to);
                     if (this.filters.source_id) params.set('source_id', this.filters.source_id);
 
-                    var res = await fetch(window.API_URL + '?' + params.toString(), {
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                        credentials: 'same-origin',
+                    var url = window.API_URL + (params.toString() ? '?' + params.toString() : '');
+                    var res  = await fetch(url, {
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                     });
-                    if (!res.ok) throw new Error('HTTP ' + res.status);
                     var data = await res.json();
-                    this.summary   = data.summary          || {};
-                    this.funnel    = data.funnel            || [];
-                    this.sources   = data.by_source         || [];
-                    this.assignees = data.by_assignee        || [];
-                    this.winLoss   = data.win_loss_summary   || {};
-                    this._renderCharts(data);
+
+                    this.summary    = data.summary     || {};
+                    this.bySource   = data.by_source   || [];
+                    this.byAssignee = data.by_assignee || [];
+
+                    var self = this;
+                    this.$nextTick(function () {
+                        self._renderFunnelChart(data.funnel || []);
+                        self._renderTrendChart(data.trend   || []);
+                    });
                 } catch (e) {
-                    this.error = 'Không tải được dữ liệu.';
+                    console.error('[reportSalesPipeline] load error', e);
                 } finally {
                     this.loading = false;
                 }
             },
 
-            fmtVnd: fmtVnd,
-            fmtPct: fmtPct,
-
-            _renderCharts(data) {
-                this._renderFunnel(data.funnel || []);
-                this._renderTrend(data.trend   || []);
-            },
-
-            _renderFunnel(funnel) {
+            _renderFunnelChart(funnelData) {
                 var el = document.getElementById('chart-pipeline-funnel');
                 if (!el || !window.ECharts) return;
-                if (!chartFunnel) chartFunnel = window.ECharts.init(el);
-                var notWonLost = funnel.filter(s => !s.is_won && !s.is_lost);
-                chartFunnel.setOption({
-                    tooltip: { trigger: 'item', formatter: params => esc(params.name) + ': ' + params.value + ' leads' },
+                if (!_funnelChart) {
+                    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                    _funnelChart = window.ECharts.init(el, isDark ? 'dark' : null, { renderer: 'canvas' });
+                    new ResizeObserver(function () { if (_funnelChart) _funnelChart.resize(); }).observe(el);
+                }
+                if (!funnelData.length) { _funnelChart.clear(); return; }
+                var maxVal = funnelData[0] ? funnelData[0].count || 1 : 1;
+                var colors = ['#6366f1','#8b5cf6','#a78bfa','#c4b5fd','#ddd6fe','#ede9fe'];
+                _funnelChart.setOption({
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: function (p) {
+                            return '<b>' + p.name + '</b><br/>Leads: ' + (p.value || 0).toLocaleString('vi-VN') + '<br/>Tỷ lệ: ' + (p.data.rate || '—') + '%';
+                        },
+                    },
+                    grid: { left: 140, right: 60, top: 10, bottom: 10 },
+                    xAxis: { type: 'value', show: false, max: maxVal },
+                    yAxis: {
+                        type: 'category',
+                        data: funnelData.map(function (d) { return d.stage_name; }),
+                        inverse: true,
+                        axisLabel: { fontSize: 12, color: '#6b7280', width: 130, overflow: 'truncate' },
+                        axisTick: { show: false },
+                        axisLine: { show: false },
+                    },
                     series: [{
-                        type: 'funnel',
-                        left: '10%', width: '80%',
-                        label: { show: true, position: 'inside', formatter: params => esc(params.name) + '\n' + params.value },
-                        sort: 'none',
-                        data: notWonLost.map(s => ({ name: s.label, value: s.count })),
+                        type: 'bar',
+                        data: funnelData.map(function (d, i) {
+                            return { value: d.count, rate: d.rate, stage_name: d.stage_name,
+                                     itemStyle: { color: colors[i % colors.length], borderRadius: [0, 6, 6, 0] } };
+                        }),
+                        barMaxWidth: 36,
+                        label: {
+                            show: true, position: 'right', fontSize: 12,
+                            formatter: function (p) { return (p.value || 0).toLocaleString('vi-VN'); },
+                        },
+                        emphasis: { focus: 'self' },
                     }],
                 });
             },
 
-            _renderTrend(trend) {
+            _renderTrendChart(trendData) {
                 var el = document.getElementById('chart-pipeline-trend');
                 if (!el || !window.ECharts) return;
-                if (!chartTrend) chartTrend = window.ECharts.init(el);
-                chartTrend.setOption({
-                    tooltip: { trigger: 'axis' },
-                    legend: { data: ['Leads mới', 'Chốt được', 'Thua'], bottom: 0 },
-                    grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
-                    xAxis: { type: 'category', data: trend.map(t => t.period) },
-                    yAxis: { type: 'value' },
+                if (!_trendChart) {
+                    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                    _trendChart = window.ECharts.init(el, isDark ? 'dark' : null, { renderer: 'canvas' });
+                    new ResizeObserver(function () { if (_trendChart) _trendChart.resize(); }).observe(el);
+                }
+                if (!trendData.length) { _trendChart.clear(); return; }
+                _trendChart.setOption({
+                    tooltip: {
+                        trigger: 'axis',
+                        formatter: function (params) {
+                            var html = '<div style="font-weight:600;margin-bottom:4px">' + (params[0] ? params[0].axisValue : '') + '</div>';
+                            params.forEach(function (p) {
+                                html += '<div style="display:flex;align-items:center;gap:6px;margin-top:2px">' + p.marker + '<span>' + p.seriesName + ':</span><strong>' + (p.value || 0).toLocaleString('vi-VN') + '</strong></div>';
+                            });
+                            return html;
+                        },
+                    },
+                    legend: { data: ['Lead mới', 'Win', 'Lose'], bottom: 0, textStyle: { fontSize: 11 } },
+                    grid: { left: 50, right: 15, top: 15, bottom: 40 },
+                    xAxis: {
+                        type: 'category',
+                        data: trendData.map(function (d) { return d.period; }),
+                        axisLabel: { fontSize: 11, color: '#6b7280' },
+                        axisTick: { show: false },
+                    },
+                    yAxis: {
+                        type: 'value', minInterval: 1,
+                        splitLine: { lineStyle: { type: 'dashed', color: '#f0f0f0' } },
+                        axisLabel: { fontSize: 11, color: '#6b7280' },
+                    },
                     series: [
-                        { name: 'Leads mới',  type: 'line', data: trend.map(t => t.new_leads), lineStyle: { color: '#3b82f6' }, itemStyle: { color: '#3b82f6' } },
-                        { name: 'Chốt được',  type: 'bar',  data: trend.map(t => t.won),        itemStyle: { color: '#10b981' } },
-                        { name: 'Thua',        type: 'bar',  data: trend.map(t => t.lost),       itemStyle: { color: '#ef4444' } },
+                        { name: 'Lead mới', type: 'line', data: trendData.map(function (d) { return d.new_leads || 0; }), smooth: 0.4, symbol: 'circle', symbolSize: 5, lineStyle: { color: '#6366f1', width: 2 }, itemStyle: { color: '#6366f1' }, areaStyle: { color: 'rgba(99,102,241,0.08)' } },
+                        { name: 'Win',      type: 'line', data: trendData.map(function (d) { return d.won       || 0; }), smooth: 0.4, symbol: 'circle', symbolSize: 5, lineStyle: { color: '#22c55e', width: 2 }, itemStyle: { color: '#22c55e' } },
+                        { name: 'Lose',     type: 'line', data: trendData.map(function (d) { return d.lost      || 0; }), smooth: 0.4, symbol: 'circle', symbolSize: 5, lineStyle: { color: '#ef4444', width: 2, type: 'dashed' }, itemStyle: { color: '#ef4444' } },
                     ],
                 });
+            },
+
+            formatVnd(value) {
+                if (value === undefined || value === null) return '—';
+                var n = Number(value);
+                if (isNaN(n)) return '—';
+                if (n >= 1000000000) return (n / 1000000000).toFixed(1).replace('.', ',') + ' tỷ';
+                if (n >= 1000000)    return (n / 1000000).toFixed(1).replace('.', ',') + ' triệu';
+                return n.toLocaleString('vi-VN') + ' đ';
             },
         };
     });
@@ -911,6 +991,13 @@ document.addEventListener('alpine:init', function () {
                 }, { once: true });
             },
 
+            reset() {
+                this.filters.cycle_label   = '';
+                this.filters.department_id = '';
+                if (deptTs) deptTs.clear();
+                this.load();
+            },
+
             async loadCycles() {
                 try {
                     var res = await fetch(window.API_URL + '?cycle_label=__cycles__', { headers: {'X-Requested-With':'XMLHttpRequest'}, credentials:'same-origin' });
@@ -969,10 +1056,24 @@ document.addEventListener('alpine:init', function () {
         var chartTrend = null;
 
         return {
-            loading: false,
-            error:   null,
-            cycles:  [],
-            filters: {},
+            loading:       false,
+            error:         null,
+            cycles:        [],
+            selectedCycle: null,
+            filters:       {},
+
+            get currentDistribution() {
+                var row = this.cycles.find(function (c) { return c.cycle_label === this.selectedCycle; }, this);
+                if (!row || !row.score_distribution) return [];
+                var dist   = row.score_distribution;
+                var keys   = Object.keys(dist);
+                var total  = keys.reduce(function (s, k) { return s + (dist[k] || 0); }, 0);
+                var bands  = ['A', 'B', 'C', 'D'];
+                return bands.map(function (b, i) {
+                    var count = dist[keys[i]] || 0;
+                    return { band: b, count: count, pct: total > 0 ? Math.round(count / total * 1000) / 10 : 0 };
+                });
+            },
 
             init() {
                 var self = this;
@@ -1008,6 +1109,332 @@ document.addEventListener('alpine:init', function () {
                         lineStyle: { color:'#8b5cf6' }, itemStyle: { color:'#8b5cf6' },
                         areaStyle: { color:'rgba(139,92,246,0.1)' },
                         markLine: { data: [{ type:'average', name:'TB' }] },
+                    }],
+                });
+            },
+        };
+    });
+
+    /* ── Project: Overview ───────────────────────────────────────────── */
+    Alpine.data('reportProjectOverview', function () {
+        var _statusChart = null;
+        var _deptChart   = null;
+        var _tomDept     = null;
+
+        return {
+            loading: false,
+            filters: { status: '', dept_id: '' },
+            summary: {},
+            atRisk:  [],
+
+            init() {
+                this._initTomSelect();
+                this.load();
+            },
+
+            _initTomSelect() {
+                var self = this;
+                var el   = document.getElementById('rpt-pj-dept');
+                if (!el || !window.TomSelect) return;
+                _tomDept = new TomSelect(el, {
+                    valueField:       'id',
+                    labelField:       'name',
+                    searchField:      ['name'],
+                    placeholder:      'Tất cả phòng ban...',
+                    allowEmptyOption: true,
+                    load: function (query, callback) {
+                        var url = window.DEPT_OPTIONS_URL;
+                        if (!url) return callback([]);
+                        fetch(url + (query ? '?q=' + encodeURIComponent(query) : ''), {
+                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) { callback(Array.isArray(data) ? data : (data.data || [])); })
+                        .catch(function () { callback([]); });
+                    },
+                    onChange: function (val) { self.filters.dept_id = val; },
+                });
+            },
+
+            applyFilters() { this.load(); },
+
+            resetFilters() {
+                this.filters = { status: '', dept_id: '' };
+                if (_tomDept) _tomDept.clear();
+                this.load();
+            },
+
+            async load() {
+                this.loading = true;
+                try {
+                    var params = new URLSearchParams();
+                    if (this.filters.status)  params.set('status',        this.filters.status);
+                    if (this.filters.dept_id) params.set('department_id', this.filters.dept_id);
+                    var url = window.API_URL + (params.toString() ? '?' + params.toString() : '');
+                    var res  = await fetch(url, {
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    });
+                    var data = await res.json();
+                    this.summary = data.summary          || {};
+                    this.atRisk  = data.projects_at_risk || [];
+                    var self = this;
+                    this.$nextTick(function () {
+                        self._renderStatusChart(data.by_status    || []);
+                        self._renderDeptChart(data.by_department  || []);
+                    });
+                } catch (e) {
+                    console.error('[reportProjectOverview] load error', e);
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            _renderStatusChart(statusData) {
+                var el = document.getElementById('chart-pj-status');
+                if (!el || !window.ECharts) return;
+                if (!_statusChart) {
+                    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                    _statusChart = window.ECharts.init(el, isDark ? 'dark' : null, { renderer: 'canvas' });
+                    new ResizeObserver(function () { if (_statusChart) _statusChart.resize(); }).observe(el);
+                }
+                if (!statusData.length) { _statusChart.clear(); return; }
+                var colorMap = { active: '#6366f1', completed: '#22c55e', on_hold: '#f59e0b', overdue: '#ef4444' };
+                var labelMap = { active: 'Đang thực hiện', completed: 'Hoàn thành', on_hold: 'Tạm dừng', overdue: 'Quá hạn' };
+                _statusChart.setOption({
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: function (p) {
+                            return '<b>' + p.name + '</b><br/>Số dự án: <strong>' + (p.value || 0).toLocaleString('vi-VN') + '</strong><br/>Tỷ lệ: <strong>' + (p.percent ? p.percent.toFixed(1) : 0) + '%</strong>';
+                        },
+                    },
+                    legend: { orient: 'horizontal', bottom: 0, textStyle: { fontSize: 11 } },
+                    series: [{
+                        type: 'pie', radius: ['45%', '72%'], center: ['50%', '44%'],
+                        avoidLabelOverlap: true,
+                        label: { show: true, position: 'outside', fontSize: 11,
+                                 formatter: function (p) { return (p.percent ? p.percent.toFixed(0) : 0) + '%'; } },
+                        labelLine: { length: 10, length2: 8 },
+                        data: statusData.map(function (d) {
+                            return { name: labelMap[d.status] || d.status, value: d.count || 0,
+                                     itemStyle: { color: colorMap[d.status] || '#a1a1aa' } };
+                        }),
+                        emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.15)' } },
+                    }],
+                });
+            },
+
+            _renderDeptChart(deptData) {
+                var el = document.getElementById('chart-pj-dept');
+                if (!el || !window.ECharts) return;
+                if (!_deptChart) {
+                    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                    _deptChart = window.ECharts.init(el, isDark ? 'dark' : null, { renderer: 'canvas' });
+                    new ResizeObserver(function () { if (_deptChart) _deptChart.resize(); }).observe(el);
+                }
+                if (!deptData.length) { _deptChart.clear(); return; }
+                _deptChart.setOption({
+                    tooltip: {
+                        trigger: 'axis', axisPointer: { type: 'shadow' },
+                        formatter: function (params) {
+                            var p = params[0];
+                            return '<b>' + p.axisValue + '</b><br/>Số dự án: <strong>' + (p.value || 0).toLocaleString('vi-VN') + '</strong>';
+                        },
+                    },
+                    grid: { left: 20, right: 20, top: 15, bottom: 60, containLabel: true },
+                    xAxis: {
+                        type: 'category',
+                        data: deptData.map(function (d) { return d.name || '—'; }),
+                        axisLabel: { fontSize: 11, color: '#6b7280', rotate: deptData.length > 5 ? 30 : 0, width: 90, overflow: 'truncate' },
+                        axisTick: { show: false }, axisLine: { lineStyle: { color: '#e5e7eb' } },
+                    },
+                    yAxis: {
+                        type: 'value', minInterval: 1,
+                        splitLine: { lineStyle: { type: 'dashed', color: '#f0f0f0' } },
+                        axisLabel: { fontSize: 11, color: '#6b7280' },
+                    },
+                    series: [{
+                        type: 'bar',
+                        data: deptData.map(function (d) { return d.count || 0; }),
+                        barMaxWidth: 48,
+                        itemStyle: { color: '#6366f1', borderRadius: [6, 6, 0, 0] },
+                        emphasis: { itemStyle: { color: '#4f46e5' } },
+                        label: { show: true, position: 'top', fontSize: 11, color: '#6b7280' },
+                    }],
+                });
+            },
+
+            formatVnd(value) {
+                if (value === undefined || value === null) return '—';
+                var n = Number(value);
+                if (isNaN(n)) return '—';
+                if (n >= 1000000000) return (n / 1000000000).toFixed(1).replace('.', ',') + ' tỷ';
+                if (n >= 1000000)    return (n / 1000000).toFixed(1).replace('.', ',') + ' triệu';
+                return n.toLocaleString('vi-VN') + ' đ';
+            },
+        };
+    });
+
+    /* ── Project: Tasks ──────────────────────────────────────────────── */
+    Alpine.data('reportProjectTasks', function () {
+        var _chartPriority = null;
+        var _chartVelocity = null;
+        var _tomProject    = null;
+
+        return {
+            loading: false,
+            filters: { project_id: '', priority: '' },
+            summary:      {},
+            timeTracking: {},
+            overdueTasks: [],
+
+            init() {
+                this._initTomSelectProject();
+                this.load();
+            },
+
+            _initTomSelectProject() {
+                var self = this;
+                var el   = document.getElementById('rpt-tk-project');
+                if (!el || !window.TomSelect) return;
+                _tomProject = new TomSelect(el, {
+                    valueField:       'id',
+                    labelField:       'name',
+                    searchField:      ['name'],
+                    placeholder:      'Tất cả dự án...',
+                    allowEmptyOption: true,
+                    preload:          true,
+                    load: function (query, callback) {
+                        var url = window.PROJECT_OPTIONS_URL + (query ? '?q=' + encodeURIComponent(query) : '');
+                        fetch(url, {
+                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) { callback(Array.isArray(data) ? data : (data.data || [])); })
+                        .catch(function () { callback([]); });
+                    },
+                    onChange: function (val) { self.filters.project_id = val; },
+                });
+            },
+
+            resetFilters() {
+                this.filters = { project_id: '', priority: '' };
+                if (_tomProject) { _tomProject.clear(); _tomProject.clearOptions(); }
+                this.load();
+            },
+
+            async load() {
+                this.loading = true;
+                try {
+                    var params = new URLSearchParams();
+                    if (this.filters.project_id) params.set('project_id', this.filters.project_id);
+                    if (this.filters.priority)   params.set('priority',   this.filters.priority);
+                    var url = window.API_URL + (params.toString() ? '?' + params.toString() : '');
+                    var res  = await fetch(url, {
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    });
+                    var data = await res.json();
+                    this.summary      = data.summary      || {};
+                    this.timeTracking = data.time_tracking  || {};
+                    this.overdueTasks = data.overdue_tasks  || [];
+                    var self = this;
+                    this.$nextTick(function () {
+                        self._renderPriorityChart(data.by_priority     || []);
+                        self._renderVelocityChart(data.weekly_velocity || []);
+                    });
+                } catch (e) {
+                    console.error('[reportProjectTasks] load error', e);
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            _renderPriorityChart(priorityData) {
+                var el = document.getElementById('chart-tk-priority');
+                if (!el || !window.ECharts) return;
+                if (!_chartPriority) {
+                    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                    _chartPriority = window.ECharts.init(el, isDark ? 'dark' : null, { renderer: 'canvas' });
+                    new ResizeObserver(function () { if (_chartPriority) _chartPriority.resize(); }).observe(el);
+                }
+                if (!priorityData.length) { _chartPriority.clear(); return; }
+                var colorMap = { critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#6b7280' };
+                _chartPriority.setOption({
+                    tooltip: {
+                        trigger: 'axis',
+                        formatter: function (params) {
+                            var p = params[0];
+                            return '<b>' + p.name + '</b><br/>Tasks: <strong>' + (p.value || 0).toLocaleString('vi-VN') + '</strong>';
+                        },
+                    },
+                    grid: { left: 60, right: 20, top: 15, bottom: 40 },
+                    xAxis: {
+                        type: 'category',
+                        data: priorityData.map(function (d) { return d.priority || d.label; }),
+                        axisLabel: {
+                            fontSize: 12, color: '#6b7280',
+                            formatter: function (val) { return val.charAt(0).toUpperCase() + val.slice(1); },
+                        },
+                        axisTick: { show: false }, axisLine: { lineStyle: { color: '#e5e7eb' } },
+                    },
+                    yAxis: {
+                        type: 'value', minInterval: 1,
+                        splitLine: { lineStyle: { type: 'dashed', color: '#f0f0f0' } },
+                        axisLabel: { fontSize: 11, color: '#6b7280' },
+                    },
+                    series: [{
+                        type: 'bar',
+                        data: priorityData.map(function (d) {
+                            return { value: d.count || 0, itemStyle: { color: colorMap[d.priority] || '#6366f1', borderRadius: [6, 6, 0, 0] } };
+                        }),
+                        barMaxWidth: 48,
+                        label: {
+                            show: true, position: 'top', fontSize: 12,
+                            formatter: function (p) { return (p.value || 0).toLocaleString('vi-VN'); },
+                        },
+                        emphasis: { focus: 'self' },
+                    }],
+                });
+            },
+
+            _renderVelocityChart(velocityData) {
+                var el = document.getElementById('chart-tk-velocity');
+                if (!el || !window.ECharts) return;
+                if (!_chartVelocity) {
+                    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                    _chartVelocity = window.ECharts.init(el, isDark ? 'dark' : null, { renderer: 'canvas' });
+                    new ResizeObserver(function () { if (_chartVelocity) _chartVelocity.resize(); }).observe(el);
+                }
+                if (!velocityData.length) { _chartVelocity.clear(); return; }
+                _chartVelocity.setOption({
+                    tooltip: {
+                        trigger: 'axis',
+                        formatter: function (params) {
+                            var html = '<div style="font-weight:600;margin-bottom:4px">' + (params[0] ? params[0].axisValue : '') + '</div>';
+                            params.forEach(function (p) {
+                                html += '<div style="display:flex;align-items:center;gap:6px;margin-top:2px">' + p.marker + '<span>' + p.seriesName + ':</span><strong>' + (p.value || 0).toLocaleString('vi-VN') + '</strong></div>';
+                            });
+                            return html;
+                        },
+                    },
+                    legend: { show: false },
+                    grid: { left: 50, right: 15, top: 15, bottom: 40 },
+                    xAxis: {
+                        type: 'category',
+                        data: velocityData.map(function (d) { return d.week || d.period; }),
+                        axisLabel: { fontSize: 11, color: '#6b7280', rotate: velocityData.length > 8 ? 30 : 0 },
+                        axisTick: { show: false },
+                    },
+                    yAxis: {
+                        type: 'value', minInterval: 1,
+                        splitLine: { lineStyle: { type: 'dashed', color: '#f0f0f0' } },
+                        axisLabel: { fontSize: 11, color: '#6b7280' },
+                    },
+                    series: [{
+                        name: 'Story Points xong', type: 'bar',
+                        data: velocityData.map(function (d) { return d.story_points_done || 0; }),
+                        barMaxWidth: 36,
+                        itemStyle: { color: '#22c55e', borderRadius: [4, 4, 0, 0] },
+                        label: { show: true, position: 'top', fontSize: 11, color: '#6b7280' },
                     }],
                 });
             },

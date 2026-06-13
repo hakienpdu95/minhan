@@ -70,7 +70,7 @@
     ],
     [
         "surveys///add///__///",
-        "assessment_code///string///50///_NULL///NULL///->unique()///Mã định danh cho Scoring Engine — nullable nếu survey không có scoring",
+        "assessment_code///string///50///_NULL///NULL///__///Mã định danh cho Scoring Engine — nullable nếu survey không có scoring",
         "lead_notify_email///string///255///_NULL///NULL///__///Email nhận alert khi hot lead nộp bài — để trống = không gửi",
         "allow_multiple_responses///boolean///__///NOT_NULL///true///__///__",
         "organization_id///unsignedBigInteger///__///_NULL///NULL///->constrained()->onDelete('restrict')///__",
