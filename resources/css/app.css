@@ -152,8 +152,8 @@ body { margin: 0; padding: 0; background: #f1f5f9; }
 
 /* ── Sidebar nav ──────────────────────────────── */
 .brand { height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
-.brand-logo { width: 32px; height: 32px; background: #6366f1; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: margin .25s; }
-.brand-logo svg { width: 18px; height: 18px; color: #fff; }
+.brand-logo { height: 36px; display: flex; align-items: center; flex-shrink: 0; transition: margin .25s; }
+.brand-logo-img { height: 36px; width: auto; max-width: 140px; object-fit: contain; display: block; }
 .brand-name { font-weight: 700; font-size: 17px; color: #1e293b; white-space: nowrap; transition: opacity .2s, width .25s; }
 .nav-wrap { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px 12px; }
 .nav-wrap::-webkit-scrollbar { width: 4px; }

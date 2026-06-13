@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'feature'       => \Modules\Subscription\Features\FeatureGate\Http\Middleware\RequireFeature::class,
         ]);
         // InjectRequestId phải chạy đầu tiên để tất cả request đều có X-Request-Id
+        $middleware->prepend(\App\Http\Middleware\RemoveServerHeaders::class);
         $middleware->prepend(\Modules\ActivityLog\Http\Middleware\InjectRequestId::class);
         $middleware->web(\App\Http\Middleware\IdentifyOrganization::class);
         $middleware->appendToGroup('web', \Modules\ActivityLog\Http\Middleware\CaptureHttpContext::class);

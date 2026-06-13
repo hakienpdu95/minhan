@@ -304,6 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
             wssPort:           import.meta.env.VITE_REVERB_PORT ?? 443,
             forceTLS:          _tls,
             enabledTransports: _tls ? ['wss'] : ['ws'],
+            disableStats:      true,
             auth: {
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
