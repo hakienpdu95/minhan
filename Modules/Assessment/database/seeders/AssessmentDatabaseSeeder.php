@@ -14,6 +14,9 @@ class AssessmentDatabaseSeeder extends Seeder
             CertificationDefinitionSeeder::class,
             SandboxEnvironmentSeeder::class,
             CareerPathwaySeeder::class,
+            JobTitleDomainRequirementsSeeder::class,
+            WorkforceProfileSeeder::class,
+            WorkforceRoleActivationSeeder::class,   // phải sau WorkforceProfileSeeder
         ]);
     }
 }

@@ -109,7 +109,7 @@ class Employee extends TenantAwareModel implements HasMedia
 
     public function jobTitle(): BelongsTo
     {
-        return $this->belongsTo(\Modules\JobTitle\Models\JobTitle::class);
+        return $this->belongsTo(\Modules\JobTitle\Models\JobTitle::class)->withoutGlobalScopes();
     }
 
     public function manager(): BelongsTo

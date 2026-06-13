@@ -4,14 +4,19 @@ namespace Modules\Assessment\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Shared\Tenancy\TenantContext;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Modules\Assessment\Actions\CalculateCgiAction;
+use Modules\Assessment\Actions\GenerateWorkforceRecommendationAction;
 use Modules\Assessment\Models\CareerPathwayStep;
+use Modules\Assessment\Models\JobTitleDomainRequirement;
 use Modules\Assessment\Models\WorkforceCertification;
 use Modules\Assessment\Models\WorkforcePortfolio;
 use Modules\Assessment\Models\WorkforceProfile;
 use Modules\Assessment\Models\WorkforceProfileHistory;
+use Modules\Assessment\Models\WorkforceRecommendation;
 use Modules\Assessment\Models\SandboxSession;
 use Modules\Employee\Models\Employee;
 
@@ -87,10 +92,45 @@ class WorkforceProfileController extends Controller
         // Trust score breakdown for display
         $trustBreakdown = $profile ? $this->buildTrustBreakdown($profile) : [];
 
+        // Competency Growth Index
+        $cgi = $profile ? CalculateCgiAction::run($profile) : null;
+
+        // Score history for trend chart (assessment events only, max 12)
+        $scoreHistory = $profile
+            ? WorkforceProfileHistory::where('workforce_profile_id', $profile->id)
+                ->where('event_type', 'assessment')
+                ->whereNotNull('tdwcf_score_after')
+                ->orderBy('recorded_at')
+                ->limit(12)
+                ->get(['recorded_at', 'tdwcf_score_after'])
+            : collect();
+
+        // Skill gap benchmarks — next maturity level thresholds per domain
+        $skillGapBenchmarks = $this->buildSkillGapBenchmarks($profile?->tdwcf_maturity_level);
+
+        // Job title requirements and AI recommendation
+        if ($employee) {
+            $employee->loadMissing('jobTitle');
+        }
+
+        $jobTitleRequirements = $employee?->job_title_id
+            ? JobTitleDomainRequirement::getForJobTitle($employee->job_title_id, $orgId)
+            : [];
+
+        $recommendation = $profile
+            ? WorkforceRecommendation::withoutTenant()
+                ->where('workforce_profile_id', $profile->id)
+                ->where('is_stale', false)
+                ->latest()
+                ->first()
+            : null;
+
         return view('assessment::workforce.me', compact(
             'user', 'employee', 'profile', 'certifications',
             'recentHistory', 'sandboxStats', 'currentPathwayStep', 'allPathwaySteps',
-            'portfolios', 'completeness', 'trustBreakdown'
+            'portfolios', 'completeness', 'trustBreakdown',
+            'cgi', 'scoreHistory', 'skillGapBenchmarks',
+            'jobTitleRequirements', 'recommendation'
         ));
     }
 
@@ -115,6 +155,23 @@ class WorkforceProfileController extends Controller
         }
 
         return back()->with('success', 'Đã cập nhật mục tiêu nghề nghiệp.');
+    }
+
+    /**
+     * Skill gap benchmarks — thresholds for each domain to advance to the next level.
+     * Returns ['target' => float, 'next_level' => string] or null if at top.
+     */
+    private function buildSkillGapBenchmarks(?string $currentLevel): array
+    {
+        $thresholds = [
+            'DIGITAL_BEGINNER'     => ['target' => 35.0, 'next_level' => 'DIGITAL_AWARE'],
+            'DIGITAL_AWARE'        => ['target' => 55.0, 'next_level' => 'DIGITAL_PRACTITIONER'],
+            'DIGITAL_PRACTITIONER' => ['target' => 70.0, 'next_level' => 'DIGITAL_PROFESSIONAL'],
+            'DIGITAL_PROFESSIONAL' => ['target' => 85.0, 'next_level' => 'DIGITAL_LEADER'],
+            'DIGITAL_LEADER'       => ['target' => 90.0, 'next_level' => null],
+        ];
+
+        return $thresholds[$currentLevel] ?? ['target' => 40.0, 'next_level' => 'DIGITAL_AWARE'];
     }
 
     private function buildTrustBreakdown(WorkforceProfile $profile): array
@@ -152,7 +209,19 @@ class WorkforceProfileController extends Controller
             ->groupBy('tdwcf_maturity_level')
             ->pluck('cnt', 'tdwcf_maturity_level');
 
-        return view('assessment::workforce.index', compact('maturityLevels', 'total', 'byLevel'));
+        // Aggregate domain averages for the analytics bar chart
+        $domainAvgs = WorkforceProfile::selectRaw('
+            AVG(score_d1_digital_literacy) as d1,
+            AVG(score_d2_data_literacy)    as d2,
+            AVG(score_d3_ai_literacy)      as d3,
+            AVG(score_d4_workflow)         as d4,
+            AVG(score_d5_innovation)       as d5,
+            AVG(score_d6_performance)      as d6
+        ')->whereNotNull('tdwcf_score')->first();
+
+        return view('assessment::workforce.index', compact(
+            'maturityLevels', 'total', 'byLevel', 'domainAvgs'
+        ));
     }
 
     /** Chi tiết 1 profile — Admin view */
@@ -166,10 +235,58 @@ class WorkforceProfileController extends Controller
             ->limit(20)
             ->get();
 
+        $cgi                = CalculateCgiAction::run($workforceProfile);
+        $trustBreakdown     = $this->buildTrustBreakdown($workforceProfile);
+        $skillGapBenchmarks = $this->buildSkillGapBenchmarks($workforceProfile->tdwcf_maturity_level);
+
+        // Job title requirements and AI recommendation
+        $workforceProfile->employee?->loadMissing('jobTitle');
+
+        $orgId                = TenantContext::getOrganizationId();
+        $jobTitleRequirements = $workforceProfile->employee?->job_title_id
+            ? JobTitleDomainRequirement::getForJobTitle($workforceProfile->employee->job_title_id, $orgId)
+            : [];
+
+        $recommendation = WorkforceRecommendation::withoutTenant()
+            ->where('workforce_profile_id', $workforceProfile->id)
+            ->where('is_stale', false)
+            ->latest()
+            ->first();
+
         return view('assessment::workforce.show', [
-            'workforceProfile' => $workforceProfile,
-            'history'          => $history,
+            'workforceProfile'    => $workforceProfile,
+            'history'             => $history,
+            'cgi'                 => $cgi,
+            'trustBreakdown'      => $trustBreakdown,
+            'skillGapBenchmarks'  => $skillGapBenchmarks,
+            'jobTitleRequirements' => $jobTitleRequirements,
+            'recommendation'      => $recommendation,
         ]);
+    }
+
+    /** Generate (or regenerate) AI recommendations for a workforce profile */
+    public function generateRecommendation(Request $request, WorkforceProfile $workforceProfile): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($workforceProfile->user_id !== $user->id && ! $user->can('assessment.results')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        }
+
+        try {
+            $rec = GenerateWorkforceRecommendationAction::run($workforceProfile, true);
+
+            return response()->json([
+                'success'          => true,
+                'recommendations'  => $rec->recommendations,
+                'generated_at'     => $rec->generated_at,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /** API: danh sách profiles cho Tabulator */

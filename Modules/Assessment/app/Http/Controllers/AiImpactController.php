@@ -23,7 +23,7 @@ class AiImpactController extends Controller
         $orgId = TenantContext::getOrganizationId();
 
         $query = AiImpactSnapshot::where('organization_id', $orgId)
-            ->with('employee:id,full_name,position');
+            ->with('employee:id,full_name,snap_job_title');
 
         // Part 3: filters
         if ($cat = $request->input('category')) {

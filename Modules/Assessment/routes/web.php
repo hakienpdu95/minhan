@@ -12,6 +12,7 @@ use Modules\Assessment\Http\Controllers\CareerPathwayController;
 use Modules\Assessment\Http\Controllers\CertificationAdminController;
 use Modules\Assessment\Http\Controllers\SandboxSessionController;
 use Modules\Assessment\Http\Controllers\WorkforceCertificationController;
+use Modules\Assessment\Http\Controllers\WorkforceExportController;
 use Modules\Assessment\Http\Controllers\WorkforceProfileController;
 use Modules\Assessment\Http\Middleware\ValidateAssessmentResultToken;
 
@@ -54,11 +55,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard/workforce/me',  [WorkforceProfileController::class, 'me'])->name('backend.workforce.me');
     Route::post('/dashboard/workforce/me/goal', [WorkforceProfileController::class, 'updateGoal'])->name('backend.workforce.me.goal');
 
-    // Admin: danh sách + chi tiết
+    // Admin: danh sách + chi tiết + export
     Route::prefix('dashboard/workforce')->name('backend.workforce.')->group(function () {
         Route::get('/',                              [WorkforceProfileController::class, 'index'])->name('index');
         Route::get('/api',                           [WorkforceProfileController::class, 'apiIndex'])->name('api');
+        Route::get('/export/organization',           [WorkforceExportController::class, 'organizationReport'])->name('export.organization');
+        Route::get('/pdf/organization',              [WorkforceExportController::class, 'organizationPdf'])->name('pdf.organization');
         Route::get('/{workforceProfile}',            [WorkforceProfileController::class, 'show'])->name('show');
+        Route::post('/{workforceProfile}/recommendations', [WorkforceProfileController::class, 'generateRecommendation'])->name('recommendations.generate');
+        Route::get('/{workforceProfile}/export',     [WorkforceExportController::class, 'profileReport'])->name('export.profile');
+        Route::get('/{workforceProfile}/pdf',        [WorkforceExportController::class, 'profilePdf'])->name('pdf.profile');
     });
 
     // AI Sandbox

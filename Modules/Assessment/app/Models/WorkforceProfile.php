@@ -5,6 +5,7 @@ namespace Modules\Assessment\Models;
 use App\Foundation\Models\TenantAwareModel;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Modules\Employee\Models\Employee;
 
 class WorkforceProfile extends TenantAwareModel
@@ -104,6 +105,11 @@ class WorkforceProfile extends TenantAwareModel
     public function sandboxSessions(): HasMany
     {
         return $this->hasMany(SandboxSession::class);
+    }
+
+    public function recommendation(): HasOne
+    {
+        return $this->hasOne(WorkforceRecommendation::class)->latestOfMany();
     }
 
     // Workforce Trust Score = TDWCF×30% + Cert×25% + KPI×20% + Sandbox×15% + Portfolio×10%

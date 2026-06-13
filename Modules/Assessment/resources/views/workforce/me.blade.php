@@ -94,7 +94,7 @@
     </div>
 </div>
 
-{{-- ── KPI cards (6 slots) ──────────────────────────────────────────────────── --}}
+{{-- ── KPI cards (7 slots: +CGI) ──────────────────────────────────────────── --}}
 @php
     $maturityLabels = [
         'DIGITAL_BEGINNER'     => ['Khởi đầu số',   'badge-ghost'],
@@ -106,7 +106,7 @@
     $ml = $maturityLabels[$profile->tdwcf_maturity_level] ?? ['—', 'badge-ghost'];
 @endphp
 
-<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+<div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-5">
     <div class="stat bg-base-100 border border-base-200 rounded-xl py-3 px-4 shadow-sm">
         <div class="stat-title text-xs">Điểm TDWCF</div>
         <div class="stat-value text-2xl text-primary">{{ $profile->tdwcf_score ? number_format($profile->tdwcf_score, 1) : '—' }}</div>
@@ -141,12 +141,56 @@
         <div class="stat-value text-2xl">{{ $profile->sandbox_hours_total ?? 0 }}<span class="text-base font-normal">h</span></div>
         <div class="stat-desc text-xs">{{ $profile->sandbox_sessions_total ?? 0 }} phiên</div>
     </div>
+    {{-- CGI — Competency Growth Index --}}
+    <div class="stat bg-base-100 border border-base-200 rounded-xl py-3 px-4 shadow-sm">
+        <div class="stat-title text-xs">CGI</div>
+        <div class="stat-value text-2xl {{ $cgi !== null ? ($cgi >= 0 ? 'text-success' : 'text-error') : 'text-base-content/40' }}">
+            @if($cgi !== null)
+                {{ $cgi >= 0 ? '+' : '' }}{{ number_format($cgi, 1) }}<span class="text-sm font-normal">%</span>
+            @else —
+            @endif
+        </div>
+        <div class="stat-desc text-xs" title="Competency Growth Index">Tăng trưởng NL</div>
+    </div>
 </div>
 
-{{-- ── Row 2: 6 domains + Trust breakdown + Maturity ──────────────────────── --}}
+{{-- ── Row 2: 6 domains (radar + bars) + Trust/Maturity ────────────────────── --}}
+@php
+    $domains = [
+        ['field'=>'score_d1_digital_literacy','label'=>'D1 — Năng lực số cơ bản',      'short'=>'D1','desc'=>'Sử dụng công cụ kỹ thuật số, bảo mật, thiết bị',   'color'=>'bg-blue-500',   'hex'=>'#3b82f6'],
+        ['field'=>'score_d2_data_literacy',   'label'=>'D2 — Năng lực dữ liệu',        'short'=>'D2','desc'=>'Đọc, phân tích và trình bày dữ liệu',              'color'=>'bg-indigo-500', 'hex'=>'#6366f1'],
+        ['field'=>'score_d3_ai_literacy',     'label'=>'D3 — Năng lực AI',             'short'=>'D3','desc'=>'Hiểu & ứng dụng AI vào công việc',                 'color'=>'bg-violet-500', 'hex'=>'#8b5cf6'],
+        ['field'=>'score_d4_workflow',        'label'=>'D4 — Quy trình & Tự động hoá','short'=>'D4','desc'=>'Tự động hoá task, tối ưu quy trình',               'color'=>'bg-purple-500', 'hex'=>'#a855f7'],
+        ['field'=>'score_d5_innovation',      'label'=>'D5 — Đổi mới & Sáng kiến',    'short'=>'D5','desc'=>'Tư duy sáng tạo, đề xuất cải tiến',               'color'=>'bg-fuchsia-500','hex'=>'#d946ef'],
+        ['field'=>'score_d6_performance',     'label'=>'D6 — Hiệu suất & KPI',         'short'=>'D6','desc'=>'Đạt mục tiêu, đo lường kết quả',                  'color'=>'bg-pink-500',   'hex'=>'#ec4899'],
+    ];
+    // Radar SVG (200×200 canvas)
+    $rd = 72; $cx = 100; $cy = 100; $n = 6;
+    $anchors = ['middle', 'start', 'start', 'middle', 'end', 'end'];
+    $radarScores = array_map(fn($d) => (float)($profile->{$d['field']} ?? 0), $domains);
+    $dataPoints = []; $axisEndpoints = []; $gridRings = [];
+    for ($i = 0; $i < $n; $i++) {
+        $ang = (M_PI * 2 * $i / $n) - M_PI / 2;
+        $s   = min($radarScores[$i], 100) / 100;
+        $dataPoints[]   = round($cx + $rd * $s * cos($ang), 2) . ',' . round($cy + $rd * $s * sin($ang), 2);
+        $axisEndpoints[] = ['ex' => round($cx + $rd * cos($ang), 2), 'ey' => round($cy + $rd * sin($ang), 2),
+                            'lx' => round($cx + ($rd + 16) * cos($ang), 2), 'ly' => round($cy + ($rd + 16) * sin($ang), 2),
+                            'anchor' => $anchors[$i], 'short' => $domains[$i]['short'], 'score' => $radarScores[$i]];
+    }
+    foreach ([100, 75, 50, 25] as $pct) {
+        $gpts = [];
+        for ($i = 0; $i < $n; $i++) {
+            $ang = (M_PI * 2 * $i / $n) - M_PI / 2;
+            $gpts[] = round($cx + $rd * $pct / 100 * cos($ang), 2) . ',' . round($cy + $rd * $pct / 100 * sin($ang), 2);
+        }
+        $gridRings[] = implode(' ', $gpts);
+    }
+    $dataPolygon = implode(' ', $dataPoints);
+@endphp
+
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
 
-    {{-- 6 Domain scores --}}
+    {{-- 6 Domain scores: radar + bars --}}
     <div class="lg:col-span-2 card bg-base-100 shadow-sm border border-base-200">
         <div class="card-body">
             <div class="flex items-center justify-between mb-4">
@@ -156,38 +200,64 @@
                 </h2>
                 <p class="text-xs text-base-content/30">Cập nhật {{ $profile->tdwcf_assessed_at?->diffForHumans() ?? 'chưa có' }}</p>
             </div>
-            @php
-                $domains = [
-                    ['field'=>'score_d1_digital_literacy','label'=>'D1 — Năng lực số cơ bản',       'desc'=>'Sử dụng công cụ kỹ thuật số, bảo mật, thiết bị',    'color'=>'bg-blue-500'],
-                    ['field'=>'score_d2_data_literacy',   'label'=>'D2 — Năng lực dữ liệu',         'desc'=>'Đọc, phân tích và trình bày dữ liệu',               'color'=>'bg-indigo-500'],
-                    ['field'=>'score_d3_ai_literacy',     'label'=>'D3 — Năng lực AI',               'desc'=>'Hiểu & ứng dụng AI vào công việc',                  'color'=>'bg-violet-500'],
-                    ['field'=>'score_d4_workflow',        'label'=>'D4 — Quy trình & Tự động hoá',  'desc'=>'Tự động hoá task, tối ưu quy trình',                'color'=>'bg-purple-500'],
-                    ['field'=>'score_d5_innovation',      'label'=>'D5 — Đổi mới & Sáng kiến',      'desc'=>'Tư duy sáng tạo, đề xuất cải tiến',                'color'=>'bg-fuchsia-500'],
-                    ['field'=>'score_d6_performance',     'label'=>'D6 — Hiệu suất & KPI',           'desc'=>'Đạt mục tiêu, đo lường kết quả',                   'color'=>'bg-pink-500'],
-                ];
-            @endphp
-            <div class="space-y-3">
-                @foreach($domains as $d)
-                @php $score = $profile->{$d['field']} ?? 0; $hasScore = $profile->{$d['field']} !== null; @endphp
-                <div>
-                    <div class="flex justify-between text-xs mb-1">
-                        <span class="font-medium text-base-content/70" title="{{ $d['desc'] }}">{{ $d['label'] }}</span>
-                        <span class="font-semibold {{ $score >= 70 ? 'text-success' : ($score >= 40 ? 'text-warning' : ($hasScore ? 'text-error' : 'text-base-content/30')) }}">
-                            {{ $hasScore ? number_format($score, 1) : '—' }}
-                        </span>
-                    </div>
-                    <div class="h-2 bg-base-200 rounded-full overflow-hidden">
-                        <div class="{{ $d['color'] }} h-2 rounded-full transition-all duration-500"
-                             style="width: {{ min($score, 100) }}%"></div>
-                    </div>
+
+            <div class="flex flex-col sm:flex-row gap-5 items-start">
+                {{-- Radar chart (SVG, server-rendered) --}}
+                <div class="shrink-0 mx-auto sm:mx-0">
+                    <svg viewBox="0 0 200 200" width="200" height="200" class="overflow-visible">
+                        {{-- grid rings --}}
+                        @foreach($gridRings as $ring)
+                        <polygon points="{{ $ring }}" fill="none" stroke="currentColor" stroke-opacity="0.1" stroke-width="1"/>
+                        @endforeach
+                        {{-- axis lines --}}
+                        @foreach($axisEndpoints as $ax)
+                        <line x1="{{ $cx }}" y1="{{ $cy }}" x2="{{ $ax['ex'] }}" y2="{{ $ax['ey'] }}" stroke="currentColor" stroke-opacity="0.15" stroke-width="1"/>
+                        @endforeach
+                        {{-- data polygon --}}
+                        <polygon points="{{ $dataPolygon }}" fill="#8b5cf6" fill-opacity="0.25" stroke="#8b5cf6" stroke-width="2" stroke-linejoin="round"/>
+                        {{-- data dots --}}
+                        @foreach($dataPoints as $dp)
+                        @php [$dpx, $dpy] = explode(',', $dp); @endphp
+                        <circle cx="{{ $dpx }}" cy="{{ $dpy }}" r="3" fill="#8b5cf6"/>
+                        @endforeach
+                        {{-- axis labels --}}
+                        @foreach($axisEndpoints as $ax)
+                        <text x="{{ $ax['lx'] }}" y="{{ $ax['ly'] }}" text-anchor="{{ $ax['anchor'] }}"
+                              dominant-baseline="middle" font-size="9" fill="currentColor" fill-opacity="0.6"
+                              class="font-mono">{{ $ax['short'] }}</text>
+                        <text x="{{ $ax['lx'] }}" y="{{ $ax['ly'] + 9 }}" text-anchor="{{ $ax['anchor'] }}"
+                              dominant-baseline="middle" font-size="8" fill="currentColor" fill-opacity="0.45">
+                            {{ $ax['score'] > 0 ? number_format($ax['score'], 0) : '—' }}
+                        </text>
+                        @endforeach
+                    </svg>
                 </div>
-                @endforeach
+
+                {{-- Bars --}}
+                <div class="flex-1 space-y-3 w-full">
+                    @foreach($domains as $d)
+                    @php $score = $profile->{$d['field']} ?? 0; $hasScore = $profile->{$d['field']} !== null; @endphp
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="font-medium text-base-content/70" title="{{ $d['desc'] }}">{{ $d['label'] }}</span>
+                            <span class="font-semibold {{ $score >= 70 ? 'text-success' : ($score >= 40 ? 'text-warning' : ($hasScore ? 'text-error' : 'text-base-content/30')) }}">
+                                {{ $hasScore ? number_format($score, 1) : '—' }}
+                            </span>
+                        </div>
+                        <div class="h-2 bg-base-200 rounded-full overflow-hidden">
+                            <div class="{{ $d['color'] }} h-2 rounded-full transition-all duration-500"
+                                 style="width: {{ min($score, 100) }}%"></div>
+                        </div>
+                    </div>
+                    @endforeach
+
+                    @if(! $profile->tdwcf_score)
+                    <div class="mt-2 p-3 bg-info/5 border border-info/20 rounded-lg text-xs text-base-content/60">
+                        Chưa có điểm TDWCF. <a href="{{ route('backend.surveys.index') }}" class="link link-primary">Làm khảo sát TDWCF</a> để cập nhật 6 năng lực.
+                    </div>
+                    @endif
+                </div>
             </div>
-            @if(! $profile->tdwcf_score)
-            <div class="mt-4 p-3 bg-info/5 border border-info/20 rounded-lg text-xs text-base-content/60">
-                Chưa có điểm TDWCF. <a href="{{ route('backend.surveys.index') }}" class="link link-primary">Làm khảo sát TDWCF</a> để cập nhật 6 năng lực.
-            </div>
-            @endif
         </div>
     </div>
 
@@ -292,6 +362,308 @@
         </div>
     </div>
 </div>
+
+{{-- ── Skill Gap theo Vị trí việc làm ──────────────────────────────────────── --}}
+@if(!empty($jobTitleRequirements) && $profile)
+<div class="card bg-base-100 shadow-sm border border-base-200 mb-5">
+    <div class="card-body p-5">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="card-title text-base">
+                <svg class="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+                Skill Gap theo Vị trí — {{ $employee?->jobTitle?->name ?? 'N/A' }}
+            </h2>
+            <span class="text-xs text-base-content/40">Yêu cầu vị trí việc làm</span>
+        </div>
+        @php
+        $domainReqMap = [
+            'D1' => ['score_d1_digital_literacy', 'D1 — Năng lực số cơ bản'],
+            'D2' => ['score_d2_data_literacy',    'D2 — Năng lực dữ liệu'],
+            'D3' => ['score_d3_ai_literacy',       'D3 — Năng lực AI'],
+            'D4' => ['score_d4_workflow',          'D4 — Quy trình & TĐH'],
+            'D5' => ['score_d5_innovation',        'D5 — Đổi mới'],
+            'D6' => ['score_d6_performance',       'D6 — Hiệu suất'],
+        ];
+        $totalGap = 0;
+        $gapCount = 0;
+        @endphp
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            @foreach($domainReqMap as $dCode => [$field, $label])
+            @php
+                $req = $jobTitleRequirements[$dCode] ?? null;
+                if (!$req) continue;
+                $cur = (float)($profile->{$field} ?? 0);
+                $gap = max(0, $req - $cur);
+                $met = $cur >= $req;
+                if ($gap > 0) { $totalGap += $gap; $gapCount++; }
+            @endphp
+            <div class="border {{ $met ? 'border-success/30' : ($gap > 15 ? 'border-error/30' : 'border-warning/30') }} rounded-xl p-3">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-xs font-medium text-base-content/70">{{ $label }}</span>
+                    @if($met)
+                    <span class="badge badge-success badge-xs">✓ Đạt</span>
+                    @elseif($gap > 15)
+                    <span class="badge badge-error badge-xs">-{{ number_format($gap, 1) }}</span>
+                    @else
+                    <span class="badge badge-warning badge-xs">-{{ number_format($gap, 1) }}</span>
+                    @endif
+                </div>
+                <div class="h-2 bg-base-200 rounded-full relative overflow-visible mb-1">
+                    <div class="h-2 rounded-full {{ $met ? 'bg-success/70' : 'bg-warning/70' }}"
+                         style="width: {{ min($cur, 100) }}%"></div>
+                    @if($req <= 100)
+                    <div class="absolute top-0 h-2 w-0.5 bg-red-400 rounded"
+                         style="left: {{ min($req, 100) }}%;"></div>
+                    @endif
+                </div>
+                <div class="flex justify-between text-xs text-base-content/40">
+                    <span>{{ number_format($cur, 0) }}</span>
+                    <span>yêu cầu: {{ number_format($req, 0) }}</span>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @if($gapCount > 0)
+        <p class="text-xs text-base-content/30 mt-3">{{ $gapCount }}/6 năng lực chưa đạt yêu cầu vị trí. Tổng khoảng cách: {{ number_format($totalGap, 1) }} điểm.</p>
+        @else
+        <p class="text-xs text-success mt-3">Tất cả năng lực đã đáp ứng yêu cầu vị trí việc làm!</p>
+        @endif
+    </div>
+</div>
+@endif
+
+{{-- ── Skill Gap Analysis ───────────────────────────────────────────────────── --}}
+@if($profile->tdwcf_score)
+@php
+    $sgTarget     = $skillGapBenchmarks['target'];
+    $sgNextLevel  = $skillGapBenchmarks['next_level'];
+    $sgLevelNames = ['DIGITAL_AWARE'=>'Nhận thức số','DIGITAL_PRACTITIONER'=>'Thực hành số','DIGITAL_PROFESSIONAL'=>'Chuyên nghiệp','DIGITAL_LEADER'=>'Dẫn dắt số'];
+    $sgDomainList = [
+        ['D1 — Năng lực số', $profile->score_d1_digital_literacy ?? 0, '#3b82f6'],
+        ['D2 — Dữ liệu',     $profile->score_d2_data_literacy    ?? 0, '#6366f1'],
+        ['D3 — AI',          $profile->score_d3_ai_literacy       ?? 0, '#8b5cf6'],
+        ['D4 — Quy trình',   $profile->score_d4_workflow          ?? 0, '#a855f7'],
+        ['D5 — Đổi mới',     $profile->score_d5_innovation        ?? 0, '#d946ef'],
+        ['D6 — Hiệu suất',   $profile->score_d6_performance       ?? 0, '#ec4899'],
+    ];
+    $sgAllMet = collect($sgDomainList)->every(fn($d) => $d[1] >= $sgTarget);
+@endphp
+<div class="card bg-base-100 shadow-sm border border-base-200 mb-5">
+    <div class="card-body p-5">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="card-title text-base">
+                <svg class="w-4 h-4 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                Phân tích khoảng cách kỹ năng (Skill Gap)
+            </h2>
+            <div class="text-xs text-base-content/40">
+                @if($sgNextLevel)
+                    Mục tiêu: <span class="font-semibold text-primary">{{ $sgLevelNames[$sgNextLevel] ?? $sgNextLevel }}</span>
+                    (≥ {{ $sgTarget }}/100 mỗi năng lực)
+                @else
+                    Đang ở cấp cao nhất
+                @endif
+            </div>
+        </div>
+
+        @if($sgAllMet && $sgNextLevel)
+        <div class="alert alert-success py-2 px-4 mb-4 text-sm">
+            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Tất cả năng lực đã đạt ngưỡng — bạn đủ điều kiện tiến lên <strong>{{ $sgLevelNames[$sgNextLevel] ?? $sgNextLevel }}</strong>!
+        </div>
+        @endif
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            @foreach($sgDomainList as [$dLabel, $dScore, $dHex])
+            @php
+                $gap     = max(0, $sgTarget - $dScore);
+                $met     = $dScore >= $sgTarget;
+                $fillPct = min($dScore, 100);
+                $tgtPct  = min($sgTarget, 100);
+            @endphp
+            <div class="border {{ $met ? 'border-success/30 bg-success/3' : 'border-base-200' }} rounded-xl p-3">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-medium text-base-content/70">{{ $dLabel }}</span>
+                    @if($met)
+                    <span class="badge badge-success badge-xs">Đạt</span>
+                    @else
+                    <span class="text-xs text-error font-semibold">-{{ number_format($gap, 1) }}</span>
+                    @endif
+                </div>
+                <div class="h-3 bg-base-200 rounded-full relative overflow-visible">
+                    {{-- Current score bar --}}
+                    <div class="h-3 rounded-full transition-all absolute top-0 left-0"
+                         style="width: {{ $fillPct }}%; background: {{ $dHex }}; opacity: 0.75;"></div>
+                    {{-- Target line --}}
+                    <div class="absolute top-0 h-3 w-0.5 bg-warning/80 rounded"
+                         style="left: {{ $tgtPct }}%;" title="Mục tiêu: {{ $sgTarget }}"></div>
+                </div>
+                <div class="flex justify-between mt-1 text-xs">
+                    <span class="font-mono {{ $met ? 'text-success' : 'text-base-content/50' }}">{{ number_format($dScore, 1) }}</span>
+                    <span class="text-base-content/30">mục tiêu: {{ $sgTarget }}</span>
+                </div>
+            </div>
+            @endforeach
+        </div>
+
+        <p class="text-xs text-base-content/30 mt-3">
+            <span class="inline-block w-3 h-1.5 bg-warning/80 rounded mr-1 align-middle"></span>
+            Đường vàng = ngưỡng điểm cần đạt để lên cấp tiếp theo.
+            Vùng thiếu hụt (gap) cần được bổ sung qua khảo sát, sandbox và chứng nhận.
+        </p>
+    </div>
+</div>
+@endif
+
+{{-- ── AI Gợi ý phát triển ─────────────────────────────────────────────────── --}}
+@if($profile)
+<div class="card bg-base-100 shadow-sm border border-base-200 mb-5"
+     x-data="{
+         loading: false,
+         recs: {{ $recommendation?->recommendations ? Js::from($recommendation->recommendations) : '[]' }},
+         generatedAt: '{{ $recommendation?->generated_at?->diffForHumans() ?? '' }}',
+         async generate() {
+             this.loading = true;
+             try {
+                 const res = await fetch('{{ $profile ? route('backend.workforce.recommendations.generate', $profile) : '#' }}', {
+                     method: 'POST',
+                     headers: {
+                         'Content-Type': 'application/json',
+                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                         'Accept': 'application/json',
+                     },
+                 });
+                 if (!res.ok) throw new Error('HTTP ' + res.status);
+                 const data = await res.json();
+                 if (data.recommendations) {
+                     this.recs = data.recommendations;
+                     this.generatedAt = data.generated_at ?? 'vừa xong';
+                 }
+             } catch (e) {
+                 console.error('AI recommendation error:', e);
+             } finally {
+                 this.loading = false;
+             }
+         }
+     }">
+    <div class="card-body p-5">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="card-title text-base">
+                <svg class="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                </svg>
+                AI Gợi ý phát triển
+            </h2>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-base-content/30" x-show="generatedAt" x-text="'Tạo: ' + generatedAt"></span>
+                <button @click="generate()" :disabled="loading"
+                        class="btn btn-primary btn-xs gap-1.5"
+                        :class="{ 'loading': loading }">
+                    <svg x-show="!loading" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    <span x-text="loading ? 'Đang tạo...' : 'Tạo gợi ý mới'"></span>
+                </button>
+            </div>
+        </div>
+
+        {{-- Loading skeleton --}}
+        <div x-show="loading" class="space-y-3">
+            @for($i = 0; $i < 3; $i++)
+            <div class="animate-pulse flex gap-3 border border-base-200 rounded-xl p-3">
+                <div class="w-8 h-8 bg-base-200 rounded-lg shrink-0"></div>
+                <div class="flex-1 space-y-2">
+                    <div class="h-3 bg-base-200 rounded w-3/4"></div>
+                    <div class="h-2 bg-base-200 rounded w-1/2"></div>
+                </div>
+            </div>
+            @endfor
+        </div>
+
+        {{-- Recommendation list --}}
+        <div x-show="!loading">
+            <template x-if="recs.length === 0">
+                <div class="text-center py-8 text-base-content/30">
+                    <svg class="w-10 h-10 mx-auto mb-2 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                    </svg>
+                    <p class="text-sm">Chưa có gợi ý. Nhấn "Tạo gợi ý mới" để AI phân tích hồ sơ của bạn.</p>
+                </div>
+            </template>
+            <template x-if="recs.length > 0">
+                <div class="space-y-3">
+                    <template x-for="(rec, idx) in recs" :key="idx">
+                        <div class="flex gap-3 border border-base-200 rounded-xl p-3 hover:border-base-300 transition-colors">
+                            {{-- Resource type icon --}}
+                            <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                                 :class="{
+                                     'bg-info/10 text-info':    rec.resource_type === 'course',
+                                     'bg-accent/10 text-accent': rec.resource_type === 'sandbox',
+                                     'bg-success/10 text-success': rec.resource_type === 'certification',
+                                     'bg-warning/10 text-warning': rec.resource_type === 'practice',
+                                     'bg-base-200 text-base-content/40': !['course','sandbox','certification','practice'].includes(rec.resource_type),
+                                 }">
+                                {{-- course icon --}}
+                                <template x-if="rec.resource_type === 'course'">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                                    </svg>
+                                </template>
+                                {{-- sandbox icon --}}
+                                <template x-if="rec.resource_type === 'sandbox'">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                    </svg>
+                                </template>
+                                {{-- certification icon --}}
+                                <template x-if="rec.resource_type === 'certification'">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                                    </svg>
+                                </template>
+                                {{-- practice icon --}}
+                                <template x-if="rec.resource_type === 'practice'">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    </svg>
+                                </template>
+                                {{-- fallback icon --}}
+                                <template x-if="!['course','sandbox','certification','practice'].includes(rec.resource_type)">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </template>
+                            </div>
+
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-start justify-between gap-2 mb-1">
+                                    <p class="text-sm font-medium text-base-content/80 leading-snug" x-text="rec.action"></p>
+                                    {{-- Priority badge --}}
+                                    <span class="badge badge-xs shrink-0"
+                                          :class="{
+                                              'badge-error':   rec.priority === 1,
+                                              'badge-warning': rec.priority === 2,
+                                              'badge-info':    rec.priority === 3,
+                                              'badge-ghost':   rec.priority >= 4,
+                                          }"
+                                          x-text="'P' + rec.priority"></span>
+                                </div>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="badge badge-ghost badge-xs font-mono" x-text="rec.domain"></span>
+                                    <span class="text-xs text-base-content/40" x-text="rec.resource_name"></span>
+                                    <template x-if="rec.estimated_weeks">
+                                        <span class="text-xs text-base-content/30" x-text="'~' + rec.estimated_weeks + ' tuần'"></span>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+@endif
 
 {{-- ── Row 3: Certifications ───────────────────────────────────────────────── --}}
 @if($certifications->count())
@@ -435,10 +807,50 @@
 </div>
 @endif
 
+{{-- ── Score Trend (lịch sử điểm TDWCF) ───────────────────────────────────── --}}
+@if($scoreHistory->count() >= 2)
+<div class="card bg-base-100 shadow-sm border border-base-200 mt-5">
+    <div class="card-body">
+        <h2 class="card-title text-base mb-4">
+            <svg class="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            Xu hướng phát triển TDWCF
+        </h2>
+        <div id="tdwcf-trend-chart" style="height:160px;"></div>
+    </div>
+</div>
+@endif
+
 @endif {{-- end if profile --}}
 
 @endsection
 
 @push('scripts')
-    @vite(['Modules/Assessment/resources/assets/js/assessment.js'], 'build/backend')
+    @vite([
+        'resources/js/modules/echarts.js',
+        'Modules/Assessment/resources/assets/js/assessment.js',
+    ], 'build/backend')
+
+    @if(isset($profile) && $profile && $scoreHistory->count() >= 2)
+    <script>
+    document.addEventListener('echarts:ready', () => {
+        const el = document.getElementById('tdwcf-trend-chart');
+        if (!el) return;
+        const chart = window.ECharts.init(el);
+        chart.setOption({
+            tooltip: { trigger: 'axis', formatter: p => `${p[0].axisValue}: <b>${p[0].value}</b>` },
+            grid: { top: 10, right: 20, bottom: 30, left: 40 },
+            xAxis: { type: 'category', data: {!! $scoreHistory->pluck('recorded_at')->map(fn($d) => '"' . $d->format('d/m/y') . '"')->implode(',') !!}, axisLabel: { fontSize: 10 } },
+            yAxis: { type: 'value', min: 0, max: 100, axisLabel: { fontSize: 10 } },
+            series: [{
+                type: 'line', smooth: true, symbol: 'circle', symbolSize: 6,
+                data: {!! $scoreHistory->pluck('tdwcf_score_after')->implode(',') !!},
+                lineStyle: { color: '#8b5cf6', width: 2 },
+                itemStyle: { color: '#8b5cf6' },
+                areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(139,92,246,0.3)' }, { offset: 1, color: 'rgba(139,92,246,0)' }] } },
+            }],
+        });
+        window.addEventListener('resize', () => chart.resize());
+    });
+    </script>
+    @endif
 @endpush

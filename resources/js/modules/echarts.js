@@ -17,6 +17,7 @@ import {
     BarChart,
     PieChart,
     FunnelChart,
+    RadarChart,
 } from 'echarts/charts';
 
 import {
@@ -26,14 +27,15 @@ import {
     TitleComponent,
     DataZoomComponent,
     MarkLineComponent,
+    RadarComponent,
 } from 'echarts/components';
 
 import { CanvasRenderer } from 'echarts/renderers';
 
 echarts.use([
-    LineChart, BarChart, PieChart, FunnelChart,
+    LineChart, BarChart, PieChart, FunnelChart, RadarChart,
     GridComponent, TooltipComponent, LegendComponent,
-    TitleComponent, DataZoomComponent, MarkLineComponent,
+    TitleComponent, DataZoomComponent, MarkLineComponent, RadarComponent,
     CanvasRenderer,
 ]);
 

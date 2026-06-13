@@ -3,6 +3,8 @@
 namespace Modules\JobTitle\Models;
 
 use App\Foundation\Models\TenantAwareModel;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Modules\Assessment\Models\JobTitleDomainRequirement;
 use Modules\JobTitle\Enums\JobTitleCategory;
 
 class JobTitle extends TenantAwareModel
@@ -27,6 +29,13 @@ class JobTitle extends TenantAwareModel
         'is_locked' => 'boolean',
         'is_active' => 'boolean',
     ];
+
+    // ── Relationships ─────────────────────────────────────────────────────────
+
+    public function domainRequirements(): HasMany
+    {
+        return $this->hasMany(JobTitleDomainRequirement::class, 'job_title_id');
+    }
 
     // ── Scopes ───────────────────────────────────────────────────────────────
 

@@ -29,6 +29,7 @@
         "jodit": "^4.12.2",
         "jquery": "^4.0.0",
         "laravel-echo": "^2.3.4",
+        "puppeteer": "^24.43.1",
         "pusher-js": "^8.5.0",
         "qrcode-generator": "^2.0.4",
         "swiper": "^12.1.4",

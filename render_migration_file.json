@@ -3026,5 +3026,35 @@
         "updated_at///timestamp///__///NOT_NULL///__///__///__",
         "__index///unique///__///__///__///organization_id,year_month,agent_id|uq_usage_org_month_agent///__",
         "__index///index///__///__///__///organization_id,year_month|idx_usage_org_month///__"
+    ],
+    [
+        "job_title_domain_requirements///__///__///",
+        "organization_id///unsignedBigInteger///__///_NULL///NULL///__///__",
+        "job_title_id///unsignedBigInteger///__///NOT_NULL///__///__///__",
+        "domain_code///string///20///NOT_NULL///__///__///__",
+        "required_score///decimal///5,2///NOT_NULL///40.0///__///__",
+        "is_critical///tinyInteger///__///NOT_NULL///0///__///__",
+        "notes///text///__///_NULL///NULL///__///__",
+        "__index///unique///__///__///__///job_title_id,domain_code///__",
+        "__index///index///__///__///__///organization_id///__",
+        "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
+        "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật"
+    ],
+    [
+        "workforce_recommendations///__///__///",
+        "organization_id///unsignedBigInteger///__///NOT_NULL///__///__///__",
+        "workforce_profile_id///unsignedBigInteger///__///NOT_NULL///__///__///__",
+        "generated_at///timestamp///__///_NULL///NULL///__///__",
+        "provider///string///30///NOT_NULL///'claude'///__///__",
+        "model///string///60///_NULL///NULL///__///__",
+        "context_hash///char///32///_NULL///NULL///__///__",
+        "recommendations///json///__///_NULL///NULL///__///__",
+        "input_tokens///unsignedInteger///__///NOT_NULL///0///__///__",
+        "output_tokens///unsignedInteger///__///NOT_NULL///0///__///__",
+        "is_stale///tinyInteger///__///NOT_NULL///0///__///__",
+        "__index///index///__///__///__///organization_id,workforce_profile_id|wr_org_profile_idx///__",
+        "__index///index///__///__///__///context_hash///__",
+        "created_at///timestamp///__///_NULL///NULL///__///Thời gian tạo",
+        "updated_at///timestamp///__///_NULL///NULL///__///Thời gian cập nhật"
     ]
 ]

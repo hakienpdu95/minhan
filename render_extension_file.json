@@ -336,5 +336,13 @@
         "kc_category_id///unsignedBigInteger///__///_NULL///NULL///__///__",
         "kc_item_tag///string///100///_NULL///NULL///__///__",
         "career_pathway_step_code///string///100///_NULL///NULL///__///__"
+    ],
+    [
+        "workforce_recommendations///add///__///",
+        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
+    ],
+    [
+        "workforce_portfolios///add///__///",
+        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
     ]
 ]

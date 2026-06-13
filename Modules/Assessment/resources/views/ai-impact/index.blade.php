@@ -182,7 +182,7 @@
                                 </div>
                                 <div>
                                     <p class="font-medium text-sm leading-tight">{{ $snap->employee->full_name }}</p>
-                                    <p class="text-xs text-base-content/40">{{ $snap->employee->position ?? '' }}</p>
+                                    <p class="text-xs text-base-content/40">{{ $snap->employee->snap_job_title ?? '' }}</p>
                                 </div>
                             </a>
                             @else
