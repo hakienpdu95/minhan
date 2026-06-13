@@ -3,25 +3,30 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Modules\ActivityLog\Database\Seeders\ActivityLogPermissionsSeeder;
+use Modules\AiCopilot\Database\Seeders\AiCopilotDatabaseSeeder;
+use Modules\Assessment\Database\Seeders\AssessmentDatabaseSeeder;
 use Modules\Auth\Database\Seeders\AuthDatabaseSeeder;
+use Modules\JobPosting\Database\Seeders\JobPostingDatabaseSeeder;
+use Modules\JobTitle\Database\Seeders\JobTitleDatabaseSeeder;
+use Modules\Lead\Database\Seeders\LeadDatabaseSeeder;
+use Modules\LeadPipelineStage\Database\Seeders\LeadPipelineStageSeeder;
+use Modules\LeadSource\Database\Seeders\LeadSourceSeeder;
 use Modules\Organization\Database\Seeders\OrganizationRolePermissionSeeder;
-use Database\Seeders\SystemOrganizationSeeder;
+use Modules\Recruitment\Database\Seeders\RecruitmentDatabaseSeeder;
+use Modules\Subscription\Database\Seeders\SubscriptionDatabaseSeeder;
+use Modules\Survey\Database\Seeders\SurveyDatabaseSeeder;
 
 /**
  * Master Seeder — điểm khởi chạy duy nhất cho toàn bộ dữ liệu mặc định hệ thống.
  *
- * Thứ tự bắt buộc (dependency order):
- *  1. RolePermissionSeeder              — IAM: 8 tenant roles + 40+ permissions
- *  2. AuthDatabaseSeeder                — super-admin role + 2 tài khoản hệ thống
- *  3. OrganizationRolePermissionSeeder  — template roles cấp org (owner/admin/manager/member)
- *  4. OrganizationSeeder                — demo organization
- *  5. UserSeeder                        — 8 test users (1 per role)
- *
- * Khi thêm module mới có data seed → tạo seeder riêng và đăng ký ở mục 6+.
- *
  * Lệnh chạy:
- *   php artisan system:seed
+ *   php artisan db:seed
  *   php artisan db:seed --class=Database\\Seeders\\SystemDataSeeder
+ *
+ * Không bao gồm:
+ *   - OrganizationDemoSeeder (1000 orgs demo — chỉ chạy thủ công khi cần)
+ *   - Các seeder rỗng (Employee, Customer, Branch, Department, Project...)
  */
 class SystemDataSeeder extends Seeder
 {
@@ -34,27 +39,52 @@ class SystemDataSeeder extends Seeder
         $this->command->newLine();
 
         $this->call([
-            // ── 1. IAM: roles + permissions ──────────────────────────────
+            // ── 1. IAM: 8 tenant roles + 40+ permissions ─────────────────
             RolePermissionSeeder::class,
 
-            // ── 2. System admin accounts ──────────────────────────────────
+            // ── 2. Additional module permissions (cần roles tồn tại trước)
+            ActivityLogPermissionsSeeder::class,
+
+            // ── 3. Super-admin role + 2 tài khoản hệ thống ───────────────
             AuthDatabaseSeeder::class,
 
-            // ── 3. Organization template roles ────────────────────────────
+            // ── 4. Template roles cấp org (owner/admin/manager/member) ────
             OrganizationRolePermissionSeeder::class,
 
-            // ── 4. Org hệ thống mặc định (id=1 trên fresh DB) ────────────
-            //    Phải trước OrganizationSeeder để đảm bảo là bản ghi đầu tiên
+            // ── 5. Org hệ thống mặc định (id=1 trên fresh DB) ────────────
             SystemOrganizationSeeder::class,
 
-            // ── 5. Demo organization (dành cho test/dev) ─────────────────
+            // ── 6. Demo organization (dev/test) ───────────────────────────
             OrganizationSeeder::class,
 
-            // ── 6. Test users (1 per role) ───────────────────────────────
+            // ── 7. Test users (1 per role) ────────────────────────────────
             UserSeeder::class,
 
-            // ── 7. Module seeders — đăng ký thêm tại đây theo dependency ─
-            // ExampleModuleSeeder::class,
+            // ── 8. Subscription plans + features + gán starter cho orgs ──
+            SubscriptionDatabaseSeeder::class,
+
+            // ── 9. Danh mục dùng chung (global master data) ───────────────
+            JobTitleDatabaseSeeder::class,
+            LeadPipelineStageSeeder::class,   // global template stages (org_id = null)
+            LeadSourceSeeder::class,           // global template sources (org_id = null)
+
+            // ── 10. Module Lead: stages + sources cho demo org ────────────
+            LeadDatabaseSeeder::class,
+
+            // ── 11. Tuyển dụng: pipeline stages mặc định ─────────────────
+            RecruitmentDatabaseSeeder::class,
+
+            // ── 12. Đăng tuyển: skill masters + benefit masters ───────────
+            JobPostingDatabaseSeeder::class,
+
+            // ── 13. Assessment: TDWCF, 5-Pillar, certifications, sandbox ──
+            AssessmentDatabaseSeeder::class,
+
+            // ── 14. Survey: permissions, AI Readiness, scoring config ──────
+            SurveyDatabaseSeeder::class,
+
+            // ── 15. AI Copilot: system agents + system prompts ────────────
+            AiCopilotDatabaseSeeder::class,
         ]);
 
         $this->command->newLine();

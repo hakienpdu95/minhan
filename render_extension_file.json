@@ -73,7 +73,9 @@
         "assessment_code///string///50///_NULL///NULL///->unique()///Mã định danh cho Scoring Engine — nullable nếu survey không có scoring",
         "lead_notify_email///string///255///_NULL///NULL///__///Email nhận alert khi hot lead nộp bài — để trống = không gửi",
         "allow_multiple_responses///boolean///__///NOT_NULL///true///__///__",
-        "organization_id///unsignedBigInteger///__///_NULL///NULL///->constrained()->onDelete('restrict')///__"
+        "organization_id///unsignedBigInteger///__///_NULL///NULL///->constrained()->onDelete('restrict')///__",
+        "specialized_set_code///string///50///_NULL///NULL///__///__",
+        "__index///unique///__///__///__///assessment_code,specialized_set_code|surveys_assessment_specialized_unique///__"
     ],
     [
         "maturity_levels///add///__///",
@@ -328,5 +330,11 @@
     [
         "notifications///add///__///",
         "organization_id///unsignedBigInteger///__///_NULL///NULL///->index()///__"
+    ],
+    [
+        "recommendation_rules///add///__///",
+        "kc_category_id///unsignedBigInteger///__///_NULL///NULL///__///__",
+        "kc_item_tag///string///100///_NULL///NULL///__///__",
+        "career_pathway_step_code///string///100///_NULL///NULL///__///__"
     ]
 ]
