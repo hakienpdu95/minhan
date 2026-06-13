@@ -28,5 +28,6 @@
     "Task": true,
     "Subscription": true,
     "Customer": true,
-    "AiCopilot": true
+    "AiCopilot": true,
+    "Report": true
 }

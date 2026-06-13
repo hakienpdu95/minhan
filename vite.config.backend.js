@@ -95,6 +95,7 @@ const JS_OUTPUT = {
   'task':                   'assets/modules/task.[hash].js',
   'subscription':           'assets/modules/subscription.[hash].js',
   'ai-copilot':             'assets/modules/ai-copilot.[hash].js',
+  'report':                 'assets/modules/report.[hash].js',
 };
 
 /** CSS asset name → output path.
@@ -140,6 +141,7 @@ const CSS_OUTPUT = {
   'task.css':                   'assets/modules/task.[hash].css',
   'subscription.css':           'assets/modules/subscription.[hash].css',
   'ai-copilot.css':             'assets/modules/ai-copilot.[hash].css',
+  'report.css':                 'assets/modules/report.[hash].css',
 };
 
 // ─── Module input entries ─────────────────────────────────────────────
@@ -235,6 +237,9 @@ const MODULE_ENTRIES = [
   // AiCopilot
   'Modules/AiCopilot/resources/assets/sass/ai-copilot.scss',
   'Modules/AiCopilot/resources/assets/js/ai-copilot.js',
+  // Report
+  'Modules/Report/resources/assets/sass/report.scss',
+  'Modules/Report/resources/assets/js/report.js',
 ];
 
 // ─────────────────────────────────────────────────────────────────────

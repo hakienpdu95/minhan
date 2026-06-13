@@ -14,7 +14,6 @@
 /* ── 1. jQuery → global ─────────────────────────────────────────────
  * Expose $ và jQuery lên window để:
  *  · Script inline trong blade dùng được ngay
- *  · jQuery plugins (DataTables, etc.) tìm thấy jQuery
  */
 import jQuery from 'jquery';
 window.$ = window.jQuery = jQuery;
