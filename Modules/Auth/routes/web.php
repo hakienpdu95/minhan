@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Shared\Tenancy\TenantContext;
+use Modules\Auth\Http\Controllers\MeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -26,23 +26,8 @@ Route::middleware(['auth'])->prefix('auth')->name('auth.')->group(function () {
         'user' => $request->user(),
     ]))->name('profile');
 
-    // Debug endpoint: xem user + tenant + RBAC đang hoạt động
-    Route::middleware('tenant')->get('/me', function (Request $request) {
-        $user = $request->user()->load('organization');
-
-        return response()->json([
-            'user' => [
-                'id'              => $user->id,
-                'name'            => $user->name,
-                'email'           => $user->email,
-                'organization_id' => $user->organization_id,
-            ],
-            'organization' => TenantContext::get()?->only([
-                'id', 'name', 'slug', 'status',
-            ]),
-            'roles'       => $user->getRoleNames(),
-            'permissions' => $user->getAllPermissions()->pluck('name')->sort()->values(),
-        ]);
-    })->name('me');
+    // Context endpoint: trả về user/org/roles của chính mình.
+    // permissions chỉ hiện với System_Admin.
+    Route::get('/me', MeController::class)->name('me');
 
 });

@@ -57,6 +57,13 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
 
+## Chỉ cần 4 dòng .env:
+  OTP_CHANNEL_DRIVER=zbs_zns
+  ZBS_APP_ID=your_app_id
+  ZBS_APP_SECRET=your_secret
+  ZBS_OTP_TEMPLATE_ID=your_template_id
+  Sau đó chạy php artisan zbs:token:setup {code} một lần để lấy token ban đầu.
+
 php artisan migration:sync --dry-run
 php artisan migration:sync
 

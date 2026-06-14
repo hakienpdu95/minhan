@@ -55,8 +55,59 @@
     </div>
 </div>
 
-{{-- ── Empty state ────────────────────────────────────────────────────────── --}}
-@if($entries->isEmpty())
+{{-- ── Current chapter (in progress) ─────────────────────────────────────── --}}
+@if($currentProfile)
+<div class="mb-4">
+    <p class="text-xs font-semibold text-base-content/40 uppercase tracking-wider mb-2">Chương đang viết</p>
+    <div class="card bg-base-100 border-2 border-primary/30 shadow-sm">
+        <div class="card-body">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <p class="font-semibold text-base-content">{{ $currentProfile->organization?->name ?? 'Tổ chức hiện tại' }}</p>
+                            <span class="badge badge-primary badge-xs">Đang viết…</span>
+                        </div>
+                        <p class="text-xs text-base-content/40 mt-0.5">Hồ sơ sẽ được niêm phong khi bạn rời tổ chức này</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4 shrink-0">
+                    @if($currentProfile->tdwcf_score)
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-primary">{{ number_format($currentProfile->tdwcf_score, 1) }}</div>
+                        <div class="text-xs text-base-content/50">TDWCF</div>
+                    </div>
+                    @endif
+                    @if($currentProfile->certifications_count > 0)
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-success">{{ $currentProfile->certifications_count }}</div>
+                        <div class="text-xs text-base-content/50">Cert</div>
+                    </div>
+                    @endif
+                    @if($currentProfile->sandbox_hours_total > 0)
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-info">{{ $currentProfile->sandbox_hours_total }}h</div>
+                        <div class="text-xs text-base-content/50">Sandbox</div>
+                    </div>
+                    @endif
+                </div>
+            </div>
+            <div class="flex justify-end mt-3 pt-3 border-t border-base-200">
+                <a href="{{ route('backend.workforce.me') }}" class="btn btn-ghost btn-xs gap-1">
+                    Mở Digital Twin
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- ── Empty state (no entries, no current chapter) ───────────────────────── --}}
+@if($entries->isEmpty() && !$currentProfile)
 <div class="card bg-base-100 border border-base-200 shadow-sm">
     <div class="card-body items-center text-center py-16">
         <div class="w-16 h-16 rounded-full bg-base-200 flex items-center justify-center mb-4">
@@ -68,18 +119,26 @@
         <p class="text-base-content/50 text-sm max-w-md">
             Khi bạn rời một tổ chức, hồ sơ năng lực sẽ được tự động lưu thành một chương bất biến tại đây.
         </p>
-        @if($user->isOrgMember())
-        <p class="text-base-content/50 text-sm mt-2">Bạn đang thuộc một tổ chức — hãy tiếp tục phát triển năng lực tại Digital Twin của bạn.</p>
-        <a href="{{ route('backend.workforce.me') }}" class="btn btn-primary btn-sm mt-4 gap-1.5">
+        <p class="text-base-content/50 text-sm mt-2">Tham gia một tổ chức hoặc tham dự Assessment Marketplace để bắt đầu xây dựng nhật ký.</p>
+        <a href="{{ route('campaigns.index') }}" class="btn btn-primary btn-sm mt-4 gap-1.5">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
-            Xem Digital Twin
+            Khám phá Marketplace
         </a>
-        @endif
     </div>
 </div>
+@elseif($entries->isEmpty())
+<div class="card bg-base-100 border border-dashed border-base-300">
+    <div class="card-body items-center text-center py-8">
+        <p class="text-base-content/50 text-sm">Chưa có chương nào được niêm phong. Các chương lưu trữ sẽ xuất hiện ở đây khi bạn rời tổ chức hoặc hoàn thành một campaign đánh giá.</p>
+    </div>
+</div>
+@endif
 
-{{-- ── Entry list ──────────────────────────────────────────────────────────── --}}
-@else
+{{-- ── Archived entry list ─────────────────────────────────────────────────── --}}
+@if($entries->isNotEmpty())
+@if($currentProfile)
+<p class="text-xs font-semibold text-base-content/40 uppercase tracking-wider mb-2 mt-4">Các chương đã lưu ({{ $entries->count() }})</p>
+@endif
 <div class="flex flex-col gap-4">
     @foreach($entries as $entry)
     <div class="card bg-base-100 border border-base-200 shadow-sm hover:shadow-md transition-shadow">
@@ -171,3 +230,4 @@
 @endif
 
 @endsection
+

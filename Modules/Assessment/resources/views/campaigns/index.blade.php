@@ -44,12 +44,16 @@
     <div class="card bg-base-100 border border-base-200 shadow-sm hover:shadow-md transition-shadow">
         <div class="card-body">
             {{-- Org + status --}}
+            @php $isSelfOrg = $user->current_org_id && $campaign->organization_id === $user->current_org_id; @endphp
             <div class="flex items-start justify-between gap-2 mb-2">
                 <div class="flex items-center gap-2 min-w-0">
                     <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 text-sm font-bold text-primary">
                         {{ strtoupper(mb_substr($campaign->organization?->name ?? 'O', 0, 1)) }}
                     </div>
                     <span class="text-xs text-base-content/50 truncate">{{ $campaign->organization?->name }}</span>
+                    @if($isSelfOrg)
+                    <span class="badge badge-ghost badge-xs shrink-0">Tổ chức bạn</span>
+                    @endif
                 </div>
                 <span class="badge {{ $campaign->status->badgeClass() }} badge-sm shrink-0">{{ $campaign->status->label() }}</span>
             </div>
@@ -96,6 +100,8 @@
                 <a href="{{ route('campaigns.show', $campaign->uuid) }}" class="btn btn-ghost btn-sm flex-1">Xem chi tiết</a>
                 @if($joined)
                 <a href="{{ route('campaigns.workspace', $campaign->uuid) }}" class="btn btn-primary btn-sm">Workspace</a>
+                @elseif($isSelfOrg)
+                {{-- Self-org: no join button, detail page explains why --}}
                 @elseif($user->trust_level >= $campaign->min_trust_level)
                 <form method="POST" action="{{ route('campaigns.join', $campaign->uuid) }}" class="contents">
                     @csrf

@@ -23,6 +23,7 @@ class IdentityVerification extends Model
         'verification_code',
         'code_expires_at',
         'phone_candidate',
+        'email_candidate',
     ];
 
     protected function casts(): array

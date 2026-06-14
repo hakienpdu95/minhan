@@ -55,17 +55,16 @@ return [
     |--------------------------------------------------------------------------
     | Cloudflare Turnstile
     |--------------------------------------------------------------------------
-    | TURNSTILE_ENABLED=false → skip widget + skip validation (local/testing)
-    | TURNSTILE_ENABLED=true  → hiển thị widget + validate (production)
+    | Keys-as-switch: set cả 2 keys → Turnstile tự động bật trên non-local.
+    | Bỏ trống → skip (+ warning log trên production).
     |
-    | Test keys luôn pass (dùng khi muốn thấy widget nhưng không có key thật):
-    |   key:    1x00000000000000000000AA
-    |   secret: 1x0000000000000000000000000000000AA
+    | Test keys luôn pass (staging / CI):
+    |   TURNSTILE_SITE_KEY=1x00000000000000000000AA
+    |   TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
     */
     'turnstile' => [
-        'key'     => env('TURNSTILE_SITE_KEY', ''),
-        'secret'  => env('TURNSTILE_SECRET_KEY', ''),
-        'enabled' => (bool) env('TURNSTILE_ENABLED', false),
+        'key'    => env('TURNSTILE_SITE_KEY', ''),
+        'secret' => env('TURNSTILE_SECRET_KEY', ''),
     ],
 
 ];

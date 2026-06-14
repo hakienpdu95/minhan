@@ -67,7 +67,7 @@ class CampaignAdminController extends Controller
             'description'            => ['nullable', 'string', 'max:2000'],
             'target_job_title_label' => ['nullable', 'string', 'max:200'],
             'target_department_label'=> ['nullable', 'string', 'max:200'],
-            'min_trust_level'        => ['required', 'integer', 'min:0', 'max:4'],
+            'min_trust_level'        => ['required', 'integer', 'min:0', 'max:3'],
             'min_tdwcf_score'        => ['nullable', 'numeric', 'min:0', 'max:100'],
             'status'                 => ['required', 'in:draft,open'],
             'open_from'              => ['nullable', 'date'],

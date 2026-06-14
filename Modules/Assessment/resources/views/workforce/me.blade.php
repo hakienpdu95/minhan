@@ -30,9 +30,13 @@
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
             Chứng nhận
         </a>
-        <a href="{{ route('backend.career-pathway.index') }}" class="btn btn-primary btn-sm gap-1.5">
+        <a href="{{ route('backend.career-pathway.index') }}" class="btn btn-ghost btn-sm gap-1.5">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
             Lộ trình
+        </a>
+        <a href="{{ route('passport.index') }}" class="btn btn-primary btn-sm gap-1.5">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+            Career Journal
         </a>
     </div>
 </div>
@@ -819,6 +823,95 @@
     </div>
 </div>
 @endif
+
+{{-- ── Career Journal (Competency Passport preview) ────────────────────────── --}}
+<div class="card bg-base-100 shadow-sm border border-base-200 mt-5">
+    <div class="card-body">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="card-title text-base">
+                <svg class="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                Career Journal — Nhật ký Nghề nghiệp
+            </h2>
+            <a href="{{ route('passport.index') }}" class="btn btn-ghost btn-xs gap-1">
+                Xem tất cả
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </a>
+        </div>
+
+        {{-- Current chapter (this org) --}}
+        @if($profile)
+        <div class="flex items-center gap-3 p-3 bg-primary/5 border border-primary/20 rounded-xl mb-3">
+            <div class="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <p class="text-sm font-semibold text-base-content">{{ $user->organization?->name ?? 'Tổ chức hiện tại' }}</p>
+                    <span class="badge badge-primary badge-xs">Đang viết…</span>
+                </div>
+                <p class="text-xs text-base-content/40">Chương này sẽ được niêm phong khi bạn rời tổ chức</p>
+            </div>
+            @if($profile->tdwcf_score)
+            <div class="text-center shrink-0">
+                <div class="text-xl font-bold text-primary">{{ number_format($profile->tdwcf_score, 1) }}</div>
+                <div class="text-xs text-base-content/40">TDWCF</div>
+            </div>
+            @endif
+        </div>
+        @endif
+
+        {{-- Archived chapters --}}
+        @if($passportEntries->isEmpty())
+        <div class="text-center py-6 text-base-content/30">
+            <p class="text-sm">Chưa có chương nào được lưu. Các chương xuất hiện khi bạn rời tổ chức hoặc hoàn thành một Assessment Campaign.</p>
+            <a href="{{ route('campaigns.index') }}" class="btn btn-ghost btn-xs mt-3 gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                Khám phá Assessment Marketplace
+            </a>
+        </div>
+        @else
+        <div class="space-y-2">
+            @foreach($passportEntries as $entry)
+            <div class="flex items-center gap-3 p-3 border border-base-200 rounded-xl hover:border-base-300 transition-colors">
+                <div class="w-9 h-9 rounded-lg bg-base-200 flex items-center justify-center shrink-0 text-xs font-bold text-base-content/50">
+                    {{ strtoupper(mb_substr($entry->source_org_name ?? '?', 0, 1)) }}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-base-content truncate">{{ $entry->source_org_name ?? 'Tổ chức không xác định' }}</p>
+                    <p class="text-xs text-base-content/40">
+                        {{ $entry->tenure_start?->format('m/Y') ?? '?' }} → {{ $entry->tenure_end?->format('m/Y') ?? '?' }}
+                        @if($entry->tenure_months) · {{ $entry->tenure_months }} tháng @endif
+                        <span class="ml-1 badge badge-xs {{ $entry->entry_type === 'campaign_result' ? 'badge-info' : 'badge-ghost' }}">
+                            {{ $entry->entry_type === 'campaign_result' ? 'Campaign' : 'Org tenure' }}
+                        </span>
+                    </p>
+                </div>
+                <div class="flex items-center gap-3 shrink-0">
+                    @if($entry->tdwcf_score)
+                    <div class="text-center">
+                        <div class="text-base font-bold text-primary">{{ number_format($entry->tdwcf_score, 1) }}</div>
+                        <div class="text-xs text-base-content/40">TDWCF</div>
+                    </div>
+                    @endif
+                    @if($entry->org_verified)
+                    <svg class="w-4 h-4 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" title="Đã xác nhận bởi org"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    @endif
+                    <a href="{{ route('passport.show', $entry->uuid) }}" class="btn btn-ghost btn-xs">Xem</a>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @if($passportEntries->count() >= 4)
+        <div class="text-center mt-3">
+            <a href="{{ route('passport.index') }}" class="btn btn-ghost btn-sm gap-1">
+                Xem toàn bộ Career Journal
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </a>
+        </div>
+        @endif
+        @endif
+    </div>
+</div>
 
 @endif {{-- end if profile --}}
 

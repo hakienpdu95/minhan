@@ -17,9 +17,12 @@ use Modules\Assessment\Models\OpenAssessmentCampaign;
 use Modules\Assessment\Models\SandboxSession;
 use Modules\Assessment\Models\SandboxSubmission;
 use Modules\Assessment\Models\SandboxTask;
+use Modules\Assessment\Services\CampaignEligibilityService;
 
 class CampaignController extends Controller
 {
+    public function __construct(private readonly CampaignEligibilityService $eligibility) {}
+
     /**
      * GET /campaigns — Danh sách campaign đang open
      */
@@ -59,7 +62,10 @@ class CampaignController extends Controller
             ->where('user_id', $user->id)
             ->first();
 
-        return view('assessment::campaigns.show', compact('campaign', 'user', 'myParticipation'));
+        // Only run eligibility check when the user hasn't joined yet
+        $eligibility = $myParticipation ? null : $this->eligibility->check($user, $campaign);
+
+        return view('assessment::campaigns.show', compact('campaign', 'user', 'myParticipation', 'eligibility'));
     }
 
     /**
@@ -69,12 +75,6 @@ class CampaignController extends Controller
     {
         $user = $request->user();
 
-        if ($user->trust_level < $campaign->min_trust_level) {
-            return back()->withErrors([
-                'join' => "Bạn cần Trust Level {$campaign->min_trust_level} để tham gia. Hiện tại: Lv{$user->trust_level}. Hãy xác minh danh tính tại /passport/verify.",
-            ]);
-        }
-
         $existing = CampaignParticipation::where('campaign_id', $campaign->id)
             ->where('user_id', $user->id)->exists();
 
@@ -83,12 +83,10 @@ class CampaignController extends Controller
                 ->with('info', 'Bạn đã tham gia campaign này rồi.');
         }
 
-        if (!$campaign->isOpen()) {
-            return back()->withErrors(['join' => 'Campaign này không còn nhận đăng ký.']);
-        }
+        $eligibility = $this->eligibility->check($user, $campaign);
 
-        if ($campaign->isFull()) {
-            return back()->withErrors(['join' => 'Campaign đã đủ số lượng người tham gia.']);
+        if (!$eligibility->canJoin) {
+            return back()->withErrors(['join' => $eligibility->block->message]);
         }
 
         DB::transaction(function () use ($campaign, $user) {
@@ -101,8 +99,16 @@ class CampaignController extends Controller
             OpenAssessmentCampaign::where('id', $campaign->id)->increment('participants_count');
         });
 
-        return redirect()->route('campaigns.workspace', $campaign->uuid)
+        $redirect = redirect()->route('campaigns.workspace', $campaign->uuid)
             ->with('success', 'Đã tham gia campaign. Hoàn thành các task sandbox để nộp bài.');
+
+        // Carry cross-org advisory into the workspace as a one-time info notice
+        foreach ($eligibility->advisories as $advisory) {
+            $redirect->with('info', $advisory->message);
+            break; // only first advisory surfaced as session flash
+        }
+
+        return $redirect;
     }
 
     /**
@@ -222,7 +228,6 @@ class CampaignController extends Controller
             ->where('user_id', $user->id)
             ->firstOrFail();
 
-        // Ensure the task belongs to this campaign
         $campaignTask = $campaign->sandboxTasks()->where('sandbox_task_id', $task->id)->firstOrFail();
 
         $session = SandboxSession::withoutTenant()
@@ -261,13 +266,13 @@ class CampaignController extends Controller
         }
 
         SandboxSession::create([
-            'uuid'                => (string) Str::uuid(),
-            'organization_id'     => null,
+            'uuid'                 => (string) Str::uuid(),
+            'organization_id'      => null,   // personal context — not org-scoped
             'workforce_profile_id' => null,
-            'user_id'             => $user->id,
-            'sandbox_task_id'     => $task->id,
-            'status'              => 'in_progress',
-            'started_at'          => now(),
+            'user_id'              => $user->id,
+            'sandbox_task_id'      => $task->id,
+            'status'               => 'in_progress',
+            'started_at'           => now(),
         ]);
 
         return redirect()->route('campaigns.task', [$campaign->uuid, $task->id])

@@ -95,11 +95,5 @@ class OpenAssessmentCampaign extends Model
             && $this->participants_count >= $this->max_participants;
     }
 
-    public function userCanJoin(\App\Models\User $user): bool
-    {
-        return $this->isOpen()
-            && !$this->isFull()
-            && $user->trust_level >= $this->min_trust_level
-            && ($this->min_tdwcf_score === null || true); // score check done in controller
-    }
+
 }

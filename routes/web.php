@@ -6,6 +6,7 @@ use App\Http\Controllers\Backend\Api\DashboardChartController;
 use App\Http\Controllers\Backend\DashboardController;
 use App\Http\Controllers\Backend\NotificationCenterController;
 use App\Http\Controllers\Backend\NotificationPreferenceController;
+use App\Http\Controllers\ZbsIntegrationController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('backend.dashboard'));
@@ -60,6 +61,18 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
     Route::get('/categories/create',fn () => abort(503, 'Module đang phát triển'))->name('categories.create');
     Route::get('/settings',         fn () => abort(503, 'Module đang phát triển'))->name('settings.index');
     Route::get('/reports',          fn () => abort(503, 'Module đang phát triển'))->name('reports.index');
+
+    // ── Integrations — ZBS / Zalo ZNS ────────────────────────────────────
+    Route::middleware('role:super-admin|system_admin')
+        ->prefix('integrations/zbs')
+        ->name('zbs.')
+        ->group(function () {
+            Route::get('/',          [ZbsIntegrationController::class, 'index'])->name('index');
+            Route::get('/connect',   [ZbsIntegrationController::class, 'connect'])->name('connect');
+            Route::get('/callback',  [ZbsIntegrationController::class, 'callback'])->name('callback');
+            Route::post('/test',     [ZbsIntegrationController::class, 'test'])->name('test');
+            Route::delete('/disconnect', [ZbsIntegrationController::class, 'disconnect'])->name('disconnect');
+        });
 
     // ── Notification Center ───────────────────────────────────────────────
     Route::middleware('tenant')->prefix('notifications')->name('notifications.')->group(function () {

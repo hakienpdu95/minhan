@@ -4,13 +4,14 @@ namespace Modules\Survey\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use RyanChandler\LaravelCloudflareTurnstile\Rules\Turnstile;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Cloudflare Turnstile verification cho survey submit endpoint.
  *
- * Skip khi: local | testing | TURNSTILE_ENABLED=false | key chưa cấu hình.
+ * Keys-as-switch: có TURNSTILE_SITE_KEY + TURNSTILE_SECRET_KEY → tự động bật.
  * Frontend phải gửi cf-turnstile-response trong request body.
  */
 class ValidateSurveyTurnstile
@@ -38,11 +39,10 @@ class ValidateSurveyTurnstile
             return true;
         }
 
-        if (! config('services.turnstile.enabled')) {
-            return true;
-        }
-
         if (blank(config('services.turnstile.key')) || blank(config('services.turnstile.secret'))) {
+            if (app()->isProduction()) {
+                Log::warning('Turnstile keys chưa cấu hình — survey submit không có bot protection.');
+            }
             return true;
         }
 

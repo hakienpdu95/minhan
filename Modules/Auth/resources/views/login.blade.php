@@ -77,8 +77,8 @@
                     <span class="label-text text-sm">Ghi nhớ đăng nhập</span>
                 </label>
 
-                {{-- Cloudflare Turnstile — chỉ hiện khi enabled --}}
-                @if (config('services.turnstile.enabled'))
+                {{-- Cloudflare Turnstile — hiện khi keys đã cấu hình (non-local) --}}
+                @if (\Modules\Auth\Fortify\ValidateTurnstile::isActive())
                     <div class="flex flex-col gap-1">
                         <x-turnstile class="w-full" />
                         @error('cf-turnstile-response')

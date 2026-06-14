@@ -2,6 +2,7 @@
 
 namespace Modules\Auth\Providers;
 
+use Illuminate\Http\Request;
 use Laravel\Fortify\Actions\AttemptToAuthenticate;
 use Laravel\Fortify\Actions\EnsureLoginIsNotThrottled;
 use Laravel\Fortify\Actions\PrepareAuthenticatedSession;
@@ -11,6 +12,7 @@ use Laravel\Fortify\Contracts\LogoutResponse as LogoutResponseContract;
 use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
+use Modules\Auth\Actions\Auth\LoginUserAction;
 use Modules\Auth\Actions\Auth\RegisterUserAction;
 use Modules\Auth\Actions\Auth\ResetPasswordAction;
 use Modules\Auth\Actions\Auth\UpdateProfileAction;
@@ -55,6 +57,7 @@ class AuthServiceProvider extends ModuleServiceProvider
     private function bootFortifyActions(): void
     {
         $this->app->booted(function () {
+            Fortify::authenticateUsing(fn (Request $request) => LoginUserAction::run($request));
             Fortify::createUsersUsing(RegisterUserAction::class);
             Fortify::resetUserPasswordsUsing(ResetPasswordAction::class);
             Fortify::updateUserProfileInformationUsing(UpdateProfileAction::class);

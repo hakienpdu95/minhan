@@ -12,9 +12,35 @@
 @if(session('success'))
 <div class="alert alert-success mb-4"><span>{{ session('success') }}</span></div>
 @endif
+
 @error('join')
 <div class="alert alert-error mb-4"><span>{{ $message }}</span></div>
+@else
+{{-- Show eligibility block reason on page load (before any join attempt) --}}
+@if($eligibility && !$eligibility->canJoin)
+<div class="alert alert-error mb-4">
+    <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    <div>
+        <span>{{ $eligibility->block->message }}</span>
+    </div>
+</div>
+@endif
 @enderror
+
+{{-- Cross-org advisory (non-blocking, informational) --}}
+@if($eligibility)
+@foreach($eligibility->advisories as $advisory)
+<div class="alert alert-{{ $advisory->severity === 'warning' ? 'warning' : 'info' }} mb-4">
+    <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    <div>
+        <span>{{ $advisory->message }}</span>
+        @if($advisory->actionUrl)
+        <a href="{{ $advisory->actionUrl }}" class="link link-hover font-medium ml-1">{{ $advisory->actionLabel }}</a>
+        @endif
+    </div>
+</div>
+@endforeach
+@endif
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
@@ -52,7 +78,7 @@
                     @elseif($myParticipation->status->value === 'declined')
                     <div class="badge badge-warning badge-lg">Đã từ chối</div>
                     @endif
-                @elseif($campaign->isOpen() && $user->trust_level >= $campaign->min_trust_level && !$campaign->isFull())
+                @elseif($eligibility && $eligibility->canJoin)
                 <form method="POST" action="{{ route('campaigns.join', $campaign->uuid) }}">
                     @csrf
                     <button class="btn btn-success gap-1.5">
@@ -60,9 +86,9 @@
                         Tham gia ngay
                     </button>
                 </form>
-                @elseif($user->trust_level < $campaign->min_trust_level)
-                <a href="{{ route('passport.verify.index') }}" class="btn btn-warning btn-sm">
-                    Cần Lv{{ $campaign->min_trust_level }} trust
+                @elseif($eligibility && !$eligibility->canJoin && $eligibility->block->actionUrl)
+                <a href="{{ $eligibility->block->actionUrl }}" class="btn btn-warning btn-sm">
+                    {{ $eligibility->block->actionLabel }}
                 </a>
                 @endif
             </div>

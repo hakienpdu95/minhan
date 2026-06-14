@@ -3,15 +3,19 @@
 namespace Modules\Assessment\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\View\View;
 use Modules\Assessment\Enums\VerificationMethod;
 use Modules\Assessment\Enums\VerificationStatus;
 use Modules\Assessment\Exceptions\CccdOcrException;
+use App\Services\OtpChannel\OtpChannelManager;
+use Modules\Assessment\Jobs\SendEmailVerificationLinkJob;
 use Modules\Assessment\Models\IdentityVerification;
 use Modules\Assessment\Services\CccdOcrService;
 
@@ -28,6 +32,13 @@ class IdentityVerificationController extends Controller
             ->orderByDesc('verified_at')
             ->get();
 
+        $pendingEmail = IdentityVerification::where('user_id', $user->id)
+            ->where('method', VerificationMethod::Email->value)
+            ->where('status', VerificationStatus::Pending->value)
+            ->where('code_expires_at', '>', now())
+            ->latest()
+            ->first();
+
         $pendingPhone = IdentityVerification::where('user_id', $user->id)
             ->where('method', VerificationMethod::PhoneOtp->value)
             ->where('status', VerificationStatus::Pending->value)
@@ -35,7 +46,6 @@ class IdentityVerificationController extends Controller
             ->latest()
             ->first();
 
-        // CCCD đã đăng ký nhưng chưa xác minh qua ảnh (manual text entry)
         $pendingCccd = IdentityVerification::where('user_id', $user->id)
             ->whereIn('method', [VerificationMethod::CccdOcr->value, VerificationMethod::CccdChip->value])
             ->where('status', VerificationStatus::Pending->value)
@@ -43,8 +53,106 @@ class IdentityVerificationController extends Controller
             ->first();
 
         return view('assessment::passport.verify.index', compact(
-            'user', 'verifications', 'pendingPhone', 'pendingCccd'
+            'user', 'verifications', 'pendingEmail', 'pendingPhone', 'pendingCccd'
         ));
+    }
+
+    // ── POST /passport/verify/email/send ────────────────────────────────────
+
+    public function emailSend(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user->trust_level >= 1) {
+            return back()->with('info', 'Email của bạn đã được xác minh.');
+        }
+
+        $key = 'email-verify-send:' . $user->id;
+        if (RateLimiter::tooManyAttempts($key, 3)) {
+            $wait = RateLimiter::availableIn($key);
+            return back()->with('error', "Quá nhiều yêu cầu. Vui lòng thử lại sau {$wait} giây.");
+        }
+        RateLimiter::hit($key, 3600);
+
+        // Expire any previous pending email verifications for this user
+        IdentityVerification::where('user_id', $user->id)
+            ->where('method', VerificationMethod::Email->value)
+            ->where('status', VerificationStatus::Pending->value)
+            ->update(['status' => VerificationStatus::Expired->value]);
+
+        $ttl          = now()->addHours(24);
+        $verification = IdentityVerification::create([
+            'user_id'          => $user->id,
+            'method'           => VerificationMethod::Email->value,
+            'status'           => VerificationStatus::Pending->value,
+            'email_candidate'  => $user->email,
+            'code_expires_at'  => $ttl,
+        ]);
+
+        $verifyUrl = URL::temporarySignedRoute(
+            'passport.verify.email.confirm',
+            $ttl,
+            ['id' => $verification->id]
+        );
+
+        SendEmailVerificationLinkJob::dispatch(
+            verificationId: $verification->id,
+            toEmail:        $user->email,
+            userName:       $user->name ?? 'Bạn',
+            verifyUrl:      $verifyUrl,
+            expiresAt:      $ttl->timezone('Asia/Ho_Chi_Minh')->format('H:i d/m/Y'),
+        );
+
+        return back()->with('email_verify_sent', $user->email);
+    }
+
+    // ── GET /passport/verify/email/confirm/{id}  (signed URL) ───────────────
+
+    public function emailConfirm(Request $request, int $id): RedirectResponse
+    {
+        if (!$request->hasValidSignature()) {
+            return redirect()->route('passport.verify.index')
+                ->with('error', 'Liên kết xác minh không hợp lệ hoặc đã hết hạn. Vui lòng gửi lại.');
+        }
+
+        $verification = IdentityVerification::find($id);
+
+        if (!$verification
+            || $verification->method !== VerificationMethod::Email
+            || $verification->status !== VerificationStatus::Pending
+            || ($verification->code_expires_at && $verification->code_expires_at->isPast())
+        ) {
+            return redirect()->route('passport.verify.index')
+                ->with('error', 'Liên kết đã được sử dụng hoặc hết hạn. Vui lòng gửi lại email xác minh.');
+        }
+
+        $user = $request->user();
+
+        // Ensure the link belongs to the authenticated user
+        if ($verification->user_id !== $user->id) {
+            abort(403);
+        }
+
+        // Guard: email must not have changed since the link was sent
+        if ($verification->email_candidate !== $user->email) {
+            return redirect()->route('passport.verify.index')
+                ->with('error', 'Địa chỉ email đã thay đổi kể từ khi gửi link. Vui lòng gửi lại.');
+        }
+
+        DB::transaction(function () use ($user, $verification) {
+            $verification->update([
+                'status'      => VerificationStatus::Verified->value,
+                'verified_at' => now(),
+            ]);
+
+            $user->update([
+                'email_verified_at' => $user->email_verified_at ?? now(),
+                'trust_level'       => max($user->trust_level, 1),
+            ]);
+        });
+
+        return redirect()->route('passport.verify.index')
+            ->with('success', '✉ Email đã được xác minh thành công. Tài khoản đạt Trust Level 1!');
     }
 
     // ── POST /passport/verify/phone/request ──────────────────────────────────
@@ -75,7 +183,7 @@ class IdentityVerificationController extends Controller
 
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        IdentityVerification::create([
+        $verification = IdentityVerification::create([
             'user_id'           => $user->id,
             'method'            => VerificationMethod::PhoneOtp->value,
             'status'            => VerificationStatus::Pending->value,
@@ -84,7 +192,27 @@ class IdentityVerificationController extends Controller
             'phone_candidate'   => $phone,
         ]);
 
-        return back()->with('phone_code_sent', true)->with('dev_code', $code);
+        // Gửi đồng bộ — không cần queue worker, người dùng nhận mã ngay lập tức.
+        // ZbsTokenService tự refresh access token nếu hết hạn trước khi gọi API.
+        $result = app(OtpChannelManager::class)->driver()->send($phone, $code);
+
+        if (!$result->success) {
+            // Code chưa đến tay người dùng → expire record, trả lỗi thân thiện
+            $verification->update(['status' => VerificationStatus::Expired->value]);
+
+            return back()
+                ->withInput(['phone_number' => $phone])
+                ->withErrors(['phone_number' => 'Không thể gửi mã OTP lúc này. Vui lòng thử lại sau.']);
+        }
+
+        $flash = back()->with('phone_code_sent', true);
+
+        // Dev-only: hiển thị code trong UI khi dùng log driver
+        if (app()->isLocal()) {
+            $flash = $flash->with('dev_code', $code);
+        }
+
+        return $flash;
     }
 
     // ── POST /passport/verify/phone/confirm ──────────────────────────────────

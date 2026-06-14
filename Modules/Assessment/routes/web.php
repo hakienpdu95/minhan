@@ -155,16 +155,29 @@ Route::get('/assessment-result/{token}', [AssessmentPublicResultController::clas
 // Accessible by both free and org_member users (không cần feature flag)
 Route::middleware(['auth', 'verified'])->prefix('passport')->name('passport.')->group(function () {
 
-    Route::get('/',                             [PassportController::class, 'index'])->name('index');
-    Route::get('/current',                      [PassportController::class, 'current'])->name('current');
+    Route::get('/',       [PassportController::class, 'index'])->name('index');
+    Route::get('/current',[PassportController::class, 'current'])->name('current');
 
-    // {passport} resolved by uuid (getRouteKeyName = 'uuid')
-    Route::get('/{passport}',                   [PassportController::class, 'show'])->name('show');
-    Route::put('/{passport}/note',              [PassportController::class, 'updateNote'])->name('note');
-    Route::put('/{passport}/visibility',        [PassportController::class, 'updateVisibility'])->name('visibility');
-    Route::post('/{passport}/share',            [PassportController::class, 'generateShareLink'])->name('share');
-    Route::delete('/{passport}/share',          [PassportController::class, 'revokeShareLink'])->name('share.revoke');
-    Route::get('/{passport}/pdf',               [PublicPassportController::class, 'personalPdf'])->name('pdf');
+    // ── Phase 3: eKYC — static prefix must come BEFORE {passport} wildcard ──
+    Route::prefix('/verify')->name('verify.')->group(function () {
+        Route::get('/',                       [IdentityVerificationController::class, 'index'])->name('index');
+        // Lv1 — Email
+        Route::post('/email/send',            [IdentityVerificationController::class, 'emailSend'])->name('email.send');
+        Route::get('/email/confirm/{id}',     [IdentityVerificationController::class, 'emailConfirm'])->name('email.confirm');
+        // Lv2 — Phone OTP
+        Route::post('/phone/request',         [IdentityVerificationController::class, 'phoneRequest'])->name('phone.request');
+        Route::post('/phone/confirm',         [IdentityVerificationController::class, 'phoneConfirm'])->name('phone.confirm');
+        // Lv3 — CCCD
+        Route::post('/cccd',                  [IdentityVerificationController::class, 'cccdSubmit'])->name('cccd');
+    });
+
+    // {passport} resolved by uuid (getRouteKeyName = 'uuid') — must be LAST
+    Route::get('/{passport}',          [PassportController::class, 'show'])->name('show');
+    Route::put('/{passport}/note',     [PassportController::class, 'updateNote'])->name('note');
+    Route::put('/{passport}/visibility',[PassportController::class, 'updateVisibility'])->name('visibility');
+    Route::post('/{passport}/share',   [PassportController::class, 'generateShareLink'])->name('share');
+    Route::delete('/{passport}/share', [PassportController::class, 'revokeShareLink'])->name('share.revoke');
+    Route::get('/{passport}/pdf',      [PublicPassportController::class, 'personalPdf'])->name('pdf');
 });
 
 // ── Phase 4: Open Assessment Marketplace — Candidate routes ──────────────────
@@ -190,14 +203,6 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard/campaigns')->name('ca
     Route::get('/{campaign}/results',                         [CampaignAdminController::class, 'results'])->name('results');
     Route::post('/{campaign}/invite/{participation}',         [CampaignAdminController::class, 'invite'])->name('invite');
     Route::patch('/{campaign}/status',                        [CampaignAdminController::class, 'updateStatus'])->name('status');
-});
-
-// ── Competency Passport — Phase 3: eKYC Identity Verification ────────────────
-Route::middleware(['auth', 'verified'])->prefix('passport/verify')->name('passport.verify.')->group(function () {
-    Route::get('/',                    [IdentityVerificationController::class, 'index'])->name('index');
-    Route::post('/phone/request',      [IdentityVerificationController::class, 'phoneRequest'])->name('phone.request');
-    Route::post('/phone/confirm',      [IdentityVerificationController::class, 'phoneConfirm'])->name('phone.confirm');
-    Route::post('/cccd',               [IdentityVerificationController::class, 'cccdSubmit'])->name('cccd');
 });
 
 // ── Competency Passport — Phase 2: Public share / portability ────────────────

@@ -17,6 +17,7 @@ use Modules\Assessment\Models\WorkforcePortfolio;
 use Modules\Assessment\Models\WorkforceProfile;
 use Modules\Assessment\Models\WorkforceProfileHistory;
 use Modules\Assessment\Models\WorkforceRecommendation;
+use Modules\Assessment\Models\PassportEntry;
 use Modules\Assessment\Models\SandboxSession;
 use Modules\Employee\Models\Employee;
 
@@ -125,12 +126,18 @@ class WorkforceProfileController extends Controller
                 ->first()
             : null;
 
+        // Career Journal — most recent archived chapters (cross-org, personal)
+        $passportEntries = PassportEntry::where('user_id', $user->id)
+            ->orderByDesc('snapshot_at')
+            ->limit(4)
+            ->get();
+
         return view('assessment::workforce.me', compact(
             'user', 'employee', 'profile', 'certifications',
             'recentHistory', 'sandboxStats', 'currentPathwayStep', 'allPathwaySteps',
             'portfolios', 'completeness', 'trustBreakdown',
             'cgi', 'scoreHistory', 'skillGapBenchmarks',
-            'jobTitleRequirements', 'recommendation'
+            'jobTitleRequirements', 'recommendation', 'passportEntries'
         ));
     }
 

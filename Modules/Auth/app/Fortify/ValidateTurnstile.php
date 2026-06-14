@@ -3,17 +3,17 @@
 namespace Modules\Auth\Fortify;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use RyanChandler\LaravelCloudflareTurnstile\Rules\Turnstile;
 
 /**
  * Fortify pipeline step: Cloudflare Turnstile bot protection.
  *
- * Skip khi:
- *   - APP_ENV = local | testing
- *   - TURNSTILE_ENABLED = false (default)
- *   - TURNSTILE_SITE_KEY chưa được cấu hình
+ * Keys-as-switch: có TURNSTILE_SITE_KEY + TURNSTILE_SECRET_KEY → tự động bật.
+ * Không cần flag TURNSTILE_ENABLED nữa.
  *
- * Bật production: set TURNSTILE_ENABLED=true + cả 2 keys trong .env
+ * Luôn skip trên local / testing.
+ * Thiếu keys trên production → log warning + skip (không làm hỏng login flow).
  */
 class ValidateTurnstile
 {
@@ -34,19 +34,21 @@ class ValidateTurnstile
         return $next($request);
     }
 
+    public static function isActive(): bool
+    {
+        return ! (new self)->shouldSkip();
+    }
+
     private function shouldSkip(): bool
     {
-        // Luôn skip trên local / testing
         if (app()->isLocal() || app()->environment('testing')) {
             return true;
         }
 
-        // Skip nếu chưa bật hoặc chưa cấu hình key
-        if (! config('services.turnstile.enabled')) {
-            return true;
-        }
-
         if (blank(config('services.turnstile.key')) || blank(config('services.turnstile.secret'))) {
+            if (app()->isProduction()) {
+                Log::warning('Turnstile keys chưa cấu hình — login không có bot protection.');
+            }
             return true;
         }
 

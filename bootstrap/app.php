@@ -18,9 +18,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'billing/webhook/*',
         ]);
         $middleware->alias([
-            'tenant'        => \App\Http\Middleware\IdentifyOrganization::class,
-            'assert.tenant' => \App\Http\Middleware\AssertTenant::class,
-            'feature'       => \Modules\Subscription\Features\FeatureGate\Http\Middleware\RequireFeature::class,
+            'tenant'             => \App\Http\Middleware\IdentifyOrganization::class,
+            'assert.tenant'      => \App\Http\Middleware\AssertTenant::class,
+            'feature'            => \Modules\Subscription\Features\FeatureGate\Http\Middleware\RequireFeature::class,
+            'role'               => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'permission'         => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         ]);
         // InjectRequestId phải chạy đầu tiên để tất cả request đều có X-Request-Id
         $middleware->prepend(\App\Http\Middleware\RemoveServerHeaders::class);
@@ -28,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(\App\Http\Middleware\IdentifyOrganization::class);
         $middleware->appendToGroup('web', \Modules\ActivityLog\Http\Middleware\CaptureHttpContext::class);
         $middleware->appendToGroup('web', \Modules\Subscription\Features\FeatureGate\Http\Middleware\CheckSubscription::class);
+        $middleware->appendToGroup('web', \App\Http\Middleware\SecurityHeaders::class);
         // EnsureFrontendRequestsAreStateful phải đứng đầu api group để auth:sanctum
         // có thể dùng session cookie từ browser (SPA/Tabulator AJAX calls).
         // Không có middleware này, sanctum chỉ nhận Bearer token → 401.

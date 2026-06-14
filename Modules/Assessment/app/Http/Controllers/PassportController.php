@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Modules\Assessment\Models\PassportEntry;
+use Modules\Assessment\Models\WorkforceProfile;
 
 class PassportController extends Controller
 {
@@ -24,7 +25,17 @@ class PassportController extends Controller
             ->with(['domainScores', 'certifications', 'sandboxSummaries'])
             ->get();
 
-        return view('assessment::passport.index', compact('user', 'entries'));
+        // Current in-progress chapter: the workforce profile in the user's active org
+        $currentProfile = null;
+        if ($user->isOrgMember() && $user->current_org_id) {
+            $currentProfile = WorkforceProfile::withoutTenant()
+                ->where('user_id', $user->id)
+                ->where('organization_id', $user->current_org_id)
+                ->with('organization')
+                ->first();
+        }
+
+        return view('assessment::passport.index', compact('user', 'entries', 'currentProfile'));
     }
 
     /**
