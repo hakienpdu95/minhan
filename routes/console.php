@@ -71,3 +71,15 @@ Schedule::command('notifications:kpi-missed')
     ->name('notifications:kpi-missed')
     ->dailyAt('09:00')
     ->onOneServer();
+
+// Passport Phase 0: auto-suspend membership đã quá contract_end_date
+Schedule::command('passport:auto-suspend-expired')
+    ->name('passport:auto-suspend-expired')
+    ->dailyAt('01:00')
+    ->onOneServer();
+
+// Passport Phase 0: weekly report thành viên không hoạt động > 45 ngày
+Schedule::command('passport:flag-inactive-members')
+    ->name('passport:flag-inactive-members')
+    ->weeklyOn(1, '08:00')
+    ->onOneServer();

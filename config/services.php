@@ -37,6 +37,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | FPT.AI ID Recognition (eKYC CCCD OCR)
+    |--------------------------------------------------------------------------
+    | Docs: https://docs.fpt.ai/vision/id-recognition
+    | Lấy API key tại: https://console.fpt.ai
+    |
+    | Để đổi sang OCR provider khác: tạo driver mới implement CccdOcrDriverInterface,
+    | rồi đổi binding trong AssessmentServiceProvider::register().
+    */
+    'fpt_ai' => [
+        'api_key'  => env('FPT_AI_API_KEY', ''),
+        'base_url' => env('FPT_AI_BASE_URL', 'https://api.fpt.ai/vision/idr/vnm'),
+        'timeout'  => (int) env('FPT_AI_OCR_TIMEOUT', 20),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Cloudflare Turnstile
     |--------------------------------------------------------------------------
     | TURNSTILE_ENABLED=false → skip widget + skip validation (local/testing)

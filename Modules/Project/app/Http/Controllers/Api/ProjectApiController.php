@@ -16,8 +16,8 @@ class ProjectApiController extends Controller
         $this->authorize('viewAny', \Modules\Project\Models\Project::class);
 
         $sort      = $request->input('sort', []);
-        $sortField = $sort[0]['field'] ?? 'created_at';
-        $sortDir   = $sort[0]['dir']   ?? 'desc';
+        $sortField = $sort[0]['field'] ?? 'name';
+        $sortDir   = $sort[0]['dir']   ?? 'asc';
 
         $query = new ListProjectsQuery(
             page:         max(1, $request->integer('page', 1)),

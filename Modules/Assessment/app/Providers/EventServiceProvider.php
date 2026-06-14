@@ -2,6 +2,7 @@
 
 namespace Modules\Assessment\Providers;
 
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Modules\Assessment\Events\AssessmentCompleted;
 use Modules\Assessment\Events\AssessmentFailed;
@@ -15,6 +16,7 @@ use Modules\Assessment\Events\SandboxCompleted;
 use Modules\Assessment\Listeners\LogAssessmentCompleted;
 use Modules\Assessment\Listeners\SyncWorkforceProfileOnPerformanceReviewFinalizedListener;
 use Modules\Assessment\Listeners\UpdateEmployeeDigitalCompetencyListener;
+use Modules\Assessment\Listeners\UpdateTrustLevelOnEmailVerifiedListener;
 use Modules\Assessment\Listeners\UpdateWorkforceProfileImpactScoreListener;
 use Modules\Assessment\Listeners\UpdateWorkforceProfileOnAssessmentListener;
 use Modules\Assessment\Listeners\UpdateWorkforceProfileOnCertificationListener;
@@ -24,6 +26,11 @@ use Modules\PerformanceReview\Events\PerformanceReviewFinalized;
 class EventServiceProvider extends ServiceProvider
 {
     protected $listen = [
+        // Phase 0 — email verification → trust_level + identity_verifications
+        Verified::class => [
+            UpdateTrustLevelOnEmailVerifiedListener::class,
+        ],
+
         AssessmentCompleted::class => [
             LogAssessmentCompleted::class,
             UpdateEmployeeDigitalCompetencyListener::class,

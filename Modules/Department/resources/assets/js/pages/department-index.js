@@ -282,7 +282,7 @@ document.addEventListener('alpine:init', () => {
                     paginationSizeSelector: [10, 25, 50, 100],
                     paginationCounter:      'rows',
                     sortMode:               'remote',
-                    initialSort:            [{ column: 'path', dir: 'asc' }],
+                    initialSort:            [{ column: 'name', dir: 'asc' }],
 
                     layout:           'fitColumns',
                     responsiveLayout: 'collapse',

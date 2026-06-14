@@ -10,6 +10,11 @@ use Modules\Assessment\Http\Controllers\AssessmentResultController;
 use Modules\Assessment\Http\Controllers\CareerPathwayAdminController;
 use Modules\Assessment\Http\Controllers\CareerPathwayController;
 use Modules\Assessment\Http\Controllers\CertificationAdminController;
+use Modules\Assessment\Http\Controllers\CampaignAdminController;
+use Modules\Assessment\Http\Controllers\CampaignController;
+use Modules\Assessment\Http\Controllers\IdentityVerificationController;
+use Modules\Assessment\Http\Controllers\PassportController;
+use Modules\Assessment\Http\Controllers\PublicPassportController;
 use Modules\Assessment\Http\Controllers\SandboxSessionController;
 use Modules\Assessment\Http\Controllers\WorkforceCertificationController;
 use Modules\Assessment\Http\Controllers\WorkforceExportController;
@@ -145,3 +150,56 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::get('/assessment-result/{token}', [AssessmentPublicResultController::class, 'show'])
      ->name('assessment.result.public')
      ->middleware(ValidateAssessmentResultToken::class);
+
+// ── Competency Passport — Phase 1 ────────────────────────────────────────────
+// Accessible by both free and org_member users (không cần feature flag)
+Route::middleware(['auth', 'verified'])->prefix('passport')->name('passport.')->group(function () {
+
+    Route::get('/',                             [PassportController::class, 'index'])->name('index');
+    Route::get('/current',                      [PassportController::class, 'current'])->name('current');
+
+    // {passport} resolved by uuid (getRouteKeyName = 'uuid')
+    Route::get('/{passport}',                   [PassportController::class, 'show'])->name('show');
+    Route::put('/{passport}/note',              [PassportController::class, 'updateNote'])->name('note');
+    Route::put('/{passport}/visibility',        [PassportController::class, 'updateVisibility'])->name('visibility');
+    Route::post('/{passport}/share',            [PassportController::class, 'generateShareLink'])->name('share');
+    Route::delete('/{passport}/share',          [PassportController::class, 'revokeShareLink'])->name('share.revoke');
+    Route::get('/{passport}/pdf',               [PublicPassportController::class, 'personalPdf'])->name('pdf');
+});
+
+// ── Phase 4: Open Assessment Marketplace — Candidate routes ──────────────────
+Route::middleware(['auth', 'verified'])->prefix('campaigns')->name('campaigns.')->group(function () {
+    Route::get('/',                                               [CampaignController::class, 'index'])->name('index');
+    Route::get('/{campaign}',                                     [CampaignController::class, 'show'])->name('show');
+    Route::post('/{campaign}/join',                               [CampaignController::class, 'join'])->name('join');
+    Route::get('/{campaign}/workspace',                           [CampaignController::class, 'workspace'])->name('workspace');
+    Route::post('/{campaign}/submit',                             [CampaignController::class, 'submit'])->name('submit');
+    Route::patch('/{campaign}/decline',                           [CampaignController::class, 'decline'])->name('decline');
+    // Task execution routes — dành cho marketplace candidates (không dùng backend sandbox)
+    Route::get('/{campaign}/tasks/{task}',                        [CampaignController::class, 'taskView'])->name('task');
+    Route::post('/{campaign}/tasks/{task}/start',                 [CampaignController::class, 'taskStart'])->name('task.start');
+    Route::post('/{campaign}/tasks/{task}/complete',              [CampaignController::class, 'taskComplete'])->name('task.complete');
+});
+
+// ── Phase 4: Open Assessment Marketplace — Org HR admin routes ───────────────
+Route::middleware(['auth', 'verified'])->prefix('dashboard/campaigns')->name('campaigns.admin.')->group(function () {
+    Route::get('/',                                           [CampaignAdminController::class, 'index'])->name('index');
+    Route::get('/create',                                     [CampaignAdminController::class, 'create'])->name('create');
+    Route::post('/',                                          [CampaignAdminController::class, 'store'])->name('store');
+    Route::get('/{campaign}',                                 [CampaignAdminController::class, 'show'])->name('show');
+    Route::get('/{campaign}/results',                         [CampaignAdminController::class, 'results'])->name('results');
+    Route::post('/{campaign}/invite/{participation}',         [CampaignAdminController::class, 'invite'])->name('invite');
+    Route::patch('/{campaign}/status',                        [CampaignAdminController::class, 'updateStatus'])->name('status');
+});
+
+// ── Competency Passport — Phase 3: eKYC Identity Verification ────────────────
+Route::middleware(['auth', 'verified'])->prefix('passport/verify')->name('passport.verify.')->group(function () {
+    Route::get('/',                    [IdentityVerificationController::class, 'index'])->name('index');
+    Route::post('/phone/request',      [IdentityVerificationController::class, 'phoneRequest'])->name('phone.request');
+    Route::post('/phone/confirm',      [IdentityVerificationController::class, 'phoneConfirm'])->name('phone.confirm');
+    Route::post('/cccd',               [IdentityVerificationController::class, 'cccdSubmit'])->name('cccd');
+});
+
+// ── Competency Passport — Phase 2: Public share / portability ────────────────
+Route::get('/p/{token}',     [PublicPassportController::class, 'show'])->name('passport.public');
+Route::get('/p/{token}/pdf', [PublicPassportController::class, 'pdf'])->name('passport.public.pdf');

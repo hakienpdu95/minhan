@@ -4,6 +4,7 @@ namespace Modules\Department\Enums;
 
 enum DepartmentFunction: string
 {
+    case General         = 'general';
     case Sales           = 'sales';
     case Marketing       = 'marketing';
     case Finance         = 'finance';
@@ -18,6 +19,7 @@ enum DepartmentFunction: string
     public function label(): string
     {
         return match ($this) {
+            self::General         => 'Chung',
             self::Sales           => 'Kinh doanh',
             self::Marketing       => 'Marketing',
             self::Finance         => 'Tài chính - Kế toán',
@@ -34,6 +36,7 @@ enum DepartmentFunction: string
     public function badgeClass(): string
     {
         return match ($this) {
+            self::General         => 'badge-ghost',
             self::Sales           => 'badge-info',
             self::Marketing       => 'badge-secondary',
             self::Finance         => 'badge-warning',

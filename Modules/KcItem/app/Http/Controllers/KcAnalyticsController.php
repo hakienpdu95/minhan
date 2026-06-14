@@ -34,7 +34,7 @@ class KcAnalyticsController extends Controller
              FROM kc_items
              LEFT JOIN kc_view_logs
                     ON kc_view_logs.item_id = kc_items.id
-                   AND kc_view_logs.viewed_at >= datetime('now', '-' || ? || ' days')
+                   AND kc_view_logs.viewed_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              WHERE kc_items.organization_id = ?
                AND kc_items.status = ?
              GROUP BY kc_items.id, kc_items.uuid, kc_items.title, kc_items.type, kc_items.view_count
@@ -89,20 +89,15 @@ class KcAnalyticsController extends Controller
 
         $orgId = TenantContext::getOrganizationId();
 
-        $rows = DB::select(
-            "SELECT kc_items.id, kc_items.uuid, kc_items.title, kc_items.type,
-                    kc_items.expired_date
-             FROM kc_items
-             WHERE kc_items.organization_id = ?
-               AND kc_items.status = ?
-               AND kc_items.expired_date IS NOT NULL
-               AND kc_items.expired_date BETWEEN datetime('now') AND datetime('now', '+30 days')
-             ORDER BY kc_items.expired_date ASC",
-            [$orgId, KcItemStatus::Approved->value]
-        );
+        $rows = KcItem::where('organization_id', $orgId)
+            ->where('status', KcItemStatus::Approved->value)
+            ->whereNotNull('expired_date')
+            ->whereBetween('expired_date', [now()->toDateString(), now()->addDays(30)->toDateString()])
+            ->orderBy('expired_date')
+            ->get(['id', 'uuid', 'title', 'type', 'expired_date']);
 
         return response()->json([
-            'items' => array_map(function ($row) {
+            'items' => $rows->map(function ($row) {
                 $expiredDate = \Carbon\Carbon::parse($row->expired_date);
                 return [
                     'id'           => $row->id,
@@ -113,7 +108,7 @@ class KcAnalyticsController extends Controller
                     'days_left'    => (int) now()->startOfDay()->diffInDays($expiredDate->startOfDay(), false),
                     'url'          => route('backend.kc-items.show', $row->id),
                 ];
-            }, $rows),
+            })->values(),
         ]);
     }
 

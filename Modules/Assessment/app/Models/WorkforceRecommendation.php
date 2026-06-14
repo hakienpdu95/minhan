@@ -4,6 +4,7 @@ namespace Modules\Assessment\Models;
 
 use App\Foundation\Models\TenantAwareModel;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class WorkforceRecommendation extends TenantAwareModel
 {
@@ -38,6 +39,11 @@ class WorkforceRecommendation extends TenantAwareModel
     public function workforceProfile(): BelongsTo
     {
         return $this->belongsTo(WorkforceProfile::class);
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(WorkforceRecommendationItem::class, 'workforce_recommendation_id');
     }
 
     // ── Business Logic ────────────────────────────────────────────────────────

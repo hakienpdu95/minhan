@@ -56,14 +56,16 @@ export function workforceAdminPage({ apiUrl }) {
             this.table = new Tabulator('#workforce-table', {
                 ajaxURL:           this.buildUrl(),
                 ajaxResponse:      (_url, _params, res) => res,
-                pagination:        'remote',
+                pagination:        true,
+                paginationMode:    'remote',
+                sortMode:          'remote',
                 paginationSize:    25,
                 layout:            'fitColumns',
                 responsiveLayout:  'collapse',
                 height:            'calc(100vh - 340px)',
-                locale:            'vi',
+                locale:            'vi-VN',
                 langs: {
-                    vi: {
+                    'vi-VN': {
                         pagination: {
                             first: '«', last: '»', prev: '‹', next: '›',
                             first_title: 'Đầu', last_title: 'Cuối', prev_title: 'Trước', next_title: 'Sau',

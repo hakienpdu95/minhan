@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AccountType;
 use App\Shared\Tenancy\Models\Organization;
 use App\Shared\Tenancy\TenantContext;
 use Database\Factories\UserFactory;
@@ -15,12 +16,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Modules\Assessment\Models\IdentityVerification;
 use Modules\Organization\Models\OrganizationMember;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'organization_id', 'department', 'is_active', 'last_active_at'])]
+#[Fillable([
+    'name', 'email', 'password',
+    'organization_id', 'department', 'is_active', 'last_active_at',
+    // Phase 0 — Identity Foundation
+    'account_type', 'current_org_id', 'trust_level',
+    'phone_number', 'phone_verified_at', 'national_id_hash',
+])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -30,10 +38,13 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'last_active_at'    => 'datetime',
-            'password'          => 'hashed',
-            'is_active'         => 'boolean',
+            'email_verified_at'  => 'datetime',
+            'last_active_at'     => 'datetime',
+            'phone_verified_at'  => 'datetime',
+            'password'           => 'hashed',
+            'is_active'          => 'boolean',
+            'account_type'       => AccountType::class,
+            'trust_level'        => 'integer',
         ];
     }
 
@@ -49,6 +60,16 @@ class User extends Authenticatable
         return $this->hasOne(OrganizationMember::class);
     }
 
+    public function organizationMemberships(): HasMany
+    {
+        return $this->hasMany(OrganizationMember::class);
+    }
+
+    public function identityVerifications(): HasMany
+    {
+        return $this->hasMany(IdentityVerification::class);
+    }
+
     public function pushSubscriptions(): HasMany
     {
         return $this->hasMany(PushSubscription::class);
@@ -57,6 +78,23 @@ class User extends Authenticatable
     public function notificationPreferences(): HasMany
     {
         return $this->hasMany(NotificationPreference::class);
+    }
+
+    // ── Identity helpers ─────────────────────────────────────────────
+
+    public function isFree(): bool
+    {
+        return $this->account_type === AccountType::Free;
+    }
+
+    public function isOrgMember(): bool
+    {
+        return $this->account_type === AccountType::OrgMember;
+    }
+
+    public function isSuspended(): bool
+    {
+        return $this->account_type === AccountType::Suspended;
     }
 
     // ── Tenant Helpers ───────────────────────────────────────────────

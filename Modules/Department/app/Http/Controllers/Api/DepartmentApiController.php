@@ -29,7 +29,7 @@ class DepartmentApiController extends Controller
         ]);
 
         $sortRaw   = $request->input('sort.0');
-        $sortField = is_array($sortRaw) ? (string) ($sortRaw['field'] ?? 'path') : 'path';
+        $sortField = is_array($sortRaw) ? (string) ($sortRaw['field'] ?? 'name') : 'name';
         $sortDir   = is_array($sortRaw) && ($sortRaw['dir'] ?? '') === 'desc' ? 'desc' : 'asc';
 
         $query = new ListDepartmentsQuery(

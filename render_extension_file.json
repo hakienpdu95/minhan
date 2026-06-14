@@ -21,7 +21,8 @@
         "lead_assessment_code///string///64///_NULL///NULL///__///Assessment code dùng để chấm điểm lead sâu. NULL = tắt.",
         "source///string///50///_NULL///NULL///__///marketplace_signup | admin_created | etc.",
         "approved_by///unsignedBigInteger///__///_NULL///NULL///__///__",
-        "approved_at///timestamp///__///_NULL///NULL///__///__"
+        "approved_at///timestamp///__///_NULL///NULL///__///__",
+        "email_domain///string///100///_NULL///NULL///__///VD: company.com — dùng để phát hiện email tổ chức khi HR tạo tài khoản NV"
     ],
     [
         "users///add///email///Thêm organization_id và các trường bổ sung vào bảng users",
@@ -31,7 +32,15 @@
         "is_active///boolean///__///NOT_NULL///true///->index()///Trạng thái tài khoản",
         "__index///index///__///__///__///organization_id///Index cho FK organization_id",
         "branch_id///unsignedBigInteger///__///_NULL///NULL///__///__",
-        "department_id///unsignedBigInteger///__///_NULL///NULL///__///__"
+        "department_id///unsignedBigInteger///__///_NULL///NULL///__///__",
+        "account_type///string///20///NOT_NULL///'free'///__///free | org_member | suspended",
+        "current_org_id///unsignedBigInteger///__///_NULL///NULL///__///NULL nếu free",
+        "trust_level///unsignedTinyInteger///__///NOT_NULL///0///__///0=unverified, 1=email, 2=phone, 3=cccd, 4=cccd_biometric",
+        "phone_number///string///20///_NULL///NULL///__///__",
+        "phone_verified_at///timestamp///__///_NULL///NULL///__///__",
+        "national_id_hash///string///64///_NULL///NULL///->unique()///SHA-256(số_CCCD) — check uniqueness, không lưu số thật",
+        "__index///index///__///__///__///account_type|users_account_type_index///__",
+        "__index///index///__///__///__///trust_level|users_trust_level_index///__"
     ],
     [
         "activity_log///add///__///",
@@ -344,5 +353,31 @@
     [
         "workforce_portfolios///add///__///",
         "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
+    ],
+    [
+        "organization_members///add///__///",
+        "status///string///20///NOT_NULL///'active'///__///active | inactive | paused | suspended",
+        "left_at///timestamp///__///_NULL///NULL///__///__",
+        "exit_reason///string///50///_NULL///NULL///__///resigned | terminated | retired | contract_end | internal_transfer",
+        "exit_initiated_by///string///20///_NULL///NULL///__///self | hr | system",
+        "job_title_at_exit///string///200///_NULL///NULL///__///__",
+        "department_at_exit///string///200///_NULL///NULL///__///__",
+        "role_at_exit///string///50///_NULL///NULL///__///__",
+        "account_was_org_created///tinyInteger///__///NOT_NULL///0///__///1 nếu org tạo tài khoản này (không phải user tự đăng ký)",
+        "contract_end_date///date///__///_NULL///NULL///__///Ngày hết hợp đồng — hệ thống auto-suspend nếu HR không offboard trước",
+        "auto_suspended_at///timestamp///__///_NULL///NULL///__///Thời điểm hệ thống tự suspend do hết contract_end_date",
+        "last_active_at///timestamp///__///_NULL///NULL///__///Lần cuối user có activity trong org này (login + action)",
+        "effective_left_at///timestamp///__///_NULL///NULL///__///Ngày thực tế nghỉ việc — do HR nhập, có thể khác left_at",
+        "offboarded_at///timestamp///__///_NULL///NULL///__///Ngày HR click offboard trên hệ thống",
+        "late_offboard_gap_days///unsignedSmallInteger///__///_NULL///NULL///__///Số ngày gap giữa effective_left_at và offboarded_at — 0 nếu offboard đúng hạn",
+        "__index///index///__///__///__///status|om_status_index///__",
+        "__index///index///__///__///__///left_at|om_left_at_index///__"
+    ],
+    [
+        "identity_verifications///add///__///",
+        "verification_code///string///10///_NULL///NULL///__///6-digit code for phone verification (dev: shown on-screen)",
+        "code_expires_at///timestamp///__///_NULL///NULL///__///TTL 5 minutes for phone code",
+        "phone_candidate///string///20///_NULL///NULL///__///Phone number submitted, confirmed on verify",
+        "issuing_province_code///char///2///_NULL///NULL///__///2-char province code từ provinces.province_code — derived từ 3 chữ số đầu CCCD"
     ]
 ]

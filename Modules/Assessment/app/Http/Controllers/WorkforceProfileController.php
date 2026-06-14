@@ -308,8 +308,8 @@ class WorkforceProfileController extends Controller
             ->paginate($request->get('per_page', 25));
 
         return response()->json([
-            'data' => $profiles->map(fn($p) => [
-                'id'                => $p->id,
+            'data' => $profiles->getCollection()->map(fn($p) => [
+                'id'                     => $p->id,
                 'employee_name'          => $p->employee?->full_name ?? '—',
                 'department'             => $p->employee?->department?->name ?? null,
                 'tdwcf_maturity_level'   => $p->tdwcf_maturity_level,
@@ -318,7 +318,7 @@ class WorkforceProfileController extends Controller
                 'workforce_trust_score'  => $p->workforce_trust_score,
                 'sandbox_sessions_total' => $p->sandbox_sessions_total ?? 0,
                 'last_assessed_at'       => $p->tdwcf_assessed_at?->format('d/m/Y'),
-            ]),
+            ])->values(),
             'last_page' => $profiles->lastPage(),
             'total'     => $profiles->total(),
         ]);

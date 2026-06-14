@@ -37,6 +37,8 @@ class Organization extends Model
         'source',
         'approved_by',
         'approved_at',
+        // Phase 0 — Identity enforcement
+        'email_domain',
     ];
 
     protected function casts(): array
@@ -72,6 +74,24 @@ class Organization extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function members(): HasMany
+    {
+        return $this->hasMany(\Modules\Organization\Models\OrganizationMember::class);
+    }
+
+    /**
+     * HR admin users của org — dùng để gửi notification offboarding/inactivity.
+     * Trả về Collection của User.
+     */
+    public function hrAdmins(): \Illuminate\Database\Eloquent\Collection
+    {
+        return User::whereHas('organizationMemberships', function ($q) {
+            $q->where('organization_id', $this->id)
+              ->whereIn('status', ['active'])
+              ->whereIn('role', ['owner', 'admin']);
+        })->get();
     }
 
     // ── Scopes ───────────────────────────────────────────────────────
