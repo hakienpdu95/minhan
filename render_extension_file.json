@@ -378,6 +378,7 @@
         "verification_code///string///10///_NULL///NULL///__///6-digit code for phone verification (dev: shown on-screen)",
         "code_expires_at///timestamp///__///_NULL///NULL///__///TTL 5 minutes for phone code",
         "phone_candidate///string///20///_NULL///NULL///__///Phone number submitted, confirmed on verify",
-        "issuing_province_code///char///2///_NULL///NULL///__///2-char province code từ provinces.province_code — derived từ 3 chữ số đầu CCCD"
+        "issuing_province_code///char///2///_NULL///NULL///__///2-char province code từ provinces.province_code — derived từ 3 chữ số đầu CCCD",
+        "email_candidate///string///255///_NULL///NULL///__///Email address captured at send time; compared on confirm to detect mid-flight email changes"
     ]
 ]

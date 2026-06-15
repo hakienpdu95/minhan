@@ -76,6 +76,9 @@ return new class extends Migration {
             if (!Schema::hasColumn('organizations', 'approved_at')) {
                 $table->timestamp('approved_at')->nullable()->after('approved_by');
             }
+            if (!Schema::hasColumn('organizations', 'email_domain')) {
+                $table->string('email_domain', 100)->nullable()->after('approved_at')->comment('VD: company.com — dùng để phát hiện email tổ chức khi HR tạo tài khoản NV');
+            }
         });
     }
 
@@ -84,7 +87,7 @@ return new class extends Migration {
         Schema::table('organizations', function (Blueprint $table) {
             if (Schema::hasColumn('organizations', 'province_code')) $table->dropForeign(['province_code']);
             if (Schema::hasColumn('organizations', 'ward_code')) $table->dropForeign(['ward_code']);
-            $cols = array_filter(['is_system', 'owner_id', 'tax_code', 'phone', 'email', 'website', 'industry', 'address', 'city', 'country', 'postal_code', 'description', 'logo_path', 'province_code', 'ward_code', 'full_address', 'lead_assessment_code', 'source', 'approved_by', 'approved_at'], fn($c) => Schema::hasColumn('organizations', $c));
+            $cols = array_filter(['is_system', 'owner_id', 'tax_code', 'phone', 'email', 'website', 'industry', 'address', 'city', 'country', 'postal_code', 'description', 'logo_path', 'province_code', 'ward_code', 'full_address', 'lead_assessment_code', 'source', 'approved_by', 'approved_at', 'email_domain'], fn($c) => Schema::hasColumn('organizations', $c));
             if (!empty($cols)) $table->dropColumn(array_values($cols));
         });
     }
