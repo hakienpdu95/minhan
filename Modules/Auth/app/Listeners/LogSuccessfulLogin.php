@@ -17,6 +17,7 @@ class LogSuccessfulLogin
             'ip'         => request()->ip(),
             'user_agent' => request()->userAgent(),
             'remember'   => $event->remember,
+            'method'     => session('auth.method', 'password'),
         ]);
     }
 }

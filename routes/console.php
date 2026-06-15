@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
+use Modules\Auth\Models\SocialAccount;
 use Modules\Survey\Jobs\PurgeDeletedResponsesJob;
 
 Artisan::command('inspire', function () {
@@ -83,3 +84,11 @@ Schedule::command('passport:flag-inactive-members')
     ->name('passport:flag-inactive-members')
     ->weeklyOn(1, '08:00')
     ->onOneServer();
+
+// Social Auth: xóa token đã hết hạn > 30 ngày (giảm dữ liệu nhạy cảm lưu trữ)
+Schedule::call(function () {
+    SocialAccount::where('token_expires_at', '<', now()->subDays(30))->update([
+        'access_token'  => null,
+        'refresh_token' => null,
+    ]);
+})->weekly()->name('social-auth:cleanup-expired-tokens')->onOneServer();

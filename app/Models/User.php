@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Modules\Assessment\Models\IdentityVerification;
+use Modules\Auth\Models\SocialAccount;
 use Modules\Organization\Models\OrganizationMember;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -78,6 +79,11 @@ class User extends Authenticatable
     public function notificationPreferences(): HasMany
     {
         return $this->hasMany(NotificationPreference::class);
+    }
+
+    public function socialAccounts(): HasMany
+    {
+        return $this->hasMany(SocialAccount::class);
     }
 
     // ── Identity helpers ─────────────────────────────────────────────

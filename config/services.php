@@ -67,4 +67,43 @@ return [
         'secret' => env('TURNSTILE_SECRET_KEY', ''),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Social OAuth Providers
+    |--------------------------------------------------------------------------
+    | Credentials lấy từ:
+    |   Google:   https://console.cloud.google.com → Credentials → OAuth 2.0
+    |   Facebook: https://developers.facebook.com → My Apps → Settings
+    |   LinkedIn: https://www.linkedin.com/developers/apps → Auth tab
+    |
+    | Callback URL pattern: {APP_URL}/auth/social/{provider}/callback
+    |
+    | social_providers: map route-param → Socialite driver name.
+    | Đây là nguồn duy nhất cho allowlist + driver lookup — thêm provider
+    | mới chỉ cần thêm 1 entry ở đây, không cần sửa code.
+    */
+    'social_providers' => [
+        'google'   => 'google',
+        'facebook' => 'facebook',
+        'linkedin' => 'linkedin-openid',
+    ],
+
+    'google' => [
+        'client_id'     => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect'      => env('GOOGLE_REDIRECT_URI', '/auth/social/google/callback'),
+    ],
+
+    'facebook' => [
+        'client_id'     => env('FACEBOOK_CLIENT_ID'),
+        'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
+        'redirect'      => env('FACEBOOK_REDIRECT_URI', '/auth/social/facebook/callback'),
+    ],
+
+    'linkedin-openid' => [
+        'client_id'     => env('LINKEDIN_CLIENT_ID'),
+        'client_secret' => env('LINKEDIN_CLIENT_SECRET'),
+        'redirect'      => env('LINKEDIN_REDIRECT_URI', '/auth/social/linkedin/callback'),
+    ],
+
 ];

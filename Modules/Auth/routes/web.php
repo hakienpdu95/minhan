@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Modules\Auth\Http\Controllers\MeController;
+use Modules\Auth\Http\Controllers\SocialAuthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,11 +20,21 @@ Route::get('/home', function () {
     return redirect('/');
 })->middleware('auth')->name('home');
 
+// Social OAuth — redirect + callback không cần auth (user chưa login)
+Route::prefix('auth/social')->name('auth.social.')->group(function () {
+    Route::get('{provider}',          [SocialAuthController::class, 'redirect'])->name('redirect');
+    Route::get('{provider}/callback', [SocialAuthController::class, 'callback'])->name('callback');
+});
+
+// Unlink cần auth
+Route::middleware('auth')->delete('auth/social/{provider}', [SocialAuthController::class, 'unlink'])
+    ->name('auth.social.unlink');
+
 Route::middleware(['auth'])->prefix('auth')->name('auth.')->group(function () {
 
     // Profile page — xem và cập nhật thông tin cá nhân
     Route::get('/profile', fn (Request $request) => view('auth::profile', [
-        'user' => $request->user(),
+        'user' => $request->user()->load('socialAccounts'),
     ]))->name('profile');
 
     // Context endpoint: trả về user/org/roles của chính mình.

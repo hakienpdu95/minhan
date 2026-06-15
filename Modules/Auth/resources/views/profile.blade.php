@@ -111,6 +111,51 @@
         </div>
     </div>
 
+    {{-- ── Linked Social Accounts ────────────────────────────────────────── --}}
+    <div class="card bg-base-100 border border-base-200 shadow-sm">
+        <div class="card-body">
+            <h3 class="font-semibold text-sm mb-3">Tài khoản liên kết</h3>
+
+            @if ($errors->has('social'))
+                <div class="alert alert-error text-sm mb-3 py-2">
+                    <span>{{ $errors->first('social') }}</span>
+                </div>
+            @endif
+
+            @if (session('social_success'))
+                <div class="alert alert-success text-sm mb-3 py-2">
+                    <span>{{ session('social_success') }}</span>
+                </div>
+            @endif
+
+            @foreach (['google' => 'Google', 'facebook' => 'Facebook', 'linkedin' => 'LinkedIn'] as $provider => $label)
+                @php $linked = $user->socialAccounts->firstWhere('provider', $provider) @endphp
+
+                <div class="flex items-center justify-between py-2 border-b border-base-200 last:border-0">
+                    <span class="font-medium text-sm">{{ $label }}</span>
+
+                    @if ($linked)
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-base-content/50">{{ $linked->provider_email }}</span>
+                            <form method="POST"
+                                  action="{{ route('auth.social.unlink', $provider) }}"
+                                  onsubmit="return confirm('Bỏ liên kết {{ $label }}?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-xs btn-ghost text-error">Bỏ liên kết</button>
+                            </form>
+                        </div>
+                    @else
+                        <a href="{{ route('auth.social.redirect', $provider) }}"
+                           class="btn btn-xs btn-outline">
+                            Kết nối
+                        </a>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+    </div>
+
     {{-- ── Quick links ─────────────────────────────────────────────────────── --}}
     <div class="card bg-base-100 border border-base-200 shadow-sm">
         <div class="card-body">
