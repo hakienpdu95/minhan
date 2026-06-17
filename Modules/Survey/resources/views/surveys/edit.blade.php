@@ -114,6 +114,17 @@
                         @error('title')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
+                    {{-- Mô tả --}}
+                    <div class="form-control mb-4">
+                        <label class="label py-0 pb-1.5">
+                            <span class="label-text font-medium text-sm">Mô tả</span>
+                        </label>
+                        <textarea name="description" rows="3"
+                                  class="textarea textarea-bordered w-full text-sm @error('description') textarea-error @enderror"
+                                  placeholder="Mô tả ngắn về mục đích hoặc nội dung khảo sát...">{{ old('description', $survey->description) }}</textarea>
+                        @error('description')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                    </div>
+
                     {{-- Slug (read-only) --}}
                     <div class="form-control mb-4">
                         <label class="label py-0 pb-1.5">

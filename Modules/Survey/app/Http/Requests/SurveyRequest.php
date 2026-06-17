@@ -16,6 +16,7 @@ class SurveyRequest extends FormRequest
         return [
             'organization_id' => ['required', 'integer', 'exists:organizations,id'],
             'title'           => ['required', 'string', 'max:255'],
+            'description'     => ['nullable', 'string', 'max:2000'],
             'version'         => ['nullable', 'integer', 'min:1', 'max:9999'],
         ];
     }
@@ -32,6 +33,7 @@ class SurveyRequest extends FormRequest
         return [
             'organization_id' => (int) $this->input('organization_id'),
             'title'           => $this->input('title'),
+            'description'     => $this->input('description') ?: null,
             'version'         => $this->input('version') ? (int) $this->input('version') : null,
         ];
     }

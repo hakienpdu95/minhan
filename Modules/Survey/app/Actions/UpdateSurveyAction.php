@@ -14,7 +14,11 @@ class UpdateSurveyAction
     public function handle(Survey $survey, SurveyFormData $data): Survey
     {
         // Slug do hệ thống sinh ra khi tạo, không bao giờ thay đổi
-        $payload = ['title' => $data->title, 'version' => $data->version ?? $survey->version];
+        $payload = [
+            'title'       => $data->title,
+            'description' => $data->description,
+            'version'     => $data->version ?? $survey->version,
+        ];
 
         $survey->update($payload);
 

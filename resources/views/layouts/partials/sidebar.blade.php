@@ -17,11 +17,22 @@
             </a>
         </div>
 
+        @auth
+        <a href="{{ route('backend.surveys.my') }}"
+           class="nav-link {{ request()->routeIs('backend.surveys.my') ? 'active' : '' }}">
+            <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+            </svg>
+            <span class="nav-label">Khảo sát</span>
+        </a>
+        @endauth
+
         @can('survey.view')
-        <details {{ request()->routeIs('backend.surveys.*') ? 'open' : '' }}>
-            <summary class="nav-summary {{ request()->routeIs('backend.surveys.*') ? 'active' : '' }}">
+        <details {{ request()->routeIs('backend.surveys.*') && !request()->routeIs('backend.surveys.my') ? 'open' : '' }}>
+            <summary class="nav-summary {{ request()->routeIs('backend.surveys.*') && !request()->routeIs('backend.surveys.my') && !request()->routeIs('backend.surveys.take*') ? 'active' : '' }}">
                 <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
-                <span class="nav-label">Khảo sát</span>
+                <span class="nav-label">Quản lý khảo sát</span>
                 <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
             </summary>
             <div class="sub-menu">
@@ -728,6 +739,22 @@
             </details>
         </div>
         @endif
+
+        </div>
+
+        @auth
+        <p class="section-title" style="margin-top:16px;">Triển khai</p>
+        <div class="nav-group">
+            <a href="{{ route('deployment.landing') }}"
+               class="nav-link {{ request()->routeIs('deployment.landing') || request()->routeIs('deployment.*') ? 'active' : '' }}">
+                <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                          d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+                </svg>
+                <span class="nav-label">Triển khai</span>
+            </a>
+        </div>
+        @endauth
 
         </div>
     </nav>

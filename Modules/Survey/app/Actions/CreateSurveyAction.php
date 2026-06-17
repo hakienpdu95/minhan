@@ -19,10 +19,11 @@ class CreateSurveyAction
 
         $survey = Survey::create([
             'organization_id' => $data->organization_id,
-            'title'   => $data->title,
-            'slug'    => $slug,
-            'status'  => SurveyStatus::Draft,
-            'version' => $data->version ?? 1,
+            'title'           => $data->title,
+            'description'     => $data->description,
+            'slug'            => $slug,
+            'status'          => SurveyStatus::Draft,
+            'version'         => $data->version ?? 1,
         ]);
 
         ActivityLogger::info('Survey', 'survey_created', $survey, ['title' => $survey->title, 'slug' => $survey->slug]);

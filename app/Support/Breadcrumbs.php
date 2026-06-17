@@ -82,7 +82,7 @@ class Breadcrumbs
             if (! $isLast) {
                 // Intermediate segment – link to its .index route if available
                 $indexRoute = $currentPrefix . '.index';
-                $url        = Route::has($indexRoute) ? route($indexRoute) : null;
+                $url        = Route::has($indexRoute) ? $this->safeRoute($indexRoute, $params) : null;
                 $crumbs[]   = ['label' => $label, 'url' => $url, 'active' => false];
                 continue;
             }
@@ -95,7 +95,7 @@ class Breadcrumbs
                 // Link the resource list, then show model display name
                 $indexRoute = $currentPrefix . '.index';
                 if (Route::has($indexRoute)) {
-                    $crumbs[] = ['label' => $label, 'url' => route($indexRoute), 'active' => false];
+                    $crumbs[] = ['label' => $label, 'url' => $this->safeRoute($indexRoute, $params), 'active' => false];
                 }
                 $modelName    = $this->extractModelName($params, $modelAttrs) ?? $label;
                 $modelIsLast  = ! in_array($actionPart, ['edit', 'update'], true);
@@ -105,7 +105,7 @@ class Breadcrumbs
                 // Link the resource list, add 'Tạo mới' after the loop
                 $indexRoute = $currentPrefix . '.index';
                 if (Route::has($indexRoute)) {
-                    $crumbs[] = ['label' => $label, 'url' => route($indexRoute), 'active' => false];
+                    $crumbs[] = ['label' => $label, 'url' => $this->safeRoute($indexRoute, $params), 'active' => false];
                 } else {
                     $crumbs[] = ['label' => $label, 'url' => null, 'active' => false];
                 }
@@ -130,6 +130,21 @@ class Breadcrumbs
         }
 
         return $crumbs;
+    }
+
+    private function safeRoute(string $name, array $currentParams): ?string
+    {
+        try {
+            $routeObj = Route::getRoutes()->getByName($name);
+            if (! $routeObj) {
+                return null;
+            }
+            // Only pass params the target route actually declares, avoiding extra query-string pollution
+            $needed = array_intersect_key($currentParams, array_flip($routeObj->parameterNames()));
+            return route($name, $needed);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function extractModelName(array $params, array $attrs): ?string

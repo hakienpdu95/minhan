@@ -25,6 +25,7 @@ class SurveyListResource extends JsonResource
             'stats_url'       => route('backend.surveys.stats.index', $this->resource),
             'responses_url'   => route('backend.surveys.responses.index', $this->resource),
             'delete_url'      => route('backend.surveys.destroy', $this->resource),
+            'take_url'        => route('backend.surveys.take', $this->slug),
         ];
     }
 }

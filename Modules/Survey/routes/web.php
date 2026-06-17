@@ -11,6 +11,7 @@ use Modules\Survey\Http\Controllers\SurveyScoringRedirectController;
 use Modules\Survey\Http\Controllers\StatsController;
 use Modules\Survey\Http\Controllers\SurveyController;
 use Modules\Survey\Http\Controllers\SurveyResultController;
+use Modules\Survey\Http\Controllers\SurveyTakeController;
 use Modules\Survey\Http\Controllers\TokenController;
 
 /*
@@ -109,6 +110,14 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
         });
     });
 
+});
+
+// ── Authenticated user: làm khảo sát ─────────────────────────────────────
+Route::middleware(['auth', 'verified'])->prefix('dashboard/surveys')->name('backend.surveys.')->group(function () {
+    Route::get('/my',                                        [SurveyTakeController::class, 'index'])->name('my');
+    Route::get('/{survey:slug}/take',                        [SurveyTakeController::class, 'show'])->name('take');
+    Route::post('/{survey:slug}/take',                       [SurveyTakeController::class, 'submit'])->name('take.submit');
+    Route::get('/{survey:slug}/take/done/{responseId}',      [SurveyTakeController::class, 'done'])->name('take.done');
 });
 
 // ── Public result page for respondents ───────────────────────────────────

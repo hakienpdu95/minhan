@@ -14,6 +14,8 @@ use Illuminate\Notifications\ChannelManager;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use App\View\Composers\SidebarComposer;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Modules\Assessment\Models\PassportEntry;
 use Modules\Assessment\Policies\PassportEntryPolicy;
@@ -51,6 +53,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Passport policies
         Gate::policy(PassportEntry::class, PassportEntryPolicy::class);
+
+        // Sidebar: load active verticals for current org
+        View::composer('layouts.partials.sidebar', SidebarComposer::class);
 
         // Global API limiter — 120 req/min per authenticated user, 30/min for guests
         RateLimiter::for('api', fn (Request $request) =>

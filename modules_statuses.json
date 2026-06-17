@@ -29,5 +29,6 @@
     "Subscription": true,
     "Customer": true,
     "AiCopilot": true,
-    "Report": true
+    "Report": true,
+    "Deployment": true
 }

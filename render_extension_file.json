@@ -84,7 +84,8 @@
         "allow_multiple_responses///boolean///__///NOT_NULL///true///__///__",
         "organization_id///unsignedBigInteger///__///_NULL///NULL///->constrained()->onDelete('restrict')///__",
         "specialized_set_code///string///50///_NULL///NULL///__///__",
-        "__index///unique///__///__///__///assessment_code,specialized_set_code|surveys_assessment_specialized_unique///__"
+        "__index///unique///__///__///__///assessment_code,specialized_set_code|surveys_assessment_specialized_unique///__",
+        "description///text///__///_NULL///NULL///__///__"
     ],
     [
         "maturity_levels///add///__///",
@@ -269,7 +270,8 @@
         "projects///add///__///",
         "progress_pct///unsignedSmallInteger///__///NOT_NULL///0///__///__",
         "task_total///unsignedSmallInteger///__///NOT_NULL///0///__///__",
-        "task_done///unsignedSmallInteger///__///NOT_NULL///0///__///__"
+        "task_done///unsignedSmallInteger///__///NOT_NULL///0///__///__",
+        "vertical_code///string///50///_NULL///NULL///->index()///__"
     ],
     [
         "workflow_steps///add///__///",
@@ -380,5 +382,16 @@
         "phone_candidate///string///20///_NULL///NULL///__///Phone number submitted, confirmed on verify",
         "issuing_province_code///char///2///_NULL///NULL///__///2-char province code từ provinces.province_code — derived từ 3 chữ số đầu CCCD",
         "email_candidate///string///255///_NULL///NULL///__///Email address captured at send time; compared on confirm to detect mid-flight email changes"
+    ],
+    [
+        "deployment_targets///add///__///",
+        "readiness_response_id///unsignedBigInteger///__///_NULL///NULL///->constrained('survey_responses')->onDelete('set null')///__",
+        "readiness_score///unsignedTinyInteger///__///_NULL///NULL///__///0-100 readiness score; null = not assessed yet",
+        "data_collection_response_id///unsignedBigInteger///__///_NULL///NULL///->constrained('survey_responses')->onDelete('set null')///__"
+    ],
+    [
+        "vertical_templates///add///__///",
+        "data_collection_template_slug///string///100///_NULL///NULL///__///slug survey template thu thập dữ liệu thực địa — ví dụ: data_collection_v1",
+        "export_config///json///__///_NULL///NULL///__///Optional export config JSON (sheets, columns, source mappings) for future vertical-specific export formats"
     ]
 ]

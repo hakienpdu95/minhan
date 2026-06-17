@@ -1,0 +1,128 @@
+<?php
+
+namespace Modules\Deployment\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\Models\Organization;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
+use Modules\Deployment\Actions\AdvancePhaseAction;
+use Modules\Deployment\Actions\CreateDeploymentTargetAction;
+use Modules\Deployment\Data\CreateDeploymentTargetData;
+use Modules\Deployment\Models\DeploymentTarget;
+use Modules\Deployment\Queries\ListDeploymentTargetsHandler;
+use Modules\Deployment\Queries\ListDeploymentTargetsQuery;
+use Modules\Employee\Models\Employee;
+use Modules\Project\Models\Project;
+
+class DeploymentTargetController extends Controller
+{
+    public function index(Request $request): View
+    {
+        $this->authorize('viewAny', DeploymentTarget::class);
+
+        $vertical = $request->attributes->get('_vertical');
+
+        $query = new ListDeploymentTargetsQuery(
+            vertical_code: $vertical->code(),
+            phase:         $request->input('phase'),
+            search:        $request->input('search'),
+            project_id:    $request->integer('project_id') ?: null,
+        );
+
+        $targets  = (new ListDeploymentTargetsHandler)->handle($query)->paginate(20)->withQueryString();
+        $phases   = $vertical->phases();
+        $projects = Project::where('vertical_code', $vertical->code())->orderBy('name')->get(['id', 'name']);
+
+        return view('deployment::targets.index', compact('vertical', 'targets', 'phases', 'projects'));
+    }
+
+    public function create(Request $request): View
+    {
+        $this->authorize('create', DeploymentTarget::class);
+
+        $vertical  = $request->attributes->get('_vertical');
+        $projects  = Project::where('vertical_code', $vertical->code())->orderBy('name')->get(['id', 'name']);
+        $employees = Employee::orderBy('full_name')->get(['id', 'full_name', 'employee_code']);
+
+        return view('deployment::targets.create', compact('vertical', 'projects', 'employees'));
+    }
+
+    public function store(Request $request, CreateDeploymentTargetAction $action): RedirectResponse
+    {
+        $this->authorize('create', DeploymentTarget::class);
+
+        $vertical = $request->attributes->get('_vertical');
+        $data     = CreateDeploymentTargetData::validateAndCreate($request->all());
+        $target   = $action->handle($data, $vertical);
+
+        return redirect()
+            ->route('deployment.targets.show', ['vertical' => $vertical->code(), 'target' => $target->id])
+            ->with('success', "Đã thêm {$vertical->targetLabel()} thành công.");
+    }
+
+    public function show(Request $request, DeploymentTarget $target): View
+    {
+        $this->authorize('view', $target);
+
+        $vertical = $request->attributes->get('_vertical');
+
+        $target->load([
+            'targetOrganization',
+            'assignedEmployee',
+            'project',
+            'createdBy',
+        ]);
+
+        $checklist   = $target->checklistForPhase($target->current_phase)->get();
+        $phaseProgress = $target->phaseProgress($target->current_phase);
+        $phases      = $vertical->phases();
+        $openIssues  = $target->issues()->where('status', 'open')->count();
+
+        return view('deployment::targets.show', compact(
+            'vertical', 'target', 'checklist', 'phaseProgress', 'phases', 'openIssues'
+        ));
+    }
+
+    public function lookup(Request $request): JsonResponse
+    {
+        $taxCode = trim((string) $request->input('tax_code', ''));
+
+        if (strlen($taxCode) < 8) {
+            return response()->json(['found' => false]);
+        }
+
+        $org = Organization::where('tax_code', $taxCode)->first();
+
+        if (! $org) {
+            return response()->json(['found' => false]);
+        }
+
+        return response()->json([
+            'found' => true,
+            'org'   => [
+                'id'           => $org->id,
+                'name'         => $org->name,
+                'phone'        => $org->phone,
+                'email'        => $org->email,
+                'full_address' => $org->full_address,
+            ],
+        ]);
+    }
+
+    public function advance(Request $request, DeploymentTarget $target, AdvancePhaseAction $action): RedirectResponse
+    {
+        $this->authorize('advance', $target);
+
+        $vertical = $request->attributes->get('_vertical');
+
+        try {
+            $action->handle($target, $vertical);
+            return back()->with('success', 'Đã chuyển sang phase tiếp theo.');
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['advance' => $e->getMessage()]);
+        }
+    }
+}

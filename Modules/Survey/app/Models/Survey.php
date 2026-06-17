@@ -22,6 +22,7 @@ class Survey extends Model
     protected $fillable = [
         'organization_id',
         'title',
+        'description',
         'slug',
         'assessment_code',
         'specialized_set_code',
