@@ -33,6 +33,32 @@ trait BelongsToOrganization
         return $this->belongsTo(Organization::class);
     }
 
+    /**
+     * Override route model binding to bypass OrganizationScope during SubstituteBindings.
+     * The scope uses TenantContext which may not be populated yet when SubstituteBindings
+     * runs in the middleware pipeline. We apply the org filter explicitly instead.
+     */
+    /**
+     * Override route model binding to bypass OrganizationScope.
+     * OrganizationScope adds WHERE 0=1 when TenantContext is unset (before auth/tenant middleware
+     * run). We apply the org filter explicitly when context is available.
+     */
+    public function resolveRouteBinding($value, $field = null): ?static
+    {
+        $query = $this->withoutGlobalScope(OrganizationScope::class)
+            ->where($field ?? $this->getRouteKeyName(), $value);
+
+        // Super-admins can access records from any org; other users are restricted
+        // to their own org (resolved from TenantContext set by IdentifyOrganization).
+        $isSuperAdmin = auth()->check() && auth()->user()->hasRole('super-admin');
+
+        if (! $isSuperAdmin && TenantContext::isSet()) {
+            $query->where($this->getTable() . '.organization_id', TenantContext::getOrganizationId());
+        }
+
+        return $query->first();
+    }
+
     /** Query builder macro: bypass tenant scope for cross-tenant operations (admin only). */
     public function scopeWithoutTenant($query)
     {

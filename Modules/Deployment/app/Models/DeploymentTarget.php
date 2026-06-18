@@ -21,7 +21,15 @@ class DeploymentTarget extends Model
     use BelongsToOrganization;
     use LogsActivity;
 
+    protected static function bootDeploymentTarget(): void
+    {
+        static::creating(function (self $model): void {
+            $model->uuid ??= (string) \Illuminate\Support\Str::uuid();
+        });
+    }
+
     protected $fillable = [
+        'uuid',
         'organization_id',
         'project_id',
         'vertical_code',

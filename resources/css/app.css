@@ -164,6 +164,10 @@ body { margin: 0; padding: 0; background: #f1f5f9; }
 .nav-link:hover { background: #f1f5f9; color: #1e293b; }
 .nav-link.active { background: #ede9fe; color: #6366f1; }
 .nav-link .nav-icon { width: 18px; height: 18px; flex-shrink: 0; }
+.nav-link-sub { padding-left: 22px; font-size: 12.5px; color: #94a3b8; }
+.nav-link-sub .nav-icon { width: 15px; height: 15px; opacity: .7; }
+.nav-link-sub:hover { color: #6366f1; }
+.nav-link-sub.active { background: #ede9fe; color: #6366f1; }
 .nav-summary { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; font-size: 13.5px; font-weight: 500; color: #64748b; cursor: pointer; transition: background .15s, color .15s; list-style: none; user-select: none; }
 .nav-summary::-webkit-details-marker { display: none; }
 .nav-summary:hover { background: #f1f5f9; color: #1e293b; }

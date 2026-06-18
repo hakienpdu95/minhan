@@ -39,10 +39,10 @@ class ProjectController extends Controller
 
     public function index()
     {
-        $orgId = TenantContext::getOrganizationId();
+        $orgId        = TenantContext::getOrganizationId();
+        $isSuperAdmin = auth()->user()?->hasRole('super-admin') ?? false;
 
-        $counts = Project::withoutTenant()
-            ->where('organization_id', $orgId)
+        $countQuery = Project::withoutTenant()
             ->selectRaw(
                 'COUNT(*) as total_all,
                  SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as total_active,
@@ -54,8 +54,13 @@ class ProjectController extends Controller
                     ProjectStatus::Completed->value,
                     ProjectStatus::Cancelled->value,
                 ]
-            )
-            ->first();
+            );
+
+        if (! $isSuperAdmin) {
+            $countQuery->where('organization_id', $orgId);
+        }
+
+        $counts = $countQuery->first();
 
         $totalAll      = (int) ($counts->total_all      ?? 0);
         $totalActive   = (int) ($counts->total_active   ?? 0);
@@ -70,21 +75,27 @@ class ProjectController extends Controller
             ->map(fn ($p) => ['value' => $p->value, 'text' => $p->label()])
             ->all();
 
-        $branches = Branch::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->where('status', 'active')
-            ->orderBy('name')
-            ->get(['id', 'name', 'code'])
-            ->map(fn ($b) => ['value' => $b->id, 'text' => $b->name . ' (' . $b->code . ')'])
-            ->all();
+        // Branch/dept filters only make sense when scoped to one org
+        $branches    = [];
+        $departments = [];
 
-        $departments = Department::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->where('status', 'active')
-            ->orderBy('name')
-            ->get(['id', 'name', 'code'])
-            ->map(fn ($d) => ['value' => $d->id, 'text' => $d->name . ' (' . $d->code . ')'])
-            ->all();
+        if (! $isSuperAdmin && $orgId) {
+            $branches = Branch::withoutTenant()
+                ->where('organization_id', $orgId)
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name', 'code'])
+                ->map(fn ($b) => ['value' => $b->id, 'text' => $b->name . ' (' . $b->code . ')'])
+                ->all();
+
+            $departments = Department::withoutTenant()
+                ->where('organization_id', $orgId)
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name', 'code'])
+                ->map(fn ($d) => ['value' => $d->id, 'text' => $d->name . ' (' . $d->code . ')'])
+                ->all();
+        }
 
         return view('project::index', compact(
             'totalAll', 'totalActive', 'totalPlanning', 'totalDone',

@@ -26,6 +26,8 @@ class ListProjectsHandler implements QueryHandlerInterface
 
         $sortDir = $query->sortDir === 'asc' ? 'asc' : 'desc';
 
+        $isSuperAdmin = auth()->user()?->hasRole('super-admin') ?? false;
+
         $q = Project::withoutTenant()
             ->select('projects.*')
             ->withCount('activeMembers')
@@ -33,8 +35,11 @@ class ListProjectsHandler implements QueryHandlerInterface
                 'branch:id,name,code',
                 'department:id,name,code',
                 'owner:id,full_name,employee_code',
-            ])
-            ->where('projects.organization_id', TenantContext::getOrganizationId());
+            ]);
+
+        if (! $isSuperAdmin) {
+            $q->where('projects.organization_id', TenantContext::getOrganizationId());
+        }
 
         // ── Text search (OR) ────────────────────────────────────────────────
         if ($query->search !== null && $query->search !== '') {

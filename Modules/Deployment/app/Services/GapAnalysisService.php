@@ -5,6 +5,7 @@ namespace Modules\Deployment\Services;
 class GapAnalysisService
 {
     private const RECOMMENDATIONS = [
+        // readiness_v1 domains
         'legal' => [
             'title'   => 'Hoàn thiện hồ sơ pháp lý',
             'actions' => [
@@ -37,13 +38,45 @@ class GapAnalysisService
                 'Thiết lập lịch cập nhật dữ liệu định kỳ (tuần/tháng) và phân công người thực hiện.',
             ],
         ],
+
+        // TXNG readiness domains
+        'infrastructure' => [
+            'title'   => 'Nâng cấp hạ tầng kỹ thuật',
+            'actions' => [
+                'Trang bị smartphone (Android 9+) hoặc laptop để nhập liệu và chụp ảnh thực địa.',
+                'Kiểm tra và cải thiện kết nối Internet tại văn phòng HTX và vùng sản xuất chính.',
+                'Cài đặt ứng dụng CheckVN và thử nghiệm quét mã QR tại thực địa.',
+            ],
+        ],
+        'personnel' => [
+            'title'   => 'Phát triển năng lực nhân sự',
+            'actions' => [
+                'Bổ nhiệm 1–2 nhân sự chuyên trách TXNG và đào tạo sử dụng hệ thống.',
+                'Tổ chức buổi đào tạo Excel cơ bản và chụp ảnh thực địa đạt chuẩn.',
+                'Lập kế hoạch phân công nhập liệu theo ca/tuần để dữ liệu được cập nhật đều đặn.',
+            ],
+        ],
+        'data_readiness' => [
+            'title'   => 'Chuẩn bị và số hóa dữ liệu',
+            'actions' => [
+                'Lập nhật ký canh tác/sản xuất cho vụ hiện tại trước khi triển khai hệ thống.',
+                'Chụp ảnh thực địa khu vực trồng: lô, cây, vùng thu hoạch với đủ ánh sáng và góc chụp.',
+                'Đo GPS toàn bộ vùng trồng và lưu lại tọa độ ranh giới lô thửa.',
+                'Hoàn thiện hồ sơ pháp lý: ĐKKD, MST, và các giấy chứng nhận OCOP/ATTP nếu có.',
+            ],
+        ],
     ];
 
     private const DOMAIN_LABELS = [
+        // readiness_v1
         'legal'   => 'Pháp lý & Giấy tờ',
         'hr'      => 'Nhân sự & Năng lực',
         'infra'   => 'Hạ tầng & Công nghệ',
         'process' => 'Quy trình & Dữ liệu',
+        // TXNG readiness
+        'infrastructure'  => 'Hạ tầng kỹ thuật',
+        'personnel'       => 'Nhân sự & năng lực',
+        'data_readiness'  => 'Dữ liệu hiện có',
     ];
 
     /**
@@ -52,9 +85,10 @@ class GapAnalysisService
      */
     public function analyze(array $domainScores): array
     {
-        if (empty($domainScores)) return [];
+        if (empty($domainScores)) {
+            return [];
+        }
 
-        // Sort by score ascending (weakest first)
         asort($domainScores);
 
         $gaps = [];
@@ -62,10 +96,12 @@ class GapAnalysisService
             $score    = $data['score'];
             $priority = $this->priority($score);
 
-            if ($priority === null) continue; // score ≥ 80 → no gap
+            if ($priority === null) {
+                continue;
+            }
 
             $rec = self::RECOMMENDATIONS[$code] ?? [
-                'title'   => "Cải thiện domain {$code}",
+                'title'   => "Cải thiện lĩnh vực {$code}",
                 'actions' => ['Xem xét và cải thiện các chỉ tiêu trong lĩnh vực này.'],
             ];
 
@@ -79,7 +115,7 @@ class GapAnalysisService
             ];
         }
 
-        return array_slice($gaps, 0, 3); // top 3 gaps
+        return array_slice($gaps, 0, 3);
     }
 
     private function priority(int $score): ?string

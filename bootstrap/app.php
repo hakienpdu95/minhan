@@ -29,7 +29,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // InjectRequestId phải chạy đầu tiên để tất cả request đều có X-Request-Id
         $middleware->prepend(\App\Http\Middleware\RemoveServerHeaders::class);
         $middleware->prepend(\Modules\ActivityLog\Http\Middleware\InjectRequestId::class);
+        // IdentifyOrganization phải chạy SAU StartSession nhưng TRƯỚC SubstituteBindings
+        // để TenantContext được set trước khi route model binding resolve tenant-scoped models.
         $middleware->web(\App\Http\Middleware\IdentifyOrganization::class);
+        $middleware->prependToPriorityList(
+            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\IdentifyOrganization::class
+        );
         $middleware->appendToGroup('web', \Modules\ActivityLog\Http\Middleware\CaptureHttpContext::class);
         $middleware->appendToGroup('web', \Modules\Subscription\Features\FeatureGate\Http\Middleware\CheckSubscription::class);
         $middleware->appendToGroup('web', \App\Http\Middleware\SecurityHeaders::class);

@@ -46,21 +46,33 @@ class DeploymentReadinessController extends Controller
         $response = $target->readinessResponse;
         $surveyId = $response->survey_id;
 
-        // Load sections with their fields for the form
+        // Load sections with their fields and options for the form
         $sections = SurveySection::where('survey_id', $surveyId)
-            ->with(['fields' => fn($q) => $q->orderBy('sort_order')])
+            ->with(['fields' => fn($q) => $q->with('options')->orderBy('sort_order')])
             ->orderBy('sort_order')
             ->get();
 
-        // Load previously answered values keyed by field_id
+        // Numeric answers (Rating, NPS, Number) keyed by field_id
         $existingAnswers = $response->answers()
             ->whereNotNull('value_number')
-            ->pluck('value_number', 'field_id');
+            ->pluck('value_number', 'field_id')
+            ->toArray();
+
+        // String answers (Radio, Select, Checkbox) — checkbox may have multiple rows
+        $existingStrings = $response->answers()
+            ->whereNotNull('value_string')
+            ->get()
+            ->groupBy('field_id')
+            ->map(fn($grp) => $grp->count() > 1
+                ? $grp->pluck('value_string')->all()   // Checkbox: array of selected values
+                : $grp->first()?->value_string          // Radio/Select: single string
+            )
+            ->toArray();
 
         $orgName = $target->targetOrganization?->name ?? "Target #{$target->id}";
 
         return view('deployment::readiness.fill', compact(
-            'vertical', 'target', 'sections', 'existingAnswers', 'orgName'
+            'vertical', 'target', 'sections', 'existingAnswers', 'existingStrings', 'orgName'
         ));
     }
 
@@ -70,11 +82,11 @@ class DeploymentReadinessController extends Controller
     {
         $this->authorize('update', $target);
 
-        $vertical = $request->attributes->get('_vertical');
-        $answers  = $request->input('answers', []);
+        $vertical        = $request->attributes->get('_vertical');
+        $answers         = $request->input('answers', []);
+        $checkboxAnswers = $request->input('answers_cb', []);
 
-        // answers[field_id] = rating
-        $result = $action->handle($target, array_map('intval', $answers));
+        $result = $action->handle($target, $answers, $checkboxAnswers);
 
         return redirect()
             ->route('deployment.readiness.show', ['vertical' => $vertical->code(), 'target' => $target->id])
@@ -94,8 +106,19 @@ class DeploymentReadinessController extends Controller
         $gaps   = [];
 
         if ($target->readiness_response_id) {
-            $result = (new ReadinessScoreService)->compute($target->readinessResponse);
-            $gaps   = (new GapAnalysisService)->analyze($result['domains']);
+            $scoreService = new ReadinessScoreService;
+            $result       = $scoreService->compute($target->readinessResponse);
+
+            // The stored readiness_score is the authoritative overall score
+            // (may have been set via seeder or a previous submission).
+            // Domain breakdown from the service is still shown for gap analysis.
+            if ($target->readiness_score !== null) {
+                $result['score'] = $target->readiness_score;
+                $result['band']  = $scoreService->band($target->readiness_score);
+                $result['color'] = $scoreService->color($target->readiness_score);
+            }
+
+            $gaps = (new GapAnalysisService)->analyze($result['domains']);
         }
 
         return view('deployment::readiness.show', compact(

@@ -746,13 +746,26 @@
         <p class="section-title" style="margin-top:16px;">Triển khai</p>
         <div class="nav-group">
             <a href="{{ route('deployment.landing') }}"
-               class="nav-link {{ request()->routeIs('deployment.landing') || request()->routeIs('deployment.*') ? 'active' : '' }}">
+               class="nav-link {{ request()->routeIs('deployment.landing') ? 'active' : '' }}">
                 <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                          d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+                          d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                 </svg>
-                <span class="nav-label">Triển khai</span>
+                <span class="nav-label">Hub triển khai</span>
             </a>
+
+            @if(isset($activeVerticals) && $activeVerticals->isNotEmpty())
+            @foreach($activeVerticals as $av)
+            <a href="{{ route('deployment.dashboard', ['vertical' => $av->code()]) }}"
+               class="nav-link nav-link-sub {{ request()->routeIs('deployment.*') && request()->route('vertical') === $av->code() ? 'active' : '' }}">
+                <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                <span class="nav-label">{{ $av->label() }}</span>
+            </a>
+            @endforeach
+            @endif
         </div>
         @endauth
 

@@ -51,10 +51,15 @@
             <h3 class="font-semibold text-sm mb-4">Điểm theo domain</h3>
             @php
                 $domainLabels = [
+                    // readiness_v1 domains
                     'legal'   => 'Pháp lý & Giấy tờ',
                     'hr'      => 'Nhân sự & Năng lực',
                     'infra'   => 'Hạ tầng & Công nghệ',
                     'process' => 'Quy trình & Dữ liệu',
+                    // TXNG readiness domains
+                    'infrastructure'  => 'Hạ tầng kỹ thuật',
+                    'personnel'       => 'Nhân sự & năng lực',
+                    'data_readiness'  => 'Dữ liệu hiện có',
                 ];
             @endphp
             <div class="space-y-3">

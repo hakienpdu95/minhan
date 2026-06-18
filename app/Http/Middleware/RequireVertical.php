@@ -38,6 +38,9 @@ class RequireVertical
 
         $request->attributes->set('_vertical', $vertical);
 
+        // Exclude from parametersWithoutNulls() so the {vertical} string doesn't shift model-bound params in ControllerDispatcher.
+        $request->route()->setParameter('vertical', null);
+
         return $next($request);
     }
 }
