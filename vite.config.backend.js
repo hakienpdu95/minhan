@@ -96,6 +96,7 @@ const JS_OUTPUT = {
   'subscription':           'assets/modules/subscription.[hash].js',
   'ai-copilot':             'assets/modules/ai-copilot.[hash].js',
   'report':                 'assets/modules/report.[hash].js',
+  'deployment':             'assets/modules/deployment.[hash].js',
 };
 
 /** CSS asset name → output path.
@@ -142,6 +143,7 @@ const CSS_OUTPUT = {
   'subscription.css':           'assets/modules/subscription.[hash].css',
   'ai-copilot.css':             'assets/modules/ai-copilot.[hash].css',
   'report.css':                 'assets/modules/report.[hash].css',
+  'deployment.css':             'assets/modules/deployment.[hash].css',
 };
 
 // ─── Module input entries ─────────────────────────────────────────────
@@ -240,6 +242,9 @@ const MODULE_ENTRIES = [
   // Report
   'Modules/Report/resources/assets/sass/report.scss',
   'Modules/Report/resources/assets/js/report.js',
+  // Deployment
+  'Modules/Deployment/resources/assets/sass/deployment.scss',
+  'Modules/Deployment/resources/assets/js/deployment.js',
 ];
 
 // ─────────────────────────────────────────────────────────────────────

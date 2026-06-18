@@ -76,7 +76,7 @@ class DeploymentTargetController extends Controller
             'createdBy',
         ]);
 
-        $checklist   = $target->checklistForPhase($target->current_phase)->get();
+        $checklist   = $target->checklistForPhase($target->current_phase)->with('doneBy')->get();
         $phaseProgress = $target->phaseProgress($target->current_phase);
         $phases      = $vertical->phases();
         $openIssues  = $target->issues()->where('status', 'open')->count();

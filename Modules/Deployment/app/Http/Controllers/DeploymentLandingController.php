@@ -17,9 +17,10 @@ class DeploymentLandingController extends Controller
         $orgId        = TenantContext::getOrganizationId();
         $isSuperAdmin = $request->user()?->hasRole('super-admin') ?? false;
 
-        $verticals         = collect();
-        $targetsByVertical = [];
+        $verticals          = collect();
+        $targetsByVertical  = [];
         $projectsByVertical = [];
+        $openIssuesByVertical = [];
 
         if ($orgId || $isSuperAdmin) {
             // Super-admin sees all active verticals across orgs; others see their own org's
@@ -54,6 +55,13 @@ class DeploymentLandingController extends Controller
                     $targetsByVertical[$v->code()] = $targets;
                 }
 
+                $targetIds = $targets->pluck('id');
+                $openIssuesByVertical[$v->code()] = $targetIds->isNotEmpty()
+                    ? \Modules\Deployment\Models\DeploymentIssue::whereIn('deployment_target_id', $targetIds)
+                        ->whereIn('status', [\Modules\Deployment\Enums\IssueStatus::Open->value, \Modules\Deployment\Enums\IssueStatus::InProgress->value])
+                        ->count()
+                    : 0;
+
                 $projectQuery = $isSuperAdmin
                     ? Project::withoutTenant()->where('vertical_code', $v->code())
                     : Project::where('vertical_code', $v->code());
@@ -65,6 +73,6 @@ class DeploymentLandingController extends Controller
             }
         }
 
-        return view('deployment::landing', compact('verticals', 'targetsByVertical', 'projectsByVertical', 'isSuperAdmin'));
+        return view('deployment::landing', compact('verticals', 'targetsByVertical', 'projectsByVertical', 'openIssuesByVertical', 'isSuperAdmin'));
     }
 }

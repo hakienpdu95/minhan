@@ -26,8 +26,15 @@ class LogProgressData extends Data
     public static function messages(): array
     {
         return [
-            'percent.min' => 'Phần trăm không được nhỏ hơn 0.',
-            'percent.max' => 'Phần trăm không được lớn hơn 100.',
+            'deployment_target_id.required' => 'Vui lòng chọn đối tượng triển khai.',
+            'deployment_target_id.exists'   => 'Đối tượng triển khai không hợp lệ.',
+            'phase.required'                => 'Vui lòng nhập phase hiện tại.',
+            'phase.max'                     => 'Tên phase không được vượt quá 50 ký tự.',
+            'percent.required'              => 'Vui lòng nhập % hoàn thành.',
+            'percent.integer'               => '% hoàn thành phải là số nguyên.',
+            'percent.min'                   => '% hoàn thành không được nhỏ hơn 0.',
+            'percent.max'                   => '% hoàn thành không được lớn hơn 100.',
+            'remark.max'                    => 'Ghi chú không được vượt quá 2000 ký tự.',
         ];
     }
 }

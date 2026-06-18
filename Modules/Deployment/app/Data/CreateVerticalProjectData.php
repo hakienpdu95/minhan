@@ -32,8 +32,16 @@ class CreateVerticalProjectData extends Data
     public static function messages(): array
     {
         return [
-            'name.required' => 'Vui lòng nhập tên dự án.',
-            'code.required' => 'Vui lòng nhập mã dự án.',
+            'name.required'             => 'Vui lòng nhập tên dự án.',
+            'name.max'                  => 'Tên dự án không được vượt quá 255 ký tự.',
+            'code.required'             => 'Vui lòng nhập mã dự án.',
+            'code.max'                  => 'Mã dự án không được vượt quá 50 ký tự.',
+            'status.required'           => 'Vui lòng chọn trạng thái dự án.',
+            'status.enum'               => 'Trạng thái dự án không hợp lệ.',
+            'description.max'           => 'Mô tả không được vượt quá 2000 ký tự.',
+            'start_date.date_format'    => 'Ngày bắt đầu phải có định dạng YYYY-MM-DD.',
+            'end_date.date_format'      => 'Ngày kết thúc phải có định dạng YYYY-MM-DD.',
+            'end_date.after_or_equal'   => 'Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.',
         ];
     }
 }

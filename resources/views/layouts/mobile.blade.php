@@ -29,16 +29,16 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
             </svg>
         </a>
-        @endhasSection
+        @endif
         <div class="flex-1 min-w-0">
             <p class="font-semibold text-sm truncate">@yield('title', 'Khảo sát')</p>
             @hasSection('subtitle')
             <p class="text-xs text-base-content/50 truncate">@yield('subtitle')</p>
-            @endhasSection
+            @endif
         </div>
         @hasSection('header_action')
         @yield('header_action')
-        @endhasSection
+        @endif
     </div>
 </header>
 
@@ -51,7 +51,7 @@
 <nav class="fixed bottom-0 inset-x-0 bg-base-100 border-t border-base-200 h-16 flex items-center justify-around z-40 safe-area-inset-bottom">
     @yield('bottom_nav')
 </nav>
-@endhasSection
+@endif
 
 @stack('scripts')
 </body>
