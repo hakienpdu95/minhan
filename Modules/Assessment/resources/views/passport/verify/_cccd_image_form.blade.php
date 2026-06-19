@@ -119,7 +119,7 @@
             <span x-show="loading">Đang nhận dạng...</span>
         </button>
         <span x-show="!hasBoth && !hasOne" class="text-xs text-base-content/40">Chọn 2 ảnh để bật xác minh</span>
-        <span x-show="loading" class="text-xs text-base-content/40">Mất khoảng 5–15 giây</span>
+        <span x-show="loading" class="text-xs text-base-content/40">Mất khoảng 20–60 giây</span>
     </div>
     @endif
 

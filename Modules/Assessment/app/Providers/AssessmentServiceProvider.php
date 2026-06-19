@@ -13,8 +13,10 @@ use Modules\Assessment\Services\CampaignEligibility\Guards\SelfOrgGuard;
 use Modules\Assessment\Services\CampaignEligibility\Guards\SuspendedAccountGuard;
 use Modules\Assessment\Services\CampaignEligibility\Guards\TrustLevelGuard;
 use Modules\Assessment\Services\CampaignEligibilityService;
+use App\Shared\Ocr\OcrManager;
+use App\Shared\Ocr\PostProcessors\CccdPostProcessor;
 use Modules\Assessment\Services\Ocr\Contracts\CccdOcrDriverInterface;
-use Modules\Assessment\Services\Ocr\Drivers\FptAiOcrDriver;
+use Modules\Assessment\Services\Ocr\Drivers\TesseractCccdDriver;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class AssessmentServiceProvider extends ModuleServiceProvider
@@ -31,8 +33,12 @@ class AssessmentServiceProvider extends ModuleServiceProvider
     {
         parent::register();
 
-        // Bind OCR driver — đổi FptAiOcrDriver sang driver khác ở đây nếu muốn thay provider.
-        $this->app->bind(CccdOcrDriverInterface::class, FptAiOcrDriver::class);
+        $this->app->bind(CccdOcrDriverInterface::class, function ($app) {
+            return new TesseractCccdDriver(
+                $app->make(OcrManager::class),
+                new CccdPostProcessor(),
+            );
+        });
 
         // Campaign join eligibility pipeline.
         // Guards run in order — first block wins. Add/remove guards here to extend rules.

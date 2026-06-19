@@ -286,6 +286,10 @@ class IdentityVerificationController extends Controller
 
     private function submitOcr(Request $request): RedirectResponse
     {
+        // OCR Tesseract có thể mất 15–60s tuỳ chất lượng ảnh và số pass cần chạy.
+        // Tăng timeout cho endpoint này vượt qua giới hạn 30s mặc định của PHP FPM.
+        set_time_limit(120);
+
         $user = $request->user();
 
         $request->validate([
