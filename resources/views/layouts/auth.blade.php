@@ -23,6 +23,10 @@
     </script>
     @endif
 
+    @if (\Modules\Auth\Fortify\ValidateTurnstile::isActive())
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    @endif
+
     @stack('scripts')
 </body>
 </html>
