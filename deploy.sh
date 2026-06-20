@@ -22,8 +22,11 @@ cd "$APP_DIR"
 
 # ── 1. Kéo code mới ─────────────────────────────────────────
 log "[1/7] Pulling latest code..."
+# Bảo vệ .env khỏi bị git reset --hard ghi đè
+[ -f "$APP_DIR/.env" ] && cp "$APP_DIR/.env" /tmp/.env.deploy.bak
 git fetch origin
 git reset --hard "origin/$BRANCH"
+[ -f /tmp/.env.deploy.bak ] && mv /tmp/.env.deploy.bak "$APP_DIR/.env"
 ok "Code updated → $(git log --oneline -1)"
 
 # ── 2. PHP dependencies ──────────────────────────────────────
@@ -41,6 +44,8 @@ ok "Frontend built → public/build/"
 
 # ── 4. Maintenance mode ──────────────────────────────────────
 log "[4/7] Enabling maintenance mode..."
+# Fix storage permissions trước khi artisan chạy
+sudo /usr/local/bin/fix-minhan-build 2>/dev/null || true
 $PHP artisan down --retry=10
 trap '$PHP artisan up; err "Deploy failed — maintenance mode disabled"' ERR
 
