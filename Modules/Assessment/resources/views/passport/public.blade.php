@@ -119,9 +119,7 @@
           Competency Passport · Snapshot: {{ $entry->snapshot_at?->format('d/m/Y') ?? '—' }}
         </div>
         <div class="badges">
-          @if(($entry->user?->trust_level ?? 0) >= 3)
-            <span class="badge badge-verified">🪪 Danh tính xác minh</span>
-          @elseif(($entry->user?->trust_level ?? 0) >= 2)
+          @if(($entry->user?->trust_level ?? 0) >= 2)
             <span class="badge">📱 Điện thoại</span>
           @elseif(($entry->user?->trust_level ?? 0) >= 1)
             <span class="badge">✉ Email xác minh</span>

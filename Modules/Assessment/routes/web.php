@@ -161,14 +161,10 @@ Route::middleware(['auth', 'verified'])->prefix('passport')->name('passport.')->
     // ── Phase 3: eKYC — static prefix must come BEFORE {passport} wildcard ──
     Route::prefix('/verify')->name('verify.')->group(function () {
         Route::get('/',                       [IdentityVerificationController::class, 'index'])->name('index');
-        // Lv1 — Email
-        Route::post('/email/send',            [IdentityVerificationController::class, 'emailSend'])->name('email.send');
-        Route::get('/email/confirm/{id}',     [IdentityVerificationController::class, 'emailConfirm'])->name('email.confirm');
+        // Lv1 — Email: dùng native Fortify (verification.send / verification.verify)
         // Lv2 — Phone OTP
         Route::post('/phone/request',         [IdentityVerificationController::class, 'phoneRequest'])->name('phone.request');
         Route::post('/phone/confirm',         [IdentityVerificationController::class, 'phoneConfirm'])->name('phone.confirm');
-        // Lv3 — CCCD
-        Route::post('/cccd',                  [IdentityVerificationController::class, 'cccdSubmit'])->name('cccd');
     });
 
     // {passport} resolved by uuid (getRouteKeyName = 'uuid') — must be LAST

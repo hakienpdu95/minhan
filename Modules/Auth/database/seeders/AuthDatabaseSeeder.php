@@ -54,14 +54,18 @@ class AuthDatabaseSeeder extends Seeder
     // ── Tạo 2 tài khoản quản trị hệ thống mặc định ───────────────────
     private function createSystemAdmins(Role $role): void
     {
+        $now = now();
+
         $admins = [
             [
-                'name'  => 'System Administrator',
-                'email' => 'admin@system.local',
+                'name'         => 'System Administrator',
+                'email'        => 'admin@system.local',
+                'phone_number' => '0900000001',
             ],
             [
-                'name'  => 'Super Administrator',
-                'email' => 'super-admin@system.local',
+                'name'         => 'Super Administrator',
+                'email'        => 'super-admin@system.local',
+                'phone_number' => '0900000002',
             ],
         ];
 
@@ -70,11 +74,26 @@ class AuthDatabaseSeeder extends Seeder
             $user = User::withoutGlobalScopes()->firstOrCreate(
                 ['email' => $data['email']],
                 [
-                    'name'            => $data['name'],
-                    'password'        => Hash::make('Admin@123!'),
-                    'organization_id' => null,
+                    'name'             => $data['name'],
+                    'password'         => Hash::make('Admin@123!'),
+                    'organization_id'  => null,
+                    // Email + phone pre-verified, trust_level = 2 (bypass toàn bộ eKYC)
+                    'email_verified_at' => $now,
+                    'phone_number'      => $data['phone_number'],
+                    'phone_verified_at' => $now,
+                    'trust_level'       => 2,
                 ]
             );
+
+            // Nếu user đã tồn tại từ seed trước, đảm bảo luôn ở trạng thái fully verified
+            if (! $user->wasRecentlyCreated) {
+                $user->forceFill([
+                    'email_verified_at' => $user->email_verified_at ?? $now,
+                    'phone_number'      => $user->phone_number      ?? $data['phone_number'],
+                    'phone_verified_at' => $user->phone_verified_at ?? $now,
+                    'trust_level'       => max($user->trust_level, 2),
+                ])->save();
+            }
 
             $user->syncRoles($role);
         }

@@ -14,6 +14,7 @@ use App\Models\PushSubscription;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Modules\Assessment\Models\IdentityVerification;
@@ -28,10 +29,10 @@ use Spatie\Permission\Traits\HasRoles;
     'organization_id', 'department', 'is_active', 'last_active_at',
     // Phase 0 — Identity Foundation
     'account_type', 'current_org_id', 'trust_level',
-    'phone_number', 'phone_verified_at', 'national_id_hash',
+    'phone_number', 'phone_verified_at',
 ])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, HasRoles, LogsActivity;

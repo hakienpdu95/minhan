@@ -83,9 +83,7 @@
         <h1>{{ $ownerName ?? $entry->user?->name ?? 'Người dùng' }}</h1>
         <div class="cover-meta">Competency Passport · Snapshot: {{ $entry->snapshot_at?->format('d/m/Y') ?? '—' }}</div>
         <div class="cover-badges">
-          @if(($entry->user?->trust_level ?? 0) >= 3)
-            <span class="chip chip-green">🪪 Danh tính xác minh</span>
-          @elseif(($entry->user?->trust_level ?? 0) >= 2)
+          @if(($entry->user?->trust_level ?? 0) >= 2)
             <span class="chip">📱 Điện thoại</span>
           @elseif(($entry->user?->trust_level ?? 0) >= 1)
             <span class="chip">✉ Email</span>

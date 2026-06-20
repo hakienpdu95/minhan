@@ -2,7 +2,9 @@
 
 namespace Modules\Auth\Providers;
 
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\Messages\MailMessage;
 use Laravel\Fortify\Actions\AttemptToAuthenticate;
 use Laravel\Fortify\Actions\EnsureLoginIsNotThrottled;
 use Laravel\Fortify\Actions\PrepareAuthenticatedSession;
@@ -73,6 +75,16 @@ class AuthServiceProvider extends ModuleServiceProvider
         Fortify::resetPasswordView(
             fn ($request) => view('auth::passwords.reset', ['request' => $request])
         );
+        Fortify::verifyEmailView(fn () => view('auth.verify-email'));
+
+        VerifyEmail::toMailUsing(function (object $notifiable, string $url): MailMessage {
+            return (new MailMessage)
+                ->subject('Xác minh email — ' . config('app.name'))
+                ->greeting('Xin chào ' . ($notifiable->name ?? 'Bạn') . '!')
+                ->line('Nhấn vào nút bên dưới để xác minh địa chỉ email của bạn.')
+                ->action('Xác minh email ngay', $url)
+                ->line('Link có hiệu lực trong 60 phút. Nếu bạn không đăng ký tài khoản, hãy bỏ qua email này.');
+        });
     }
 
     // ── Fortify authentication pipeline ───────────────────────────────

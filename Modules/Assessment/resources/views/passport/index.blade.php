@@ -36,9 +36,7 @@
             <p class="text-sm text-base-content/50">{{ $user->email }}</p>
         </div>
         <div class="flex items-center gap-2">
-            @if($user->trust_level >= 3)
-                <span class="badge badge-success gap-1">🪪 Danh tính xác minh</span>
-            @elseif($user->trust_level >= 2)
+            @if($user->trust_level >= 2)
                 <span class="badge badge-info gap-1">📱 Điện thoại</span>
             @elseif($user->trust_level >= 1)
                 <span class="badge badge-outline gap-1">✉ Email</span>

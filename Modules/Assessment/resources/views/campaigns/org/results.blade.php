@@ -52,9 +52,7 @@
                         @if($revealed)
                         <p class="font-semibold text-base-content">{{ $participation->user?->name }}</p>
                         <p class="text-sm text-base-content/50">{{ $participation->user?->email }}</p>
-                        @if($participation->user?->trust_level >= 3)
-                        <span class="badge badge-success badge-xs mt-0.5">🪪 Xác minh CCCD</span>
-                        @elseif($participation->user?->trust_level >= 2)
+                        @if($participation->user?->trust_level >= 2)
                         <span class="badge badge-info badge-xs mt-0.5">📱 Xác minh ĐT</span>
                         @endif
                         @else

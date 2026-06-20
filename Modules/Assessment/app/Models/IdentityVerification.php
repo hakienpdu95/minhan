@@ -18,7 +18,6 @@ class IdentityVerification extends Model
         'status',
         'verified_at',
         'expires_at',
-        'issuing_province_code',
         'rejection_reason',
         'verification_code',
         'code_expires_at',

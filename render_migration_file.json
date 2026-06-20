@@ -3060,11 +3060,10 @@
     [
         "identity_verifications///__///__///",
         "user_id///unsignedBigInteger///__///NOT_NULL///__///->constrained('users')->onDelete('cascade')///__",
-        "method///string///30///NOT_NULL///__///__///email | phone_otp | cccd_ocr | cccd_chip | vne_id | passport",
+        "method///string///30///NOT_NULL///__///__///email | phone_otp | vne_id | passport",
         "status///string///20///NOT_NULL///'pending'///__///pending | verified | rejected | expired",
         "verified_at///timestamp///__///_NULL///NULL///__///__",
         "expires_at///timestamp///__///_NULL///NULL///__///__",
-        "issuing_province_id///unsignedBigInteger///__///_NULL///NULL///__///FK provinces.id — phi nhạy cảm, dùng cho phân tích địa lý",
         "rejection_reason///string///300///_NULL///NULL///__///__",
         "__index///index///__///__///__///user_id,method|iv_user_method_index///__",
         "__index///index///__///__///__///status|iv_status_index///__",

@@ -127,7 +127,7 @@
                 <div>
                     <label class="label label-text text-sm font-medium pb-1">Trust Level tối thiểu <span class="text-error">*</span></label>
                     <select name="min_trust_level" class="select select-bordered w-full">
-                        @foreach([0=>'Lv0 — Tất cả',1=>'Lv1 — Email',2=>'Lv2 — Điện thoại (khuyến nghị)',3=>'Lv3 — CCCD'] as $lv => $label)
+                        @foreach([0=>'Lv0 — Tất cả',1=>'Lv1 — Email',2=>'Lv2 — Điện thoại (khuyến nghị)'] as $lv => $label)
                         <option value="{{ $lv }}" {{ old('min_trust_level', 2) == $lv ? 'selected' : '' }}>{{ $label }}</option>
                         @endforeach
                     </select>

@@ -22,9 +22,7 @@
                     <p class="text-lg font-bold text-base-content">{{ $user->name }}</p>
                     <p class="text-sm text-base-content/50">{{ $user->email }}</p>
                     <div class="flex gap-1.5 mt-1">
-                        @if($user->trust_level >= 3)
-                            <span class="badge badge-success badge-xs">🪪 CCCD verified</span>
-                        @elseif($user->trust_level >= 2)
+                        @if($user->trust_level >= 2)
                             <span class="badge badge-info badge-xs">📱 Phone verified</span>
                         @elseif($user->trust_level >= 1)
                             <span class="badge badge-outline badge-xs">✉ Email verified</span>

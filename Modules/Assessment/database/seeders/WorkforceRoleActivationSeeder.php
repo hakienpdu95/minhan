@@ -19,6 +19,9 @@ class WorkforceRoleActivationSeeder extends Seeder
 
         // ── 2. Assign roles cho demo employees ───────────────────────────────
         $this->assignRoles();
+
+        // ── 3. Xác minh email + nâng trust_level cho demo employees ──────────
+        $this->verifyEmails();
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -126,5 +129,45 @@ class WorkforceRoleActivationSeeder extends Seeder
                 },
             ])->values()->toArray()
         );
+    }
+
+    private function verifyEmails(): void
+    {
+        // Tất cả 12 demo employees đều được xác minh email (trust_level >= 1)
+        $emails = [
+            'demo.emp01@thuchoc.vn',
+            'demo.emp02@thuchoc.vn',
+            'demo.emp03@thuchoc.vn',
+            'demo.emp04@thuchoc.vn',
+            'demo.emp05@thuchoc.vn',
+            'demo.emp06@thuchoc.vn',
+            'demo.emp07@thuchoc.vn',
+            'demo.emp08@thuchoc.vn',
+            'demo.emp09@thuchoc.vn',
+            'demo.emp10@thuchoc.vn',
+            'demo.emp11@thuchoc.vn',
+            'demo.emp12@thuchoc.vn',
+        ];
+
+        $verifiedAt = now();
+        $updated = 0;
+
+        foreach ($emails as $email) {
+            $rows = DB::table('users')
+                ->where('email', $email)
+                ->where(function ($q) {
+                    $q->whereNull('email_verified_at')
+                      ->orWhere('trust_level', '<', 1);
+                })
+                ->update([
+                    'email_verified_at' => DB::raw('COALESCE(email_verified_at, \'' . $verifiedAt . '\')'),
+                    'trust_level'       => DB::raw('CASE WHEN trust_level < 1 THEN 1 ELSE trust_level END'),
+                    'updated_at'        => $verifiedAt,
+                ]);
+
+            $updated += $rows;
+        }
+
+        $this->command->info("  ✓ Email verified + trust_level ≥ 1 for {$updated} demo user(s)");
     }
 }
