@@ -46,6 +46,8 @@ ok "Frontend built → public/build/"
 log "[4/7] Enabling maintenance mode..."
 # Fix storage permissions trước khi artisan chạy
 sudo /usr/local/bin/fix-minhan-build 2>/dev/null || true
+# Xóa config cache cũ — bắt buộc trước migrate để artisan đọc đúng .env
+$PHP artisan config:clear
 $PHP artisan down --retry=10
 trap '$PHP artisan up; err "Deploy failed — maintenance mode disabled"' ERR
 
