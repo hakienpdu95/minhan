@@ -2,12 +2,15 @@
 
 namespace Modules\Assessment\Notifications;
 
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class InactiveMembersReportNotification extends Notification
+class InactiveMembersReportNotification extends Notification implements ShouldQueue
 {
+    use Queueable;
     public function __construct(
         private readonly Collection $members,
     ) {}

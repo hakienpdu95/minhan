@@ -4,11 +4,14 @@ namespace Modules\Assessment\Notifications;
 
 use App\Models\User;
 use App\Shared\Tenancy\Models\Organization;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class OrgExitPassportReadyMail extends Notification
+class OrgExitPassportReadyMail extends Notification implements ShouldQueue
 {
+    use Queueable;
     public function __construct(
         private readonly User         $user,
         private readonly Organization $org,

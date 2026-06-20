@@ -2,12 +2,15 @@
 
 namespace Modules\Assessment\Notifications;
 
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Modules\Organization\Models\OrganizationMember;
 
-class MemberAutoSuspendedNotification extends Notification
+class MemberAutoSuspendedNotification extends Notification implements ShouldQueue
 {
+    use Queueable;
     public function __construct(
         private readonly OrganizationMember $member,
     ) {}
