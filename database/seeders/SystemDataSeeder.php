@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use Modules\ActivityLog\Database\Seeders\ActivityLogPermissionsSeeder;
 use Modules\AiCopilot\Database\Seeders\AiCopilotDatabaseSeeder;
 use Modules\Assessment\Database\Seeders\AssessmentDatabaseSeeder;
+use Modules\Assessment\Database\Seeders\MarketplaceDemoSeeder;
 use Modules\Auth\Database\Seeders\AuthDatabaseSeeder;
 use Modules\JobPosting\Database\Seeders\JobPostingDatabaseSeeder;
 use Modules\JobTitle\Database\Seeders\JobTitleDatabaseSeeder;
@@ -27,6 +28,9 @@ use Modules\Survey\Database\Seeders\SurveyDatabaseSeeder;
  * Không bao gồm:
  *   - OrganizationDemoSeeder (1000 orgs demo — chỉ chạy thủ công khi cần)
  *   - Các seeder rỗng (Employee, Customer, Branch, Department, Project...)
+ *
+ * Bao gồm demo data:
+ *   - MarketplaceDemoSeeder: 3 free users (trust_level 1-2) + 5 open campaigns
  */
 class SystemDataSeeder extends Seeder
 {
@@ -85,6 +89,9 @@ class SystemDataSeeder extends Seeder
 
             // ── 15. AI Copilot: system agents + system prompts ────────────
             AiCopilotDatabaseSeeder::class,
+
+            // ── 16. Marketplace demo: 3 free users + 5 open campaigns ─────
+            MarketplaceDemoSeeder::class,
         ]);
 
         $this->command->newLine();

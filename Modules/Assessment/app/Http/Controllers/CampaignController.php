@@ -197,10 +197,10 @@ class CampaignController extends Controller
             }
         });
 
-        CreateCampaignPassportEntryJob::dispatch($participation->id)->onQueue('passport');
+        CreateCampaignPassportEntryJob::dispatchSync($participation->id);
 
-        return redirect()->route('campaigns.show', $campaign->uuid)
-            ->with('success', "Nộp bài thành công! Điểm TDWCF: {$tdwcfScore}. Kết quả đã được lưu vào Competency Passport của bạn.");
+        return redirect()->route('passport.index')
+            ->with('success', "Nộp bài thành công! Điểm TDWCF: {$tdwcfScore}. Kết quả đã được lưu vào Competency Passport.");
     }
 
     /**
@@ -267,7 +267,7 @@ class CampaignController extends Controller
 
         SandboxSession::create([
             'uuid'                 => (string) Str::uuid(),
-            'organization_id'      => null,   // personal context — not org-scoped
+            'organization_id'      => $user->organization_id ?? $campaign->organization_id,
             'workforce_profile_id' => null,
             'user_id'              => $user->id,
             'sandbox_task_id'      => $task->id,

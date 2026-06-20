@@ -53,11 +53,21 @@ class CreateCampaignPassportEntryJob implements ShouldQueue
                 'visibility'           => 'private',
             ]);
 
+            $domainNames = [
+                'D1' => 'Năng lực số cơ bản',
+                'D2' => 'Năng lực dữ liệu',
+                'D3' => 'Năng lực AI',
+                'D4' => 'Quy trình & Tự động hoá',
+                'D5' => 'Đổi mới & Sáng kiến',
+                'D6' => 'Hiệu suất & KPI',
+            ];
+
             // Domain scores snapshot
             foreach ($participation->scores as $s) {
                 PassportDomainScore::create([
                     'passport_entry_id' => $entry->id,
                     'domain_code'       => $s->domain_code,
+                    'domain_name'       => $domainNames[$s->domain_code] ?? $s->domain_code,
                     'score'             => $s->score,
                 ]);
             }

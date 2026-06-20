@@ -99,7 +99,7 @@
             <button class="avatar-btn" id="userBtn">
                 <img src="https://api.dicebear.com/9.x/initials/svg?seed={{ urlencode(auth()->user()->name ?? 'Admin') }}&backgroundColor=6366f1&fontFamily=Arial&fontSize=40&fontWeight=700" alt="Avatar">
                 <span class="av-name">{{ auth()->user()->name ?? 'Admin' }}</span>
-                <svg class="av-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m6 9 6 6 6-6"/></svg>
+                <svg class="av-chevron" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m6 9 6 6 6-6"/></svg>
             </button>
             <div class="dd-panel user-panel" id="userPanel">
                 <div class="user-email">{{ auth()->user()->email ?? 'admin@example.com' }}</div>

@@ -2880,7 +2880,7 @@
         "sandbox_sessions///__///__///",
         "organization_id///unsignedBigInteger///__///NOT_NULL///__///__///__",
         "sandbox_task_id///unsignedBigInteger///__///NOT_NULL///__///__///__",
-        "workforce_profile_id///unsignedBigInteger///__///NOT_NULL///__///__///__",
+        "workforce_profile_id///unsignedBigInteger///__///_NULL///NULL///__///__",
         "user_id///unsignedBigInteger///__///NOT_NULL///__///__///__",
         "status///string///20///NOT_NULL///'in_progress'///__///in_progress|submitted|evaluating|completed|abandoned",
         "started_at///timestamp///__///NOT_NULL///__///__///__",

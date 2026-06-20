@@ -93,7 +93,7 @@ body { margin: 0; padding: 0; background: #f1f5f9; }
 
 .avatar-btn { display: flex; align-items: center; gap: 8px; border: none; background: transparent; cursor: pointer; padding: 4px 10px 4px 4px; border-radius: 999px; transition: background .15s; }
 .avatar-btn:hover { background: #f1f5f9; }
-.avatar-btn img { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #6366f1; }
+.avatar-btn img { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #6366f1; }
 .avatar-btn .av-name { font-size: 13px; font-weight: 500; color: #334155; }
 @media (max-width: 639px) { .av-name { display: none; } }
 

@@ -147,13 +147,26 @@
                 <div class="flex items-center gap-3 min-w-0">
                     @if($entry->source_org_logo_path)
                     <img src="{{ Storage::url($entry->source_org_logo_path) }}" alt="" class="w-10 h-10 rounded-lg object-cover shrink-0">
+                    @elseif($entry->entry_type === 'campaign_result')
+                    <div class="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
                     @else
                     <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                         <svg class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                     </div>
                     @endif
                     <div class="min-w-0">
-                        <p class="font-semibold text-base-content">{{ $entry->source_org_name ?? 'Tổ chức không xác định' }}</p>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <p class="font-semibold text-base-content">{{ $entry->source_org_name ?? 'Tổ chức không xác định' }}</p>
+                            @if($entry->entry_type === 'campaign_result')
+                            <span class="badge badge-success badge-xs">Đánh giá Marketplace</span>
+                            @endif
+                        </div>
+                        @if($entry->entry_type === 'campaign_result')
+                        <p class="text-sm text-base-content/50">Kết quả đánh giá năng lực số</p>
+                        <p class="text-xs text-base-content/40 mt-0.5">{{ $entry->snapshot_at?->format('d/m/Y') }}</p>
+                        @else
                         <p class="text-sm text-base-content/50">
                             {{ $entry->job_title_at_exit ?? '—' }}
                             @if($entry->department_at_exit) · {{ $entry->department_at_exit }} @endif
@@ -164,6 +177,7 @@
                             {{ $entry->tenure_end?->format('m/Y') ?? '?' }}
                             @if($entry->tenure_months) ({{ $entry->tenure_months }} tháng) @endif
                         </p>
+                        @endif
                     </div>
                 </div>
 
