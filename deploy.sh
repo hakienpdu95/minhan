@@ -33,6 +33,8 @@ ok "Composer done"
 
 # ── 3. Frontend build ────────────────────────────────────────
 log "[3/7] Building frontend assets..."
+# Đảm bảo deploy user có quyền xóa/ghi build artifacts từ lần deploy trước
+sudo chown -R deploy:www-data "$APP_DIR/public/build" 2>/dev/null || true
 npm ci --prefer-offline --silent
 npm run build --silent
 ok "Frontend built → public/build/"
