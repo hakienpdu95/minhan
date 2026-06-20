@@ -107,6 +107,9 @@ sudo apt install -y \
   php8.5-zip php8.5-bcmath php8.5-intl \
   php8.5-gd php8.5-soap
 
+# Nếu composer báo thiếu extension, cài bổ sung:
+# sudo apt install -y php8.5-curl php8.5-xml php8.5-zip && sudo systemctl restart php8.5-fpm
+
 # Nếu php8.5-cli chưa được cài kèm, cài thêm:
 sudo apt install -y php8.5-cli
 
@@ -404,13 +407,13 @@ sudo -u deploy ssh -T git@github.com
 sudo mkdir -p /var/www/devminhan
 sudo chown deploy:www-data /var/www/devminhan
 sudo -u deploy git clone git@github.com:hakienpdu95/devminhan.git /var/www/devminhan
-chmod +x /var/www/devminhan/deploy.sh
+sudo chmod +x /var/www/devminhan/deploy.sh
 
 # Project quản trị — quantri.thuchocvn.vn
 sudo mkdir -p /var/www/minhan
 sudo chown deploy:www-data /var/www/minhan
 sudo -u deploy git clone git@github.com:hakienpdu95/minhan.git /var/www/minhan
-chmod +x /var/www/minhan/deploy.sh
+sudo chmod +x /var/www/minhan/deploy.sh
 ```
 
 ### 5.3 File .env — devminhan (thuchocvn.vn)
@@ -492,9 +495,10 @@ LARAVEL_PDF_NODE_MODULES_PATH=/var/www/minhan/node_modules
 
 ```bash
 cd /var/www/devminhan
+sudo chown -R deploy:www-data /var/www/devminhan
+sudo -u deploy composer install --no-dev --optimize-autoloader --no-interaction
+sudo -u deploy npm ci && sudo -u deploy npm run build
 php8.5 artisan key:generate
-composer install --no-dev --optimize-autoloader --no-interaction
-npm ci && npm run build
 php8.5 artisan migrate --force
 php8.5 artisan db:seed --force
 php8.5 artisan storage:link
@@ -506,9 +510,10 @@ php8.5 artisan view:cache && php8.5 artisan event:cache
 
 ```bash
 cd /var/www/minhan
+sudo chown -R deploy:www-data /var/www/minhan
+sudo -u deploy composer install --no-dev --optimize-autoloader --no-interaction
+sudo -u deploy npm ci && sudo -u deploy npm run build
 php8.5 artisan key:generate
-composer install --no-dev --optimize-autoloader --no-interaction
-npm ci && npm run build
 php8.5 artisan migrate --force
 php8.5 artisan db:seed --force
 php8.5 artisan storage:link
@@ -618,7 +623,38 @@ sudo crontab -u www-data -e
 
 ## 7. GitHub Actions — Auto Deploy
 
-Quy trình: **push lên `main`** → GitHub Actions trigger → SSH vào VPS → chạy `deploy.sh`.
+Quy trình: **push git tag** → GitHub Actions trigger → SSH vào VPS → chạy `deploy.sh`.
+
+### 7.0 Tạo Personal Access Token (PAT)
+
+Token dùng để `git push` từ máy local lên GitHub — cần có scope `workflow` để push file `.github/workflows/`.
+
+```
+GitHub → Avatar → Settings
+→ Developer settings → Personal access tokens → Tokens (classic)
+→ Generate new token (classic)
+
+  Note:       minhan deploy
+  Expiration: 90 days
+
+  Scope cần tick:
+    ✅ repo     (toàn bộ — cho phép push code)
+    ✅ workflow  (bắt buộc — cho phép push file workflow)
+
+→ Generate token → Copy ngay (chỉ hiện 1 lần)
+```
+
+Cập nhật remote URL trên máy local (làm cho **từng repo**):
+
+```bash
+# repo minhan
+git remote set-url origin https://kiendh:<TOKEN>@github.com/hakienpdu95/minhan.git
+
+# repo devminhan
+git remote set-url origin https://kiendh:<TOKEN>@github.com/hakienpdu95/devminhan.git
+```
+
+> Thay `<TOKEN>` bằng token vừa copy. Token lưu trong URL remote, không cần nhập lại.
 
 ```
 Developer            GitHub                  VPS

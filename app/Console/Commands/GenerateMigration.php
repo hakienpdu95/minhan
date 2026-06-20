@@ -463,8 +463,20 @@ class GenerateMigration extends Command
             foreach (array_slice($t, 1) as $f) {
                 $p = explode('///', $f);
                 if (count($p) < 6 || $p[5] === '__' || !str_contains($p[5], 'constrained')) continue;
+
+                // Case 1: constrained('explicit_table_name')
                 preg_match("/constrained\('([^']+)'\)/", $p[5], $m);
                 $dep = $m[1] ?? null;
+
+                // Case 2: constrained() không tham số → suy ra từ tên cột
+                // Laravel convention: deployment_target_id → deployment_targets
+                if ($dep === null && preg_match('/constrained\(\)/', $p[5])) {
+                    $colName = trim($p[0]);
+                    if (str_ends_with($colName, '_id')) {
+                        $dep = Str::plural(substr($colName, 0, -3));
+                    }
+                }
+
                 if ($dep && isset($tables[$dep]) && $dep !== $name) {
                     $adjList[$dep][] = $name;
                     $indeg[$name]++;

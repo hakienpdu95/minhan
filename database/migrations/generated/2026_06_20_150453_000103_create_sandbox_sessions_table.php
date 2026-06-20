@@ -17,7 +17,7 @@ return new class extends Migration
             $table->unsignedInteger('order_column')->nullable()->index()->comment('Thứ tự sắp xếp — Spatie Sortable / ORDER BY');
             $table->unsignedBigInteger('organization_id');
             $table->unsignedBigInteger('sandbox_task_id');
-            $table->unsignedBigInteger('workforce_profile_id');
+            $table->unsignedBigInteger('workforce_profile_id')->nullable();
             $table->unsignedBigInteger('user_id');
             $table->string('status', 20)->default('in_progress')->comment('in_progress|submitted|evaluating|completed|abandoned');
             $table->timestamp('started_at');
