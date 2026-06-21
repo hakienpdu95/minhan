@@ -7,6 +7,29 @@ set -euo pipefail
 APP_DIR="/var/www/minhan"
 PHP="/usr/bin/php8.5"
 BRANCH="main"
+
+cd "$APP_DIR"
+
+# ── 0. Kéo code mới + re-exec ─────────────────────────────────
+# QUAN TRỌNG: script này tự git reset đè lên chính file đang chạy. Nếu không
+# re-exec, bash tiếp tục đọc phần còn lại từ file descriptor ĐÃ MỞ TRƯỚC khi
+# git reset ghi đè — tức là chạy logic của LẦN DEPLOY TRƯỚC, không phải code
+# vừa pull về (đã từng gây ra: SKIP_MIGRATIONS default không áp dụng đúng lần,
+# bước reload PHP-FPM không chạy dù đã commit). Re-exec đảm bảo toàn bộ phần
+# sau bước này luôn đọc từ file mới nhất trên đĩa.
+if [ -z "${DEPLOY_REEXEC:-}" ]; then
+    echo "[$(date '+%H:%M:%S')] [0/7] Pulling latest code..."
+    [ -f "$APP_DIR/.env" ] && cp "$APP_DIR/.env" /tmp/.env.deploy.bak
+    git fetch origin
+    git reset --hard "origin/$BRANCH"
+    [ -f /tmp/.env.deploy.bak ] && mv /tmp/.env.deploy.bak "$APP_DIR/.env"
+    echo "[$(date '+%H:%M:%S')] ✓ Code updated → $(git log --oneline -1)"
+
+    export DEPLOY_REEXEC=1
+    exec bash "$APP_DIR/deploy.sh" "$@"
+fi
+
+# ── Flags ──────────────────────────────────────────────────────
 # Mặc định KHÔNG chạy migrate trong deploy tự động — DB schema được quản trị
 # chủ động kiểm soát qua `php artisan migration:generate --fresh` (local/staging)
 # rồi áp dụng tay lên production. Tự động migrate từng làm vỡ deploy nhiều lần
@@ -28,35 +51,24 @@ err() { echo "[$(date '+%H:%M:%S')] ✗ $*" >&2; }
 
 log "═══════════════════════════════════════"
 log "  Deploy thuchocvn.vn — $(date '+%Y-%m-%d %H:%M:%S')"
-log "  Branch: $BRANCH | Skip migrations: $SKIP_MIGRATIONS"
+log "  Branch: $BRANCH | Commit: $(git log --oneline -1) | Skip migrations: $SKIP_MIGRATIONS"
 log "═══════════════════════════════════════"
 
-cd "$APP_DIR"
-
-# ── 1. Kéo code mới ─────────────────────────────────────────
-log "[1/7] Pulling latest code..."
-# Bảo vệ .env khỏi bị git reset --hard ghi đè
-[ -f "$APP_DIR/.env" ] && cp "$APP_DIR/.env" /tmp/.env.deploy.bak
-git fetch origin
-git reset --hard "origin/$BRANCH"
-[ -f /tmp/.env.deploy.bak ] && mv /tmp/.env.deploy.bak "$APP_DIR/.env"
-ok "Code updated → $(git log --oneline -1)"
-
-# ── 2. PHP dependencies ──────────────────────────────────────
-log "[2/7] Installing PHP dependencies..."
+# ── 1. PHP dependencies ────────────────────────────────────────
+log "[1/7] Installing PHP dependencies..."
 composer install --no-dev --optimize-autoloader --no-interaction --quiet
 ok "Composer done"
 
-# ── 3. Frontend build ────────────────────────────────────────
-log "[3/7] Building frontend assets..."
+# ── 2. Frontend build ──────────────────────────────────────────
+log "[2/7] Building frontend assets..."
 # Đảm bảo deploy user có quyền xóa/ghi build artifacts từ lần deploy trước
 sudo /usr/local/bin/fix-minhan-build 2>/dev/null || true
 npm ci --prefer-offline --silent
 npm run build --silent
 ok "Frontend built → public/build/"
 
-# ── 4. Maintenance mode ──────────────────────────────────────
-log "[4/7] Enabling maintenance mode..."
+# ── 3. Maintenance mode ────────────────────────────────────────
+log "[3/7] Enabling maintenance mode..."
 # Fix storage permissions trước khi artisan chạy
 sudo /usr/local/bin/fix-minhan-build 2>/dev/null || true
 # Xóa config cache cũ — bắt buộc trước migrate để artisan đọc đúng .env
@@ -64,25 +76,25 @@ $PHP artisan config:clear
 $PHP artisan down --retry=10
 trap '$PHP artisan up; err "Deploy failed — maintenance mode disabled"' ERR
 
-# ── 5. Migration ─────────────────────────────────────────────
+# ── 4. Migration ────────────────────────────────────────────────
 if [ "$SKIP_MIGRATIONS" = "true" ]; then
-    log "[5/7] Skipping migrations (SKIP_MIGRATIONS=true)"
+    log "[4/7] Skipping migrations (mặc định — dùng --with-migrations để bật)"
 else
-    log "[5/7] Running database migrations..."
+    log "[4/7] Running database migrations..."
     $PHP artisan migrate --force
     ok "Migrations done"
 fi
 
-# ── 6. Rebuild cache ─────────────────────────────────────────
-log "[6/7] Rebuilding application cache..."
+# ── 5. Rebuild cache ────────────────────────────────────────────
+log "[5/7] Rebuilding application cache..."
 $PHP artisan config:clear  && $PHP artisan config:cache
 $PHP artisan route:clear   && $PHP artisan route:cache
 $PHP artisan view:clear    && $PHP artisan view:cache
 $PHP artisan event:clear   && $PHP artisan event:cache
 ok "Cache rebuilt"
 
-# ── 7. Reload PHP-FPM (xóa opcache) + khởi động lại workers ──
-log "[7/7] Reloading PHP-FPM + restarting workers..."
+# ── 6. Reload PHP-FPM (xóa opcache) ──────────────────────────────
+log "[6/7] Reloading PHP-FPM..."
 # Opcache giữ bytecode compiled view/class cũ trong RAM của các worker PHP-FPM
 # đang chạy — view:cache ghi file mới trên đĩa nhưng FPM không tự đọc lại nếu
 # opcache.validate_timestamps=0. Reload PHP-FPM để worker mới load code mới.
@@ -95,6 +107,8 @@ fi
 $PHP artisan up
 trap - ERR   # bỏ trap sau khi up thành công
 
+# ── 7. Khởi động lại workers ──────────────────────────────────────
+log "[7/7] Restarting workers..."
 sudo supervisorctl restart minhan-horizon  > /dev/null
 sudo supervisorctl restart minhan-reverb   > /dev/null
 ok "Horizon + Reverb restarted"
