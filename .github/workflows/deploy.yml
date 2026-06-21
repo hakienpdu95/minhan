@@ -27,6 +27,7 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 2223
           script_stop: true
+          command_timeout: 15m
           script: |
             cd /var/www/minhan
             bash deploy.sh
