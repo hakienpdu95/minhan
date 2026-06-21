@@ -11,6 +11,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('result_pain_points')) {
+            return;
+        }
+
         Schema::create('result_pain_points', function (Blueprint $table) {
             $table->id();
             $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');

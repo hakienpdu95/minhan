@@ -11,6 +11,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('lead_tag_map')) {
+            return;
+        }
+
         Schema::create('lead_tag_map', function (Blueprint $table) {
             $table->id();
             $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');

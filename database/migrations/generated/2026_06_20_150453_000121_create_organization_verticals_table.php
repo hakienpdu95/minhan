@@ -11,6 +11,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('organization_verticals')) {
+            return;
+        }
+
         Schema::create('organization_verticals', function (Blueprint $table) {
             $table->id();
             $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');

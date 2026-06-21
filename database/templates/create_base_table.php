@@ -11,6 +11,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('__TABLE_NAME__')) {
+            return;
+        }
+
         Schema::create('__TABLE_NAME__', function (Blueprint $table) {
             __FIELDS__
             __INDEXES__

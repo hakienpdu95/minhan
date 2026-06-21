@@ -11,6 +11,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable(config('laravel-subscriptions.tables.plans'))) {
+            return;
+        }
+
         Schema::create(config('laravel-subscriptions.tables.plans'), function (Blueprint $table): void {
             $table->id();
 

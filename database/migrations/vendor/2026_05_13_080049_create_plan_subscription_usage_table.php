@@ -10,6 +10,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable(config('laravel-subscriptions.tables.subscription_usage'))) {
+            return;
+        }
+
         Schema::create(config('laravel-subscriptions.tables.subscription_usage'), function (Blueprint $table): void {
             $table->id();
 
