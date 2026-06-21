@@ -60,12 +60,13 @@ composer install --no-dev --optimize-autoloader --no-interaction --quiet
 ok "Composer done"
 
 # ── 2. Frontend build ──────────────────────────────────────────
-log "[2/7] Building frontend assets..."
-# Đảm bảo deploy user có quyền xóa/ghi build artifacts từ lần deploy trước
-sudo /usr/local/bin/fix-minhan-build 2>/dev/null || true
-npm ci --prefer-offline --silent
-npm run build --silent
-ok "Frontend built → public/build/"
+# KHÔNG tự build frontend ở đây. `npm run build` dùng vite.config.js mặc định
+# (output public/build/), trong khi TOÀN BỘ view trong app dùng group
+# 'build/backend' từ vite.config.backend.js (public/build/backend/). Vite mặc
+# định emptyOutDir=true nên `npm run build` từng XOÁ SẠCH public/build/ — kéo
+# theo public/build/backend/manifest.json biến mất dù không đổi JS/CSS nào.
+# Quản trị tự build khi cần: npx vite build --config vite.config.backend.js
+log "[2/7] Skipping frontend build (quản trị tự chạy: npx vite build --config vite.config.backend.js)"
 
 # ── 3. Maintenance mode ────────────────────────────────────────
 log "[3/7] Enabling maintenance mode..."
