@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('process_approval_flows')) {
+            return;
+        }
+
         Schema::create('process_approval_flows', static function (Blueprint $table) {
             $table->id();
             $table->string('name');
