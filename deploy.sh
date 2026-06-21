@@ -1,13 +1,17 @@
 #!/bin/bash
 # deploy.sh — thuchocvn.vn production deploy
 # Chạy thủ công: bash deploy.sh
-# Chạy từ GitHub Actions: SKIP_MIGRATIONS=false bash deploy.sh
+# Chạy migrate (chỉ khi quản trị chủ động muốn): SKIP_MIGRATIONS=false bash deploy.sh
 set -euo pipefail
 
 APP_DIR="/var/www/minhan"
 PHP="/usr/bin/php8.5"
 BRANCH="main"
-SKIP_MIGRATIONS="${SKIP_MIGRATIONS:-false}"
+# Mặc định KHÔNG chạy migrate trong deploy tự động — DB schema được quản trị
+# chủ động kiểm soát qua `php artisan migration:generate --fresh` (local/staging)
+# rồi áp dụng tay lên production. Tự động migrate từng làm vỡ deploy nhiều lần
+# do migrations table lệch so với schema thực tế trên production.
+SKIP_MIGRATIONS="${SKIP_MIGRATIONS:-true}"
 
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
 ok()  { echo "[$(date '+%H:%M:%S')] ✓ $*"; }
