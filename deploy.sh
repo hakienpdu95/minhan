@@ -81,8 +81,17 @@ $PHP artisan view:clear    && $PHP artisan view:cache
 $PHP artisan event:clear   && $PHP artisan event:cache
 ok "Cache rebuilt"
 
-# ── 7. Khởi động lại workers ─────────────────────────────────
-log "[7/7] Restarting workers..."
+# ── 7. Reload PHP-FPM (xóa opcache) + khởi động lại workers ──
+log "[7/7] Reloading PHP-FPM + restarting workers..."
+# Opcache giữ bytecode compiled view/class cũ trong RAM của các worker PHP-FPM
+# đang chạy — view:cache ghi file mới trên đĩa nhưng FPM không tự đọc lại nếu
+# opcache.validate_timestamps=0. Reload PHP-FPM để worker mới load code mới.
+if sudo systemctl reload php8.5-fpm 2>/dev/null; then
+    ok "PHP-FPM reloaded (opcache cleared)"
+else
+    err "Không reload được PHP-FPM — opcache có thể vẫn giữ code cũ! Cần cấu hình sudoers cho lệnh: systemctl reload php8.5-fpm"
+fi
+
 $PHP artisan up
 trap - ERR   # bỏ trap sau khi up thành công
 
