@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('process_approvals')) {
+            return;
+        }
+
         Schema::create('process_approvals', static function (Blueprint $table) {
             $table->id();
             $table->morphs('approvable');
