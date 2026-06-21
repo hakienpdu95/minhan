@@ -1,7 +1,7 @@
 #!/bin/bash
 # deploy.sh — thuchocvn.vn production deploy
 # Chạy thủ công: bash deploy.sh
-# Chạy migrate (chỉ khi quản trị chủ động muốn): SKIP_MIGRATIONS=false bash deploy.sh
+# Chạy migrate (chỉ khi quản trị chủ động muốn): bash deploy.sh --with-migrations
 set -euo pipefail
 
 APP_DIR="/var/www/minhan"
@@ -11,7 +11,16 @@ BRANCH="main"
 # chủ động kiểm soát qua `php artisan migration:generate --fresh` (local/staging)
 # rồi áp dụng tay lên production. Tự động migrate từng làm vỡ deploy nhiều lần
 # do migrations table lệch so với schema thực tế trên production.
-SKIP_MIGRATIONS="${SKIP_MIGRATIONS:-true}"
+#
+# Dùng flag dòng lệnh (--with-migrations) thay vì biến môi trường SKIP_MIGRATIONS
+# — biến môi trường có thể bị rò rỉ/đè bởi shell profile còn sót lại trên VPS,
+# flag tường minh thì không bao giờ tự nhiên xuất hiện.
+SKIP_MIGRATIONS=true
+for arg in "$@"; do
+    case "$arg" in
+        --with-migrations) SKIP_MIGRATIONS=false ;;
+    esac
+done
 
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
 ok()  { echo "[$(date '+%H:%M:%S')] ✓ $*"; }
