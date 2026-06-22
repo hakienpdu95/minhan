@@ -42,7 +42,13 @@ class PurgeDeletedResponsesJob implements ShouldQueue
 
                 DB::transaction(function () use ($ids) {
                     DB::table('survey_answers')->whereIn('response_id', $ids)->delete();
-                    DB::table('survey_results')->whereIn('response_id', $ids)->delete();
+                    // assessment_results dùng polymorphic subject_type/subject_id (không phải
+                    // response_id) — children (domain_scores, recommendations...) tự xóa theo
+                    // FK cascade khi xóa dòng assessment_results.
+                    DB::table('assessment_results')
+                        ->where('subject_type', SurveyResponse::class)
+                        ->whereIn('subject_id', $ids)
+                        ->delete();
                     DB::table('submission_behavior_log')->whereIn('response_id', $ids)->delete();
                     SurveyResponse::onlyTrashed()->whereIn('id', $ids)->forceDelete();
                 });

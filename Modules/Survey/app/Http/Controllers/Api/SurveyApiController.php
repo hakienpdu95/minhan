@@ -11,12 +11,12 @@ use Modules\Survey\Actions\BuildSurveySchemaAction;
 use Modules\Survey\Actions\ExportSurveyResponsesAction;
 use Modules\Survey\Actions\SubmitSurveyAction;
 use Modules\Survey\Http\Requests\SubmitSurveyRequest;
+use Modules\Assessment\Models\AssessmentResult;
 use Modules\Assessment\Models\RecommendationRule;
 use Modules\Survey\Models\SubmissionBehaviorLog;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyDraft;
 use Modules\Survey\Models\SurveyResponse;
-use Modules\Survey\Models\SurveyResult;
 use Modules\Survey\Services\SurveyStatsService;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -181,7 +181,7 @@ class SurveyApiController extends Controller
             return response()->json(['error' => 'Không tìm thấy phản hồi cho thông tin này.'], 404);
         }
 
-        $result = SurveyResult::forResponse($response->id)
+        $result = AssessmentResult::forResponse($response->id)
             ->with(['domainScores', 'signalFlags', 'painPoints', 'recommendations', 'roadmapPhases.phase.milestones'])
             ->first();
 

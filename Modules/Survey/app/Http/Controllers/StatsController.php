@@ -5,11 +5,11 @@ namespace Modules\Survey\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Modules\Assessment\Models\AssessmentDomain;
+use Modules\Assessment\Models\AssessmentResult;
 use Modules\Assessment\Models\MaturityLevel;
 use Modules\Assessment\Models\ResultDomainScore;
 use Modules\Survey\Models\Survey;
 use Modules\Survey\Models\SurveyField;
-use Modules\Survey\Models\SurveyResult;
 use Modules\Survey\Services\SurveyStatsService;
 
 class StatsController extends Controller
@@ -24,8 +24,7 @@ class StatsController extends Controller
         $scoringData = null;
         if ($survey->hasScoring()) {
             $code    = $survey->assessment_code;
-            $sid     = $survey->id;
-            $results = SurveyResult::whereHas('response', fn ($r) => $r->where('survey_id', $sid));
+            $results = AssessmentResult::forSurvey($survey->id);
 
             $scoringData = [
                 'total_scored'          => (clone $results)->count(),
@@ -35,7 +34,7 @@ class StatsController extends Controller
                     ->groupBy('maturity_level')
                     ->pluck('count', 'maturity_level'),
                 'avg_domain_scores'     => ResultDomainScore::whereHas(
-                    'result.response', fn ($r) => $r->where('survey_id', $sid)
+                    'result', fn ($q) => $q->forSurvey($survey->id)
                 )
                     ->selectRaw('domain_code, ROUND(AVG(normalized_score), 2) as avg_score')
                     ->groupBy('domain_code')
