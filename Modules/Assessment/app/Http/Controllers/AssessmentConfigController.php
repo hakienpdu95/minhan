@@ -137,6 +137,10 @@ class AssessmentConfigController extends Controller
             'domains.*.max_score'            => 'required|numeric',
             'rules'                          => 'array|max:200',
             'rules.*.field_key'              => 'required|string|max:100',
+            // score_rules.domain_code là NOT NULL ở DB (bắt buộc với mọi aggregation model,
+            // không riêng weighted_domain) — thiếu rule này trước đây cho phép domain_code
+            // rỗng lọt xuống DB, vỡ constraint với lỗi SQL khó hiểu thay vì validation message.
+            'rules.*.domain_code'            => 'required|string|max:50',
             'rules.*.question_scoring_type'  => 'required|in:none,boolean,single_choice,multi_choice,numeric_range',
             'bands'                          => 'array|max:20',
             'bands.*.band_code'              => 'required|string|max:60|regex:/^[A-Za-z0-9_]+$/',
@@ -449,6 +453,12 @@ class AssessmentConfigController extends Controller
             $type   = $r['question_scoring_type'] ?? 'none';
             $fKey   = $r['field_key'] ?? '?';
             $optCnt = count($r['options'] ?? []);
+
+            // score_rules.domain_code là NOT NULL ở DB cho mọi rule — thiếu domain
+            // sẽ vỡ constraint khi save, báo sớm ở đây thay vì lỗi SQL khó hiểu.
+            if (empty($r['domain_code'])) {
+                $errors[] = "Câu '{$fKey}': chưa chọn domain (bắt buộc).";
+            }
 
             if (in_array($type, ['multi_choice', 'single_choice'], true) && $optCnt < 2) {
                 $errors[] = "Câu '{$fKey}': {$type} cần tối thiểu 2 options (hiện có {$optCnt}).";
