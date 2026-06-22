@@ -52,14 +52,32 @@ class ValidateSurveyTurnstile
 
         $secret = $site->secretKey();
 
-        $verified = $secret !== null && (bool) Http::asForm()->acceptJson()->retry(3, 100)
+        if ($secret === null) {
+            Log::error('Turnstile: không giải mã được secret key — kiểm tra lại Turnstile Site đã gán cho survey.', [
+                'survey_id' => $survey->id,
+                'site_id'   => $site->id,
+            ]);
+            return response()->json([
+                'message' => 'Xác thực bảo mật thất bại, vui lòng thử lại.',
+                'errors'  => ['cf-turnstile-response' => ['Xác thực bảo mật thất bại, vui lòng thử lại.']],
+            ], 422);
+        }
+
+        $cfResponse = Http::asForm()->acceptJson()->retry(3, 100)
             ->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
                 'secret'   => $secret,
                 'response' => $token,
                 'remoteip' => $request->ip(),
-            ])->json('success', false);
+            ]);
 
-        if (! $verified) {
+        if (! $cfResponse->json('success', false)) {
+            // error-codes phổ biến: invalid-input-secret (secret key sai/không khớp site key
+            // đang render ở frontend), timeout-or-duplicate (token hết hạn/dùng lại).
+            Log::warning('Turnstile: Cloudflare từ chối token submit.', [
+                'survey_id'   => $survey->id,
+                'site_id'     => $site->id,
+                'error_codes' => $cfResponse->json('error-codes', []),
+            ]);
             return response()->json([
                 'message' => 'Xác thực bảo mật thất bại, vui lòng thử lại.',
                 'errors'  => ['cf-turnstile-response' => ['Xác thực bảo mật thất bại, vui lòng thử lại.']],
