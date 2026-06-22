@@ -5,6 +5,7 @@ namespace Modules\Survey\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Survey\Enums\SurveyStatus;
@@ -31,6 +32,7 @@ class Survey extends Model
         'status',
         'version',
         'allow_multiple_responses',
+        'turnstile_site_id',
     ];
 
     protected function casts(): array
@@ -62,6 +64,11 @@ class Survey extends Model
     public function tokens(): HasMany
     {
         return $this->hasMany(SurveyToken::class);
+    }
+
+    public function turnstileSite(): BelongsTo
+    {
+        return $this->belongsTo(SurveyTurnstileSite::class, 'turnstile_site_id');
     }
 
     // ── Scopes ────────────────────────────────────────────────────────

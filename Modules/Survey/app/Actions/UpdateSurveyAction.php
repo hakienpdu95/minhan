@@ -15,9 +15,10 @@ class UpdateSurveyAction
     {
         // Slug do hệ thống sinh ra khi tạo, không bao giờ thay đổi
         $payload = [
-            'title'       => $data->title,
-            'description' => $data->description,
-            'version'     => $data->version ?? $survey->version,
+            'title'             => $data->title,
+            'description'       => $data->description,
+            'version'           => $data->version ?? $survey->version,
+            'turnstile_site_id' => $data->turnstile_site_id,
         ];
 
         $survey->update($payload);

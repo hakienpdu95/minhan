@@ -11,6 +11,7 @@ class SurveyFormData extends Data
         public readonly string  $title,
         public readonly ?string $description = null,
         public readonly ?int    $version = null,
+        public readonly ?int    $turnstile_site_id = null,
     ) {}
 
     public static function rules(): array

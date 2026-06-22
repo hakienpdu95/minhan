@@ -147,6 +147,27 @@
                         @error('version')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
+                    {{-- Turnstile site --}}
+                    <div class="form-control mb-5">
+                        <label class="label py-0 pb-1.5">
+                            <span class="label-text font-medium text-sm">Turnstile site</span>
+                        </label>
+                        <select name="turnstile_site_id"
+                                class="select select-bordered select-sm w-full @error('turnstile_site_id') select-error @enderror">
+                            <option value="">— Không dùng Turnstile —</option>
+                            @foreach($turnstileSites as $site)
+                            <option value="{{ $site->id }}" {{ old('turnstile_site_id', $survey->turnstile_site_id) == $site->id ? 'selected' : '' }}>
+                                {{ $site->name }}
+                            </option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1 text-xs text-base-content/40">
+                            Domain sẽ nhúng form này.
+                            <a href="{{ route('backend.turnstile-sites.index') }}" class="link link-primary">Quản lý sites</a>
+                        </p>
+                        @error('turnstile_site_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                    </div>
+
                     {{-- Meta timestamps --}}
                     <div class="flex justify-between text-xs text-base-content/40 mb-4 px-0.5">
                         <span>Tạo {{ $survey->created_at->format('d/m/Y') }}</span>
@@ -253,6 +274,13 @@
                     </svg>
                     API Tokens
                     <span class="badge badge-sm badge-ghost">{{ $survey->tokens()->active()->count() }}</span>
+                </a>
+                <a href="{{ route('backend.turnstile-sites.index') }}"
+                   class="btn btn-outline btn-sm w-full gap-2 mt-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Turnstile Sites
                 </a>
                 @endcan
 

@@ -13,6 +13,7 @@ use Modules\Survey\Http\Controllers\SurveyController;
 use Modules\Survey\Http\Controllers\SurveyResultController;
 use Modules\Survey\Http\Controllers\SurveyTakeController;
 use Modules\Survey\Http\Controllers\TokenController;
+use Modules\Survey\Http\Controllers\TurnstileSiteController;
 
 /*
 |--------------------------------------------------------------------------
@@ -108,6 +109,15 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
                 Route::patch('/reorder',     [OptionController::class, 'reorder'])->name('reorder');
             });
         });
+    });
+
+    // ── Turnstile sites (dùng chung cho nhiều survey, không lồng theo {survey}) ──
+    Route::prefix('turnstile-sites')->name('turnstile-sites.')->group(function () {
+        Route::get('/',                       [TurnstileSiteController::class, 'index'])->name('index');
+        Route::post('/',                      [TurnstileSiteController::class, 'store'])->name('store');
+        Route::put('/{turnstileSite}',        [TurnstileSiteController::class, 'update'])->name('update');
+        Route::get('/{turnstileSite}/reveal', [TurnstileSiteController::class, 'reveal'])->name('reveal');
+        Route::delete('/{turnstileSite}',     [TurnstileSiteController::class, 'destroy'])->name('destroy');
     });
 
 });

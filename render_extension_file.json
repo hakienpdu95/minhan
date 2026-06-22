@@ -85,7 +85,8 @@
         "organization_id///unsignedBigInteger///__///_NULL///NULL///->constrained()->onDelete('restrict')///__",
         "specialized_set_code///string///50///_NULL///NULL///__///__",
         "__index///unique///__///__///__///assessment_code,specialized_set_code|surveys_assessment_specialized_unique///__",
-        "description///text///__///_NULL///NULL///__///__"
+        "description///text///__///_NULL///NULL///__///__",
+        "turnstile_site_id///unsignedBigInteger///__///_NULL///NULL///->constrained('survey_turnstile_sites')->onDelete('set null')///__"
     ],
     [
         "maturity_levels///add///__///",

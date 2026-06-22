@@ -114,6 +114,28 @@
                         @error('version')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
+                    {{-- Turnstile site --}}
+                    <div class="form-control">
+                        <label class="label py-0 pb-1.5">
+                            <span class="label-text font-medium">Turnstile site</span>
+                            <span class="label-text-alt text-xs text-base-content/40">Bot protection khi submit</span>
+                        </label>
+                        <select name="turnstile_site_id"
+                                class="select select-bordered select-sm w-full @error('turnstile_site_id') select-error @enderror">
+                            <option value="">— Không dùng Turnstile —</option>
+                            @foreach($turnstileSites as $site)
+                            <option value="{{ $site->id }}" {{ old('turnstile_site_id') == $site->id ? 'selected' : '' }}>
+                                {{ $site->name }}
+                            </option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1 text-xs text-base-content/40">
+                            Domain sẽ nhúng form khảo sát này.
+                            <a href="{{ route('backend.turnstile-sites.index') }}" class="link link-primary">Quản lý Turnstile sites</a>
+                        </p>
+                        @error('turnstile_site_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                    </div>
+
                 </div>
             </div>
         </div>

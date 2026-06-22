@@ -15,6 +15,7 @@ use Modules\Survey\Enums\SurveyStatus;
 use Modules\Survey\Http\Requests\SurveyRequest;
 use Modules\ActivityLog\Core\ActivityLogger;
 use Modules\Survey\Models\Survey;
+use Modules\Survey\Models\SurveyTurnstileSite;
 
 class SurveyController extends Controller
 {
@@ -38,7 +39,8 @@ class SurveyController extends Controller
     {
         $this->authorize('survey.create');
         [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
-        return view('survey::surveys.create', compact('organizations', 'defaultOrgId', 'orgLocked'));
+        $turnstileSites = SurveyTurnstileSite::active()->orderBy('name')->get(['id', 'name']);
+        return view('survey::surveys.create', compact('organizations', 'defaultOrgId', 'orgLocked', 'turnstileSites'));
     }
 
     public function store(SurveyRequest $request, CreateSurveyAction $action): RedirectResponse
@@ -103,8 +105,9 @@ class SurveyController extends Controller
         ])->all();
 
         [$organizations, , $orgLocked] = $this->_resolveOrganizations();
+        $turnstileSites = SurveyTurnstileSite::active()->orderBy('name')->get(['id', 'name']);
 
-        return view('survey::surveys.edit', compact('survey', 'sectionsData', 'fieldTypes', 'isLocked', 'organizations', 'orgLocked'));
+        return view('survey::surveys.edit', compact('survey', 'sectionsData', 'fieldTypes', 'isLocked', 'organizations', 'orgLocked', 'turnstileSites'));
     }
 
     public function update(SurveyRequest $request, Survey $survey, UpdateSurveyAction $action): RedirectResponse

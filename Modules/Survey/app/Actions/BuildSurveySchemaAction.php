@@ -70,6 +70,7 @@ class BuildSurveySchemaAction
                 'sections.fields.options'       => fn ($q) => $q->ordered(),
                 'sections.fields.conditions'    => fn ($q) => $q->orderBy('sort_order'),
                 'sections.fields.rows'          => fn ($q) => $q->orderBy('sort_order'),
+                'turnstileSite',
             ])
             ->firstOrFail();
 

@@ -14,6 +14,7 @@ class SurveySchemaData extends Data
         public readonly int    $version,
         /** @var SurveySectionData[] */
         public readonly array  $sections,
+        public readonly ?string $turnstile_site_key = null,
     ) {}
 
     public static function fromModel(Survey $survey): self
@@ -34,6 +35,7 @@ class SurveySchemaData extends Data
             sections: $survey->sections
                 ->map(fn($s) => SurveySectionData::fromModel($s, $fieldKeyMap))
                 ->all(),
+            turnstile_site_key: $survey->turnstileSite?->site_key,
         );
     }
 }

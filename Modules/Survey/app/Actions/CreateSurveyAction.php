@@ -24,6 +24,7 @@ class CreateSurveyAction
             'slug'            => $slug,
             'status'          => SurveyStatus::Draft,
             'version'         => $data->version ?? 1,
+            'turnstile_site_id' => $data->turnstile_site_id,
         ]);
 
         ActivityLogger::info('Survey', 'survey_created', $survey, ['title' => $survey->title, 'slug' => $survey->slug]);
