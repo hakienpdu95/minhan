@@ -261,35 +261,37 @@ class AssessmentConfigController extends Controller
         $code = $assessment->assessment_code;
         $this->authorize('assessment.config');
 
-        if (! $survey->assessment_code) {
+        if (! $code) {
             return response()->json(['message' => 'Assessment code không hợp lệ.'], 422);
         }
 
-        $responseIds = SurveyResponse::whereHas("survey", fn ($q) => $q->where("assessment_code", $code))
+        // RunAssessmentJob nhận ScoringSubjectInterface (model đã hydrate), không phải id
+        // — phải load model thật, không thể pluck('id') rồi truyền thẳng int vào job.
+        $responses = SurveyResponse::whereHas("survey", fn ($q) => $q->where("assessment_code", $code))
             ->complete()
-            ->pluck('id');
+            ->get();
 
-        if ($responseIds->isEmpty()) {
+        if ($responses->isEmpty()) {
             return response()->json(['message' => 'Không có response nào để tính lại.', 'total' => 0]);
         }
 
-        $jobs = $responseIds->map(fn ($id) => new RunAssessmentJob($id, force: true))->all();
+        $jobs = $responses->map(fn ($response) => new RunAssessmentJob($response, force: true))->all();
 
         $batch = Bus::batch($jobs)
-            ->name("reprocess-survey-{$survey->id}")
+            ->name("reprocess-assessment-{$assessment->id}")
             ->onQueue('low')
             ->allowFailures()
             ->dispatch();
 
         activity('scoring_config')
-            ->performedOn($survey)
+            ->performedOn($assessment)
             ->causedBy(auth()->user())
             ->event('reprocess_all')
             ->withProperties([
-                'total_responses' => $responseIds->count(),
+                'total_responses' => $responses->count(),
                 'batch_id'        => $batch->id,
             ])
-            ->log("Đã tính lại {$responseIds->count()} responses");
+            ->log("Đã tính lại {$responses->count()} responses");
 
         return response()->json([
             'batch_id' => $batch->id,
