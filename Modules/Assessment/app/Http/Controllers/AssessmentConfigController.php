@@ -142,6 +142,10 @@ class AssessmentConfigController extends Controller
             // rỗng lọt xuống DB, vỡ constraint với lỗi SQL khó hiểu thay vì validation message.
             'rules.*.domain_code'            => 'required|string|max:50',
             'rules.*.question_scoring_type'  => 'required|in:none,boolean,single_choice,multi_choice,numeric_range',
+            // score_rule_options.option_value là NOT NULL ở DB — chỉ áp dụng khi rule có options
+            // (single_choice/multi_choice), nhưng validate luôn cho mọi entry có mặt thì an toàn
+            // hơn (mảng rỗng/không gửi options thì rule này không chạy, không ảnh hưởng rule khác).
+            'rules.*.options.*.option_value' => 'required|string|max:100',
             'bands'                          => 'array|max:20',
             'bands.*.band_code'              => 'required|string|max:60|regex:/^[A-Za-z0-9_]+$/',
             'bands.*.label'                  => 'required|string|max:120',
@@ -149,12 +153,29 @@ class AssessmentConfigController extends Controller
             'bands.*.max_score'              => 'required|numeric|min:0|max:100',
             'pass_fail'                      => 'nullable|array',
             'pass_fail.passing_score'        => 'nullable|numeric|min:0|max:100',
-            'personas'                       => 'array|max:20',
+            // personas/persona_conditions — toàn bộ cột bên dưới là NOT NULL ở DB,
+            // Action không có fallback nên thiếu field nào là crash SQL field đó.
+            'personas'                            => 'array|max:20',
+            'personas.*.persona_code'             => 'required|string|max:100',
+            'personas.*.label'                    => 'required|string|max:255',
+            'personas.*.conditions.*.target_type' => 'required|string|max:30',
+            'personas.*.conditions.*.target_code' => 'required|string|max:100',
+            'personas.*.conditions.*.operator'    => 'required|string|max:5',
             'pain_points'                    => 'array|max:50',
             'pain_points.*.pain_point_code'  => 'required|string|max:100|regex:/^[a-z0-9_]+$/',
+            // pain_point_rules.label là NOT NULL ở DB — đây chính là cột gây lỗi SQL vừa rồi.
+            'pain_points.*.label'            => 'required|string|max:255',
             'pain_points.*.required_flags'   => 'required|string|max:500',
-            'recommendations'                => 'array|max:50',
+            // recommendation_rules — recommendation_code/label/trigger_domain đều NOT NULL ở DB.
+            'recommendations'                          => 'array|max:50',
+            'recommendations.*.recommendation_code'    => 'required|string|max:100',
+            'recommendations.*.label'                  => 'required|string|max:255',
+            'recommendations.*.trigger_domain'         => 'required|string|max:50',
+            // roadmap_phases.title là NOT NULL ở DB — roadmap key theo band_code (dynamic key)
+            // nên dùng wildcard 2 cấp 'roadmap.*.*'.
             'roadmap'                        => 'array|max:20',
+            'roadmap.*.*.phase_code'         => 'required|string|max:100',
+            'roadmap.*.*.title'              => 'required|string|max:255',
         ]);
 
         // Domain uniqueness check
