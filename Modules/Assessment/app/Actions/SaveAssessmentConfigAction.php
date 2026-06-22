@@ -85,7 +85,9 @@ class SaveAssessmentConfigAction
                     ScoreRuleOption::create([
                         'rule_id'      => $rule->id,
                         'option_value' => $o['option_value'],
-                        'option_label' => $o['option_label'] ?? null,
+                        // option_label là NOT NULL với default('') ở DB — ?? null trước đây ghi
+                        // thẳng NULL vào INSERT (đè default), vẫn vỡ constraint. '' mới đúng ý default.
+                        'option_label' => $o['option_label'] ?? '',
                         'score'        => (int) ($o['score'] ?? 0),
                         'signal_flag'  => $o['signal_flag'] ?? null,
                         'sort_order'   => $oIdx + 1,
