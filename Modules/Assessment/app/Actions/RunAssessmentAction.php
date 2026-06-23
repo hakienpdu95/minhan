@@ -48,7 +48,13 @@ class RunAssessmentAction
         $result = AssessmentResult::forSubject(
             $subject->getScoringSubjectType(),
             $subject->getScoringSubjectId(),
-        )->firstOrFail();
+        )->first();
+
+        if ($result === null) {
+            // Engine không persist (vd. assessment config chưa bật has_scoring) — báo lỗi rõ ràng
+            // thay vì để ModelNotFoundException mơ hồ lọt ra ngoài.
+            abort(422, 'Assessment chưa được cấu hình chấm điểm (has_scoring=false hoặc thiếu config).');
+        }
 
         event(new AssessmentCompleted($result, $scoringResult, $subject));
 

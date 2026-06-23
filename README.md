@@ -69,6 +69,8 @@ php artisan migration:sync
 
 npx vite build --config vite.config.backend.js
 
+php artisan queue:work --queue=high,default,low,workflows,webhooks,ai,actlog,passport
+
 # Sửa JSON → chạy lệnh này → DB cập nhật đầy đủ
 php artisan migration:generate --fresh
 php artisan import:provinces-wards

@@ -3,6 +3,8 @@
 namespace Modules\Assessment\Models;
 
 use App\Foundation\Models\TenantAwareModel;
+use App\Shared\Tenancy\OrganizationScope;
+use App\Shared\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -42,9 +44,26 @@ class Assessment extends TenantAwareModel
         return 'assessment_code';
     }
 
+    /**
+     * Scoring configs có thể là global (organization_id NULL — dùng chung cho mọi tổ chức,
+     * seed sẵn như TDWCF/ORG_5PILLAR) hoặc riêng của một tổ chức. Bypass OrganizationScope
+     * để tìm cả hai, ưu tiên bản ghi riêng của tổ chức hiện tại nếu có.
+     */
     public static function findByCode(string $code): ?self
     {
-        return static::where('assessment_code', $code)->where('is_active', true)->first();
+        $orgId = TenantContext::isSet() ? TenantContext::getOrganizationId() : null;
+
+        return static::withoutGlobalScope(OrganizationScope::class)
+            ->where('assessment_code', $code)
+            ->where('is_active', true)
+            ->where(function (Builder $q) use ($orgId): void {
+                $q->whereNull('organization_id');
+                if ($orgId !== null) {
+                    $q->orWhere('organization_id', $orgId);
+                }
+            })
+            ->orderByRaw('organization_id IS NULL')
+            ->first();
     }
 
     public function scopeActive(Builder $query): Builder
