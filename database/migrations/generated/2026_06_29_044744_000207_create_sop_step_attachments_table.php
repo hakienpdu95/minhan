@@ -29,7 +29,7 @@ return new class extends Migration
             $table->string('alt_text', 300)->nullable();
             $table->smallInteger('sort_order')->default(0);
             $table->foreignId('uploaded_by')->constrained('users')->restrictOnDelete();
-            $table->timestamp('uploaded_at');
+            $table->timestamp('uploaded_at')->useCurrent();
             
 
             // Indexes

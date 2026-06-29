@@ -29,7 +29,7 @@ return new class extends Migration
             $table->decimal('weighted_score', 6, 2);
             $table->decimal('kpi_total_score', 6, 2)->nullable();
             $table->foreignId('snapped_by')->constrained('users');
-            $table->timestamp('snapped_at');
+            $table->timestamp('snapped_at')->useCurrent();
             
 
             // Indexes

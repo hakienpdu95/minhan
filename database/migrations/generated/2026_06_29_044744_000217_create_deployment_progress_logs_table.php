@@ -25,7 +25,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('percent')->default(0);
             $table->text('remark')->nullable();
             $table->foreignId('logged_by')->constrained('users');
-            $table->timestamp('logged_at');
+            $table->timestamp('logged_at')->useCurrent();
             
 
             // Indexes

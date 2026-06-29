@@ -23,7 +23,7 @@ return new class extends Migration
             $table->unsignedBigInteger('stage_id');
             $table->string('interview_type', 20)->default('video');
             $table->string('title', 200)->nullable();
-            $table->timestamp('scheduled_at')->index();
+            $table->timestamp('scheduled_at')->useCurrent()->index();
             $table->smallInteger('duration_minutes')->default(60);
             $table->string('location', 300)->nullable();
             $table->text('meeting_url')->nullable();

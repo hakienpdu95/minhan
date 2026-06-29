@@ -32,7 +32,7 @@ return new class extends Migration
             $table->timestamp('imported_at')->nullable();
             $table->unsignedBigInteger('imported_by')->nullable();
             $table->timestamp('viewed_at')->nullable();
-            $table->timestamp('applied_at');
+            $table->timestamp('applied_at')->useCurrent();
             $table->timestamp('updated_at')->nullable();
             
         });

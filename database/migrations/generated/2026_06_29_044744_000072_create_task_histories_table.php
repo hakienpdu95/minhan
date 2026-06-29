@@ -11,21 +11,24 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::hasTable('rc_application_stage_logs')) {
+        if (Schema::hasTable('task_histories')) {
             return;
         }
 
-        Schema::create('rc_application_stage_logs', function (Blueprint $table) {
+        Schema::create('task_histories', function (Blueprint $table) {
             $table->id();
             $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
             $table->unsignedInteger('order_column')->nullable()->index()->comment('Thứ tự sắp xếp — Spatie Sortable / ORDER BY');
-            $table->unsignedBigInteger('application_id')->index();
-            $table->unsignedBigInteger('stage_id');
-            $table->string('result', 20);
-            $table->text('note')->nullable();
-            $table->unsignedBigInteger('actioned_by');
-            $table->timestamp('actioned_at')->index();
+            $table->unsignedBigInteger('task_id');
+            $table->unsignedBigInteger('actor_id');
+            $table->string('field_changed', 60);
+            $table->string('old_value', 500)->nullable();
+            $table->string('new_value', 500)->nullable();
+            $table->timestamp('changed_at')->useCurrent();
             
+
+            // Indexes
+            $table->index(['task_id', 'field_changed', 'changed_at'], 'idx_history_task_field');
         });
 
         
@@ -33,6 +36,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('rc_application_stage_logs');
+        Schema::dropIfExists('task_histories');
     }
 };

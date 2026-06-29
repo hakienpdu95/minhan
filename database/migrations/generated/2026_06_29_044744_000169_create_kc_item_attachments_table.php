@@ -28,7 +28,7 @@ return new class extends Migration
             $table->string('storage_key', 500);
             $table->integer('sort_order')->default(0);
             $table->foreignId('uploaded_by')->constrained('users')->restrictOnDelete();
-            $table->timestamp('uploaded_at');
+            $table->timestamp('uploaded_at')->useCurrent();
             
 
             // Indexes

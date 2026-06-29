@@ -29,7 +29,7 @@ return new class extends Migration
             $table->string('maturity_level_after', 64)->nullable();
             $table->decimal('change_delta', 6, 2)->nullable()->comment('tdwcf_score_after - tdwcf_score_before (CGI base)');
             $table->text('notes')->nullable();
-            $table->timestamp('recorded_at');
+            $table->timestamp('recorded_at')->useCurrent();
             $table->timestamps();
             
 

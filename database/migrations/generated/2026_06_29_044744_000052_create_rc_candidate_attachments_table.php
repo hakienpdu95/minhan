@@ -28,7 +28,7 @@ return new class extends Migration
             $table->string('storage_provider', 20)->default('local');
             $table->string('storage_key', 500);
             $table->unsignedBigInteger('uploaded_by');
-            $table->timestamp('uploaded_at');
+            $table->timestamp('uploaded_at')->useCurrent();
             
         });
 

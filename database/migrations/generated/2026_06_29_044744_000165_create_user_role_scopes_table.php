@@ -25,7 +25,7 @@ return new class extends Migration
             $table->foreignId('scope_branch_id')->nullable()->constrained('branches')->restrictOnDelete();
             $table->foreignId('scope_dept_id')->nullable()->constrained('departments')->restrictOnDelete();
             $table->foreignId('granted_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->timestamp('granted_at');
+            $table->timestamp('granted_at')->useCurrent();
             $table->timestamp('expires_at')->nullable();
             $table->string('note', 500)->nullable();
             $table->timestamp('created_at')->nullable();

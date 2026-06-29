@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('activity_description', 500)->comment('Mô tả ngắn hành động');
             $table->string('ai_tool_used', 100)->nullable();
             $table->unsignedTinyInteger('quality_note')->nullable()->comment('0–10 evaluator note');
-            $table->timestamp('occurred_at');
+            $table->timestamp('occurred_at')->useCurrent();
             $table->timestamps();
             
 

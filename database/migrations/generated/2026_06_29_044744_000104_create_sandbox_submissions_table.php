@@ -11,19 +11,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::hasTable('zbs_oauth_tokens')) {
+        if (Schema::hasTable('sandbox_submissions')) {
             return;
         }
 
-        Schema::create('zbs_oauth_tokens', function (Blueprint $table) {
+        Schema::create('sandbox_submissions', function (Blueprint $table) {
             $table->id();
             $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
             $table->unsignedInteger('order_column')->nullable()->index()->comment('Thứ tự sắp xếp — Spatie Sortable / ORDER BY');
-            $table->string('app_id', 50)->unique()->comment('Zalo App ID — one row per OA');
-            $table->text('access_token');
-            $table->timestamp('access_token_expires_at');
-            $table->text('refresh_token');
-            $table->timestamp('refresh_token_expires_at');
+            $table->unsignedBigInteger('sandbox_session_id')->unique();
+            $table->text('submitted_content')->comment('Output thực tế của người dùng');
+            $table->string('ai_tools_used', 300)->nullable()->comment('pipe-delimited');
+            $table->timestamp('submitted_at')->useCurrent();
             $table->timestamps();
             
         });
@@ -33,6 +32,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('zbs_oauth_tokens');
+        Schema::dropIfExists('sandbox_submissions');
     }
 };

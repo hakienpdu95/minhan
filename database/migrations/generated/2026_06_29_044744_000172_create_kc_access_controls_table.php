@@ -23,7 +23,7 @@ return new class extends Migration
             $table->enum('target_type', ['user', 'role', 'dept'])->index();
             $table->unsignedBigInteger('target_id')->index();
             $table->enum('permission', ['view', 'edit', 'manage'])->default('view');
-            $table->timestamp('granted_at');
+            $table->timestamp('granted_at')->useCurrent();
             $table->foreignId('granted_by')->constrained('users')->restrictOnDelete();
             $table->timestamp('expired_at')->nullable();
             

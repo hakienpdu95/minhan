@@ -26,7 +26,7 @@ return new class extends Migration
             $table->unsignedBigInteger('changed_by')->nullable();
             $table->string('change_type', 32);
             $table->string('reason', 255)->nullable();
-            $table->timestamp('effective_at');
+            $table->timestamp('effective_at')->useCurrent();
             $table->decimal('prorate_credit', 15, 2)->default(0);
             $table->timestamp('created_at')->nullable();
             

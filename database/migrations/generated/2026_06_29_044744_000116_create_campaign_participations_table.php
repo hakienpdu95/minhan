@@ -21,7 +21,7 @@ return new class extends Migration
             $table->unsignedInteger('order_column')->nullable()->index()->comment('Thứ tự sắp xếp — Spatie Sortable / ORDER BY');
             $table->unsignedBigInteger('campaign_id');
             $table->unsignedBigInteger('user_id');
-            $table->timestamp('joined_at');
+            $table->timestamp('joined_at')->useCurrent();
             $table->timestamp('completed_at')->nullable();
             $table->string('status', 20)->default('in_progress')->comment('in_progress | completed | abandoned | declined');
             $table->decimal('result_tdwcf_score', 5, 2)->nullable();

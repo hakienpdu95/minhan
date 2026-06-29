@@ -333,6 +333,12 @@ class GenerateMigration extends Command
         if ($nullable)         $def .= '->nullable()';
         if ($default !== '__') $def .= $this->formatDefault($type, $default);
 
+        // timestamp NOT NULL không có default → MySQL strict mode từ chối (SQLSTATE 1067)
+        // useCurrent() thêm DEFAULT CURRENT_TIMESTAMP; app vẫn override được khi insert
+        if ($type === 'timestamp' && !$nullable && $default === '__') {
+            $def .= '->useCurrent()';
+        }
+
         if ($mod !== '__'
             && !str_contains($mod, 'constrained')
             && !str_contains($mod, 'references(')

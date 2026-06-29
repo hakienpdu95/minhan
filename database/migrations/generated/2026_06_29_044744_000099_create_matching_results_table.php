@@ -30,7 +30,7 @@ return new class extends Migration
             $table->decimal('career_goal_match', 5, 2)->nullable()->comment('10%');
             $table->decimal('matching_score', 5, 2)->nullable()->comment('Điểm tổng hợp');
             $table->string('match_level', 20)->nullable()->comment('excellent(90-100)|strong(75-89)|potential(60-74)|development(40-59)|not_recommended(<40)');
-            $table->timestamp('calculated_at');
+            $table->timestamp('calculated_at')->useCurrent();
             $table->string('status', 20)->default('pending')->comment('pending|reviewed|hired|rejected');
             $table->timestamps();
             

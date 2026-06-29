@@ -11,25 +11,26 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::hasTable('kc_view_logs')) {
+        if (Schema::hasTable('kc_version_histories')) {
             return;
         }
 
-        Schema::create('kc_view_logs', function (Blueprint $table) {
+        Schema::create('kc_version_histories', function (Blueprint $table) {
             $table->id();
             $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
             $table->unsignedInteger('order_column')->nullable()->index()->comment('Thứ tự sắp xếp — Spatie Sortable / ORDER BY');
             $table->foreignId('item_id')->constrained('kc_items')->cascadeOnDelete();
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->string('session_id', 100)->nullable();
-            $table->string('ip_address', 45)->nullable();
-            $table->text('user_agent')->nullable();
-            $table->timestamp('viewed_at')->index();
+            $table->unsignedInteger('version_number');
+            $table->string('title_snapshot', 300);
+            $table->longText('content_snapshot');
+            $table->text('change_summary')->nullable();
+            $table->foreignId('changed_by')->constrained('users')->restrictOnDelete();
+            $table->timestamp('changed_at')->useCurrent();
             
 
             // Indexes
-            $table->index(['item_id', 'viewed_at'], 'idx_kc_viewlog_item');
-            $table->index(['user_id', 'viewed_at'], 'idx_kc_viewlog_user');
+            $table->unique(['item_id', 'version_number'], 'uq_kc_ver_item_version');
+            $table->index('item_id', 'idx_kc_ver_item');
         });
 
         
@@ -37,6 +38,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('kc_view_logs');
+        Schema::dropIfExists('kc_version_histories');
     }
 };

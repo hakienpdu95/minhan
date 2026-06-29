@@ -32,6 +32,9 @@ return new class extends Migration {
             if (!Schema::hasColumn('surveys', 'description')) {
                 $table->text('description')->nullable()->after('specialized_set_code');
             }
+            if (!Schema::hasColumn('surveys', 'turnstile_site_id')) {
+                $table->foreignId('turnstile_site_id')->nullable()->constrained('survey_turnstile_sites')->nullOnDelete()->after('description');
+            }
         });
     }
 
@@ -39,7 +42,8 @@ return new class extends Migration {
     {
         Schema::table('surveys', function (Blueprint $table) {
             if (Schema::hasColumn('surveys', 'organization_id')) $table->dropForeign(['organization_id']);
-            $cols = array_filter(['assessment_code', 'lead_notify_email', 'allow_multiple_responses', 'organization_id', 'specialized_set_code', 'description'], fn($c) => Schema::hasColumn('surveys', $c));
+            if (Schema::hasColumn('surveys', 'turnstile_site_id')) $table->dropForeign(['turnstile_site_id']);
+            $cols = array_filter(['assessment_code', 'lead_notify_email', 'allow_multiple_responses', 'organization_id', 'specialized_set_code', 'description', 'turnstile_site_id'], fn($c) => Schema::hasColumn('surveys', $c));
             if (!empty($cols)) $table->dropColumn(array_values($cols));
         });
     }

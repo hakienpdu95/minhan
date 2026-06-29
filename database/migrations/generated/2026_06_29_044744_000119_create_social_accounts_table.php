@@ -28,7 +28,7 @@ return new class extends Migration
             $table->text('access_token')->nullable();
             $table->text('refresh_token')->nullable();
             $table->timestamp('token_expires_at')->nullable();
-            $table->timestamp('linked_at');
+            $table->timestamp('linked_at')->useCurrent();
             $table->timestamp('last_used_at')->nullable();
             $table->timestamps();
             

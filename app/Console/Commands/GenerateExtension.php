@@ -367,6 +367,11 @@ class GenerateExtension extends Command
         if ($nullable)            $def .= '->nullable()';
         if ($colDefault !== '__') $def .= $this->formatDefault($colType, $colDefault);
 
+        // timestamp NOT NULL không có default → MySQL strict mode từ chối (SQLSTATE 1067)
+        if ($colType === 'timestamp' && !$nullable && $colDefault === '__') {
+            $def .= '->useCurrent()';
+        }
+
         if ($colMod !== '__'
             && !str_contains($colMod, 'constrained')
             && !str_contains($colMod, 'references(')

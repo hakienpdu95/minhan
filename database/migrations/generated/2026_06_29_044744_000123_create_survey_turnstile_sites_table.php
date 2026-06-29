@@ -11,21 +11,20 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::hasTable('task_watchers')) {
+        if (Schema::hasTable('survey_turnstile_sites')) {
             return;
         }
 
-        Schema::create('task_watchers', function (Blueprint $table) {
+        Schema::create('survey_turnstile_sites', function (Blueprint $table) {
             $table->id();
             $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
             $table->unsignedInteger('order_column')->nullable()->index()->comment('Thứ tự sắp xếp — Spatie Sortable / ORDER BY');
-            $table->unsignedBigInteger('task_id');
-            $table->unsignedBigInteger('user_id');
-            $table->timestamp('watched_at');
+            $table->string('name');
+            $table->string('site_key');
+            $table->text('secret_key_encrypted');
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
             
-
-            // Indexes
-            $table->index('user_id', 'idx_watcher_user');
         });
 
         
@@ -33,6 +32,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('task_watchers');
+        Schema::dropIfExists('survey_turnstile_sites');
     }
 };

@@ -24,7 +24,7 @@ return new class extends Migration
             $table->unsignedBigInteger('workforce_profile_id')->nullable();
             $table->unsignedBigInteger('user_id');
             $table->string('status', 20)->default('in_progress')->comment('in_progress|submitted|evaluating|completed|abandoned');
-            $table->timestamp('started_at');
+            $table->timestamp('started_at')->useCurrent();
             $table->timestamp('submitted_at')->nullable();
             $table->timestamp('completed_at')->nullable();
             $table->unsignedSmallInteger('duration_minutes')->nullable();

@@ -24,7 +24,7 @@ return new class extends Migration
             $table->unsignedBigInteger('source_org_id')->nullable();
             $table->string('source_org_name', 200)->nullable()->comment('Tên org tại thời điểm snapshot — bất biến');
             $table->string('source_org_logo_path', 500)->nullable();
-            $table->timestamp('snapshot_at');
+            $table->timestamp('snapshot_at')->useCurrent();
             $table->date('tenure_start')->nullable();
             $table->date('tenure_end')->nullable();
             $table->unsignedSmallInteger('tenure_months')->nullable();

@@ -22,8 +22,8 @@ return new class extends Migration
             $table->foreignId('organization_id')->constrained('organizations')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('org_membership_id')->constrained('organization_members')->cascadeOnDelete();
-            $table->timestamp('effective_left_at');
-            $table->timestamp('offboarded_at');
+            $table->timestamp('effective_left_at')->useCurrent();
+            $table->timestamp('offboarded_at')->useCurrent();
             $table->unsignedSmallInteger('gap_days');
             $table->unsignedSmallInteger('login_count_in_gap')->default(0);
             $table->unsignedSmallInteger('sandbox_sessions_in_gap')->default(0);

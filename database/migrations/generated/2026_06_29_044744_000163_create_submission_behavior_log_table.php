@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('event_type', 30)->comment('view | answer | change | skip | back | time_spent');
             $table->string('event_value', 255)->nullable()->comment('Giá trị kèm theo event (e.g. thời gian ms, option chọn)');
             $table->integer('sequence_no')->comment('Thứ tự event trong session');
-            $table->timestamp('occurred_at');
+            $table->timestamp('occurred_at')->useCurrent();
             
 
             // Indexes

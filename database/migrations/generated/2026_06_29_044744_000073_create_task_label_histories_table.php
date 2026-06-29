@@ -11,25 +11,23 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::hasTable('organization_verticals')) {
+        if (Schema::hasTable('task_label_histories')) {
             return;
         }
 
-        Schema::create('organization_verticals', function (Blueprint $table) {
+        Schema::create('task_label_histories', function (Blueprint $table) {
             $table->id();
             $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
             $table->unsignedInteger('order_column')->nullable()->index()->comment('Thứ tự sắp xếp — Spatie Sortable / ORDER BY');
-            $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
-            $table->string('vertical_code', 50);
-            $table->string('status', 20)->default('active');
-            $table->json('config')->nullable();
-            $table->timestamp('activated_at');
-            $table->foreignId('activated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->unsignedBigInteger('task_id');
+            $table->unsignedBigInteger('label_id');
+            $table->unsignedBigInteger('actor_id');
+            $table->string('action', 10);
+            $table->timestamp('changed_at')->useCurrent();
             
 
             // Indexes
-            $table->unique(['organization_id', 'vertical_code']);
-            $table->index(['organization_id', 'status']);
+            $table->index(['task_id', 'changed_at'], 'idx_lhist_task');
         });
 
         
@@ -37,6 +35,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('organization_verticals');
+        Schema::dropIfExists('task_label_histories');
     }
 };

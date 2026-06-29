@@ -28,7 +28,7 @@ return new class extends Migration
             $table->decimal('portfolio_score_at_issue', 5, 2)->nullable()->comment('20%');
             $table->decimal('composite_score_at_issue', 5, 2)->nullable()->comment('Điểm tổng hợp cuối cùng');
             $table->string('status', 20)->default('active')->comment('active|expired|revoked');
-            $table->timestamp('issued_at');
+            $table->timestamp('issued_at')->useCurrent();
             $table->timestamp('expires_at')->nullable();
             $table->timestamp('revoked_at')->nullable();
             $table->text('revoked_reason')->nullable();
