@@ -58,9 +58,9 @@ class WorkforceCertification extends TenantAwareModel
         2);
     }
 
-    public function resolveRouteBinding($value, $field = null)
+    public function resolveRouteBinding($value, $field = null): ?static
     {
-        return $this->withoutTenant()->where($field ?? $this->getRouteKeyName(), $value)->firstOrFail();
+        return $this->withoutTenant()->where($field ?? $this->getRouteKeyName(), $value)->first();
     }
 
     public function definition(): BelongsTo
