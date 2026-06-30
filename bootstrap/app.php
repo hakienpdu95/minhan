@@ -39,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('web', \Modules\ActivityLog\Http\Middleware\CaptureHttpContext::class);
         $middleware->appendToGroup('web', \Modules\Subscription\Features\FeatureGate\Http\Middleware\CheckSubscription::class);
         $middleware->appendToGroup('web', \App\Http\Middleware\SecurityHeaders::class);
+        $middleware->appendToGroup('web', \App\Http\Middleware\EnsureUserIsActive::class);
         // EnsureFrontendRequestsAreStateful phải đứng đầu api group để auth:sanctum
         // có thể dùng session cookie từ browser (SPA/Tabulator AJAX calls).
         // Không có middleware này, sanctum chỉ nhận Bearer token → 401.

@@ -52,7 +52,7 @@
                 </label>
 
                 {{-- Password --}}
-                <label class="form-control w-full">
+                <div class="form-control w-full" x-data="{ show: false }">
                     <div class="label pb-1">
                         <span class="label-text font-medium">Mật khẩu</span>
                         @if (Route::has('password.request'))
@@ -61,19 +61,36 @@
                             </a>
                         @endif
                     </div>
-                    <input
-                        type="password"
-                        name="password"
-                        placeholder="••••••••"
-                        class="input input-bordered w-full @error('password') input-error @enderror"
-                        required
-                        autocomplete="current-password"
-                    />
-                </label>
+                    <label class="input input-bordered flex items-center w-full gap-0 @error('password') input-error @enderror">
+                        <input
+                            :type="show ? 'text' : 'password'"
+                            name="password"
+                            placeholder="••••••••"
+                            class="grow min-w-0"
+                            required
+                            autocomplete="current-password"
+                        />
+                        <button type="button"
+                                @click="show = !show"
+                                tabindex="-1"
+                                class="flex items-center justify-center shrink-0 w-8 h-8 rounded text-base-content/40 hover:text-base-content transition-colors"
+                                :aria-label="show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'">
+                            <svg x-show="!show" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <svg x-show="show" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/>
+                            </svg>
+                        </button>
+                    </label>
+                </div>
 
                 {{-- Remember me --}}
                 <label class="label cursor-pointer justify-start gap-3 py-0">
-                    <input type="checkbox" name="remember" class="checkbox checkbox-sm checkbox-primary" />
+                    <input type="checkbox" name="remember" value="1"
+                           class="checkbox checkbox-sm checkbox-primary"
+                           {{ old('remember', request()->cookie('pref_remember')) ? 'checked' : '' }} />
                     <span class="label-text text-sm">Ghi nhớ đăng nhập</span>
                 </label>
 
@@ -91,14 +108,6 @@
                     Đăng nhập
                 </button>
             </form>
-
-            {{-- Register link --}}
-            @if (Route::has('register'))
-                <div class="divider text-xs text-base-content/40 my-0">Chưa có tài khoản?</div>
-                <a href="{{ route('register') }}" class="btn btn-outline btn-primary btn-sm w-full">
-                    Tạo tổ chức mới
-                </a>
-            @endif
 
             {{-- Social Login — hiện khi ít nhất 1 provider được cấu hình --}}
             @if (config('services.google.client_id') || config('services.facebook.client_id') || config('services.linkedin-openid.client_id'))

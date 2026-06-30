@@ -79,6 +79,8 @@ class OrganizationController extends Controller
 
     public function edit(Organization $organization)
     {
+        $organization->loadCount('members');
+
         return view('organization::edit', compact('organization'));
     }
 
