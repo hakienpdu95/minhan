@@ -173,18 +173,30 @@ class DepartmentController extends Controller
     {
         $this->authorize('viewAny', Department::class);
 
-        $orgId = TenantContext::getOrganizationId();
-        $q     = $request->input('q', '');
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            $orgId = $userOrgId;
+        } else {
+            $orgId = $request->integer('organization_id') ?: TenantContext::getOrganizationId();
+        }
+
+        $q         = $request->input('q', '');
+        $forParent = $request->boolean('for_parent');
 
         $rows = Department::withoutTenant()
             ->where('organization_id', $orgId)
             ->where('status', 'active')
+            ->when($forParent, fn ($q) => $q->where('depth', '<', 2)->orderBy('path'))
+            ->when(!$forParent, fn ($q) => $q->orderBy('name')->limit(30))
             ->when($q, fn ($query) => $query->where('name', 'like', "%{$q}%"))
-            ->orderBy('name')
-            ->limit(30)
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'code', 'depth']);
 
-        return response()->json($rows->map(fn ($d) => ['id' => $d->id, 'text' => $d->name]));
+        return response()->json($rows->map(fn ($d) => [
+            'id'   => $d->id,
+            'text' => $forParent
+                ? str_repeat('— ', $d->depth) . $d->name . ' (' . $d->code . ')'
+                : $d->name,
+        ]));
     }
 
     public function destroy(Request $request, Department $department, DestroyDepartmentAction $action): RedirectResponse|JsonResponse

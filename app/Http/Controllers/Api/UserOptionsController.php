@@ -12,8 +12,14 @@ class UserOptionsController extends Controller
 {
     public function __invoke(Request $request): JsonResponse
     {
-        $orgId = TenantContext::getOrganizationId();
-        $q     = $request->input('q', '');
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            $orgId = $userOrgId;
+        } else {
+            $orgId = $request->integer('organization_id') ?: TenantContext::getOrganizationId();
+        }
+
+        $q = $request->input('q', '');
 
         $rows = User::where('organization_id', $orgId)
             ->where('is_active', true)

@@ -203,13 +203,19 @@
                         <select id="ts-owner" name="owner_id"
                                 class="select select-bordered select-sm w-full ts-init @error('owner_id') select-error @enderror"
                                 data-ts-placeholder="— Chọn người phụ trách —"
-                                data-req="Vui lòng chọn người phụ trách">
+                                data-req="Vui lòng chọn người phụ trách"
+                                @if(!$orgLocked)
+                                    data-org-api="{{ route('api.employees.options') }}"
+                                    data-selected-value="{{ old('owner_id', $project->owner_id) }}"
+                                @endif>
                             <option value="">— Chọn người phụ trách —</option>
-                            @foreach($employees as $emp)
-                            <option value="{{ $emp->id }}" {{ old('owner_id', $project->owner_id) == $emp->id ? 'selected' : '' }}>
-                                {{ $emp->full_name }} ({{ $emp->employee_code }})
-                            </option>
-                            @endforeach
+                            @if($orgLocked)
+                                @foreach($employees as $emp)
+                                <option value="{{ $emp->id }}" {{ old('owner_id', $project->owner_id) == $emp->id ? 'selected' : '' }}>
+                                    {{ $emp->full_name }} ({{ $emp->employee_code }})
+                                </option>
+                                @endforeach
+                            @endif
                         </select>
                         @error('owner_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
@@ -223,13 +229,19 @@
                             </label>
                             <select id="ts-branch" name="branch_id"
                                     class="select select-bordered select-sm w-full ts-init @error('branch_id') select-error @enderror"
-                                    data-ts-placeholder="— Không xác định —">
+                                    data-ts-placeholder="— Không xác định —"
+                                    @if(!$orgLocked)
+                                        data-org-api="{{ route('api.branches.options') }}"
+                                        data-selected-value="{{ old('branch_id', $project->branch_id) }}"
+                                    @endif>
                                 <option value="">— Không xác định —</option>
-                                @foreach($branches as $branch)
-                                <option value="{{ $branch->id }}" {{ old('branch_id', $project->branch_id) == $branch->id ? 'selected' : '' }}>
-                                    {{ $branch->name }} ({{ $branch->code }})
-                                </option>
-                                @endforeach
+                                @if($orgLocked)
+                                    @foreach($branches as $branch)
+                                    <option value="{{ $branch->id }}" {{ old('branch_id', $project->branch_id) == $branch->id ? 'selected' : '' }}>
+                                        {{ $branch->name }} ({{ $branch->code }})
+                                    </option>
+                                    @endforeach
+                                @endif
                             </select>
                             @error('branch_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
@@ -241,13 +253,19 @@
                             </label>
                             <select id="ts-department" name="department_id"
                                     class="select select-bordered select-sm w-full ts-init @error('department_id') select-error @enderror"
-                                    data-ts-placeholder="— Không xác định —">
+                                    data-ts-placeholder="— Không xác định —"
+                                    @if(!$orgLocked)
+                                        data-org-api="{{ route('api.departments.options') }}"
+                                        data-selected-value="{{ old('department_id', $project->department_id) }}"
+                                    @endif>
                                 <option value="">— Không xác định —</option>
-                                @foreach($departments as $dept)
-                                <option value="{{ $dept->id }}" {{ old('department_id', $project->department_id) == $dept->id ? 'selected' : '' }}>
-                                    {{ $dept->name }} ({{ $dept->code }})
-                                </option>
-                                @endforeach
+                                @if($orgLocked)
+                                    @foreach($departments as $dept)
+                                    <option value="{{ $dept->id }}" {{ old('department_id', $project->department_id) == $dept->id ? 'selected' : '' }}>
+                                        {{ $dept->name }} ({{ $dept->code }})
+                                    </option>
+                                    @endforeach
+                                @endif
                             </select>
                             @error('department_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>

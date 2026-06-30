@@ -57,6 +57,29 @@ class JobTitleController extends Controller
         ));
     }
 
+    public function options(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', JobTitle::class);
+
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            $orgId = $userOrgId;
+        } else {
+            $orgId = $request->integer('organization_id') ?: TenantContext::getOrganizationId();
+        }
+
+        $rows = JobTitle::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('is_active', true)
+            ->orderBy('level')
+            ->get(['id', 'name', 'level']);
+
+        return response()->json($rows->map(fn ($jt) => [
+            'id'   => $jt->id,
+            'text' => $jt->name . ' (Lv.' . $jt->level . ')',
+        ]));
+    }
+
     private function _resolveOrganizations(): array
     {
         $userOrgId = auth()->user()->organization_id;

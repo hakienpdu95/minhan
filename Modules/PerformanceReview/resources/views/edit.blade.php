@@ -151,14 +151,21 @@
                                 <span class="label-text font-medium">Người đánh giá</span>
                             </label>
                             <select id="ts-reviewer" name="reviewer_id"
-                                    class="select select-bordered select-sm w-full @error('reviewer_id') select-error @enderror"
-                                    data-ts-remote-url="{{ route('api.employees.options') }}"
+                                    class="select select-bordered select-sm w-full @error('reviewer_id') select-error @enderror @if(!$orgLocked) ts-init @endif"
+                                    @if($orgLocked)
+                                        data-ts-remote-url="{{ route('api.employees.options') }}"
+                                    @else
+                                        data-org-api="{{ route('api.employees.options') }}"
+                                        data-selected-value="{{ old('reviewer_id', $review->reviewer_id) }}"
+                                    @endif
                                     data-ts-placeholder="— Chọn người đánh giá —">
-                                @php $reviewerVal = $selectedReviewer ?? $review->reviewer; @endphp
-                                @if($reviewerVal)
-                                <option value="{{ $reviewerVal->id }}" selected>
-                                    {{ $reviewerVal->full_name }} ({{ $reviewerVal->employee_code }})
-                                </option>
+                                @if($orgLocked)
+                                    @php $reviewerVal = $selectedReviewer ?? $review->reviewer; @endphp
+                                    @if($reviewerVal)
+                                    <option value="{{ $reviewerVal->id }}" selected>
+                                        {{ $reviewerVal->full_name }} ({{ $reviewerVal->employee_code }})
+                                    </option>
+                                    @endif
                                 @endif
                             </select>
                             @error('reviewer_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror

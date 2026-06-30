@@ -125,10 +125,15 @@
                                     <span class="label-text font-medium">Người phụ trách <span class="text-error">*</span></span>
                                 </label>
                                 <select id="ts-owner" name="owner_id"
-                                        class="select select-bordered select-sm w-full @error('owner_id') select-error @enderror"
-                                        data-ts-remote-url="{{ route('api.users.options') }}"
+                                        class="select select-bordered select-sm w-full @error('owner_id') select-error @enderror @if(!$orgLocked) ts-init @endif"
+                                        @if($orgLocked)
+                                            data-ts-remote-url="{{ route('api.users.options') }}"
+                                        @else
+                                            data-org-api="{{ route('api.users.options') }}"
+                                            data-selected-value="{{ old('owner_id') }}"
+                                        @endif
                                         data-ts-placeholder="Chọn người phụ trách...">
-                                    @if($selectedOwner)
+                                    @if($orgLocked && $selectedOwner)
                                     <option value="{{ $selectedOwner->id }}" selected>{{ $selectedOwner->name }}</option>
                                     @endif
                                 </select>
@@ -140,10 +145,15 @@
                                     <span class="label-text font-medium">Phòng ban áp dụng</span>
                                 </label>
                                 <select id="ts-department" name="department_id"
-                                        class="select select-bordered select-sm w-full"
-                                        data-ts-remote-url="{{ route('api.departments.options') }}"
+                                        class="select select-bordered select-sm w-full @if(!$orgLocked) ts-init @endif"
+                                        @if($orgLocked)
+                                            data-ts-remote-url="{{ route('api.departments.options') }}"
+                                        @else
+                                            data-org-api="{{ route('api.departments.options') }}"
+                                            data-selected-value="{{ old('department_id') }}"
+                                        @endif
                                         data-ts-placeholder="Tất cả phòng ban...">
-                                    @if($selectedDept)
+                                    @if($orgLocked && $selectedDept)
                                     <option value="{{ $selectedDept->id }}" selected>{{ $selectedDept->name }}</option>
                                     @endif
                                 </select>
@@ -155,10 +165,15 @@
                                     <span class="label-text font-medium">Chi nhánh áp dụng</span>
                                 </label>
                                 <select id="ts-branch" name="branch_id"
-                                        class="select select-bordered select-sm w-full"
-                                        data-ts-remote-url="{{ route('api.branches.options') }}"
+                                        class="select select-bordered select-sm w-full @if(!$orgLocked) ts-init @endif"
+                                        @if($orgLocked)
+                                            data-ts-remote-url="{{ route('api.branches.options') }}"
+                                        @else
+                                            data-org-api="{{ route('api.branches.options') }}"
+                                            data-selected-value="{{ old('branch_id') }}"
+                                        @endif
                                         data-ts-placeholder="Tất cả chi nhánh...">
-                                    @if($selectedBranch)
+                                    @if($orgLocked && $selectedBranch)
                                     <option value="{{ $selectedBranch->id }}" selected>{{ $selectedBranch->name }}</option>
                                     @endif
                                 </select>

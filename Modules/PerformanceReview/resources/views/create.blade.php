@@ -147,11 +147,16 @@
                                 <span class="label-text font-medium">Nhân viên được đánh giá <span class="text-error">*</span></span>
                             </label>
                             <select id="ts-employee" name="employee_id"
-                                    class="select select-bordered select-sm w-full @error('employee_id') select-error @enderror"
-                                    data-ts-remote-url="{{ route('api.employees.options') }}"
+                                    class="select select-bordered select-sm w-full @error('employee_id') select-error @enderror @if(!$orgLocked) ts-init @endif"
+                                    @if($orgLocked)
+                                        data-ts-remote-url="{{ route('api.employees.options') }}"
+                                    @else
+                                        data-org-api="{{ route('api.employees.options') }}"
+                                        data-selected-value="{{ old('employee_id') }}"
+                                    @endif
                                     data-ts-placeholder="— Chọn nhân viên —"
                                     data-req="Vui lòng chọn nhân viên được đánh giá">
-                                @if($selectedEmployee)
+                                @if($orgLocked && $selectedEmployee)
                                 <option value="{{ $selectedEmployee->id }}" selected>
                                     {{ $selectedEmployee->full_name }} ({{ $selectedEmployee->employee_code }})
                                 </option>
@@ -165,11 +170,16 @@
                                 <span class="label-text font-medium">Người đánh giá <span class="text-error">*</span></span>
                             </label>
                             <select id="ts-reviewer" name="reviewer_id"
-                                    class="select select-bordered select-sm w-full @error('reviewer_id') select-error @enderror"
-                                    data-ts-remote-url="{{ route('api.employees.options') }}"
+                                    class="select select-bordered select-sm w-full @error('reviewer_id') select-error @enderror @if(!$orgLocked) ts-init @endif"
+                                    @if($orgLocked)
+                                        data-ts-remote-url="{{ route('api.employees.options') }}"
+                                    @else
+                                        data-org-api="{{ route('api.employees.options') }}"
+                                        data-selected-value="{{ old('reviewer_id') }}"
+                                    @endif
                                     data-ts-placeholder="— Chọn người đánh giá —"
                                     data-req="Vui lòng chọn người đánh giá">
-                                @if($selectedReviewer)
+                                @if($orgLocked && $selectedReviewer)
                                 <option value="{{ $selectedReviewer->id }}" selected>
                                     {{ $selectedReviewer->full_name }} ({{ $selectedReviewer->employee_code }})
                                 </option>
@@ -185,11 +195,17 @@
                             <select id="ts-template" name="template_id"
                                     class="select select-bordered select-sm w-full @error('template_id') select-error @enderror"
                                     data-ts-placeholder="— Chọn mẫu đánh giá —"
-                                    data-req="Vui lòng chọn mẫu đánh giá">
+                                    data-req="Vui lòng chọn mẫu đánh giá"
+                                    @if(!$orgLocked)
+                                        data-org-api-templates="{{ route('api.reviewtemplate.options') }}"
+                                        data-selected-value="{{ old('template_id') }}"
+                                    @endif>
                                 <option value="">— Chọn mẫu đánh giá —</option>
-                                @foreach($templates as $tpl)
-                                <option value="{{ $tpl->id }}" {{ old('template_id') == $tpl->id ? 'selected' : '' }}>{{ $tpl->name }}</option>
-                                @endforeach
+                                @if($orgLocked)
+                                    @foreach($templates as $tpl)
+                                    <option value="{{ $tpl->id }}" {{ old('template_id') == $tpl->id ? 'selected' : '' }}>{{ $tpl->name }}</option>
+                                    @endforeach
+                                @endif
                             </select>
                             @error('template_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>

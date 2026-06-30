@@ -52,6 +52,51 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    _initOrgCategoryCascade();
+
+    // ── Org → category cascade ──────────────────────────────────────────────
+    function _initOrgCategoryCascade() {
+        var orgEl = document.getElementById('ts-organization');
+        var catEl = document.getElementById('ts-category');
+        if (!orgEl || !catEl) return;
+
+        var apiUrl = catEl.dataset.orgApi;
+        if (!apiUrl) return; // orgLocked — PHP đã render đúng options
+
+        var tsOrg = orgEl.tomselect;
+        var tsCat = catEl.tomselect;
+        if (!tsOrg || !tsCat) return;
+
+        var pending = catEl.dataset.selectedValue || '';
+
+        function loadCategories(orgId, restoreValue) {
+            tsCat.clear(true);
+            tsCat.clearOptions();
+            tsCat.disable();
+            if (!orgId) return;
+
+            fetch(apiUrl + '?organization_id=' + encodeURIComponent(orgId), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            })
+            .then(function (r) { return r.ok ? r.json() : []; })
+            .then(function (items) {
+                tsCat.addOptions(items.map(function (c) { return { value: String(c.id), text: c.text }; }));
+                tsCat.enable();
+                if (restoreValue) tsCat.setValue(String(restoreValue), true);
+            })
+            .catch(function () { tsCat.enable(); });
+        }
+
+        var initialOrgId = tsOrg.getValue();
+        if (initialOrgId) {
+            loadCategories(initialOrgId, pending);
+        } else {
+            tsCat.disable();
+        }
+
+        tsOrg.on('change', function (orgId) { loadCategories(orgId, ''); });
+    }
+
     // Tag picker — TomSelect multi với tạo tag mới inline
     var tagEl = document.getElementById('ts-tags');
     if (!tagEl) return;

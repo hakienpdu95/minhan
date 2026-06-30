@@ -177,14 +177,20 @@
                             </label>
                             <select id="ts-parent" name="parent_id"
                                     class="select select-bordered select-sm w-full ts-init @error('parent_id') select-error @enderror"
-                                    data-ts-placeholder="— Không có (root) —">
+                                    data-ts-placeholder="— Không có (root) —"
+                                    @if(!$orgLocked)
+                                        data-parent-api="{{ route('api.branches.options') }}"
+                                        data-selected-parent="{{ old('parent_id', $branch->parent_id) }}"
+                                    @endif>
                                 <option value="">— Không có (root) —</option>
-                                @foreach($parentOptions as $opt)
-                                <option value="{{ $opt['value'] }}"
-                                        {{ old('parent_id', $branch->parent_id) == $opt['value'] ? 'selected' : '' }}>
-                                    {{ $opt['text'] }}
-                                </option>
-                                @endforeach
+                                @if($orgLocked)
+                                    @foreach($parentOptions as $opt)
+                                    <option value="{{ $opt['value'] }}"
+                                            {{ old('parent_id', $branch->parent_id) == $opt['value'] ? 'selected' : '' }}>
+                                        {{ $opt['text'] }}
+                                    </option>
+                                    @endforeach
+                                @endif
                             </select>
                             <p class="mt-1 text-xs text-base-content/40">Tối đa 3 cấp: Trụ sở → Vùng → Chi nhánh</p>
                             @error('parent_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror

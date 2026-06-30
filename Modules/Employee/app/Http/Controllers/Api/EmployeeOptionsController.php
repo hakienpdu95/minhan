@@ -15,12 +15,20 @@ class EmployeeOptionsController extends Controller
     {
         $this->authorize('viewAny', Employee::class);
 
-        $orgId = TenantContext::getOrganizationId();
-        $q     = $request->input('q', '');
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            $orgId = $userOrgId;
+        } else {
+            $orgId = $request->integer('organization_id') ?: TenantContext::getOrganizationId();
+        }
+
+        $q         = $request->input('q', '');
+        $excludeId = $request->integer('exclude_id');
 
         $rows = Employee::withoutTenant()
             ->where('organization_id', $orgId)
             ->where('status', EmployeeStatus::Active->value)
+            ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
             ->when($q, fn ($query) => $query->where('full_name', 'like', "%{$q}%")
                 ->orWhere('employee_code', 'like', "%{$q}%"))
             ->orderBy('full_name')

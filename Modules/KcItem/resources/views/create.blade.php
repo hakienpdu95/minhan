@@ -162,13 +162,19 @@
                                 <span class="label-text text-sm font-medium">Danh mục <span class="text-error">*</span></span>
                             </label>
                             <select id="ts-category" name="category_id"
-                                    class="select select-bordered select-sm w-full">
+                                    class="select select-bordered select-sm w-full"
+                                    @if(!$orgLocked)
+                                        data-org-api="{{ route('api.kc-category.options') }}"
+                                        data-selected-value="{{ old('category_id') }}"
+                                    @endif>
                                 <option value="">— Chọn danh mục —</option>
-                                @foreach($categories as $cat)
-                                <option value="{{ $cat['value'] }}" {{ old('category_id') == $cat['value'] ? 'selected' : '' }}>
-                                    {{ $cat['text'] }}
-                                </option>
-                                @endforeach
+                                @if($orgLocked)
+                                    @foreach($categories as $cat)
+                                    <option value="{{ $cat['value'] }}" {{ old('category_id') == $cat['value'] ? 'selected' : '' }}>
+                                        {{ $cat['text'] }}
+                                    </option>
+                                    @endforeach
+                                @endif
                             </select>
                             @error('category_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>

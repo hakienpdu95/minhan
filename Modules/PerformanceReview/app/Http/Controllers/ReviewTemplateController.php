@@ -11,9 +11,41 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Modules\PerformanceReview\Models\ReviewCriteria;
 use Modules\PerformanceReview\Models\ReviewTemplate;
+use Modules\PerformanceReview\Models\PerformanceReview as PerformanceReviewModel;
 
 class ReviewTemplateController extends Controller
 {
+    public function options(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', PerformanceReviewModel::class);
+
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            $orgId = $userOrgId;
+        } else {
+            $orgId = $request->integer('organization_id') ?: TenantContext::getOrganizationId();
+        }
+
+        $templates = ReviewTemplate::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->with('criteria')
+            ->get();
+
+        return response()->json($templates->map(fn ($t) => [
+            'id'       => $t->id,
+            'text'     => $t->name,
+            'criteria' => $t->criteria->map(fn ($c) => [
+                'criteria_key'  => $c->criteria_key,
+                'criteria_name' => $c->criteria_name,
+                'weight'        => $c->weight,
+                'max_score'     => $c->max_score,
+                'description'   => $c->description,
+            ])->values()->all(),
+        ]));
+    }
+
     public function index()
     {
         $this->authorize('viewAny', \Modules\PerformanceReview\Models\PerformanceReview::class);

@@ -169,12 +169,19 @@
                                     <span class="label-text font-medium">Người phụ trách <span class="text-error">*</span></span>
                                 </label>
                                 <select id="ts-owner" name="owner_id"
-                                        class="select select-bordered select-sm w-full @error('owner_id') select-error @enderror"
-                                        data-ts-remote-url="{{ route('api.users.options') }}"
+                                        class="select select-bordered select-sm w-full @error('owner_id') select-error @enderror @if(!$orgLocked) ts-init @endif"
+                                        @if($orgLocked)
+                                            data-ts-remote-url="{{ route('api.users.options') }}"
+                                        @else
+                                            data-org-api="{{ route('api.users.options') }}"
+                                            data-selected-value="{{ old('owner_id', $sop->owner_id) }}"
+                                        @endif
                                         data-ts-placeholder="Chọn người phụ trách...">
-                                    @php $ownerVal = $selectedOwner ?? $sop->owner; @endphp
-                                    @if($ownerVal)
-                                    <option value="{{ $ownerVal->id }}" selected>{{ $ownerVal->name }}</option>
+                                    @if($orgLocked)
+                                        @php $ownerVal = $selectedOwner ?? $sop->owner; @endphp
+                                        @if($ownerVal)
+                                        <option value="{{ $ownerVal->id }}" selected>{{ $ownerVal->name }}</option>
+                                        @endif
                                     @endif
                                 </select>
                                 @error('owner_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
@@ -185,12 +192,19 @@
                                     <span class="label-text font-medium">Phòng ban áp dụng</span>
                                 </label>
                                 <select id="ts-department" name="department_id"
-                                        class="select select-bordered select-sm w-full"
-                                        data-ts-remote-url="{{ route('api.departments.options') }}"
+                                        class="select select-bordered select-sm w-full @if(!$orgLocked) ts-init @endif"
+                                        @if($orgLocked)
+                                            data-ts-remote-url="{{ route('api.departments.options') }}"
+                                        @else
+                                            data-org-api="{{ route('api.departments.options') }}"
+                                            data-selected-value="{{ old('department_id', $sop->department_id) }}"
+                                        @endif
                                         data-ts-placeholder="Tất cả phòng ban...">
-                                    @php $deptVal = $selectedDept ?? $sop->department; @endphp
-                                    @if($deptVal)
-                                    <option value="{{ $deptVal->id }}" selected>{{ $deptVal->name }}</option>
+                                    @if($orgLocked)
+                                        @php $deptVal = $selectedDept ?? $sop->department; @endphp
+                                        @if($deptVal)
+                                        <option value="{{ $deptVal->id }}" selected>{{ $deptVal->name }}</option>
+                                        @endif
                                     @endif
                                 </select>
                                 @error('department_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
@@ -201,12 +215,19 @@
                                     <span class="label-text font-medium">Chi nhánh áp dụng</span>
                                 </label>
                                 <select id="ts-branch" name="branch_id"
-                                        class="select select-bordered select-sm w-full"
-                                        data-ts-remote-url="{{ route('api.branches.options') }}"
+                                        class="select select-bordered select-sm w-full @if(!$orgLocked) ts-init @endif"
+                                        @if($orgLocked)
+                                            data-ts-remote-url="{{ route('api.branches.options') }}"
+                                        @else
+                                            data-org-api="{{ route('api.branches.options') }}"
+                                            data-selected-value="{{ old('branch_id', $sop->branch_id) }}"
+                                        @endif
                                         data-ts-placeholder="Tất cả chi nhánh...">
-                                    @php $branchVal = $selectedBranch ?? $sop->branch; @endphp
-                                    @if($branchVal)
-                                    <option value="{{ $branchVal->id }}" selected>{{ $branchVal->name }}</option>
+                                    @if($orgLocked)
+                                        @php $branchVal = $selectedBranch ?? $sop->branch; @endphp
+                                        @if($branchVal)
+                                        <option value="{{ $branchVal->id }}" selected>{{ $branchVal->name }}</option>
+                                        @endif
                                     @endif
                                 </select>
                                 @error('branch_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror

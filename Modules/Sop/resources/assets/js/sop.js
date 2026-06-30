@@ -882,4 +882,49 @@ document.addEventListener('DOMContentLoaded', () => {
     initAllTomSelects(form);
     window.initAllDatePickers?.(form);
     if (typeof initJoditAll === 'function') initJoditAll('.jodit-editor');
+    _initOrgCascades(form);
 });
+
+// ── Org → owner / department / branch cascade ─────────────────────────────
+
+function _initOrgCascades(form) {
+    const orgEl = form.querySelector('#ts-organization');
+    if (!orgEl) return; // orgLocked
+
+    const deps = [...form.querySelectorAll('[data-org-api]')].map(el => ({
+        el,
+        ts:      el.tomselect,
+        api:     el.dataset.orgApi,
+        extra:   el.dataset.orgApiExtra || '',
+        pending: el.dataset.selectedValue || '',
+    })).filter(d => d.ts && d.api);
+
+    if (!deps.length) return;
+
+    const initialOrgId = orgEl.tomselect?.getValue() ?? '';
+    if (initialOrgId) {
+        deps.forEach(d => _loadOrgOptions(d.api, d.ts, initialOrgId, d.extra, d.pending));
+    } else {
+        deps.forEach(d => d.ts.disable());
+    }
+
+    orgEl.tomselect?.on('change', (orgId) => {
+        deps.forEach(d => { d.ts.clear(true); d.ts.clearOptions(); });
+        if (!orgId) { deps.forEach(d => d.ts.disable()); return; }
+        deps.forEach(d => _loadOrgOptions(d.api, d.ts, orgId, d.extra, ''));
+    });
+}
+
+function _loadOrgOptions(apiUrl, ts, orgId, extra, pending) {
+    ts.disable();
+    fetch(`${apiUrl}?organization_id=${encodeURIComponent(orgId)}${extra}`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+    })
+        .then(r => r.ok ? r.json() : [])
+        .then(items => {
+            ts.addOptions(items.map(b => ({ value: String(b.id), text: b.text })));
+            ts.enable();
+            if (pending) ts.setValue(String(pending), true);
+        })
+        .catch(() => ts.enable());
+}

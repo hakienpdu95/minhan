@@ -51,6 +51,30 @@ class KcCategoryController extends Controller
         ));
     }
 
+    public function options(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', KcCategory::class);
+
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            $orgId = $userOrgId;
+        } else {
+            $orgId = $request->integer('organization_id') ?: TenantContext::getOrganizationId();
+        }
+
+        $rows = KcCategory::withoutTenant()
+            ->where('organization_id', $orgId)
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return response()->json($rows->map(fn ($c) => [
+            'id'   => $c->id,
+            'text' => $c->name,
+        ]));
+    }
+
     private function _resolveOrganizations(): array
     {
         $userOrgId = auth()->user()->organization_id;
