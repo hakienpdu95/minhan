@@ -529,6 +529,10 @@ Phase 5b → Refactor SurveyResultController       (ticket riêng, không block 
 Phase 8  → Tích hợp entity mới (Customer...)    (sau khi hệ thống ổn định)
 ```
 
+> **Xem thêm:** `spec/assessment-registry.md` — kế hoạch riêng cho Assessment Registry
+> (fix listing bug + source_type + UX index). Các phase này ưu tiên cao hơn và độc lập
+> với lộ trình consolidation ở đây.
+
 ---
 
 *Spec version 2 — cập nhật corrections từ code audit ngày 2026-05-29*
