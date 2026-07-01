@@ -16,6 +16,9 @@ use Spatie\LaravelData\Data;
 class StoreTaskData extends Data
 {
     public function __construct(
+        #[Nullable]
+        public readonly ?int $organization_id,
+
         #[Required]
         public readonly int $project_id,
 
@@ -54,9 +57,12 @@ class StoreTaskData extends Data
 
     public static function rules(): array
     {
-        $orgId = TenantContext::getOrganizationId();
+        $userOrgId = auth()->user()->organization_id;
+        $orgId = $userOrgId
+            ?: (request()->integer('organization_id') ?: TenantContext::getOrganizationId());
 
         return [
+            'organization_id' => ['nullable', 'integer', 'exists:organizations,id'],
             'project_id'      => ['required', 'integer', Rule::exists('projects', 'id')->where('organization_id', $orgId)],
             'title'           => ['required', 'string', 'max:500'],
             'task_type'       => ['required', 'string', Rule::in(array_column(TaskType::cases(), 'value'))],

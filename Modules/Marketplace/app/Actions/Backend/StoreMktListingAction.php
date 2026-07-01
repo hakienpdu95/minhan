@@ -17,6 +17,7 @@ class StoreMktListingAction
     public function handle(StoreMktListingData $data, int $postedBy): MktListing
     {
         $listing = MktListing::create([
+            'org_id'              => $data->organization_id ?? auth()->user()->organization_id ?? TenantContext::getOrganizationId(),
             'posted_by'           => $postedBy,
             'poster_type'         => PosterType::ORG->value,
             'listing_type'        => $data->listing_type->value,

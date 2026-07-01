@@ -14,6 +14,9 @@ use Spatie\LaravelData\Data;
 class StoreOrgChartConfigData extends Data
 {
     public function __construct(
+        #[Nullable]
+        public readonly ?int $organization_id,
+
         #[Required, StringType, Max(255)]
         public readonly string $name,
 
@@ -40,6 +43,7 @@ class StoreOrgChartConfigData extends Data
     public static function rules(): array
     {
         return [
+            'organization_id' => ['nullable', 'integer', 'exists:organizations,id'],
             'scope_branch_id' => ['nullable', 'integer', 'exists:branches,id'],
             'max_depth'       => ['required', 'integer', 'min:1', 'max:10'],
         ];

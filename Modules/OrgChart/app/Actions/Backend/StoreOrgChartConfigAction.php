@@ -14,7 +14,8 @@ class StoreOrgChartConfigAction
 
     public function handle(StoreOrgChartConfigData $data): OrgChartConfig
     {
-        $orgId = TenantContext::getOrganizationId();
+        $userOrgId = auth()->user()->organization_id;
+        $orgId = $userOrgId ?? $data->organization_id ?? TenantContext::getOrganizationId();
 
         // Unset any existing default before creating new one
         if ($data->is_default) {

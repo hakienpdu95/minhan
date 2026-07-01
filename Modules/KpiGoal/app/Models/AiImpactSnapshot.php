@@ -11,11 +11,6 @@ class AiImpactSnapshot extends TenantAwareModel
 {
     protected $table = 'ai_impact_snapshots';
 
-    public function resolveRouteBinding($value, $field = null)
-    {
-        return $this->withoutTenant()->where($field ?? $this->getRouteKeyName(), $value)->firstOrFail();
-    }
-
     protected $fillable = [
         'organization_id',
         'employee_id',

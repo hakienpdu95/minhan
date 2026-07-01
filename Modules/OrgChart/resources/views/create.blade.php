@@ -55,6 +55,32 @@
 
                     <div class="space-y-4">
 
+                        {{-- Tổ chức --}}
+                        <div class="form-control">
+                            <label class="label py-0 pb-1.5">
+                                <span class="label-text font-medium">Tổ chức <span class="text-error">*</span></span>
+                            </label>
+                            @if($orgLocked)
+                                <input type="hidden" name="organization_id" value="{{ $organizations->first()->id }}">
+                                <input type="text" value="{{ $organizations->first()->name }}" readonly
+                                       class="input input-bordered input-sm w-full bg-base-200 cursor-not-allowed">
+                                <p class="mt-1 text-xs text-base-content/40">Xác định từ tài khoản của bạn.</p>
+                            @else
+                                <select id="ts-organization" name="organization_id"
+                                        class="select select-bordered select-sm w-full ts-init @error('organization_id') select-error @enderror"
+                                        data-ts-placeholder="— Chọn tổ chức —"
+                                        data-req="Vui lòng chọn tổ chức">
+                                    <option value="">— Chọn tổ chức —</option>
+                                    @foreach($organizations as $org)
+                                    <option value="{{ $org->id }}" {{ old('organization_id', $defaultOrgId ?? '') == $org->id ? 'selected' : '' }}>
+                                        {{ $org->name }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                                @error('organization_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                            @endif
+                        </div>
+
                         <div class="form-control">
                             <label class="label py-0 pb-1.5">
                                 <span class="label-text font-medium">Tên cấu hình <span class="text-error">*</span></span>
@@ -107,13 +133,19 @@
                                 </label>
                                 <select id="ts-scope-branch" name="scope_branch_id"
                                         class="select select-bordered select-sm w-full ts-init @error('scope_branch_id') select-error @enderror"
-                                        data-ts-placeholder="— Toàn tổ chức —">
+                                        data-ts-placeholder="— Toàn tổ chức —"
+                                        @if(!$orgLocked)
+                                            data-org-api="{{ route('api.branches.options') }}"
+                                            data-selected-value="{{ old('scope_branch_id') }}"
+                                        @endif>
                                     <option value="">— Toàn tổ chức —</option>
-                                    @foreach($branches as $branch)
-                                    <option value="{{ $branch->id }}" {{ old('scope_branch_id') == $branch->id ? 'selected' : '' }}>
-                                        {{ $branch->name }} ({{ $branch->code }})
-                                    </option>
-                                    @endforeach
+                                    @if($orgLocked)
+                                        @foreach($branches as $branch)
+                                        <option value="{{ $branch->id }}" {{ old('scope_branch_id') == $branch->id ? 'selected' : '' }}>
+                                            {{ $branch->name }} ({{ $branch->code }})
+                                        </option>
+                                        @endforeach
+                                    @endif
                                 </select>
                                 @error('scope_branch_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                             </div>

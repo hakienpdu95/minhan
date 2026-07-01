@@ -5,7 +5,7 @@
 <div x-data="{
     tab: 'basic',
     tabFields: {
-        basic:   ['title', 'project_id'],
+        basic:   ['title', 'organization_id', 'project_id'],
         timing:  ['start_date', 'due_date'],
         classify: ['task_type', 'status', 'priority'],
     },
@@ -115,6 +115,32 @@
                         @error('title')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
+                    {{-- Tổ chức --}}
+                    <div class="form-control">
+                        <label class="label py-0 pb-1.5">
+                            <span class="label-text font-medium">Tổ chức <span class="text-error">*</span></span>
+                        </label>
+                        @if($orgLocked)
+                            <input type="hidden" name="organization_id" value="{{ $organizations->first()->id }}">
+                            <input type="text" value="{{ $organizations->first()->name }}" readonly
+                                   class="input input-bordered input-sm w-full bg-base-200 cursor-not-allowed">
+                            <p class="mt-1 text-xs text-base-content/40">Xác định từ tài khoản của bạn.</p>
+                        @else
+                            <select id="ts-organization" name="organization_id"
+                                    class="select select-bordered select-sm w-full ts-init @error('organization_id') select-error @enderror"
+                                    data-ts-placeholder="— Chọn tổ chức —"
+                                    data-req="Vui lòng chọn tổ chức">
+                                <option value="">— Chọn tổ chức —</option>
+                                @foreach($organizations as $org)
+                                <option value="{{ $org->id }}" {{ old('organization_id', $defaultOrgId ?? '') == $org->id ? 'selected' : '' }}>
+                                    {{ $org->name }}
+                                </option>
+                                @endforeach
+                            </select>
+                            @error('organization_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        @endif
+                    </div>
+
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                         <div class="form-control">
@@ -124,13 +150,19 @@
                             <select id="ts-project" name="project_id"
                                     class="select select-bordered select-sm w-full ts-init @error('project_id') select-error @enderror"
                                     data-ts-placeholder="— Chọn dự án —"
-                                    data-req="Vui lòng chọn dự án">
+                                    data-req="Vui lòng chọn dự án"
+                                    @if(!$orgLocked)
+                                        data-org-api="{{ route('api.projects.options') }}"
+                                        data-selected-value="{{ old('project_id') }}"
+                                    @endif>
                                 <option value="">— Chọn dự án —</option>
-                                @foreach($projects as $prj)
-                                <option value="{{ $prj->id }}" {{ old('project_id') == $prj->id ? 'selected' : '' }}>
-                                    {{ $prj->name }} ({{ $prj->code }})
-                                </option>
-                                @endforeach
+                                @if($orgLocked)
+                                    @foreach($projects as $prj)
+                                    <option value="{{ $prj->id }}" {{ old('project_id') == $prj->id ? 'selected' : '' }}>
+                                        {{ $prj->name }} ({{ $prj->code }})
+                                    </option>
+                                    @endforeach
+                                @endif
                             </select>
                             @error('project_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
@@ -142,13 +174,19 @@
                             </label>
                             <select id="ts-employee" name="employee_id"
                                     class="select select-bordered select-sm w-full ts-init @error('employee_id') select-error @enderror"
-                                    data-ts-placeholder="— Chưa phân công —">
+                                    data-ts-placeholder="— Chưa phân công —"
+                                    @if(!$orgLocked)
+                                        data-org-api="{{ route('api.employees.options') }}"
+                                        data-selected-value="{{ old('employee_id') }}"
+                                    @endif>
                                 <option value="">— Chưa phân công —</option>
-                                @foreach($employees as $emp)
-                                <option value="{{ $emp->id }}" {{ old('employee_id') == $emp->id ? 'selected' : '' }}>
-                                    {{ $emp->full_name }}
-                                </option>
-                                @endforeach
+                                @if($orgLocked)
+                                    @foreach($employees as $emp)
+                                    <option value="{{ $emp->id }}" {{ old('employee_id') == $emp->id ? 'selected' : '' }}>
+                                        {{ $emp->full_name }}
+                                    </option>
+                                    @endforeach
+                                @endif
                             </select>
                             @error('employee_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>

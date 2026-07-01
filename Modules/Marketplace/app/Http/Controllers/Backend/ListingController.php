@@ -3,6 +3,7 @@
 namespace Modules\Marketplace\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\Models\Organization;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -21,6 +22,15 @@ use Modules\Marketplace\Models\MktTag;
 
 class ListingController extends Controller
 {
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
+    }
+
     public function index(): View
     {
         $this->authorize('viewAny', MktListing::class);
@@ -37,9 +47,12 @@ class ListingController extends Controller
     {
         $this->authorize('create', MktListing::class);
 
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
+
         return view('marketplace::listings.create', array_merge(
             $this->formData(),
             ['listing' => new MktListing()],
+            compact('organizations', 'defaultOrgId', 'orgLocked'),
         ));
     }
 

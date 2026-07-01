@@ -4,6 +4,7 @@ namespace Modules\Task\Actions\Backend;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Shared\Tenancy\TenantContext;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Task\Data\Requests\StoreTaskData;
 use Modules\Task\Events\TaskCreated;
@@ -33,7 +34,7 @@ class StoreTaskAction
 
         $task = Task::create([
             'uuid'             => (string) Str::uuid(),
-            'organization_id'  => auth()->user()->organization_id,
+            'organization_id'  => $data->organization_id ?? auth()->user()->organization_id ?? TenantContext::getOrganizationId(),
             'project_id'       => $data->project_id,
             'parent_id'        => $parentId,
             'employee_id'      => $data->employee_id,

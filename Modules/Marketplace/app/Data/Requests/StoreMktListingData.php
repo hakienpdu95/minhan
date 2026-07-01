@@ -3,6 +3,7 @@
 namespace Modules\Marketplace\Data\Requests;
 
 use Spatie\LaravelData\Data;
+use Spatie\LaravelData\Attributes\Validation\Exists;
 use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\Min;
 use Spatie\LaravelData\Attributes\Validation\Nullable;
@@ -17,6 +18,9 @@ use Modules\Marketplace\Enums\ListingVisibility;
 class StoreMktListingData extends Data
 {
     public function __construct(
+        #[Nullable, Exists('organizations', 'id')]
+        public readonly ?int $organization_id,
+
         #[Required, StringType, Max(300)]
         public readonly string $title,
 

@@ -3,6 +3,7 @@
 namespace Modules\OrgChart\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\Models\Organization;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -24,6 +25,15 @@ class OrgChartController extends Controller
     public function __construct()
     {
         $this->authorizeResource(OrgChartConfig::class, 'orgChartConfig');
+    }
+
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
     }
 
     public function index()
@@ -64,12 +74,18 @@ class OrgChartController extends Controller
 
     public function create()
     {
-        $orgId   = TenantContext::getOrganizationId();
-        $branches = Branch::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->where('status', 'active')
-            ->orderBy('name')
-            ->get(['id', 'name', 'code']);
+        $orgId = TenantContext::getOrganizationId();
+
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
+
+        // Org-user: load server-side. Super-admin: load via API on org change.
+        $branches = $orgLocked
+            ? Branch::withoutTenant()
+                ->where('organization_id', $orgId)
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name', 'code'])
+            : collect();
 
         $viewTypes = collect(OrgChartViewType::cases())
             ->map(fn ($v) => ['value' => $v->value, 'label' => $v->label()])
@@ -79,7 +95,10 @@ class OrgChartController extends Controller
             ->map(fn ($g) => ['value' => $g->value, 'label' => $g->label()])
             ->all();
 
-        return view('orgchart::create', compact('branches', 'viewTypes', 'groupBys'));
+        return view('orgchart::create', compact(
+            'branches', 'viewTypes', 'groupBys',
+            'organizations', 'defaultOrgId', 'orgLocked'
+        ));
     }
 
     public function store(Request $request, StoreOrgChartConfigAction $action): RedirectResponse

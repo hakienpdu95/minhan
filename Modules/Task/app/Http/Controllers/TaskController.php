@@ -3,6 +3,7 @@
 namespace Modules\Task\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Shared\Tenancy\Models\Organization;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -26,6 +27,15 @@ class TaskController extends Controller
     public function __construct()
     {
         $this->authorizeResource(Task::class, 'task');
+    }
+
+    private function _resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), $userOrgId, true];
+        }
+        return [Organization::orderBy('name')->get(['id', 'name']), null, false];
     }
 
     public function index()
@@ -81,17 +91,24 @@ class TaskController extends Controller
     {
         $orgId = TenantContext::getOrganizationId();
 
-        $projects = Project::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->whereIn('status', [ProjectStatus::Active->value, ProjectStatus::Planning->value])
-            ->orderBy('name')
-            ->get(['id', 'name', 'code']);
+        [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
 
-        $employees = Employee::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->where('status', EmployeeStatus::Active->value)
-            ->orderBy('full_name')
-            ->get(['id', 'full_name']);
+        // Org-user: load server-side. Super-admin: load via API on org change.
+        $projects  = $orgLocked
+            ? Project::withoutTenant()
+                ->where('organization_id', $orgId)
+                ->whereIn('status', [ProjectStatus::Active->value, ProjectStatus::Planning->value])
+                ->orderBy('name')
+                ->get(['id', 'name', 'code'])
+            : collect();
+
+        $employees = $orgLocked
+            ? Employee::withoutTenant()
+                ->where('organization_id', $orgId)
+                ->where('status', EmployeeStatus::Active->value)
+                ->orderBy('full_name')
+                ->get(['id', 'full_name'])
+            : collect();
 
         $statuses   = collect(TaskStatus::cases())
             ->map(fn ($s) => ['value' => $s->value, 'text' => $s->label()])
@@ -106,7 +123,8 @@ class TaskController extends Controller
             ->all();
 
         return view('task::tasks.create', compact(
-            'projects', 'employees', 'statuses', 'priorities', 'taskTypes'
+            'projects', 'employees', 'statuses', 'priorities', 'taskTypes',
+            'organizations', 'defaultOrgId', 'orgLocked'
         ));
     }
 
