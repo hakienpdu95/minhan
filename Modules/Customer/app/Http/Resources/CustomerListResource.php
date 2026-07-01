@@ -25,6 +25,7 @@ class CustomerListResource extends JsonResource
             'stage_badge'      => $stage?->badgeClass(),
             'source_label'     => $this->source?->label,
             'assignee_name'    => $this->assignee?->name,
+            'organization_name' => $this->whenLoaded('organization', fn () => $this->organization?->name),
             'province_code'    => $this->province_code,
             'last_activity_at' => $this->last_activity_at?->format('d/m/Y'),
             'activity_count'   => $this->activity_count,
@@ -32,9 +33,9 @@ class CustomerListResource extends JsonResource
                 $this->tags->map(fn ($t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color])
             ),
             'created_at'       => $this->created_at?->format('d/m/Y'),
-            'show_url'         => route('customers.show', $this->resource),
-            'edit_url'         => route('customers.edit', $this->resource),
-            'delete_url'       => route('customers.destroy', $this->resource),
+            'show_url'         => route('customer.show', $this->resource),
+            'edit_url'         => route('customer.edit', $this->resource),
+            'delete_url'       => route('customer.destroy', $this->resource),
         ];
     }
 }

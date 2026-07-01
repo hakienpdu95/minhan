@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Customer\Data\Requests\StoreCustomerData;
 use Modules\Customer\Enums\CustomerLifecycleStage;
+use Modules\Customer\Enums\CustomerType;
 use Modules\Customer\Events\CustomerCreated;
 use Modules\Customer\Models\Customer;
 
@@ -15,6 +16,9 @@ class CreateCustomerAction
 
     public function handle(StoreCustomerData $data, int $orgId): Customer
     {
+        $displayName = $this->resolveDisplayName($data);
+        abort_if(! $displayName, 422, 'Vui lòng nhập họ tên hoặc tên doanh nghiệp.');
+
         $hash = $this->dedupHash($data->primary_email, $data->primary_phone);
 
         if ($hash) {
@@ -23,11 +27,11 @@ class CreateCustomerAction
             if ($existing) return $existing;
         }
 
-        $customer = DB::transaction(function () use ($data, $orgId, $hash): Customer {
+        $customer = DB::transaction(function () use ($data, $orgId, $hash, $displayName): Customer {
             $customer = Customer::create([
                 'organization_id'      => $orgId,
                 'customer_type'        => $data->customer_type,
-                'display_name'         => $data->display_name,
+                'display_name'         => $displayName,
                 'primary_email'        => $data->primary_email,
                 'primary_phone'        => $data->primary_phone,
                 'lifecycle_stage'      => $data->lifecycle_stage ?? CustomerLifecycleStage::Active->value,
@@ -73,5 +77,20 @@ class CreateCustomerAction
             ?: preg_replace('/\D/', '', $phone ?? '');
 
         return $key ? md5($key) : null;
+    }
+
+    private function resolveDisplayName(StoreCustomerData $data): ?string
+    {
+        if ($data->display_name) {
+            return trim($data->display_name);
+        }
+
+        if ($data->customer_type === CustomerType::Business->value) {
+            return $data->company_name ? trim($data->company_name) : null;
+        }
+
+        $name = trim(($data->first_name ?? '') . ' ' . ($data->last_name ?? ''));
+
+        return $name !== '' ? $name : null;
     }
 }

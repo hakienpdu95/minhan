@@ -186,7 +186,7 @@ class LeadApiController extends Controller
     {
         $this->authorize('viewAny', Lead::class);
 
-        $orgId  = $this->orgId();
+        $orgId  = $this->resolveOrgId($request);
         $search = $request->input('q', '');
 
         $users = User::query()
@@ -209,5 +209,22 @@ class LeadApiController extends Controller
     private function orgId(): int
     {
         return TenantContext::getOrganizationId() ?? abort(403, 'No organization context.');
+    }
+
+    /**
+     * Cho phép override org qua ?organization_id= — CHỈ khi user hiện tại không khoá
+     * org (super-admin). Dùng khi form tạo/sửa (Customer, Lead...) cho chọn tổ chức
+     * khác org hiện tại, cần load "Người phụ trách" theo đúng org đã chọn trên form,
+     * không phải org trong TenantContext của người đang thao tác.
+     */
+    private function resolveOrgId(Request $request): int
+    {
+        $requested = $request->integer('organization_id');
+
+        if ($requested && auth()->user()->organization_id === null) {
+            return $requested;
+        }
+
+        return $this->orgId();
     }
 }

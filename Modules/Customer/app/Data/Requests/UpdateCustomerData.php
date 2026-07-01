@@ -18,11 +18,18 @@ use Spatie\LaravelData\Data;
 class UpdateCustomerData extends Data
 {
     public function __construct(
+        // Chỉ super-admin (không khoá org) mới đổi được — xem UpdateCustomerAction.
+        #[Nullable, IntegerType]
+        public readonly ?int    $organization_id,
+
         #[Required, IntegerType]
         public readonly int     $customer_type,
 
-        #[Required, StringType, Max(255)]
-        public readonly string  $display_name,
+        // display_name không có input riêng trên form — được tự suy ra ở
+        // UpdateCustomerAction từ first_name+last_name (cá nhân) hoặc
+        // company_name (doanh nghiệp).
+        #[Nullable, StringType, Max(255)]
+        public readonly ?string $display_name = null,
 
         #[Nullable, Email, Max(255)]
         public readonly ?string $primary_email = null,
@@ -45,8 +52,10 @@ class UpdateCustomerData extends Data
         #[Nullable, StringType, Max(100)]
         public readonly ?string $last_name = null,
 
-        #[Nullable, IntegerType]
-        public readonly ?int    $gender = null,
+        // 'M'/'F'/'O' — khớp với option value trong _form.blade.php và so sánh
+        // ở show.blade.php ($customer->gender === 'M'), không phải số.
+        #[Nullable, StringType, Max(1)]
+        public readonly ?string $gender = null,
 
         #[Nullable, Date]
         public readonly ?string $date_of_birth = null,
@@ -91,7 +100,9 @@ class UpdateCustomerData extends Data
     public static function rules(): array
     {
         return [
+            'organization_id' => ['nullable', 'integer', 'exists:organizations,id'],
             'customer_type'   => ['required', 'integer', Rule::in(array_column(CustomerType::cases(), 'value'))],
+            'gender'          => ['nullable', 'string', Rule::in(['M', 'F', 'O'])],
             'lifecycle_stage' => ['nullable', 'integer', Rule::in(array_column(CustomerLifecycleStage::cases(), 'value'))],
             'source_id'       => ['nullable', 'integer', 'exists:lead_sources,id'],
             'assigned_to'     => ['nullable', 'integer', 'exists:users,id'],

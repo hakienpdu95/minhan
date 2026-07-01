@@ -6,6 +6,7 @@ use App\Enums\RoleEnum;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Organization\Models\OrganizationMember;
 use Modules\User\Data\StoreUserData;
@@ -52,8 +53,20 @@ class StoreUserAction
                 $user->notify(new WelcomeUserNotification($data->password, $data->system_role));
             }
 
+            if ($this->isGmailAddress($user->email)) {
+                $user->sendEmailVerificationNotification();
+            }
+
             return $user;
         });
+    }
+
+    // Gmail thường được người dùng thật kiểm tra ngay, nên tự động gửi email
+    // xác minh khi tạo tài khoản bằng gmail — các domain khác (nội bộ công ty,
+    // email chưa xác định độ tin cậy...) không tự gửi để tránh spam/bounce.
+    private function isGmailAddress(string $email): bool
+    {
+        return Str::of($email)->lower()->afterLast('@')->is('gmail.com');
     }
 
     // Prevent creating a user with email that already exists in another org.

@@ -47,6 +47,7 @@ class SyncMigrationJson extends Command
 
         $existingTables     = $this->buildTableNameSet($migrationJson);
         $existingExtMap     = $this->buildExtensionMap($extensionJson);
+        $baseColumnMap      = $this->buildBaseColumnMap($migrationJson);
 
         $files = $this->collectMigrationFiles();
         $this->line('Scanning <fg=cyan>' . count($files) . '</> migration files...');
@@ -86,9 +87,44 @@ class SyncMigrationJson extends Command
         // Process extensions: merge tất cả blocks cho mỗi table
         $newExtensions     = [];  // tableName → entry
         $updatedExtensions = [];  // tableName → [existingIdx, updatedEntry]
+        $baseTableUpdates  = [];  // tableName → [entryIdx, rowIdx, colName, old, new]
+        $extColumnUpdates  = [];  // tableName → [colName => newRow]  (change() trên cột extension đã sync trước đó)
 
         foreach ($allExtBlocks as $tableName => $blocks) {
-            [$mergedCols, $mergedIndexes] = $this->mergeExtensionBlocks($blocks);
+            $baseCols        = $baseColumnMap[$tableName]['cols'] ?? [];
+            $existingExtCols = $existingExtMap[$tableName]['colNames'] ?? [];
+
+            [$mergedCols, $mergedIndexes, $baseChanges, $extChanges] =
+                $this->mergeExtensionBlocks($blocks, $baseCols, $existingExtCols);
+
+            // ->change() trên cột thuộc bảng gốc (có trong render_migration_file.json)
+            // → patch trực tiếp row của bảng gốc, không đưa vào extension.
+            foreach ($baseChanges as $colName => $row) {
+                $entryIdx = $baseColumnMap[$tableName]['entryIndex'];
+                $rowIdx   = $baseCols[$colName];
+                $oldRow   = $migrationJson[$entryIdx][$rowIdx];
+                $row      = $this->preserveUnstatedModifiers($oldRow, $row);
+                if ($oldRow !== $row) {
+                    $baseTableUpdates[$tableName][] = [
+                        'entryIdx' => $entryIdx, 'rowIdx' => $rowIdx,
+                        'colName'  => $colName,
+                        'old'      => $oldRow, 'new' => $row,
+                    ];
+                }
+            }
+
+            // ->change() trên cột đã tồn tại trong extension JSON (từ lần sync trước)
+            // nhưng không được ADD lại trong lượt scan này.
+            foreach ($extChanges as $colName => $row) {
+                $oldRow = null;
+                foreach ($extensionJson[$existingExtMap[$tableName]['index'] ?? -1] ?? [] as $r) {
+                    if (explode('///', $r)[0] === $colName) { $oldRow = $r; break; }
+                }
+                $extColumnUpdates[$tableName][$colName] = $oldRow
+                    ? $this->preserveUnstatedModifiers($oldRow, $row)
+                    : $row;
+            }
+
             $allMergedRows = array_values($mergedCols) + [];
             foreach ($mergedIndexes as $idxRow) $allMergedRows[] = $idxRow;
 
@@ -125,9 +161,10 @@ class SyncMigrationJson extends Command
         }
 
         // Report
-        $this->printResults($newTables, $newExtensions, $updatedExtensions, $skipped);
+        $this->printResults($newTables, $newExtensions, $updatedExtensions, $skipped, $baseTableUpdates, $extColumnUpdates);
 
-        $hasChanges = !empty($newTables) || !empty($newExtensions) || !empty($updatedExtensions);
+        $hasChanges = !empty($newTables) || !empty($newExtensions) || !empty($updatedExtensions)
+            || !empty($baseTableUpdates) || !empty($extColumnUpdates);
         if (!$hasChanges) {
             $this->info('Nothing new to add.');
             return self::SUCCESS;
@@ -137,6 +174,19 @@ class SyncMigrationJson extends Command
             foreach ($newTables as $entry)      $migrationJson[] = $entry;
             foreach ($updatedExtensions as [$idx, $entry]) $extensionJson[$idx] = $entry;
             foreach ($newExtensions as $entry)  $extensionJson[] = $entry;
+
+            foreach ($baseTableUpdates as $updates) {
+                foreach ($updates as $upd) {
+                    $migrationJson[$upd['entryIdx']][$upd['rowIdx']] = $upd['new'];
+                }
+            }
+            foreach ($extColumnUpdates as $tableName => $cols) {
+                $idx = $existingExtMap[$tableName]['index'];
+                foreach ($extensionJson[$idx] as $i => $row) {
+                    $colName = explode('///', $row)[0];
+                    if (isset($cols[$colName])) $extensionJson[$idx][$i] = $cols[$colName];
+                }
+            }
 
             File::put($migrationJsonPath, $this->encodeJson($migrationJson));
             File::put($extensionJsonPath, $this->encodeJson($extensionJson));
@@ -252,6 +302,45 @@ class SyncMigrationJson extends Command
             $set[trim(explode('///', $entry[0])[0])] = true;
         }
         return $set;
+    }
+
+    /**
+     * Returns: tableName → ['entryIndex' => i, 'cols' => [colName => rowIndexInEntry]]
+     * Dùng để patch trực tiếp row của bảng gốc khi phát hiện ->change() trên
+     * cột thuộc bảng gốc (không phải cột được thêm qua extension).
+     */
+    private function buildBaseColumnMap(array $json): array
+    {
+        $map = [];
+        foreach ($json as $i => $entry) {
+            $tableName = trim(explode('///', $entry[0])[0]);
+            $cols = [];
+            foreach (array_slice($entry, 1) as $offset => $row) {
+                $colName = explode('///', $row)[0];
+                if ($colName === '__index') continue;
+                $cols[$colName] = $offset + 1;
+            }
+            $map[$tableName] = ['entryIndex' => $i, 'cols' => $cols];
+        }
+        return $map;
+    }
+
+    /**
+     * ->change() thường không nhắc lại ->index()/->unique() hay ->comment() của cột —
+     * ở DB thật, MODIFY COLUMN không tự xoá index/comment đang có. Nếu row mới (từ
+     * change()) không khai báo mod/comment (giá trị '__'), giữ nguyên giá trị cũ thay
+     * vì để trống — tránh JSON "quên" mất index khi dùng để generate lại migration.
+     */
+    private function preserveUnstatedModifiers(string $oldRow, string $newRow): string
+    {
+        $old = explode('///', $oldRow);
+        $new = explode('///', $newRow);
+        if (count($old) < 7 || count($new) < 7) return $newRow;
+
+        if ($new[5] === '__' && $old[5] !== '__') $new[5] = $old[5]; // mod (->index()/->unique()/...)
+        if ($new[6] === '__' && $old[6] !== '__') $new[6] = $old[6]; // comment
+
+        return implode('///', $new);
     }
 
     /** Returns: tableName → ['index' => i, 'colNames' => [...], 'indexKeys' => [...]] */
@@ -667,13 +756,21 @@ class SyncMigrationJson extends Command
 
     /**
      * Merge nhiều Schema::table blocks cho cùng 1 bảng.
-     * Returns [colName => rowString, ...], [indexKey => rowString, ...]
+     *
+     * $baseCols: colName → rowIndex — cột thuộc bảng gốc (render_migration_file.json).
+     * $existingExtCols: colName set — cột đã tồn tại trong extension JSON từ lần sync trước.
+     *
+     * Returns [colName => rowString, ...], [indexKey => rowString, ...],
+     *         $baseChanges (colName → rowString — ->change() trên cột bảng gốc),
+     *         $extChanges  (colName → rowString — ->change() trên cột extension đã sync trước, không ADD lại trong lượt này)
      */
-    private function mergeExtensionBlocks(array $blocks): array
+    private function mergeExtensionBlocks(array $blocks, array $baseCols = [], array $existingExtCols = []): array
     {
         $mergedCols    = [];   // colName → row string
         $mergedIndexes = [];   // "type:cols" → row string
         $droppedIdxNames = []; // set of dropped index names (from dropUnique/dropIndex)
+        $baseChanges   = [];   // colName → row string (change() trên cột bảng gốc)
+        $extChanges    = [];   // colName → row string (change() trên cột extension đã sync trước)
 
         foreach ($blocks as [$body, $basename]) {
             foreach ($this->extractStatements($body) as $stmt) {
@@ -729,12 +826,22 @@ class SyncMigrationJson extends Command
                     $parsed['null'], $parsed['default'], $parsed['mod'], $parsed['comment'],
                 ]);
 
-                // ->change() → cập nhật định nghĩa cột đã có (hoặc bỏ qua nếu là cột của base table)
+                // ->change() → xác định cột này thuộc về đâu để patch đúng chỗ:
+                //   1. Cột của bảng gốc (base table)   → $baseChanges, patch trực tiếp render_migration_file.json
+                //   2. Cột đã ADD trong CHÍNH lượt scan này → cập nhật $mergedCols luôn (giữ hành vi cũ)
+                //   3. Cột extension đã sync từ trước, không ADD lại lượt này → $extChanges
+                //   4. Không rõ nguồn gốc (cột mới, có thể do file cũ bị xoá khỏi lịch sử quét)
+                //      → coi như phát hiện mới, thêm vào $mergedCols (best-effort, có đủ định nghĩa từ change())
                 if ($parsed['is_change'] ?? false) {
-                    if (isset($mergedCols[$colName])) {
+                    if (isset($baseCols[$colName])) {
+                        $baseChanges[$colName] = $row;
+                    } elseif (isset($mergedCols[$colName])) {
+                        $mergedCols[$colName] = $row;
+                    } elseif (isset($existingExtCols[$colName])) {
+                        $extChanges[$colName] = $row;
+                    } else {
                         $mergedCols[$colName] = $row;
                     }
-                    // else: đây là thay đổi cột gốc của bảng — không track trong extension
                 } else {
                     // Add mới: first-seen wins cho ADD (sau đó chỉ change() mới update)
                     if (!isset($mergedCols[$colName])) {
@@ -744,7 +851,7 @@ class SyncMigrationJson extends Command
             }
         }
 
-        return [$mergedCols, $mergedIndexes];
+        return [$mergedCols, $mergedIndexes, $baseChanges, $extChanges];
     }
 
     private function buildExtensionEntryFromMerged(string $tableName, array $mergedCols, array $mergedIndexes): ?array
@@ -1093,8 +1200,14 @@ class SyncMigrationJson extends Command
     // PRINT RESULTS
     // ──────────────────────────────────────────────────────────────────────────
 
-    private function printResults(array $newTables, array $newExtensions, array $updatedExtensions, array $skipped): void
-    {
+    private function printResults(
+        array $newTables,
+        array $newExtensions,
+        array $updatedExtensions,
+        array $skipped,
+        array $baseTableUpdates = [],
+        array $extColumnUpdates = []
+    ): void {
         if (!empty($skipped)) {
             $this->newLine();
             $this->line('<fg=gray>=== SKIPPED (dropped tables) ===</>');
@@ -1123,6 +1236,28 @@ class SyncMigrationJson extends Command
             $this->info('=== EXTENSIONS MỚI → render_extension_file.json ===');
             foreach ($newExtensions as $t => $entry) {
                 $this->line('  <fg=green>+ ' . $t . '</> (' . (count($entry) - 1) . ' cols)');
+            }
+        }
+
+        if (!empty($baseTableUpdates)) {
+            $this->newLine();
+            $this->info('=== CỘT BẢNG GỐC ĐỔI ĐỊNH NGHĨA (->change()) → render_migration_file.json ===');
+            foreach ($baseTableUpdates as $t => $updates) {
+                foreach ($updates as $upd) {
+                    $this->line("  <fg=yellow>~ {$t}.{$upd['colName']}</>");
+                    $this->line("    <fg=gray>- {$upd['old']}</>");
+                    $this->line("    <fg=green>+ {$upd['new']}</>");
+                }
+            }
+        }
+
+        if (!empty($extColumnUpdates)) {
+            $this->newLine();
+            $this->info('=== CỘT EXTENSION ĐỔI ĐỊNH NGHĨA (->change()) → render_extension_file.json ===');
+            foreach ($extColumnUpdates as $t => $cols) {
+                foreach (array_keys($cols) as $colName) {
+                    $this->line("  <fg=yellow>~ {$t}.{$colName}</>");
+                }
             }
         }
     }

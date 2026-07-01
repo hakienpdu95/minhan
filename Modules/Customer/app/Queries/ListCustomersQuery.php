@@ -19,5 +19,9 @@ class ListCustomersQuery implements QueryInterface
         public readonly ?int    $tagId       = null,
         public readonly ?string $dateFrom    = null,
         public readonly ?string $dateTo      = null,
+        // true chỉ khi user hiện tại không gắn với 1 org cố định (super-admin) —
+        // xem CustomerApiController::index(). Không bao giờ tin trực tiếp từ request.
+        public readonly bool    $crossOrgCapable = false,
+        public readonly ?int    $organizationId  = null,
     ) {}
 }

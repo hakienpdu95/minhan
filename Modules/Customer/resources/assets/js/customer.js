@@ -17,10 +17,12 @@ const CFG = JSON.parse(
 const {
     apiListing,
     csrf,
-    types     = [],
-    stages    = [],
-    sources   = [],
-    canDelete = false,
+    types         = [],
+    stages        = [],
+    sources       = [],
+    canDelete     = false,
+    orgLocked     = true,
+    organizations = [],
 } = CFG;
 
 if (apiListing) {
@@ -67,6 +69,12 @@ function initListPage() {
                 </div>`;
             },
         },
+        ...(orgLocked ? [] : [{
+            title: 'Tổ chức', field: 'organization_name', width: 160, headerSort: false,
+            formatter(cell) {
+                return esc(cell.getValue()) || '<span class="text-base-content/25 text-xs">—</span>';
+            },
+        }]),
         {
             title: 'SĐT / Email', field: 'primary_phone', width: 180, headerSort: false,
             formatter(cell) {
@@ -140,19 +148,20 @@ function initListPage() {
         },
     ];
 
-    const TOGGLEABLE_FIELDS = ['primary_phone', 'source_label', 'assignee_name', 'last_activity_at', 'created_at'];
+    const TOGGLEABLE_FIELDS = ['organization_name', 'primary_phone', 'source_label', 'assignee_name', 'last_activity_at', 'created_at'];
 
     // ── Alpine component ─────────────────────────────────────────────────────
 
     document.addEventListener('alpine:init', () => {
         Alpine.data('customerListPage', () => ({
             filters: {
-                search:    '',
-                type:      '',
-                stage:     '',
-                source_id: '',
-                date_from: '',
-                date_to:   '',
+                search:         '',
+                type:           '',
+                stage:          '',
+                source_id:      '',
+                organization_id: '',
+                date_from:      '',
+                date_to:        '',
             },
             hiddenCols: JSON.parse(localStorage.getItem(LS_COLS) ?? '[]'),
             get toggleableCols() {
@@ -163,11 +172,12 @@ function initListPage() {
             },
             get activeChips() {
                 const chips = [];
-                if (this.filters.search)    chips.push({ key: 'search',    label: `Tìm: ${this.filters.search}` });
-                if (this.filters.type)      chips.push({ key: 'type',      label: types.find(t => t.value == this.filters.type)?.label ?? this.filters.type });
-                if (this.filters.stage)     chips.push({ key: 'stage',     label: stageLabel(this.filters.stage) });
-                if (this.filters.source_id) chips.push({ key: 'source_id', label: sourceLabel(this.filters.source_id) });
-                if (this.filters.date_from) chips.push({ key: 'date_from', label: `Từ ${this.filters.date_from}` });
+                if (this.filters.search)         chips.push({ key: 'search',          label: `Tìm: ${this.filters.search}` });
+                if (this.filters.organization_id) chips.push({ key: 'organization_id', label: organizations.find(o => o.value == this.filters.organization_id)?.text ?? this.filters.organization_id });
+                if (this.filters.type)           chips.push({ key: 'type',            label: types.find(t => t.value == this.filters.type)?.label ?? this.filters.type });
+                if (this.filters.stage)          chips.push({ key: 'stage',           label: stageLabel(this.filters.stage) });
+                if (this.filters.source_id)      chips.push({ key: 'source_id',       label: sourceLabel(this.filters.source_id) });
+                if (this.filters.date_from)      chips.push({ key: 'date_from',       label: `Từ ${this.filters.date_from}` });
                 return chips;
             },
             onFilterChange() {
@@ -175,12 +185,13 @@ function initListPage() {
             },
             _params() {
                 const p = {};
-                if (this.filters.search)    p.search    = this.filters.search;
-                if (this.filters.type)      p.type      = this.filters.type;
-                if (this.filters.stage)     p.stage     = this.filters.stage;
-                if (this.filters.source_id) p.source_id = this.filters.source_id;
-                if (this.filters.date_from) p.date_from = this.filters.date_from;
-                if (this.filters.date_to)   p.date_to   = this.filters.date_to;
+                if (this.filters.search)          p.search          = this.filters.search;
+                if (this.filters.organization_id) p.organization_id = this.filters.organization_id;
+                if (this.filters.type)            p.type            = this.filters.type;
+                if (this.filters.stage)           p.stage           = this.filters.stage;
+                if (this.filters.source_id)       p.source_id       = this.filters.source_id;
+                if (this.filters.date_from)       p.date_from       = this.filters.date_from;
+                if (this.filters.date_to)         p.date_to         = this.filters.date_to;
                 return p;
             },
             clearSearch()  { this.filters.search = '';    this.onFilterChange(); },
@@ -207,9 +218,12 @@ function initListPage() {
                 this._initTabulator();
             },
             _initTomSelects() {
-                const mkSelect = (id, opts, placeholder) => {
+                // key: tên trong `filters` — mặc định suy từ id ('filter-xxx' → 'xxx'),
+                // truyền rõ khi khác (vd 'filter-source' → filters.source_id).
+                const mkSelect = (id, opts, placeholder, key) => {
                     const el = document.getElementById(id);
                     if (!el || !window.TomSelect) return;
+                    const filterKey = key || id.replace('filter-', '');
                     new window.TomSelect(el, {
                         options:     opts,
                         valueField:  'value',
@@ -217,10 +231,13 @@ function initListPage() {
                         searchField: ['text'],
                         placeholder,
                         allowEmptyOption: true,
-                        onChange: v => { this.filters[id.replace('filter-', '')] = v; this.onFilterChange(); },
+                        onChange: v => { this.filters[filterKey] = v; this.onFilterChange(); },
                     });
                 };
 
+                if (!orgLocked) {
+                    mkSelect('filter-organization', [{ value: '', text: 'Tất cả tổ chức' }, ...organizations], '— Tổ chức —', 'organization_id');
+                }
                 mkSelect('filter-type',  [{ value: '', text: 'Tất cả loại' }, ...types.map(t => ({ value: String(t.value), text: t.label }))],  '— Loại —');
                 mkSelect('filter-stage', [{ value: '', text: 'Tất cả tình trạng' }, ...stages.map(s => ({ value: String(s.value), text: s.label }))], '— Tình trạng —');
                 mkSelect('filter-source',[{ value: '', text: 'Tất cả nguồn' }, ...sources.map(s => ({ value: String(s.id), text: s.label }))],  '— Nguồn —', 'source_id');

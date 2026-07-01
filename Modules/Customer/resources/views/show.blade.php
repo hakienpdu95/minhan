@@ -74,7 +74,7 @@
             @php $tabs = [
                 ['id'=>'info',     'label'=>'Thông tin'],
                 ['id'=>'activity', 'label'=>'Hoạt động (' . $customer->activities->count() . ')'],
-                ['id'=>'notes',    'label'=>'Ghi chú (' . $customer->notes->count() . ')'],
+                ['id'=>'notes',    'label'=>'Ghi chú (' . $customer->customerNotes->count() . ')'],
                 ['id'=>'leads',    'label'=>'Cơ hội liên quan (' . $customer->leads->count() . ')'],
             ]; @endphp
 
@@ -424,7 +424,7 @@
         </div>
 
         <div class="space-y-2" id="notes-list">
-            @forelse($customer->notes as $note)
+            @forelse($customer->customerNotes as $note)
             <div class="card bg-base-100 shadow-sm border {{ $note->is_pinned ? 'border-warning/40 bg-warning/5' : 'border-base-200' }}"
                  data-note-id="{{ $note->id }}">
                 <div class="card-body py-3 px-4">

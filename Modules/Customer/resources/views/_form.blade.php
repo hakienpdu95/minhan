@@ -20,7 +20,7 @@
     tab: 'basic',
     submitting: false,
     tabFields: {
-        basic:    ['customer_type', 'first_name', 'last_name', 'company_name'],
+        basic:    ['customer_type', 'organization_id', 'first_name', 'last_name', 'company_name'],
         contact:  ['primary_email', 'primary_phone'],
         classify: ['tag_ids'],
     },
@@ -122,6 +122,35 @@
 
                 {{-- ── Panel: Thông tin cơ bản ─────────────────────── --}}
                 <div x-show="tab === 'basic'" data-tab-label="Thông tin cơ bản" class="space-y-4">
+
+                    {{-- Tổ chức --}}
+                    <div class="form-control">
+                        <label class="label py-0 pb-1.5">
+                            <span class="label-text font-medium">Tổ chức <span class="text-error">*</span></span>
+                        </label>
+                        @if($orgLocked)
+                            <input type="hidden" name="organization_id" value="{{ $organizations->first()->id }}">
+                            <input type="text" value="{{ $organizations->first()->name }}" readonly
+                                   class="input input-bordered input-sm w-full bg-base-200 cursor-not-allowed">
+                            <p class="mt-1 text-xs text-base-content/40">Xác định từ tài khoản của bạn.</p>
+                        @else
+                            <select id="ts-organization" name="organization_id"
+                                    class="select select-bordered select-sm w-full ts-init @error('organization_id') select-error @enderror"
+                                    data-ts-placeholder="— Chọn tổ chức —"
+                                    data-req="Vui lòng chọn tổ chức">
+                                <option value="">— Chọn tổ chức —</option>
+                                @foreach($organizations as $org)
+                                <option value="{{ $org->id }}" {{ old('organization_id', $customer?->organization_id ?? $defaultOrgId ?? '') == $org->id ? 'selected' : '' }}>
+                                    {{ $org->name }}
+                                </option>
+                                @endforeach
+                            </select>
+                            @error('organization_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                            @isset($customer)
+                            <p class="mt-1 text-xs text-warning">Đổi tổ chức có thể làm mất Người phụ trách / Nguồn hiện tại nếu không thuộc tổ chức mới.</p>
+                            @endisset
+                        @endif
+                    </div>
 
                     {{-- Loại khách hàng --}}
                     <div class="form-control">
@@ -546,10 +575,21 @@
                             <span class="label-text text-xs font-medium">Người phụ trách</span>
                         </label>
                         <select name="assigned_to" id="customer-assigned"
-                                class="select select-bordered select-sm w-full"
-                                data-assignable-url="{{ route('api.api.lead.assignable-users') }}"
-                                data-selected-id="{{ old('assigned_to', $customer->assigned_to ?? '') }}">
+                                class="select select-bordered select-sm w-full ts-init"
+                                data-ts-placeholder="— Chưa phân công —"
+                                @if(!$orgLocked)
+                                    data-org-api="{{ route('api.employees.options') }}"
+                                    data-org-api-extra="&value=user_id"
+                                    data-selected-value="{{ old('assigned_to', $customer->assigned_to ?? '') }}"
+                                @endif>
                             <option value="">— Chưa phân công —</option>
+                            @if($orgLocked)
+                                @foreach($assignableEmployees as $e)
+                                <option value="{{ $e->user_id }}" {{ old('assigned_to', $customer->assigned_to ?? '') == $e->user_id ? 'selected' : '' }}>
+                                    {{ $e->full_name }} ({{ $e->employee_code }})
+                                </option>
+                                @endforeach
+                            @endif
                         </select>
                     </div>
 

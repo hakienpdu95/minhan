@@ -19,20 +19,27 @@ class CustomerApiController extends Controller
         $sortField = $sort[0]['field'] ?? 'created_at';
         $sortDir   = $sort[0]['dir']   ?? 'desc';
 
+        // Không gắn với 1 org cố định (super-admin) → được phép xem xuyên tổ chức.
+        // Tính ở server, không tin cờ client gửi lên.
+        $crossOrgCapable = $request->user()->organization_id === null;
+
         $query = new ListCustomersQuery(
-            page:       max(1, $request->integer('page', 1)),
-            perPage:    min(100, max(5, $request->integer('size', 25))),
-            sortField:  $sortField,
-            sortDir:    $sortDir,
-            search:     $request->input('search') ?: null,
-            type:       $request->filled('type')       ? (int) $request->input('type')        : null,
-            stage:      $request->filled('stage')      ? (int) $request->input('stage')       : null,
-            sourceId:   $request->filled('source_id')  ? (int) $request->input('source_id')   : null,
-            assignedTo: $request->filled('assigned_to')? (int) $request->input('assigned_to') : null,
-            province:   $request->input('province_code') ?: null,
-            tagId:      $request->filled('tag_id')     ? (int) $request->input('tag_id')      : null,
-            dateFrom:   $request->input('date_from') ?: null,
-            dateTo:     $request->input('date_to')   ?: null,
+            page:            max(1, $request->integer('page', 1)),
+            perPage:         min(100, max(5, $request->integer('size', 25))),
+            sortField:       $sortField,
+            sortDir:         $sortDir,
+            search:          $request->input('search') ?: null,
+            type:            $request->filled('type')       ? (int) $request->input('type')        : null,
+            stage:           $request->filled('stage')      ? (int) $request->input('stage')       : null,
+            sourceId:        $request->filled('source_id')  ? (int) $request->input('source_id')   : null,
+            assignedTo:      $request->filled('assigned_to')? (int) $request->input('assigned_to') : null,
+            province:        $request->input('province_code') ?: null,
+            tagId:           $request->filled('tag_id')     ? (int) $request->input('tag_id')      : null,
+            dateFrom:        $request->input('date_from') ?: null,
+            dateTo:          $request->input('date_to')   ?: null,
+            crossOrgCapable: $crossOrgCapable,
+            organizationId:  $crossOrgCapable && $request->filled('organization_id')
+                ? (int) $request->input('organization_id') : null,
         );
 
         $paginator = $handler->handle($query);

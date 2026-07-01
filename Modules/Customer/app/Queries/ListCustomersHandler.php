@@ -18,9 +18,20 @@ class ListCustomersHandler implements QueryHandlerInterface
             ? $query->sortField : 'created_at';
         $sortDir = $query->sortDir === 'asc' ? 'asc' : 'desc';
 
-        $q = Customer::query()
-            ->select('customers.*')
-            ->with(['source:id,label,icon', 'assignee:id,name', 'tags:id,name,color']);
+        // crossOrgCapable → bỏ qua OrganizationScope (super-admin xem tất cả tổ chức),
+        // ngược lại giữ nguyên scope mặc định (khoá vào org hiện tại của user).
+        $q = $query->crossOrgCapable
+            ? Customer::withoutTenant()->select('customers.*')
+            : Customer::query()->select('customers.*');
+
+        $q->with(['source:id,label,icon', 'assignee:id,name', 'tags:id,name,color']);
+
+        if ($query->crossOrgCapable) {
+            $q->with('organization:id,name');
+            if ($query->organizationId !== null) {
+                $q->where('customers.organization_id', $query->organizationId);
+            }
+        }
 
         if ($query->search !== null && $query->search !== '') {
             $term = '%' . $query->search . '%';

@@ -96,7 +96,10 @@ class Customer extends TenantAwareModel
         return $this->hasMany(CustomerActivity::class, 'customer_id');
     }
 
-    public function notes(): HasMany
+    // Đặt tên khác 'notes' vì đã có cột 'notes' (ghi chú nội bộ dạng text) trên
+    // chính bảng customers — Eloquent ưu tiên resolve thuộc tính trước quan hệ,
+    // nên $customer->notes luôn trả về cột text chứ không bao giờ tới được đây.
+    public function customerNotes(): HasMany
     {
         return $this->hasMany(CustomerNote::class, 'customer_id');
     }

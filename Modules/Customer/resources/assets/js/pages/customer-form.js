@@ -11,7 +11,7 @@
  * Globals (lazy bundles):  window.TomSelect (tom-select.js), initAllDatePickers (flatpickr.js)
  */
 
-import { createTs, createTsAssignee, initAllTomSelects } from '@shared/tom-select-factory.js';
+import { createTs, initAllTomSelects } from '@shared/tom-select-factory.js';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     _setupTabGuard(form);
     initAllTomSelects(form);
     _initWidgets(form);
+    _initOrgCascades(form);
     _initProvinceWard(form);
 });
 
@@ -148,12 +149,6 @@ function _toastHiddenErrors(errors) {
 // ── Widgets ────────────────────────────────────────────────────────────────
 
 function _initWidgets(form) {
-    // Assignee TomSelect remote (sidebar) — không có ts-init, cần createTsAssignee
-    const assignedEl = form.querySelector('#customer-assigned');
-    if (assignedEl?.dataset.assignableUrl) {
-        createTsAssignee(assignedEl, assignedEl.dataset.assignableUrl);
-    }
-
     // Tags TomSelect multi — không có ts-init vì cần plugin remove_button
     const tagsEl = form.querySelector('#ts-tag-ids');
     if (tagsEl) {
@@ -163,8 +158,62 @@ function _initWidgets(form) {
             placeholder: '— Chọn tags —',
         });
     }
-    // #ts-gender, #ts-company-size, #ts-lifecycle-stage, #ts-source-id
+    // #ts-gender, #ts-company-size, #ts-lifecycle-stage, #ts-source-id, #customer-assigned
     // đã có class ts-init → initAllTomSelects() xử lý, không cần gọi lại ở đây
+}
+
+// ── Org → dependent selects cascade (giống hệt Employee/Task/Project/OrgChart) ─────
+//
+// #customer-assigned có data-org-api (chỉ khi !orgLocked, tức super-admin) → ban đầu
+// KHÔNG load gì cả (disable), chỉ load khi user chọn tổ chức ở #ts-organization. Nếu
+// org đã có sẵn giá trị lúc vào trang (edit form) thì load ngay theo org đó.
+
+function _initOrgCascades(form) {
+    const orgEl = form.querySelector('#ts-organization');
+    if (!orgEl) return; // orgLocked — org cố định, PHP đã render sẵn options
+
+    const deps = [...form.querySelectorAll('[data-org-api]')].map(el => ({
+        el,
+        ts:      el.tomselect,
+        api:     el.dataset.orgApi,
+        extra:   el.dataset.orgApiExtra || '',
+        pending: el.dataset.selectedValue || '',
+    })).filter(d => d.ts && d.api);
+
+    if (!deps.length) return;
+
+    const initialOrgId = orgEl.tomselect?.getValue() ?? '';
+    if (initialOrgId) {
+        deps.forEach(d => _loadOrgOptions(d.api, d.ts, initialOrgId, d.extra, d.pending));
+    } else {
+        deps.forEach(d => d.ts.disable());
+    }
+
+    orgEl.tomselect?.on('change', (orgId) => {
+        deps.forEach(d => { d.ts.clear(true); d.ts.clearOptions(); });
+        if (!orgId) {
+            deps.forEach(d => d.ts.disable());
+            return;
+        }
+        deps.forEach(d => _loadOrgOptions(d.api, d.ts, orgId, d.extra, ''));
+    });
+}
+
+function _loadOrgOptions(apiUrl, ts, orgId, extra, pending) {
+    ts.disable();
+    fetch(`${apiUrl}?organization_id=${encodeURIComponent(orgId)}${extra}`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept':           'application/json',
+        },
+    })
+        .then(r => r.ok ? r.json() : [])
+        .then(items => {
+            ts.addOptions(items.map(b => ({ value: String(b.id), text: b.text })));
+            ts.enable();
+            if (pending) ts.setValue(String(pending), true);
+        })
+        .catch(() => ts.enable());
 }
 
 // ── Province / Ward cascade ────────────────────────────────────────────────

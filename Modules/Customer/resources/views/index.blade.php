@@ -53,6 +53,26 @@
     @endif
     @endforeach
 
+    {{-- ── Stat cards ───────────────────────────────────────────────── --}}
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <div class="stat bg-base-100 border border-base-200 rounded-xl py-3 px-4 shadow-sm">
+            <div class="stat-title text-xs">Tổng khách hàng</div>
+            <div class="stat-value text-2xl">{{ number_format($totalAll) }}</div>
+        </div>
+        <div class="stat bg-base-100 border border-base-200 rounded-xl py-3 px-4 shadow-sm">
+            <div class="stat-title text-xs">Đang hoạt động</div>
+            <div class="stat-value text-2xl text-success">{{ number_format($totalActive) }}</div>
+        </div>
+        <div class="stat bg-base-100 border border-base-200 rounded-xl py-3 px-4 shadow-sm">
+            <div class="stat-title text-xs">VIP</div>
+            <div class="stat-value text-2xl text-warning">{{ number_format($totalVip) }}</div>
+        </div>
+        <div class="stat bg-base-100 border border-base-200 rounded-xl py-3 px-4 shadow-sm">
+            <div class="stat-title text-xs">Đã rời bỏ</div>
+            <div class="stat-value text-2xl text-error">{{ number_format($totalChurned) }}</div>
+        </div>
+    </div>
+
     {{-- ── Filter bar ───────────────────────────────────────────────── --}}
     <div class="card bg-base-100 shadow-sm border border-base-200 mb-4">
         <div class="card-body py-3 px-4 space-y-3">
@@ -82,6 +102,14 @@
                         </button>
                     </div>
                 </div>
+
+                @unless($orgLocked)
+                {{-- Tổ chức (chỉ super-admin không khoá org mới thấy) --}}
+                <div class="form-control w-52">
+                    <label class="label py-0.5"><span class="label-text text-xs font-medium">Tổ chức</span></label>
+                    <select id="filter-organization" class="select select-sm select-bordered w-full"></select>
+                </div>
+                @endunless
 
                 {{-- Loại khách hàng --}}
                 <div class="form-control w-44">
@@ -193,12 +221,14 @@
 @push('scripts')
 @php
     $customerListData = json_encode([
-        'apiListing' => route('customer.api.list'),
-        'csrf'       => csrf_token(),
-        'types'      => $types->values(),
-        'stages'     => $stages->values(),
-        'sources'    => $sources->values(),
-        'canDelete'  => auth()->user()->can('delete', new \Modules\Customer\Models\Customer),
+        'apiListing'    => route('customer.api.list'),
+        'csrf'          => csrf_token(),
+        'types'         => $types->values(),
+        'stages'        => $stages->values(),
+        'sources'       => $sources->values(),
+        'canDelete'     => auth()->user()->can('delete', new \Modules\Customer\Models\Customer),
+        'orgLocked'     => $orgLocked,
+        'organizations' => $orgLocked ? [] : $organizations->map(fn ($o) => ['value' => $o->id, 'text' => $o->name])->values(),
     ]);
 @endphp
 <script id="customer-list-data" type="application/json">{!! $customerListData !!}</script>

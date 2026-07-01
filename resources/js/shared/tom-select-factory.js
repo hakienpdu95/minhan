@@ -105,6 +105,10 @@ export function createTsAssignee(selector, apiUrl, onChange) {
         labelField: 'text',
         searchField: ['text', 'email'],
         placeholder: '— Chưa phân công —',
+        // Mặc định TomSelect chỉ load() khi có ký tự gõ vào (shouldLoad yêu cầu
+        // query.length > 0) — danh sách nhân viên theo org sẽ trống cho tới khi
+        // gõ. preload: true gọi load('') ngay khi khởi tạo để hiện đủ danh sách.
+        preload: true,
         onChange,
         render: {
             option: (data) =>
