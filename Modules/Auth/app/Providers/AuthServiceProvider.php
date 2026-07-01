@@ -75,15 +75,19 @@ class AuthServiceProvider extends ModuleServiceProvider
         Fortify::resetPasswordView(
             fn ($request) => view('auth::passwords.reset', ['request' => $request])
         );
-        Fortify::verifyEmailView(fn () => view('auth.verify-email'));
+        // verification.notice view được trả trực tiếp bởi EmailVerificationController
+        // (Features::emailVerification() đã tắt trong config/fortify.php).
 
         VerifyEmail::toMailUsing(function (object $notifiable, string $url): MailMessage {
             return (new MailMessage)
-                ->subject('Xác minh email — ' . config('app.name'))
-                ->greeting('Xin chào ' . ($notifiable->name ?? 'Bạn') . '!')
-                ->line('Nhấn vào nút bên dưới để xác minh địa chỉ email của bạn.')
-                ->action('Xác minh email ngay', $url)
-                ->line('Link có hiệu lực trong 60 phút. Nếu bạn không đăng ký tài khoản, hãy bỏ qua email này.');
+                ->subject('Xác minh email của bạn — ' . config('app.name'))
+                ->greeting('Xin chào ' . ($notifiable->name ?? 'bạn') . ' 👋')
+                ->line('Cảm ơn bạn đã đăng ký tài khoản tại **' . config('app.name') . '**.')
+                ->line('Nhấn vào nút **"Xác minh địa chỉ email"** bên dưới để hoàn tất xác minh và kích hoạt tài khoản của bạn.')
+                ->action('Xác minh địa chỉ email', $url)
+                ->line('⏱️ Đường liên kết này có hiệu lực trong **60 phút** kể từ khi email được gửi.')
+                ->line('Nếu bạn không tạo tài khoản này, bạn có thể bỏ qua email — không cần thực hiện thêm hành động nào.')
+                ->salutation('Trân trọng,  ' . "\n" . config('app.name'));
         });
     }
 

@@ -183,18 +183,6 @@ details[open] > .nav-summary .nav-arrow { transform: rotate(90deg); }
 .sub-link.active { color: #6366f1; background: #ede9fe; font-weight: 500; }
 .sub-badge { font-size: 10px; background: #fef3c7; color: #92400e; border-radius: 999px; padding: 1px 6px; }
 
-/* ── User card ────────────────────────────────── */
-.user-card { flex-shrink: 0; border-top: 1px solid #e2e8f0; padding: 12px; }
-.user-card-inner { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; transition: background .15s; }
-.user-card-inner:hover { background: #f8fafc; }
-.user-card-inner img { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; }
-.user-info { flex: 1; min-width: 0; transition: opacity .2s, width .25s; overflow: hidden; }
-.user-info p { margin: 0; font-size: 13px; font-weight: 600; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.user-info small { font-size: 11px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
-.user-logout { width: 28px; height: 28px; border-radius: 6px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #ef4444; flex-shrink: 0; transition: background .15s, opacity .2s, width .25s; }
-.user-logout:hover { background: #fee2e2; }
-.user-logout svg { width: 15px; height: 15px; }
-
 /* ── Page content + footer ────────────────────── */
 .page-content { flex: 1; padding: 24px; }
 .page-footer { height: 48px; background: #fff; border-top: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; font-size: 12px; color: #94a3b8; }

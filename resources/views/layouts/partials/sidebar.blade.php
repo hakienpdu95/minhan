@@ -771,24 +771,4 @@
 
         </div>
     </nav>
-
-    <div class="user-card">
-        <div class="user-card-inner">
-            <img src="https://api.dicebear.com/9.x/initials/svg?seed={{ urlencode(auth()->user()->name ?? 'Admin') }}&backgroundColor=6366f1&fontFamily=Arial&fontSize=40&fontWeight=700" alt="Avatar">
-            <div class="user-info">
-                <p>{{ auth()->user()->name ?? 'Admin User' }}</p>
-                <small>{{ auth()->user()->email ?? 'admin@example.com' }}</small>
-            </div>
-            <a href="{{ route('auth.profile') }}" title="Hồ sơ cá nhân" class="user-logout" style="display:flex;align-items:center;justify-content:center;">
-                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-            </a>
-            <form method="POST" action="{{ route('logout') }}" style="margin:0">
-                @csrf
-                <button type="submit" class="user-logout" title="Đăng xuất">
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                </button>
-            </form>
-        </div>
-    </div>
-
 </aside>

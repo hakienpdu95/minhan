@@ -146,7 +146,9 @@ return [
     'features' => [
         Features::registration(),
         Features::resetPasswords(),
-        Features::emailVerification(),
+        // emailVerification tắt ở đây vì route verification.* được đăng ký thủ
+        // công tại Modules/Auth/routes/web.php (verify không yêu cầu auth —
+        // xem Modules/Auth/app/Http/Controllers/EmailVerificationController.php).
         Features::updateProfileInformation(),
         Features::updatePasswords(),
         Features::twoFactorAuthentication([
