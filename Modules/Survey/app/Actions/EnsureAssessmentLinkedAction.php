@@ -27,6 +27,8 @@ class EnsureAssessmentLinkedAction
                 'classification_type' => 'score_band',
                 'has_scoring'         => true,
                 'is_active'           => true,
+                'source_type'         => 'survey_linked',
+                'source_ref'          => $survey->slug,
             ]
         );
 

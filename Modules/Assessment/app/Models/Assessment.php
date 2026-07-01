@@ -21,6 +21,8 @@ class Assessment extends TenantAwareModel
         'has_scoring',
         'aggregation_model',
         'classification_type',
+        'source_type',
+        'source_ref',
     ];
 
     public function getActivitylogOptions(): LogOptions
@@ -42,6 +44,28 @@ class Assessment extends TenantAwareModel
     public function getRouteKeyName(): string
     {
         return 'assessment_code';
+    }
+
+    /**
+     * Override route binding để include global assessments (org_id NULL).
+     * Trait BelongsToOrganization chỉ filter by org_id — bỏ sót global templates.
+     */
+    public function resolveRouteBinding($value, $field = null): ?static
+    {
+        $isSuperAdmin = auth()->check() && auth()->user()->hasRole('super-admin');
+        $orgId = TenantContext::isSet() ? TenantContext::getOrganizationId() : null;
+
+        $query = static::withoutGlobalScope(OrganizationScope::class)
+            ->where($field ?? $this->getRouteKeyName(), $value);
+
+        if (! $isSuperAdmin && $orgId) {
+            $query->where(function (Builder $q) use ($orgId): void {
+                $q->whereNull('organization_id')
+                  ->orWhere('organization_id', $orgId);
+            });
+        }
+
+        return $query->first();
     }
 
     /**

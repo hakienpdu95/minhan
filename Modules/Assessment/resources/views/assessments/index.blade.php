@@ -9,7 +9,7 @@
         <p class="text-sm text-base-content/50 mt-0.5">Cấu hình chấm điểm khảo sát theo maturity model</p>
     </div>
     @can('assessment.config')
-    <a href="{{ route('assessments.create') }}" class="btn btn-primary btn-sm">+ Thêm Assessment</a>
+    <a href="{{ route('assessments.create') }}" class="btn btn-primary btn-sm">+ Tạo Scoring Profile</a>
     @endcan
 </div>
 
@@ -24,6 +24,7 @@
                 <tr class="text-xs text-base-content/50 uppercase">
                     <th>Assessment Code</th>
                     <th>Tên</th>
+                    <th>Nguồn</th>
                     <th>Aggregation</th>
                     <th>Classification</th>
                     <th class="text-center">Scoring</th>
@@ -36,6 +37,23 @@
                 <tr class="hover:bg-base-200/30">
                     <td class="font-mono text-xs font-semibold text-primary">{{ $a->assessment_code }}</td>
                     <td class="font-medium">{{ $a->name }}</td>
+                    <td>
+                        @switch($a->source_type ?? 'standalone')
+                            @case('global_template')
+                                <span class="badge badge-xs badge-info">Global template</span>
+                                @break
+                            @case('survey_linked')
+                                <span class="badge badge-xs badge-success font-mono text-xs">
+                                    Survey: {{ $a->source_ref ?? '—' }}
+                                </span>
+                                @break
+                            @case('lead_scoring')
+                                <span class="badge badge-xs badge-warning">Lead scoring</span>
+                                @break
+                            @default
+                                <span class="badge badge-xs badge-ghost">Standalone</span>
+                        @endswitch
+                    </td>
                     <td>
                         <span class="badge badge-xs badge-ghost">{{ $a->aggregation_model }}</span>
                     </td>
@@ -80,7 +98,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" class="text-center py-12 text-base-content/40 text-sm">
+                    <td colspan="8" class="text-center py-12 text-base-content/40 text-sm">
                         Chưa có assessment nào.
                     </td>
                 </tr>

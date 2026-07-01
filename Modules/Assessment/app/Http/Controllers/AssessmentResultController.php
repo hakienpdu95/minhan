@@ -20,7 +20,6 @@ class AssessmentResultController extends Controller
     {
         $code = $assessment->assessment_code;
         $this->authorize('assessment.results');
-        $assessment = Assessment::where('assessment_code', $code)->firstOrFail();
         $results = $handler->handle(new ListAssessmentResultsQuery(
             assessmentCode: $code,
             page:     (int) request('page', 1),
@@ -36,7 +35,6 @@ class AssessmentResultController extends Controller
     {
         $code = $assessment->assessment_code;
         $this->authorize('assessment.results');
-        $assessment = Assessment::where('assessment_code', $code)->firstOrFail();
         $assessmentResult = AssessmentResult::where('assessment_code', $code)->findOrFail($result);
         $assessmentResult->load([
             'domainScores', 'signalFlags', 'painPoints',
@@ -53,6 +51,7 @@ class AssessmentResultController extends Controller
         Assessment $assessment, int $result,
         ForceRerunAssessmentAction $action,
     ): JsonResponse {
+        $code = $assessment->assessment_code;
         $this->authorize('assessment.reprocess');
         $assessmentResult = AssessmentResult::where('assessment_code', $code)->findOrFail($result);
         $subjectModel = $assessmentResult->subject_type::find($assessmentResult->subject_id);

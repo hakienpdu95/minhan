@@ -4,6 +4,7 @@ namespace Modules\Assessment\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Shared\Tenancy\Models\Organization;
+use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -14,7 +15,22 @@ class AssessmentController extends Controller
     public function index(): View
     {
         $this->authorize('assessment.view');
-        $assessments = Assessment::orderBy('name')->paginate(20);
+
+        $user  = auth()->user();
+        $query = Assessment::withoutTenant();
+
+        // Super-admin không thuộc org nào → xem tất cả assessments trên platform.
+        // Org-user → chỉ xem global (org_id NULL) + org của họ.
+        if ($user->organization_id !== null) {
+            $orgId = TenantContext::isSet() ? TenantContext::getOrganizationId() : $user->organization_id;
+            $query->where(function ($q) use ($orgId) {
+                $q->whereNull('organization_id')
+                  ->orWhere('organization_id', $orgId);
+            });
+        }
+
+        $assessments = $query->orderBy('name')->paginate(20);
+
         return view('assessment::assessments.index', compact('assessments'));
     }
 
@@ -41,6 +57,8 @@ class AssessmentController extends Controller
             'aggregation_model'  => 'required|in:weighted_domain,flat_sum,sectioned',
             'classification_type'=> 'required|in:score_band,pass_fail,persona_match,none',
             'has_scoring'        => 'boolean',
+            'source_type'        => 'required|in:lead_scoring,standalone',
+            'source_ref'         => 'nullable|string|max:255',
         ], [
             'organization_id.required' => 'Vui lòng chọn tổ chức.',
             'organization_id.exists'   => 'Tổ chức không hợp lệ.',

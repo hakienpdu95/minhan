@@ -145,6 +145,39 @@
 
                     </div>
 
+                    {{-- Mục đích sử dụng --}}
+                    <div class="form-control mb-4 sm:col-span-2">
+                        <label class="label py-0 pb-1.5">
+                            <span class="label-text font-medium text-sm">Mục đích sử dụng <span class="text-error">*</span></span>
+                        </label>
+                        <select name="source_type"
+                                class="select select-bordered select-sm w-full @error('source_type') select-error @enderror">
+                            <option value="standalone" {{ old('source_type', 'standalone') === 'standalone' ? 'selected' : '' }}>
+                                Standalone — custom / future modules
+                            </option>
+                            <option value="lead_scoring" {{ old('source_type') === 'lead_scoring' ? 'selected' : '' }}>
+                                Lead Scoring — dùng cho organizations.lead_assessment_code
+                            </option>
+                        </select>
+                        <p class="mt-1 text-xs text-base-content/40">
+                            Survey-linked và Global template được tạo tự động — không tạo thủ công.
+                        </p>
+                        @error('source_type')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                    </div>
+
+                    {{-- Ghi chú nguồn --}}
+                    <div class="form-control mb-4 sm:col-span-2">
+                        <label class="label py-0 pb-1.5">
+                            <span class="label-text font-medium text-sm">Ghi chú nguồn</span>
+                            <span class="label-text-alt text-xs text-base-content/40">Tùy chọn</span>
+                        </label>
+                        <input type="text" name="source_ref"
+                               value="{{ old('source_ref') }}"
+                               placeholder="VD: crm-lead-q3, hr-eval-2026"
+                               class="input input-bordered input-sm w-full @error('source_ref') input-error @enderror">
+                        @error('source_ref')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                    </div>
+
                     {{-- has_scoring --}}
                     <div class="form-control mt-2">
                         <label class="flex items-start gap-2.5 cursor-pointer group select-none">

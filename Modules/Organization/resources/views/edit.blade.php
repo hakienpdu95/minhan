@@ -328,7 +328,7 @@
             {{-- Liên kết nhanh --}}
             <div class="card bg-base-100 shadow-sm border border-base-200">
                 <div class="card-body p-0">
-                    <a href="{{ route('backend.users.index', ['organization_id' => $organization->id]) }}"
+                    <a href="{{ route('backend.users.index', ['org' => $organization->id]) }}"
                        class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-base-200/60 transition-colors rounded-2xl group">
                         <div class="flex items-center gap-2.5">
                             <svg class="w-4 h-4 text-base-content/40 group-hover:text-primary transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">

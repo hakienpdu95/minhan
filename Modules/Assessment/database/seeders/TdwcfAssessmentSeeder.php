@@ -38,6 +38,7 @@ class TdwcfAssessmentSeeder extends Seeder
                 'has_scoring'         => true,
                 'aggregation_model'   => 'weighted_domain',
                 'classification_type' => 'score_band',
+                'source_type'         => 'global_template',
             ]
         );
     }

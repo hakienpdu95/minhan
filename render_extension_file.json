@@ -225,7 +225,9 @@
     [
         "assessments///add///__///",
         "organization_id///unsignedBigInteger///__///_NULL///NULL///->constrained()->onDelete('restrict')///__",
-        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm"
+        "deleted_at///timestamp///__///_NULL///NULL///__///Thời gian xóa mềm",
+        "source_type///string///30///NOT_NULL///'standalone'///__///global_template|survey_linked|lead_scoring|standalone",
+        "source_ref///string///255///_NULL///NULL///__///slug/code của entity nguồn — VD: survey slug nếu survey_linked"
     ],
     [
         "media///add///__///",

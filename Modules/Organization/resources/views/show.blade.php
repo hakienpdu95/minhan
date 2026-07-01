@@ -37,7 +37,7 @@
 
     {{-- Actions --}}
     <div class="flex items-center gap-2 shrink-0">
-        <a href="{{ route('backend.users.index', ['organization_id' => $organization->id]) }}"
+        <a href="{{ route('backend.users.index', ['org' => $organization->id]) }}"
            class="btn btn-ghost btn-sm gap-2">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -268,7 +268,7 @@
         <div class="card bg-base-100 shadow-sm border border-base-200">
             <div class="card-body p-2">
 
-                <a href="{{ route('backend.users.index', ['organization_id' => $organization->id]) }}"
+                <a href="{{ route('backend.users.index', ['org' => $organization->id]) }}"
                    class="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 hover:bg-base-200/70 transition-colors group">
                     <div class="flex items-center gap-2.5">
                         <svg class="w-4 h-4 text-base-content/40 group-hover:text-primary transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -343,7 +343,7 @@
                 </svg>
                 Thành viên gần đây
             </h2>
-            <a href="{{ route('backend.users.index', ['organization_id' => $organization->id]) }}"
+            <a href="{{ route('backend.users.index', ['org' => $organization->id]) }}"
                class="btn btn-ghost btn-xs gap-1">
                 Xem tất cả
                 <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
