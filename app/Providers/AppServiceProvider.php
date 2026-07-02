@@ -4,8 +4,6 @@ namespace App\Providers;
 
 use App\Models\User;
 use App\Notifications\Channels\WebPushChannel;
-use App\Services\OtpChannel\OtpChannelManager;
-use App\Services\OtpChannel\ZbsTokenService;
 use App\Services\WebPushService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -32,10 +30,6 @@ class AppServiceProvider extends ServiceProvider
             database_path('migrations/generated'),
             database_path('migrations/extensions'),
         ]);
-
-        // OTP Channel — singleton so drivers are created once per process
-        $this->app->singleton(ZbsTokenService::class);
-        $this->app->singleton(OtpChannelManager::class);
     }
 
     public function boot(): void

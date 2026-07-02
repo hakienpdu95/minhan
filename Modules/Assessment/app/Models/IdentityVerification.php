@@ -19,9 +19,6 @@ class IdentityVerification extends Model
         'verified_at',
         'expires_at',
         'rejection_reason',
-        'verification_code',
-        'code_expires_at',
-        'phone_candidate',
         'email_candidate',
     ];
 
@@ -32,7 +29,6 @@ class IdentityVerification extends Model
             'status'          => VerificationStatus::class,
             'verified_at'     => 'datetime',
             'expires_at'      => 'datetime',
-            'code_expires_at' => 'datetime',
         ];
     }
 

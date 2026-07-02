@@ -58,14 +58,12 @@ class AuthDatabaseSeeder extends Seeder
 
         $admins = [
             [
-                'name'         => 'System Administrator',
-                'email'        => 'admin@system.local',
-                'phone_number' => '0900000001',
+                'name'  => 'System Administrator',
+                'email' => 'admin@system.local',
             ],
             [
-                'name'         => 'Super Administrator',
-                'email'        => 'super-admin@system.local',
-                'phone_number' => '0900000002',
+                'name'  => 'Super Administrator',
+                'email' => 'super-admin@system.local',
             ],
         ];
 
@@ -77,10 +75,8 @@ class AuthDatabaseSeeder extends Seeder
                     'name'             => $data['name'],
                     'password'         => Hash::make('Admin@123!'),
                     'organization_id'  => null,
-                    // Email + phone pre-verified, trust_level = 2 (bypass toàn bộ eKYC)
+                    // Email pre-verified, trust_level = 2 (bypass toàn bộ eKYC)
                     'email_verified_at' => $now,
-                    'phone_number'      => $data['phone_number'],
-                    'phone_verified_at' => $now,
                     'trust_level'       => 2,
                 ]
             );
@@ -89,8 +85,6 @@ class AuthDatabaseSeeder extends Seeder
             if (! $user->wasRecentlyCreated) {
                 $user->forceFill([
                     'email_verified_at' => $user->email_verified_at ?? $now,
-                    'phone_number'      => $user->phone_number      ?? $data['phone_number'],
-                    'phone_verified_at' => $user->phone_verified_at ?? $now,
                     'trust_level'       => max($user->trust_level, 2),
                 ])->save();
             }

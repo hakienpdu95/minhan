@@ -705,12 +705,6 @@
                     <a href="#" class="sub-link">Thanh toán</a>
                     <a href="#" class="sub-link">Vận chuyển</a>
                     <a href="#" class="sub-link">Email</a>
-                    @if(auth()->user()?->hasRole(['super-admin','system_admin']))
-                    <a href="{{ route('backend.zbs.index') }}"
-                       class="sub-link {{ request()->routeIs('zbs.*') ? 'active' : '' }}">
-                        Zalo ZNS (OTP)
-                    </a>
-                    @endif
                 </div>
             </details>
 

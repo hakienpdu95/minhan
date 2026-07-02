@@ -162,9 +162,6 @@ Route::middleware(['auth', 'verified'])->prefix('passport')->name('passport.')->
     Route::prefix('/verify')->name('verify.')->group(function () {
         Route::get('/',                       [IdentityVerificationController::class, 'index'])->name('index');
         // Lv1 — Email: dùng native Fortify (verification.send / verification.verify)
-        // Lv2 — Phone OTP
-        Route::post('/phone/request',         [IdentityVerificationController::class, 'phoneRequest'])->name('phone.request');
-        Route::post('/phone/confirm',         [IdentityVerificationController::class, 'phoneConfirm'])->name('phone.confirm');
     });
 
     // {passport} resolved by uuid (getRouteKeyName = 'uuid') — must be LAST

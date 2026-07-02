@@ -29,7 +29,6 @@ use Spatie\Permission\Traits\HasRoles;
     'organization_id', 'department', 'is_active', 'last_active_at',
     // Phase 0 — Identity Foundation
     'account_type', 'current_org_id', 'trust_level',
-    'phone_number', 'phone_verified_at',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail
@@ -42,7 +41,6 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at'  => 'datetime',
             'last_active_at'     => 'datetime',
-            'phone_verified_at'  => 'datetime',
             'password'           => 'hashed',
             'is_active'          => 'boolean',
             'account_type'       => AccountType::class,

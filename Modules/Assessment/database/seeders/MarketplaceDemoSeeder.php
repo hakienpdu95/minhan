@@ -9,14 +9,14 @@ use Illuminate\Support\Str;
 
 /**
  * Seed demo data cho Assessment Marketplace:
- *  1. 3 tài khoản tự do (free, no org) — email + phone đã xác minh
+ *  1. 3 tài khoản tự do (free, no org) — email đã xác minh
  *  2. 5 chiến dịch đánh giá mở từ các tổ chức demo
  *
  * Chạy sau AssessmentDatabaseSeeder (cần sandbox_tasks và organizations tồn tại).
  *
  * Tài khoản demo:
- *   free.user01@demo.local  /  Demo@123!  — trust_level=2 (email+phone)
- *   free.user02@demo.local  /  Demo@123!  — trust_level=2 (email+phone)
+ *   free.user01@demo.local  /  Demo@123!  — trust_level=2
+ *   free.user02@demo.local  /  Demo@123!  — trust_level=2
  *   free.user03@demo.local  /  Demo@123!  — trust_level=1 (email only)
  */
 class MarketplaceDemoSeeder extends Seeder
@@ -37,25 +37,19 @@ class MarketplaceDemoSeeder extends Seeder
             [
                 'name'              => 'Nguyễn Thị Lan',
                 'email'             => 'free.user01@demo.local',
-                'phone_number'      => '0911000001',
                 'email_verified_at' => $now,
-                'phone_verified_at' => $now,
                 'trust_level'       => 2,
             ],
             [
                 'name'              => 'Trần Văn Minh',
                 'email'             => 'free.user02@demo.local',
-                'phone_number'      => '0911000002',
                 'email_verified_at' => $now,
-                'phone_verified_at' => $now,
                 'trust_level'       => 2,
             ],
             [
                 'name'              => 'Lê Thị Hương',
                 'email'             => 'free.user03@demo.local',
-                'phone_number'      => null,
                 'email_verified_at' => $now,
-                'phone_verified_at' => null,
                 'trust_level'       => 1,   // chỉ email — để test eligibility Lv1
             ],
         ];
@@ -71,9 +65,7 @@ class MarketplaceDemoSeeder extends Seeder
                 'password'          => Hash::make('Demo@123!'),
                 'account_type'      => 'free',
                 'organization_id'   => null,
-                'phone_number'      => $data['phone_number'],
                 'email_verified_at' => $data['email_verified_at'],
-                'phone_verified_at' => $data['phone_verified_at'],
                 'trust_level'       => $data['trust_level'],
                 'is_active'         => true,
                 'created_at'        => $now,
@@ -86,8 +78,8 @@ class MarketplaceDemoSeeder extends Seeder
         $this->command->table(
             ['Email', 'Trust Level', 'Có thể join campaign'],
             [
-                ['free.user01@demo.local', 'Lv2 — email+phone', 'Tất cả (min_trust ≤ 2)'],
-                ['free.user02@demo.local', 'Lv2 — email+phone', 'Tất cả (min_trust ≤ 2)'],
+                ['free.user01@demo.local', 'Lv2', 'Tất cả (min_trust ≤ 2)'],
+                ['free.user02@demo.local', 'Lv2', 'Tất cả (min_trust ≤ 2)'],
                 ['free.user03@demo.local', 'Lv1 — email only', 'Campaign min_trust_level=1'],
             ]
         );

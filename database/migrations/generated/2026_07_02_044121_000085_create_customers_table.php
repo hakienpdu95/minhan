@@ -36,7 +36,7 @@ return new class extends Migration
             $table->unsignedInteger('activity_count')->default(0);
             $table->string('first_name', 100)->nullable();
             $table->string('last_name', 100)->nullable();
-            $table->tinyInteger('gender')->nullable();
+            $table->string('gender', 1)->nullable();
             $table->date('date_of_birth')->nullable();
             $table->string('company_name', 255)->nullable();
             $table->string('tax_code', 50)->nullable();

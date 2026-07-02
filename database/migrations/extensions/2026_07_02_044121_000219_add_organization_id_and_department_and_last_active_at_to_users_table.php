@@ -39,16 +39,10 @@ return new class extends Migration {
                 $table->unsignedBigInteger('current_org_id')->nullable()->after('account_type')->comment('NULL nếu free');
             }
             if (!Schema::hasColumn('users', 'trust_level')) {
-                $table->unsignedTinyInteger('trust_level')->default(0)->after('current_org_id')->comment('0=unverified, 1=email, 2=phone, 3=cccd, 4=cccd_biometric');
-            }
-            if (!Schema::hasColumn('users', 'phone_number')) {
-                $table->string('phone_number', 20)->nullable()->after('trust_level');
-            }
-            if (!Schema::hasColumn('users', 'phone_verified_at')) {
-                $table->timestamp('phone_verified_at')->nullable()->after('phone_number');
+                $table->unsignedTinyInteger('trust_level')->default(0)->after('current_org_id')->comment('0=unverified, 1=email, 3=cccd, 4=cccd_biometric');
             }
             if (!Schema::hasColumn('users', 'national_id_hash')) {
-                $table->string('national_id_hash', 64)->nullable()->unique()->after('phone_verified_at')->comment('SHA-256(số_CCCD) — check uniqueness, không lưu số thật');
+                $table->string('national_id_hash', 64)->nullable()->unique()->after('trust_level')->comment('SHA-256(số_CCCD) — check uniqueness, không lưu số thật');
             }
             if (!Schema::hasIndex('users', 'users_account_type_index')) {
                 $table->index('account_type', 'users_account_type_index');
@@ -63,7 +57,7 @@ return new class extends Migration {
     {
         Schema::table('users', function (Blueprint $table) {
             if (Schema::hasColumn('users', 'organization_id')) $table->dropForeign(['organization_id']);
-            $cols = array_filter(['organization_id', 'department', 'last_active_at', 'is_active', 'branch_id', 'department_id', 'account_type', 'current_org_id', 'trust_level', 'phone_number', 'phone_verified_at', 'national_id_hash'], fn($c) => Schema::hasColumn('users', $c));
+            $cols = array_filter(['organization_id', 'department', 'last_active_at', 'is_active', 'branch_id', 'department_id', 'account_type', 'current_org_id', 'trust_level', 'national_id_hash'], fn($c) => Schema::hasColumn('users', $c));
             if (!empty($cols)) $table->dropColumn(array_values($cols));
         });
     }

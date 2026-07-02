@@ -20,10 +20,10 @@ return new class extends Migration
             $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
             $table->unsignedInteger('order_column')->nullable()->index()->comment('Thứ tự sắp xếp — Spatie Sortable / ORDER BY');
             $table->char('jp_job_post_id', 36)->nullable()->index()->comment('Soft ref → jp_job_posts.uuid');
-            $table->unsignedBigInteger('org_id')->index();
+            $table->unsignedBigInteger('org_id')->nullable()->index();
             $table->string('poster_type', 20)->default('org')->comment('org | individual');
             $table->string('listing_type', 20)->default('job')->comment('job | internship');
-            $table->string('title', 200);
+            $table->string('title', 300);
             $table->text('description')->nullable();
             $table->text('requirements')->nullable();
             $table->decimal('salary_min', 15, 2)->nullable();

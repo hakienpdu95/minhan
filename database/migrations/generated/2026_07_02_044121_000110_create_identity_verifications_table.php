@@ -20,7 +20,7 @@ return new class extends Migration
             $table->uuid()->nullable()->unique()->comment('Public UUID — expose ra ngoài, không phải PK');
             $table->unsignedInteger('order_column')->nullable()->index()->comment('Thứ tự sắp xếp — Spatie Sortable / ORDER BY');
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->string('method', 30)->comment('email | phone_otp | vne_id | passport');
+            $table->string('method', 30)->comment('email | vne_id | passport');
             $table->string('status', 20)->default('pending')->comment('pending | verified | rejected | expired');
             $table->timestamp('verified_at')->nullable();
             $table->timestamp('expires_at')->nullable();
