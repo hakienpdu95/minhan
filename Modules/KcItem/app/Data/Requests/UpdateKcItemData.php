@@ -37,6 +37,11 @@ class UpdateKcItemData extends Data
         #[Nullable, StringType, Max(5)]
         public readonly string $language = 'vi',
 
+        #[Nullable, StringType, Max(10)]
+        public readonly ?string $domain_code = null,
+
+        public readonly ?int $difficulty = null,
+
         public readonly bool $is_featured = false,
 
         public readonly bool $is_pinned = false,
@@ -54,6 +59,8 @@ class UpdateKcItemData extends Data
         $currentId = request()->route('kc_item')?->id;
 
         return [
+            'domain_code' => ['nullable', 'string', Rule::in(['D1','D2','D3','D4','D5','D6'])],
+            'difficulty'  => ['nullable', 'integer', Rule::in([1, 2, 3])],
             'slug' => [
                 'required', 'string', 'max:320', 'regex:/^[a-z0-9\-]+$/',
                 Rule::unique('kc_items', 'slug')

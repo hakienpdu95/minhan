@@ -19,6 +19,8 @@ class StoreKcItemAction
             'organization_id' => $data->organization_id,
             'uuid'           => Str::uuid(),
             'category_id'    => $data->category_id,
+            'domain_code'    => $data->domain_code,
+            'difficulty'     => $data->difficulty,
             'title'          => $data->title,
             'slug'           => $data->slug,
             'summary'        => $data->summary,

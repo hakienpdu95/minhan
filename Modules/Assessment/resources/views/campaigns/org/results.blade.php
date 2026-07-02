@@ -19,9 +19,18 @@
     <div>
         <h1 class="text-xl font-bold">Ranking ứng viên</h1>
         <p class="text-sm text-base-content/50">
-            {{ $campaign->is_anonymous_to_org ? '🔒 Ẩn danh cho đến khi bạn mời ứng viên' : 'Hiển thị tên ứng viên' }}
+            {{ $campaign->is_anonymous_to_org ? '🔒 Ẩn danh cho đến khi bạn mời' : 'Hiển thị tên ứng viên' }}
             · {{ $participations->count() }} kết quả
         </p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a href="{{ route('campaigns.admin.results.by-unit', $campaign->uuid) }}"
+           class="btn btn-ghost btn-sm">Theo đơn vị</a>
+        <a href="{{ route('campaigns.admin.export', $campaign->uuid) }}"
+           class="btn btn-outline btn-sm">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Xuất Excel
+        </a>
     </div>
 </div>
 
@@ -32,15 +41,59 @@
     </div>
 </div>
 @else
+
+<div x-data="{
+    selected: [],
+    toggle(id) {
+        const idx = this.selected.indexOf(id);
+        idx === -1 ? this.selected.push(id) : this.selected.splice(idx, 1);
+    },
+    selectAll() { this.selected = {{ json_encode($participations->where('org_action', '!=', 'invited')->pluck('id')->values()) }}; },
+    clearAll()  { this.selected = []; }
+}">
+
+{{-- Bulk invite toolbar --}}
+<div class="flex items-center gap-3 mb-3 flex-wrap">
+    <button type="button" @click="selectAll()" class="btn btn-ghost btn-xs">Chọn tất cả</button>
+    <button type="button" @click="clearAll()" class="btn btn-ghost btn-xs">Bỏ chọn</button>
+    <span class="text-xs text-base-content/40" x-text="selected.length + ' đã chọn'"></span>
+
+    <form method="POST" action="{{ route('campaigns.admin.invite-bulk', $campaign->uuid) }}" class="ml-auto">
+        @csrf
+        <template x-for="id in selected" :key="id">
+            <input type="hidden" name="participation_ids[]" :value="id">
+        </template>
+        <button type="submit" class="btn btn-primary btn-sm"
+                :disabled="selected.length === 0"
+                x-bind:class="selected.length === 0 ? 'btn-disabled' : ''">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            Mời đã chọn (<span x-text="selected.length"></span>)
+        </button>
+    </form>
+</div>
+
 <div class="space-y-3">
     @foreach($participations as $i => $participation)
     @php
-        $revealed = !$campaign->is_anonymous_to_org || $participation->isInvited();
-        $rank = $i + 1;
+        $revealed  = !$campaign->is_anonymous_to_org || $participation->isInvited();
+        $rank      = $i + 1;
+        $canSelect = $participation->org_action !== 'invited';
     @endphp
     <div class="card bg-base-100 border border-base-200 shadow-sm {{ $rank <= 3 ? 'border-l-4 '.($rank===1?'border-l-yellow-400':($rank===2?'border-l-slate-400':'border-l-orange-400')) : '' }}">
         <div class="card-body py-4">
             <div class="flex items-start gap-4 flex-wrap">
+
+                {{-- Checkbox --}}
+                @if($canSelect)
+                <div class="flex items-center pt-2 shrink-0">
+                    <input type="checkbox"
+                           class="checkbox checkbox-sm checkbox-primary"
+                           :checked="selected.includes({{ $participation->id }})"
+                           @change="toggle({{ $participation->id }})">
+                </div>
+                @else
+                <div class="w-5 shrink-0"></div>
+                @endif
 
                 {{-- Rank + identity --}}
                 <div class="flex items-center gap-3 min-w-0 flex-1">
@@ -98,7 +151,6 @@
                     @elseif($participation->org_action === 'rejected' || $participation->status->value === 'declined')
                     <span class="badge badge-error">Từ chối</span>
                     @else
-                    {{-- Invite modal trigger --}}
                     <button onclick="document.getElementById('invite_modal_{{ $participation->id }}').showModal()"
                             class="btn btn-primary btn-sm">
                         {{ $revealed ? 'Mời phỏng vấn' : '🔓 Mời (reveal)' }}
@@ -144,14 +196,16 @@
 
             </div>
 
-            {{-- Completed at --}}
-            <div class="text-xs text-base-content/30 mt-2">
+            <div class="text-xs text-base-content/30 mt-2 ml-9">
                 Nộp bài: {{ $participation->completed_at?->format('d/m/Y H:i') ?? '—' }}
             </div>
         </div>
     </div>
     @endforeach
 </div>
+
+</div>{{-- /x-data --}}
+
 @endif
 
 @endsection

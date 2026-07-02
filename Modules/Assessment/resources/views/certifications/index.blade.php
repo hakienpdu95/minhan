@@ -101,7 +101,17 @@
                     </div>
                     @endif
                     @if($cert->certificate_number)
-                    <p class="text-xs text-base-content/30 mt-2 font-mono">{{ $cert->certificate_number }}</p>
+                    <div class="flex items-center justify-between mt-2">
+                        <p class="text-xs text-base-content/30 font-mono">{{ $cert->certificate_number }}</p>
+                        @if($cert->qr_code_url)
+                        <a href="{{ route('assessment.cert.verify', $cert->certificate_number) }}"
+                           target="_blank"
+                           class="btn btn-ghost btn-xs gap-1 text-base-content/40 hover:text-primary">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.24M16.24 12l1.76-1.76M3 3h2.01M3 3v2.01M3 21h2.01M3 21v-2.01M21 3h-2.01M21 3v2.01M21 21h-2.01M21 21v-2.01M7 7h.01M7 17h.01M17 7h.01"/></svg>
+                            Xác minh
+                        </a>
+                        @endif
+                    </div>
                     @endif
                 </div>
             </div>

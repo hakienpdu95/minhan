@@ -15,6 +15,8 @@ class UpdateKcItemAction
     {
         $kcItem->update([
             'category_id'    => $data->category_id,
+            'domain_code'    => $data->domain_code,
+            'difficulty'     => $data->difficulty,
             'title'          => $data->title,
             'slug'           => $data->slug,
             'summary'        => $data->summary,

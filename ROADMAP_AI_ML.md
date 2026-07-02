@@ -1540,7 +1540,7 @@ php artisan ml:compare lead_scorer v1.1 v1.2  # Compare metrics
 ```
 
 **Checklist Phase 6:**
-- [ ] Task 6.1: Python training pipeline + HTTP prediction endpoint
+- [ ] Task 6.1: LeadScoringModelService (php-ml GradientBoosting) + artisan train/activate commands
 - [ ] Task 6.2: Assessment calibration report command
 - [ ] Task 6.3: Model versioning table + deploy/rollback commands
 - [ ] Task 6.x: A/B testing framework (50% leads dùng rule-based, 50% dùng ML model)
@@ -1556,7 +1556,7 @@ Phase 1 ────────────────────────
   └─► Phase 2 (dùng Events từ Phase 1 làm trigger)
         └─► Phase 3 (Sparse scoring cải thiện input cho Recommendation)
               └─► Phase 4 (cần corpus đủ lớn từ Phase 2 recommendation data)
-                    └─► Phase 5 (Python service đã có từ Phase 4)
+                    └─► Phase 5 (TF-IDF vectors từ Phase 4 làm nền tảng)
                           └─► Phase 6 (cần data quality từ Phase 3 + 5)
 ```
 
@@ -1663,9 +1663,9 @@ database/migrations/extensions/
 
 ```
 1. GRACEFUL DEGRADATION
-   Mọi AI/ML feature đều có fallback về logic cũ nếu service down.
-   → Python service timeout → dùng keyword search
-   → Recommendation service lỗi → không show suggestion, không crash page
+   Mọi AI/ML feature đều có fallback về logic cũ nếu job thất bại.
+   → Job ML timeout → dùng keyword search / rule-based fallback
+   → Recommendation lỗi → không show suggestion, không crash page
 
 2. TENANT ISOLATION
    Mọi model, cache, embedding đều scope theo organization_id.
@@ -1686,7 +1686,7 @@ database/migrations/extensions/
 
 5. DATA PRIVACY
    → Embedding và model không được export ra ngoài org
-   → Python service chạy on-premise (không gửi data ra cloud)
+   → Mọi xử lý chạy trong Laravel process — không gửi data ra ngoài
    → Sensitive fields (phone, email) bị mask trước khi đưa vào NLP
 ```
 

@@ -194,6 +194,34 @@
                             @error('visibility')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
+                        {{-- Domain TDWCF + Mức độ --}}
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="form-control">
+                                <label class="label py-0 pb-1">
+                                    <span class="label-text text-sm font-medium">Domain TDWCF</span>
+                                </label>
+                                <select name="domain_code" class="select select-bordered select-sm w-full">
+                                    <option value="">— Không chọn —</option>
+                                    @foreach(['D1'=>'D1 — Số cơ bản','D2'=>'D2 — Dữ liệu','D3'=>'D3 — AI','D4'=>'D4 — Quy trình','D5'=>'D5 — Đổi mới','D6'=>'D6 — Hiệu suất'] as $code => $label)
+                                    <option value="{{ $code }}" {{ old('domain_code') === $code ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                @error('domain_code')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                            </div>
+                            <div class="form-control">
+                                <label class="label py-0 pb-1">
+                                    <span class="label-text text-sm font-medium">Mức độ</span>
+                                </label>
+                                <select name="difficulty" class="select select-bordered select-sm w-full">
+                                    <option value="">— Không chọn —</option>
+                                    <option value="1" {{ old('difficulty') == 1 ? 'selected' : '' }}>1 — Cơ bản</option>
+                                    <option value="2" {{ old('difficulty') == 2 ? 'selected' : '' }}>2 — Trung cấp</option>
+                                    <option value="3" {{ old('difficulty') == 3 ? 'selected' : '' }}>3 — Nâng cao</option>
+                                </select>
+                                @error('difficulty')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 

@@ -10,6 +10,9 @@
 @if(session('success'))
 <div class="alert alert-success mb-4 py-2 px-4 text-sm">{{ session('success') }}</div>
 @endif
+@if(session('flash_success'))
+<div class="alert alert-success mb-4 py-2 px-4 text-sm">{{ session('flash_success') }}</div>
+@endif
 @if(session('info'))
 <div class="alert alert-info mb-4 py-2 px-4 text-sm">{{ session('info') }}</div>
 @endif
@@ -216,14 +219,87 @@ $ml = $maturityLabels[$currentLevel] ?? ['—', 'alert-info', 'text-info'];
                             @endif
 
                             @if($step->recommended_kc_tag)
-                            <div class="flex items-center gap-2 text-xs">
-                                <svg class="w-3.5 h-3.5 text-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                            <div class="flex items-start gap-2 text-xs">
+                                <svg class="w-3.5 h-3.5 text-accent shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
                                 <span class="text-base-content/60">
-                                    Tài liệu:<br>
-                                    <span class="font-medium font-mono text-xs">{{ Str::limit($step->recommended_kc_tag, 35) }}</span>
+                                    Tài liệu KC:<br>
+                                    @if($isCurrent && $currentStepKcItems->isNotEmpty())
+                                        <span class="font-medium text-accent">{{ $currentStepKcItems->count() }} tài liệu</span>
+                                    @else
+                                        <span class="font-medium font-mono">{{ Str::limit($step->recommended_kc_tag, 35) }}</span>
+                                    @endif
                                 </span>
                             </div>
                             @endif
+                        </div>
+                        @endif
+
+                        {{-- KC Items list — current step only --}}
+                        @if($isCurrent && $currentStepKcItems->isNotEmpty())
+                        @php
+                            $completedCount = $kcProgress->where('status','completed')->count();
+                            $totalKc = $currentStepKcItems->count();
+                            $pct = $totalKc ? round($completedCount / $totalKc * 100) : 0;
+                            $diffLabels = [1=>'Cơ bản',2=>'Trung cấp',3=>'Nâng cao'];
+                            $diffBadge  = [1=>'badge-info',2=>'badge-warning',3=>'badge-error'];
+                        @endphp
+                        <div class="mt-4 pt-4 border-t border-base-200">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-xs font-semibold text-base-content/60 uppercase tracking-wide">
+                                    Tài liệu KC bước này
+                                </p>
+                                <span class="text-xs text-base-content/50">{{ $completedCount }}/{{ $totalKc }} hoàn thành</span>
+                            </div>
+                            <div class="w-full bg-base-200 rounded-full h-1.5 mb-3">
+                                <div class="bg-accent h-1.5 rounded-full transition-all" style="width: {{ $pct }}%"></div>
+                            </div>
+                            <div class="space-y-2">
+                                @foreach($currentStepKcItems as $kc)
+                                @php
+                                    $prog     = $kcProgress->get($kc->id);
+                                    $isDone   = $prog?->status === 'completed';
+                                    $inProg   = $prog?->status === 'in_progress';
+                                @endphp
+                                <div class="flex items-center justify-between gap-2 rounded-lg border {{ $isDone ? 'border-success/30 bg-success/5' : 'border-base-200 bg-base-50' }} px-3 py-2">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm leading-snug {{ $isDone ? 'line-through text-base-content/40' : '' }}">{{ $kc->title }}</p>
+                                        <div class="flex gap-1 mt-0.5 flex-wrap">
+                                            @if($kc->domain_code)
+                                            <span class="badge badge-primary badge-xs">{{ $kc->domain_code }}</span>
+                                            @endif
+                                            @if($kc->difficulty)
+                                            <span class="badge {{ $diffBadge[$kc->difficulty] ?? 'badge-ghost' }} badge-xs">{{ $diffLabels[$kc->difficulty] ?? '' }}</span>
+                                            @endif
+                                            @if($isDone)
+                                            <span class="badge badge-success badge-xs">Hoàn thành</span>
+                                            @elseif($inProg)
+                                            <span class="badge badge-warning badge-xs">Đang học</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    @if(! $isDone)
+                                    <div class="flex gap-1 shrink-0">
+                                        @if(! $inProg)
+                                        <form method="POST" action="{{ route('backend.kc-progress.start', $kc) }}">
+                                            @csrf
+                                            <button type="submit" class="btn btn-ghost btn-xs text-info hover:bg-info/10" title="Bắt đầu học">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            </button>
+                                        </form>
+                                        @endif
+                                        <form method="POST" action="{{ route('backend.kc-progress.complete', $kc) }}">
+                                            @csrf
+                                            <button type="submit" class="btn btn-ghost btn-xs text-success hover:bg-success/10" title="Đánh dấu hoàn thành">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    @else
+                                    <svg class="w-5 h-5 text-success shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                    @endif
+                                </div>
+                                @endforeach
+                            </div>
                         </div>
                         @endif
 

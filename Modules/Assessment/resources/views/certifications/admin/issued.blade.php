@@ -45,6 +45,7 @@ $statusBadge = [
                 <th>Hết hạn</th>
                 <th>Trạng thái</th>
                 <th>Điểm khi cấp</th>
+                <th>QR</th>
                 <th></th>
             </tr>
         </thead>
@@ -82,6 +83,19 @@ $statusBadge = [
                         <span class="font-mono">{{ round($cert->composite_score_at_issue, 1) }}</span>
                     @else
                         —
+                    @endif
+                </td>
+                <td>
+                    @if($cert->qr_code_url)
+                    <a href="{{ route('assessment.cert.verify', $cert->certificate_number) }}"
+                       target="_blank"
+                       class="btn btn-ghost btn-xs gap-1"
+                       title="Xem trang xác minh">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.24M16.24 12l1.76-1.76M3 3h2.01M3 3v2.01M3 21h2.01M3 21v-2.01M21 3h-2.01M21 3v2.01M21 21h-2.01M21 21v-2.01M7 7h.01M7 17h.01M17 7h.01"/></svg>
+                        QR
+                    </a>
+                    @else
+                    <span class="text-xs text-base-content/30">—</span>
                     @endif
                 </td>
                 <td>

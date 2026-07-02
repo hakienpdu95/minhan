@@ -17,6 +17,8 @@ use Modules\Assessment\Models\OpenAssessmentCampaign;
 use Modules\Assessment\Models\SandboxEnvironment;
 use Modules\Assessment\Models\SandboxTask;
 use Modules\Assessment\Notifications\CampaignInviteNotification;
+use Rap2hpoutre\FastExcel\FastExcel;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CampaignAdminController extends Controller
 {
@@ -201,6 +203,87 @@ class CampaignAdminController extends Controller
         $campaign->update(['status' => $request->input('status')]);
 
         return back()->with('success', 'Trạng thái campaign đã được cập nhật.');
+    }
+
+    /**
+     * POST /dashboard/campaigns/{campaign}/invite-bulk
+     */
+    public function inviteBulk(Request $request, OpenAssessmentCampaign $campaign): RedirectResponse
+    {
+        $this->authorize('assessment.results');
+        $this->authorizeOrg($campaign);
+
+        $request->validate([
+            'participation_ids'   => ['required', 'array', 'min:1', 'max:100'],
+            'participation_ids.*' => ['integer'],
+        ]);
+
+        $participations = $campaign->participations()
+            ->whereIn('id', $request->participation_ids)
+            ->where('status', ParticipationStatus::Completed->value)
+            ->where(fn($q) => $q->whereNull('org_action')->orWhere('org_action', '!=', 'invited'))
+            ->with('user')
+            ->get();
+
+        foreach ($participations as $p) {
+            $p->update(['org_action' => 'invited', 'org_action_at' => now()]);
+            $p->user->notify(new CampaignInviteNotification($campaign, $p));
+        }
+
+        return back()->with('success', "Đã gửi lời mời đến {$participations->count()} ứng viên.");
+    }
+
+    /**
+     * GET /dashboard/campaigns/{campaign}/export
+     */
+    public function exportResults(OpenAssessmentCampaign $campaign): StreamedResponse
+    {
+        $this->authorize('assessment.results');
+        $this->authorizeOrg($campaign);
+
+        $rows = $campaign->participations()
+            ->with(['user:id,name,email', 'scores'])
+            ->orderByDesc('result_tdwcf_score')
+            ->get()
+            ->map(fn($p) => [
+                'Ứng viên'       => (!$campaign->is_anonymous_to_org || $p->isInvited()) ? $p->user?->name : $p->anonymousLabel(),
+                'Email'          => (!$campaign->is_anonymous_to_org || $p->isInvited()) ? $p->user?->email : '—',
+                'Trạng thái'     => $p->status->label(),
+                'TDWCF Score'    => $p->result_tdwcf_score,
+                'Maturity Level' => $p->result_maturity_level,
+                'Sandbox Avg'    => $p->result_sandbox_avg,
+                'Đánh giá org'   => $p->org_rating,
+                'Ghi chú'        => $p->org_note,
+                'Hành động'      => $p->org_action,
+                'Tham gia'       => $p->joined_at?->format('d/m/Y'),
+                'Hoàn thành'     => $p->completed_at?->format('d/m/Y'),
+            ]);
+
+        return (new FastExcel($rows))->download("campaign-{$campaign->uuid}-results.xlsx");
+    }
+
+    /**
+     * GET /dashboard/campaigns/{campaign}/results/by-unit
+     */
+    public function resultsByUnit(OpenAssessmentCampaign $campaign): View
+    {
+        $this->authorize('assessment.results');
+        $this->authorizeOrg($campaign);
+
+        $unitStats = $campaign->participations()
+            ->with(['user.employee.department:id,name'])
+            ->where('status', ParticipationStatus::Completed->value)
+            ->get()
+            ->groupBy(fn($p) => $p->user?->employee?->department?->name ?? 'Không xác định')
+            ->map(fn($group) => [
+                'count'     => $group->count(),
+                'invited'   => $group->where('org_action', 'invited')->count(),
+                'avg_tdwcf' => round($group->avg('result_tdwcf_score') ?? 0, 1),
+                'avg_sb'    => round($group->avg('result_sandbox_avg') ?? 0, 1),
+            ])
+            ->sortByDesc('avg_tdwcf');
+
+        return view('assessment::campaigns.org.results-by-unit', compact('campaign', 'unitStats'));
     }
 
     // ── Private helpers ──────────────────────────────────────────────

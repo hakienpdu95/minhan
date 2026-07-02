@@ -16,6 +16,8 @@ use Modules\Assessment\Http\Controllers\IdentityVerificationController;
 use Modules\Assessment\Http\Controllers\PassportController;
 use Modules\Assessment\Http\Controllers\PublicPassportController;
 use Modules\Assessment\Http\Controllers\SandboxSessionController;
+use Modules\Assessment\Http\Controllers\CertVerifyController;
+use Modules\Assessment\Http\Controllers\RoadmapAdminController;
 use Modules\Assessment\Http\Controllers\WorkforceCertificationController;
 use Modules\Assessment\Http\Controllers\WorkforceExportController;
 use Modules\Assessment\Http\Controllers\WorkforceProfileController;
@@ -63,6 +65,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Admin: danh sách + chi tiết + export
     Route::prefix('dashboard/workforce')->name('backend.workforce.')->group(function () {
         Route::get('/',                              [WorkforceProfileController::class, 'index'])->name('index');
+        Route::get('/unit',                          [WorkforceProfileController::class, 'unitDashboard'])->name('unit-dashboard');
         Route::get('/api',                           [WorkforceProfileController::class, 'apiIndex'])->name('api');
         Route::get('/export/organization',           [WorkforceExportController::class, 'organizationReport'])->name('export.organization');
         Route::get('/pdf/organization',              [WorkforceExportController::class, 'organizationPdf'])->name('pdf.organization');
@@ -99,6 +102,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/{careerPathwayStep}/edit',      [CareerPathwayAdminController::class, 'edit'])->name('edit');
         Route::put('/{careerPathwayStep}',           [CareerPathwayAdminController::class, 'update'])->name('update');
         Route::delete('/{careerPathwayStep}',        [CareerPathwayAdminController::class, 'destroy'])->name('destroy');
+    });
+
+    // Roadmap Admin — gắn KC items vào milestones
+    Route::prefix('dashboard/roadmap-admin')->name('backend.roadmap-admin.')->group(function () {
+        Route::get('/',
+            [RoadmapAdminController::class, 'index'])->name('index');
+        Route::get('/{phase}',
+            [RoadmapAdminController::class, 'phase'])->name('phase');
+        Route::get('/{phase}/milestones/{milestone}/kc',
+            [RoadmapAdminController::class, 'milestoneKc'])->name('milestone.kc');
+        Route::post('/{phase}/milestones/{milestone}/kc',
+            [RoadmapAdminController::class, 'attachKc'])->name('milestone.kc.attach');
+        Route::delete('/{phase}/milestones/{milestone}/kc/{kcItem}',
+            [RoadmapAdminController::class, 'detachKc'])->name('milestone.kc.detach');
     });
 
     // Sandbox Admin (content management)
@@ -194,10 +211,18 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard/campaigns')->name('ca
     Route::post('/',                                          [CampaignAdminController::class, 'store'])->name('store');
     Route::get('/{campaign}',                                 [CampaignAdminController::class, 'show'])->name('show');
     Route::get('/{campaign}/results',                         [CampaignAdminController::class, 'results'])->name('results');
+    Route::get('/{campaign}/results/by-unit',                 [CampaignAdminController::class, 'resultsByUnit'])->name('results.by-unit');
+    Route::get('/{campaign}/export',                          [CampaignAdminController::class, 'exportResults'])->name('export');
     Route::post('/{campaign}/invite/{participation}',         [CampaignAdminController::class, 'invite'])->name('invite');
+    Route::post('/{campaign}/invite-bulk',                    [CampaignAdminController::class, 'inviteBulk'])->name('invite-bulk');
     Route::patch('/{campaign}/status',                        [CampaignAdminController::class, 'updateStatus'])->name('status');
 });
 
 // ── Competency Passport — Phase 2: Public share / portability ────────────────
 Route::get('/p/{token}',     [PublicPassportController::class, 'show'])->name('passport.public');
 Route::get('/p/{token}/pdf', [PublicPassportController::class, 'pdf'])->name('passport.public.pdf');
+
+// ── Certification public verify — không cần auth ────────────────────────────
+Route::get('/verify/cert/{number}', [CertVerifyController::class, 'show'])
+    ->name('assessment.cert.verify')
+    ->withoutMiddleware(['auth', 'verified']);

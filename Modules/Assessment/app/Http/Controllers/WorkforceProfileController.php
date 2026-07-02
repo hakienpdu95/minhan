@@ -19,6 +19,7 @@ use Modules\Assessment\Models\WorkforceProfileHistory;
 use Modules\Assessment\Models\WorkforceRecommendation;
 use Modules\Assessment\Models\PassportEntry;
 use Modules\Assessment\Models\SandboxSession;
+use Modules\Department\Models\Department;
 use Modules\Employee\Models\Employee;
 
 class WorkforceProfileController extends Controller
@@ -294,6 +295,62 @@ class WorkforceProfileController extends Controller
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /** Dashboard tổng hợp năng lực theo đơn vị */
+    public function unitDashboard(Request $request): View
+    {
+        $this->authorize('assessment.results');
+
+        $orgId  = TenantContext::getOrganizationId();
+        $deptId = $request->integer('dept_id') ?: null;
+
+        $query = WorkforceProfile::with([
+            'employee:id,full_name,department_id,job_title_id',
+            'employee.department:id,name',
+            'employee.jobTitle:id,name',
+        ]);
+
+        if ($deptId) {
+            $query->whereHas('employee', fn($q) => $q->where('department_id', $deptId));
+        }
+
+        $profiles    = $query->get();
+        $departments = Department::orderBy('name')->get(['id', 'name']);
+
+        $maturityLevels = [
+            'DIGITAL_BEGINNER', 'DIGITAL_AWARE', 'DIGITAL_PRACTITIONER',
+            'DIGITAL_PROFESSIONAL', 'DIGITAL_LEADER',
+        ];
+
+        $maturityDist = collect($maturityLevels)->mapWithKeys(
+            fn($lvl) => [$lvl => $profiles->where('tdwcf_maturity_level', $lvl)->count()]
+        );
+
+        $certifiedCount = $profiles->where('certifications_count', '>', 0)->count();
+        $total          = $profiles->count();
+
+        $stats = [
+            'total'         => $total,
+            'avg_tdwcf'     => $total ? round($profiles->avg('tdwcf_score'), 1) : 0,
+            'avg_trust'     => $total ? round($profiles->avg('workforce_trust_score'), 1) : 0,
+            'certified_pct' => $total ? round($certifiedCount / $total * 100, 1) : 0,
+            'maturity_dist' => $maturityDist,
+            'domain_avgs'   => [
+                'D1' => $total ? round($profiles->avg('score_d1_digital_literacy'), 1) : 0,
+                'D2' => $total ? round($profiles->avg('score_d2_data_literacy'), 1) : 0,
+                'D3' => $total ? round($profiles->avg('score_d3_ai_literacy'), 1) : 0,
+                'D4' => $total ? round($profiles->avg('score_d4_workflow'), 1) : 0,
+                'D5' => $total ? round($profiles->avg('score_d5_innovation'), 1) : 0,
+                'D6' => $total ? round($profiles->avg('score_d6_performance'), 1) : 0,
+            ],
+            'top10'           => $profiles->sortByDesc('workforce_trust_score')->take(10)->values(),
+            'needs_attention' => $profiles->filter(fn($p) => ($p->tdwcf_score ?? 101) < 40)->values(),
+        ];
+
+        return view('assessment::workforce.unit-dashboard', compact(
+            'profiles', 'departments', 'stats', 'deptId', 'maturityLevels'
+        ));
     }
 
     /** API: danh sách profiles cho Tabulator */

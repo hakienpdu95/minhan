@@ -12,6 +12,8 @@ use Modules\Assessment\Models\CertificationDefinition;
 use Modules\Assessment\Models\SandboxEnvironment;
 use Modules\Assessment\Models\WorkforceProfile;
 use Modules\Assessment\Services\CareerLevelService;
+use Modules\KcItem\Models\KcItem;
+use Modules\KcItem\Models\KcLearningProgress;
 
 class CareerPathwayController extends Controller
 {
@@ -61,9 +63,30 @@ class CareerPathwayController extends Controller
             $readiness = app(CareerLevelService::class)->readiness($profile);
         }
 
+        // KC items for the current step (loaded by tag slug/name)
+        $currentStepKcItems = collect();
+        $kcProgress         = collect();
+
+        $currentStep = $steps->firstWhere('from_level', $currentLevel);
+        if ($currentStep?->recommended_kc_tag) {
+            $tag = $currentStep->recommended_kc_tag;
+            $currentStepKcItems = KcItem::approved()
+                ->whereHas('tags', fn($q) => $q->where('slug', $tag)->orWhere('name', $tag))
+                ->orderBy('title')
+                ->get(['id', 'title', 'type', 'domain_code', 'difficulty']);
+
+            if ($currentStepKcItems->isNotEmpty()) {
+                $kcProgress = KcLearningProgress::withoutTenant()
+                    ->where('user_id', $user->id)
+                    ->whereIn('kc_item_id', $currentStepKcItems->pluck('id'))
+                    ->get()
+                    ->keyBy('kc_item_id');
+            }
+        }
+
         return view('assessment::career-pathway.index', compact(
             'profile', 'steps', 'currentLevel', 'currentOrder', 'levelOrder',
-            'sandboxEnvs', 'certDefs', 'readiness'
+            'sandboxEnvs', 'certDefs', 'readiness', 'currentStepKcItems', 'kcProgress'
         ));
     }
 

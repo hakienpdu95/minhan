@@ -7,6 +7,7 @@ use App\Traits\HasTenantMedia;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Modules\Assessment\Models\RoadmapMilestone;
 use Modules\KcCategory\Models\KcCategory;
 use Modules\KcItem\Enums\KcItemStatus;
 use Modules\KcItem\Enums\KcItemType;
@@ -22,6 +23,8 @@ class KcItem extends TenantAwareModel implements HasMedia
     protected $fillable = [
         'uuid',
         'category_id',
+        'domain_code',
+        'difficulty',
         'organization_id',
         'title',
         'slug',
@@ -53,6 +56,7 @@ class KcItem extends TenantAwareModel implements HasMedia
         'is_pinned'      => 'boolean',
         'view_count'     => 'integer',
         'download_count' => 'integer',
+        'difficulty'     => 'integer',
         'version'        => 'integer',
         'approved_at'    => 'datetime',
         'effective_date' => 'datetime',
@@ -116,6 +120,13 @@ class KcItem extends TenantAwareModel implements HasMedia
         return $this->hasMany(KcViewLog::class, 'item_id');
     }
 
+    public function roadmapMilestones(): BelongsToMany
+    {
+        return $this->belongsToMany(RoadmapMilestone::class, 'roadmap_milestone_kc_items', 'kc_item_id', 'roadmap_milestone_id')
+            ->withPivot('sort_order')
+            ->withTimestamps();
+    }
+
     // ── Scopes ────────────────────────────────────────────────────────────────
 
     public function scopeApproved($query)
@@ -131,6 +142,16 @@ class KcItem extends TenantAwareModel implements HasMedia
     public function scopeFeatured($query)
     {
         return $query->where('is_featured', true);
+    }
+
+    public function scopeForDomain($query, string $domainCode)
+    {
+        return $query->where('domain_code', $domainCode);
+    }
+
+    public function scopeForDifficulty($query, int $difficulty)
+    {
+        return $query->where('difficulty', $difficulty);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

@@ -534,6 +534,16 @@
                 <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 <span class="nav-label">Workforce Admin</span>
             </a>
+            <a href="{{ route('backend.workforce.unit-dashboard') }}"
+               class="nav-link {{ request()->routeIs('backend.workforce.unit-dashboard') ? 'active' : '' }}">
+                <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                <span class="nav-label">Dashboard đơn vị</span>
+            </a>
+            <a href="{{ route('campaigns.admin.index') }}"
+               class="nav-link {{ request()->routeIs('campaigns.admin.*') ? 'active' : '' }}">
+                <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+                <span class="nav-label">Campaign Admin</span>
+            </a>
             @endif
 
             @can('assessment.config')
@@ -546,6 +556,11 @@
                class="nav-link {{ request()->routeIs('backend.career-pathway-admin.*') ? 'active' : '' }}">
                 <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
                 <span class="nav-label">Pathway Admin</span>
+            </a>
+            <a href="{{ route('backend.roadmap-admin.index') }}"
+               class="nav-link {{ request()->routeIs('backend.roadmap-admin.*') ? 'active' : '' }}">
+                <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
+                <span class="nav-label">Roadmap KC Admin</span>
             </a>
             <a href="{{ route('backend.certs-admin.index') }}"
                class="nav-link {{ request()->routeIs('backend.certs-admin.*') ? 'active' : '' }}">
@@ -721,6 +736,7 @@
                     <a href="{{ route('report.index') }}" class="sub-link {{ request()->routeIs('report.index') ? 'active' : '' }}">Tổng quan</a>
                     @if(auth()->user()?->hasAnyPermission(['reports.hr','reports.full']))
                     <a href="{{ route('report.hr.headcount') }}" class="sub-link {{ request()->routeIs('report.hr.*') ? 'active' : '' }}">Nhân sự (HR)</a>
+                    <a href="{{ route('report.competency.index') }}" class="sub-link {{ request()->routeIs('report.competency.*') ? 'active' : '' }}">Năng lực số</a>
                     @endif
                     @if(auth()->user()?->hasAnyPermission(['reports.team','reports.personal','reports.full']))
                     <a href="{{ route('report.sales.pipeline') }}" class="sub-link {{ request()->routeIs('report.sales.*') ? 'active' : '' }}">Sales & CRM</a>

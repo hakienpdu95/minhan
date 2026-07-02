@@ -8,6 +8,7 @@ use Modules\KcItem\Http\Controllers\Api\KcItemApiController;
 use Modules\KcItem\Http\Controllers\Api\KcTagApiController;
 use Modules\KcItem\Http\Controllers\KcAnalyticsController;
 use Modules\KcItem\Http\Controllers\KcItemController;
+use Modules\KcItem\Http\Controllers\KcProgressController;
 use Modules\KcItem\Http\Controllers\KcTagController;
 
 /*
@@ -35,6 +36,10 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
         [KcItemController::class, 'showVersion'])->name('kc-items.versions.show');
     Route::post('kc-items/{kc_item}/rollback/{versionNumber}',
         [KcItemController::class, 'rollback'])->name('kc-items.rollback');
+
+    // Learning progress
+    Route::post('kc-progress/{kcItem}/start',    [KcProgressController::class, 'start'])->name('kc-progress.start');
+    Route::post('kc-progress/{kcItem}/complete', [KcProgressController::class, 'complete'])->name('kc-progress.complete');
 });
 
 // ── Backend JSON API ─────────────────────────────────────────────────────────

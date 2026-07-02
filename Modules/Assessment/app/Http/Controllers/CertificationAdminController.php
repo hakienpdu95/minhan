@@ -13,6 +13,7 @@ use Modules\Assessment\Events\CertificationIssued;
 use Modules\Assessment\Models\CertificationDefinition;
 use Modules\Assessment\Models\WorkforceCertification;
 use Modules\Assessment\Models\WorkforceProfile;
+use Modules\Assessment\Services\CertificationQrService;
 
 class CertificationAdminController extends Controller
 {
@@ -257,6 +258,8 @@ class CertificationAdminController extends Controller
             'human_reviewer_id'        => $request->user()->id,
             'reviewed_at'              => now(),
         ]);
+
+        app(CertificationQrService::class)->generateAndStore($cert);
 
         event(new CertificationIssued($cert, $profile));
 

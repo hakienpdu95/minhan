@@ -1,7 +1,7 @@
 # Workflow Automation — Specification v2
 ## ERD tổng quát · Đa mô hình · Thân thiện SME
 
-> **Tham khảo**: Drupal Workflow Module (State Machine) · BPMN (User Task, Gateway) · Zapier/n8n (Event-Action)
+> **Tham khảo**: Drupal Workflow Module (State Machine) · BPMN (User Task, Gateway) · Zapier (Event-Action)
 > **Mục tiêu**: Một engine đủ linh hoạt cho mọi quy trình SME — không cần viết code
 > **Cập nhật**: 2026-06-06
 
