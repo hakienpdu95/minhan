@@ -22,6 +22,10 @@ interface VerticalDefinition
     public function readinessTemplateSlag(): ?string;
     public function exportConfig(): ?array;
 
+    public function dataCollectionTemplateSlug(): ?string;
+    public function initialPhaseKey(): string;
+    public function autoAssignsDataCollection(string $phaseKey): bool;
+
     // SEED-ONLY — runtime dùng VerticalConfigService::activityTypes() / legalDocTypes()
     public function defaultActivityTypes(): ?array;
     public function defaultLegalDocTypes(): ?array;

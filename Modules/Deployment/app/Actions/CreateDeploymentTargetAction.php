@@ -47,14 +47,14 @@ class CreateDeploymentTargetAction
                 'project_id'             => $data->project_id,
                 'vertical_code'          => $vertical->code(),
                 'target_organization_id' => $targetOrg->id,
-                'current_phase'          => 'draft',
+                'current_phase'          => $vertical->initialPhaseKey(),
                 'assigned_employee_id'   => $data->assigned_employee_id,
                 'notes'                  => $data->notes,
                 'created_by'             => auth()->id(),
             ]);
 
             // 3. Seed checklist items with resolved hierarchy labels
-            $labels = VerticalConfigService::hierarchyLabels($orgId, $vertical->code(), $vertical);
+            $labels = VerticalConfigService::hierarchyLabels($vertical);
             $replacements = [
                 '{vertical}' => $vertical->label(),
                 '{target}'   => $vertical->targetLabel(),

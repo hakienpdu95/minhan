@@ -132,7 +132,7 @@ class GenerateExtension extends Command
     ): array {
         return match ($action) {
             'add'    => $this->buildAddBody($rows, $firstAfter, $tableName),
-            'drop'   => $this->buildDropBody($rows),
+            'drop'   => $this->buildDropBody($rows, $tableName),
             'change' => $this->buildChangeBody($rows),
             default  => [['// TODO'], ['// TODO']],
         };
@@ -236,7 +236,7 @@ class GenerateExtension extends Command
 
     // ── DROP ───────────────────────────────────────────────────────
 
-    private function buildDropBody(array $rows): array
+    private function buildDropBody(array $rows, string $tableName): array
     {
         $upLines   = [];
         $downLines = [];
@@ -251,19 +251,20 @@ class GenerateExtension extends Command
             // Skip special directives — không phải cột thật
             if (in_array($colName, self::SPECIAL_DIRECTIVES)) continue;
 
-            $allNames[] = "'$colName'";
+            $allNames[] = $colName;
             if ($this->isForeignKey($colType, $colMod)) {
                 $fkCols[] = $colName;
             }
         }
 
-        // Up: drop FK trước, drop cột sau
+        // Up: drop FK trước, drop cột sau — wrap trong hasColumn check để idempotent
+        // khi migration chạy lại trên DB đã drop rồi (JSON/generated bị regenerate mỗi lần chạy)
         foreach ($fkCols as $fk) {
-            $upLines[] = "\$table->dropForeign(['$fk']);";
+            $upLines[] = "if (Schema::hasColumn('$tableName', '$fk')) \$table->dropForeign(['$fk']);";
         }
-        $upLines[] = count($allNames) === 1
-            ? "\$table->dropColumn({$allNames[0]});"
-            : "\$table->dropColumn([" . implode(', ', $allNames) . "]);";
+        $namesArg  = implode(', ', array_map(fn($n) => "'$n'", $allNames));
+        $upLines[] = "\$cols = array_filter([$namesArg], fn(\$c) => Schema::hasColumn('$tableName', \$c));";
+        $upLines[] = "if (!empty(\$cols)) \$table->dropColumn(array_values(\$cols));";
 
         // Down: add lại (skeleton — cần điền type)
         foreach ($rows as $row) {

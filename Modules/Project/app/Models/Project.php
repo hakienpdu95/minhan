@@ -24,6 +24,7 @@ class Project extends TenantAwareModel
         'name',
         'description',
         'category',
+        'vertical_code',
         'status',
         'priority',
         'start_date',

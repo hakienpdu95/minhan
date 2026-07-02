@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\RateLimiter;
 use App\View\Composers\SidebarComposer;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use App\Foundation\Vertical\VerticalTemplate;
+use App\Policies\VerticalTemplatePolicy;
 use Modules\Assessment\Models\PassportEntry;
 use Modules\Assessment\Policies\PassportEntryPolicy;
 
@@ -47,6 +49,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Passport policies
         Gate::policy(PassportEntry::class, PassportEntryPolicy::class);
+
+        // Vertical templates (thư viện mẫu — System Admin)
+        Gate::policy(VerticalTemplate::class, VerticalTemplatePolicy::class);
 
         // Sidebar: load active verticals for current org
         View::composer('layouts.partials.sidebar', SidebarComposer::class);

@@ -2,7 +2,7 @@
 @section('title', 'Cấu hình ' . $vertical->label() . ' — ' . $organization->name)
 
 @section('content')
-<div class="max-w-3xl" x-data="{ tab: 'hierarchy' }">
+<div class="max-w-4xl" x-data="{ tab: 'hierarchy' }">
 
     {{-- Breadcrumb --}}
     <div class="flex items-center gap-2 text-sm text-base-content/40 mb-1">
@@ -15,7 +15,7 @@
 
     <div class="flex items-center justify-between mb-6">
         <div>
-            <h1 class="text-xl font-bold">Cấu hình — {{ $vertical->label() }}</h1>
+            <h1 class="text-2xl font-bold text-base-content">Cấu hình — {{ $vertical->label() }}</h1>
             <p class="text-sm text-base-content/50 mt-0.5">Tuỳ chỉnh nhãn, danh mục và phân cấp cho tổ chức này</p>
         </div>
         <a href="{{ route('backend.organizations.verticals.index', $organization) }}"
@@ -30,6 +30,15 @@
     @if(session('success'))
     <div class="alert alert-success mb-4 py-2.5 text-sm">{{ session('success') }}</div>
     @endif
+
+    {{-- Builder phase/checklist — bản riêng của tổ chức, độc lập với thư viện --}}
+    <div class="card bg-base-100 border border-base-200 shadow-sm mb-6">
+        <div class="card-body">
+            @include('backend.vertical-templates.builder', ['template' => $orgVertical, 'phasesData' => $phasesData])
+        </div>
+    </div>
+
+    <h2 class="font-bold text-sm text-base-content/70 uppercase tracking-wide mb-3">Danh mục cấu hình</h2>
 
     {{-- Tab bar --}}
     <div class="tabs tabs-box mb-5">
@@ -140,3 +149,14 @@
 
 </div>
 @endsection
+
+@push('styles')
+    @vite(['Modules/Deployment/resources/assets/sass/deployment.scss'], 'build/backend')
+@endpush
+
+@push('scripts')
+    @vite([
+        'resources/js/modules/tom-select.js',
+        'Modules/Deployment/resources/assets/js/deployment.js',
+    ], 'build/backend')
+@endpush

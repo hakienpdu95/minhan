@@ -8,6 +8,9 @@ use Modules\AiCopilot\Database\Seeders\AiCopilotDatabaseSeeder;
 use Modules\Assessment\Database\Seeders\AssessmentDatabaseSeeder;
 use Modules\Assessment\Database\Seeders\MarketplaceDemoSeeder;
 use Modules\Auth\Database\Seeders\AuthDatabaseSeeder;
+use Modules\Deployment\Database\Seeders\DataCollectionV1Seeder;
+use Modules\Deployment\Database\Seeders\DefaultVerticalTemplateSeeder;
+use Modules\Deployment\Database\Seeders\ReadinessV1SurveySeeder;
 use Modules\JobPosting\Database\Seeders\JobPostingDatabaseSeeder;
 use Modules\JobTitle\Database\Seeders\JobTitleDatabaseSeeder;
 use Modules\Lead\Database\Seeders\LeadDatabaseSeeder;
@@ -92,6 +95,11 @@ class SystemDataSeeder extends Seeder
 
             // ── 16. Marketplace demo: 3 free users + 5 open campaigns ─────
             MarketplaceDemoSeeder::class,
+
+            // ── 17. Deployment: survey templates + 1 bản mẫu vertical mặc định ──
+            DataCollectionV1Seeder::class,
+            ReadinessV1SurveySeeder::class,
+            DefaultVerticalTemplateSeeder::class,
         ]);
 
         $this->command->newLine();

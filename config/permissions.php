@@ -272,6 +272,8 @@ return [
         P::MARKETPLACE_CREATE->value,
         P::MARKETPLACE_EDIT->value,
         P::MARKETPLACE_MANAGE->value,
+        // Vertical templates: Full manage (dashboard/vertical-templates — thư viện mẫu)
+        P::VERTICAL_TEMPLATES_MANAGE->value,
     ],
 
     R::VIEWER->value => [

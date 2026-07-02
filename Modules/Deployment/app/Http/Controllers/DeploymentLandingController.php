@@ -2,8 +2,8 @@
 
 namespace Modules\Deployment\Http\Controllers;
 
-use App\Foundation\Vertical\OrganizationVertical;
-use App\Foundation\VerticalRegistry;
+use App\Foundation\Vertical\DatabaseVertical;
+use App\Foundation\Vertical\VerticalTemplate;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -25,17 +25,18 @@ class DeploymentLandingController extends Controller
         if ($orgId || $isSuperAdmin) {
             // Super-admin sees all active verticals across orgs; others see their own org's
             $verticals = $isSuperAdmin
-                ? OrganizationVertical::withoutTenant()
+                ? VerticalTemplate::whereNotNull('organization_id')
                     ->where('status', 'active')
+                    ->where('is_active', true)
                     ->get()
-                    ->map(fn ($ov) => VerticalRegistry::resolve($ov->vertical_code))
-                    ->filter()
+                    ->map(fn (VerticalTemplate $t) => new DatabaseVertical($t))
                     ->unique(fn ($v) => $v->code())   // dedupe (multiple orgs same code)
                     ->values()
-                : OrganizationVertical::where('status', 'active')
+                : VerticalTemplate::where('organization_id', $orgId)
+                    ->where('status', 'active')
+                    ->where('is_active', true)
                     ->get()
-                    ->map(fn ($ov) => VerticalRegistry::resolve($ov->vertical_code))
-                    ->filter()
+                    ->map(fn (VerticalTemplate $t) => new DatabaseVertical($t))
                     ->values();
 
             foreach ($verticals as $v) {

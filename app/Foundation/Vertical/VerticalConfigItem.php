@@ -2,17 +2,15 @@
 
 namespace App\Foundation\Vertical;
 
-use App\Shared\Tenancy\Traits\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class VerticalConfigItem extends Model
 {
-    use BelongsToOrganization;
-
     public $timestamps = false;
 
     protected $fillable = [
-        'organization_id', 'vertical_code', 'config_group',
+        'vertical_template_id', 'config_group',
         'code', 'label', 'is_required', 'is_active', 'sort_order',
     ];
 
@@ -20,4 +18,9 @@ class VerticalConfigItem extends Model
         'is_required' => 'boolean',
         'is_active'   => 'boolean',
     ];
+
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(VerticalTemplate::class, 'vertical_template_id');
+    }
 }

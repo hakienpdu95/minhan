@@ -2,6 +2,7 @@
 
 namespace Modules\Deployment\Actions;
 
+use App\Foundation\VerticalRegistry;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Deployment\Models\DeploymentTarget;
 use Modules\Survey\Models\Survey;
@@ -45,8 +46,8 @@ class AssignDataCollectionSurveyAction
     private function resolveSlug(DeploymentTarget $target): string
     {
         try {
-            $vertical = app(\App\Foundation\VerticalRegistry::class)::resolve($target->vertical_code);
-            if ($vertical && method_exists($vertical, 'dataCollectionTemplateSlug')) {
+            $vertical = VerticalRegistry::resolveForOrganization($target->organization_id, $target->vertical_code);
+            if ($vertical) {
                 $slug = $vertical->dataCollectionTemplateSlug();
                 if ($slug) return $slug;
             }

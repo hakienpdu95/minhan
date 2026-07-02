@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Foundation\Vertical\OrganizationVertical;
 use App\Foundation\VerticalRegistry;
 use App\Shared\Tenancy\TenantContext;
 use Closure;
@@ -20,19 +19,13 @@ class RequireVertical
             abort(400, 'Vertical code không được xác định.');
         }
 
-        $vertical = VerticalRegistry::resolve($code);
+        $vertical = VerticalRegistry::resolveForOrganization(TenantContext::getOrganizationId(), $code);
 
-        if (! $vertical) {
-            abort(404, "Vertical '{$code}' không tồn tại.");
-        }
-
-        $active = OrganizationVertical::withoutTenant()
-            ->where('organization_id', TenantContext::getOrganizationId())
-            ->where('vertical_code', $code)
-            ->where('status', 'active')
-            ->exists();
-
-        if (! $active) {
+        if (! $vertical || $vertical->template()->status !== 'active') {
+            // Phân biệt 404 (code không tồn tại ở thư viện) vs 403 (có nhưng chưa kích hoạt cho tổ chức này)
+            if (! VerticalRegistry::exists($code)) {
+                abort(404, "Vertical '{$code}' không tồn tại.");
+            }
             abort(403, "Vertical '{$code}' chưa được kích hoạt cho tổ chức này.");
         }
 

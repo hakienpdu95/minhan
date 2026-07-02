@@ -2,8 +2,8 @@
 
 namespace App\View\Composers;
 
-use App\Foundation\Vertical\OrganizationVertical;
-use App\Foundation\VerticalRegistry;
+use App\Foundation\Vertical\DatabaseVertical;
+use App\Foundation\Vertical\VerticalTemplate;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\View\View;
 
@@ -18,11 +18,11 @@ class SidebarComposer
             return;
         }
 
-        // BelongsToOrganization global scope tự filter theo $orgId — không cần explicit where
-        $verticals = OrganizationVertical::where('status', 'active')
+        $verticals = VerticalTemplate::where('organization_id', $orgId)
+            ->where('status', 'active')
+            ->where('is_active', true)
             ->get()
-            ->map(fn ($ov) => VerticalRegistry::resolve($ov->vertical_code))
-            ->filter()
+            ->map(fn (VerticalTemplate $template) => new DatabaseVertical($template))
             ->values();
 
         $view->with('activeVerticals', $verticals);

@@ -151,4 +151,8 @@ enum PermissionEnum: string
     case INTEGRATION_MANAGE = 'integration.manage';
     case AUDIT_VIEW         = 'audit.view';
     case SYSTEM_CONFIG      = 'system.config';
+
+    // ══ VERTICAL TEMPLATES (Thư viện mẫu Vertical) ════════════════
+    // Admin=Full manage (dashboard/vertical-templates)
+    case VERTICAL_TEMPLATES_MANAGE = 'vertical_templates.manage';
 }

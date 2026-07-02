@@ -45,7 +45,7 @@ class AdvancePhaseAction
         (new CreatePhaseTaskAction)->handle($target, $nextPhase);
 
         // Phase-specific automations
-        if ($nextPhase === 'surveying') {
+        if ($vertical->autoAssignsDataCollection($nextPhase)) {
             (new AssignDataCollectionSurveyAction)->handle($target->fresh());
         }
 

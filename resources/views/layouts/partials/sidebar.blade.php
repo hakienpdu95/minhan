@@ -129,6 +129,20 @@
                 </div>
             </details>
 
+            @can(\App\Enums\PermissionEnum::VERTICAL_TEMPLATES_MANAGE->value)
+            <details {{ request()->routeIs('backend.vertical-templates.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('backend.vertical-templates.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                    <span class="nav-label">Thư viện mẫu Vertical</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('backend.vertical-templates.index') }}" class="sub-link {{ request()->routeIs('backend.vertical-templates.index') ? 'active' : '' }}">Danh sách bản mẫu</a>
+                    <a href="{{ route('backend.vertical-templates.create') }}" class="sub-link {{ request()->routeIs('backend.vertical-templates.create') ? 'active' : '' }}">Thêm bản mẫu</a>
+                </div>
+            </details>
+            @endcan
+
             @can('viewAny', \Modules\Branch\Models\Branch::class)
             <details {{ request()->routeIs('backend.branches.*') ? 'open' : '' }}>
                 <summary class="nav-summary {{ request()->routeIs('backend.branches.*') ? 'active' : '' }}">

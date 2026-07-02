@@ -2,16 +2,13 @@
 
 namespace App\Foundation\Vertical;
 
-use App\Foundation\VerticalDefinition;
 use Illuminate\Support\Collection;
 
 class VerticalConfigService
 {
-    public static function activityTypes(int $orgId, string $verticalCode, VerticalDefinition $vertical): array
+    public static function activityTypes(DatabaseVertical $vertical): array
     {
-        $rows = VerticalConfigItem::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->where('vertical_code', $verticalCode)
+        $rows = VerticalConfigItem::where('vertical_template_id', $vertical->template()->id)
             ->where('config_group', 'activity_type')
             ->where('is_active', true)
             ->orderBy('sort_order')
@@ -21,11 +18,9 @@ class VerticalConfigService
         return $rows ?: ($vertical->defaultActivityTypes() ?? []);
     }
 
-    public static function legalDocTypes(int $orgId, string $verticalCode, VerticalDefinition $vertical): array
+    public static function legalDocTypes(DatabaseVertical $vertical): array
     {
-        $rows = VerticalConfigItem::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->where('vertical_code', $verticalCode)
+        $rows = VerticalConfigItem::where('vertical_template_id', $vertical->template()->id)
             ->where('config_group', 'doc_type')
             ->where('is_active', true)
             ->orderBy('sort_order')
@@ -35,21 +30,17 @@ class VerticalConfigService
         return $rows ?: ($vertical->defaultLegalDocTypes() ?? []);
     }
 
-    public static function configItems(int $orgId, string $verticalCode, string $configGroup): Collection
+    public static function configItems(DatabaseVertical $vertical, string $configGroup): Collection
     {
-        return VerticalConfigItem::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->where('vertical_code', $verticalCode)
+        return VerticalConfigItem::where('vertical_template_id', $vertical->template()->id)
             ->where('config_group', $configGroup)
             ->orderBy('sort_order')
             ->get();
     }
 
-    public static function hierarchyLabels(int $orgId, string $verticalCode, VerticalDefinition $vertical): array
+    public static function hierarchyLabels(DatabaseVertical $vertical): array
     {
-        $db = VerticalConfigItem::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->where('vertical_code', $verticalCode)
+        $db = VerticalConfigItem::where('vertical_template_id', $vertical->template()->id)
             ->where('config_group', 'hierarchy')
             ->where('is_active', true)
             ->pluck('label', 'code')

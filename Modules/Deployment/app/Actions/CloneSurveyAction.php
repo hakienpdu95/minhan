@@ -2,6 +2,7 @@
 
 namespace Modules\Deployment\Actions;
 
+use App\Foundation\VerticalRegistry;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\Deployment\Models\DeploymentTarget;
 use Modules\Survey\Models\Survey;
@@ -52,8 +53,8 @@ class CloneSurveyAction
     {
         // Try to resolve from VerticalRegistry
         try {
-            $vertical = app(\App\Foundation\VerticalRegistry::class)::resolve($target->vertical_code);
-            if ($vertical && method_exists($vertical, 'readinessTemplateSlag')) {
+            $vertical = VerticalRegistry::resolveForOrganization($target->organization_id, $target->vertical_code);
+            if ($vertical) {
                 $slug = $vertical->readinessTemplateSlag();
                 if ($slug) return $slug;
             }

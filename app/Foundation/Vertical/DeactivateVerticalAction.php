@@ -6,15 +6,18 @@ use App\Foundation\VerticalRegistry;
 
 class DeactivateVerticalAction
 {
-    public function execute(int $orgId, string $verticalCode): void
+    public function execute(int $organizationId, string $code): void
     {
-        if (! VerticalRegistry::exists($verticalCode)) {
-            throw new \InvalidArgumentException("Vertical '{$verticalCode}' không tồn tại.");
+        // Query builder update — không đi qua Eloquent save(), không tự trigger
+        // VerticalTemplate::booted() → phải tự gọi clearCache().
+        $updated = VerticalTemplate::where('organization_id', $organizationId)
+            ->where('code', $code)
+            ->update(['status' => 'inactive']);
+
+        if (! $updated) {
+            throw new \InvalidArgumentException("Vertical '{$code}' chưa được kích hoạt cho tổ chức này.");
         }
 
-        OrganizationVertical::withoutTenant()
-            ->where('organization_id', $orgId)
-            ->where('vertical_code', $verticalCode)
-            ->update(['status' => 'inactive']);
+        VerticalRegistry::clearCache($organizationId, $code);
     }
 }

@@ -327,6 +327,9 @@ class RolePermissionSeeder extends Seeder
                 P::MARKETPLACE_CREATE->value,
                 P::MARKETPLACE_EDIT->value,
                 P::MARKETPLACE_MANAGE->value,
+
+                // Vertical templates: full manage (dashboard/vertical-templates — thư viện mẫu)
+                P::VERTICAL_TEMPLATES_MANAGE->value,
             ],
 
             // ─────────────────────────────────────────────────────────

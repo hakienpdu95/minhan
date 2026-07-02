@@ -12,16 +12,25 @@
                 <span>/</span>
                 <span>Dịch vụ triển khai</span>
             </div>
-            <h1 class="text-xl font-bold">Quản lý dịch vụ</h1>
+            <h1 class="text-2xl font-bold text-base-content">Quản lý dịch vụ</h1>
             <p class="text-sm text-base-content/50 mt-0.5">Kích hoạt hoặc tắt các vertical triển khai cho tổ chức này</p>
         </div>
-        <a href="{{ route('backend.organizations.show', $organization) }}"
-           class="btn btn-ghost btn-sm gap-1.5">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-            </svg>
-            Quay lại
-        </a>
+        <div class="flex items-center gap-2 shrink-0">
+            <a href="{{ route('backend.organizations.verticals.create', $organization) }}"
+               class="btn btn-primary btn-sm gap-1.5">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Tạo mới từ đầu
+            </a>
+            <a href="{{ route('backend.organizations.show', $organization) }}"
+               class="btn btn-ghost btn-sm gap-1.5">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                Quay lại
+            </a>
+        </div>
     </div>
 
     @if(session('success'))
@@ -100,7 +109,7 @@
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                         </svg>
-                        <span>{{ count($tpl->phases ?? []) }} giai đoạn</span>
+                        <span>{{ $tpl->phases->count() }} giai đoạn</span>
                     </div>
                     <div class="flex items-center gap-1.5 text-base-content/60">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -118,11 +127,11 @@
 
                 {{-- Phases preview --}}
                 <div class="flex flex-wrap gap-1 mb-4">
-                    @foreach(array_slice($tpl->phases ?? [], 0, 6) as $phase)
-                    <span class="badge badge-outline badge-xs font-normal opacity-70">{{ $phase }}</span>
+                    @foreach($tpl->phases->take(6) as $phase)
+                    <span class="badge badge-outline badge-xs font-normal opacity-70">{{ $phase->label }}</span>
                     @endforeach
-                    @if(count($tpl->phases ?? []) > 6)
-                    <span class="badge badge-ghost badge-xs">+{{ count($tpl->phases) - 6 }}</span>
+                    @if($tpl->phases->count() > 6)
+                    <span class="badge badge-ghost badge-xs">+{{ $tpl->phases->count() - 6 }}</span>
                     @endif
                 </div>
 
@@ -150,7 +159,7 @@
                         </svg>
                         Cấu hình
                     </a>
-                    <a href="{{ route('deployment.dashboard', ['vertical' => $tpl->code]) }}"
+                    <a href="{{ route('backend.organizations.verticals.preview', [$organization, $tpl->code]) }}"
                        class="btn btn-sm btn-ghost gap-1.5"
                        target="_blank">
                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -180,7 +189,7 @@
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                             </svg>
-                            Kích hoạt
+                            Nhân bản từ thư viện
                         </button>
                     </form>
                     @endif
@@ -190,6 +199,99 @@
         </div>
         @endforeach
     </div>
+
+    {{-- Vertical tự tạo từ đầu — không nằm trong catalog thư viện --}}
+    @if($custom->isNotEmpty())
+    <div class="mt-8">
+        <div class="flex items-center gap-2 mb-3">
+            <h2 class="font-bold text-sm text-base-content/70 uppercase tracking-wide">Tự tạo từ đầu</h2>
+            <span class="badge badge-ghost badge-xs">{{ $custom->count() }}</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            @foreach($custom as $ov)
+            @php $isActive = $ov->status === 'active'; @endphp
+            <div class="card border {{ $isActive ? 'border-success/30 bg-success/5' : 'border-base-200 bg-base-100' }} shadow-sm transition-all duration-200 hover:shadow-md">
+                <div class="card-body p-5">
+
+                    <div class="flex items-start gap-3 mb-4">
+                        <div class="flex-shrink-0 w-11 h-11 rounded-xl {{ $isActive ? 'bg-success/15' : 'bg-base-200' }} flex items-center justify-center transition-colors">
+                            <svg class="w-5 h-5 {{ $isActive ? 'text-success' : 'text-base-content/40' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 4v16m8-8H4"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h3 class="font-bold text-base leading-snug">{{ $ov->label }}</h3>
+                                @if($isActive)
+                                <span class="badge badge-success badge-xs gap-1">
+                                    <span class="inline-block w-1.5 h-1.5 rounded-full bg-current"></span>
+                                    Đang hoạt động
+                                </span>
+                                @else
+                                <span class="badge badge-ghost badge-xs">Đã tắt</span>
+                                @endif
+                            </div>
+                            <code class="text-xs text-base-content/40 font-mono">{{ $ov->code }}</code>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 text-xs text-base-content/50 mb-4">
+                        <span>{{ $ov->phases->count() }} giai đoạn</span>
+                        <span>&middot;</span>
+                        <span>{{ $ov->target_label }}</span>
+                    </div>
+
+                    <div class="flex items-center gap-2 pt-1 border-t border-base-200">
+                        <a href="{{ route('backend.organizations.verticals.config', [$organization, $ov->code]) }}"
+                           class="btn btn-sm btn-ghost gap-1.5 flex-1">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                            Cấu hình / Builder
+                        </a>
+                        @if($isActive)
+                        <a href="{{ route('backend.organizations.verticals.preview', [$organization, $ov->code]) }}"
+                           class="btn btn-sm btn-ghost gap-1.5"
+                           target="_blank">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                            </svg>
+                            Dashboard
+                        </a>
+                        <form method="POST"
+                              action="{{ route('backend.organizations.verticals.deactivate', [$organization, $ov->code]) }}"
+                              x-data
+                              x-on:submit.prevent="if(confirm('Tắt dịch vụ này? Dữ liệu hiện có sẽ không bị xóa.')) $el.submit()">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-sm btn-ghost text-error gap-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                                </svg>
+                                Tắt
+                            </button>
+                        </form>
+                        @else
+                        <form method="POST" action="{{ route('backend.organizations.verticals.activate', [$organization, $ov->code]) }}">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-primary gap-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                                Bật lại
+                            </button>
+                        </form>
+                        @endif
+                    </div>
+
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
 
 </div>
 @endsection
