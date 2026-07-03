@@ -2,6 +2,7 @@
 
 namespace Modules\Deployment\Http\Controllers;
 
+use App\Foundation\Vertical\VerticalTemplate;
 use App\Http\Controllers\Controller;
 use App\Shared\Tenancy\Models\Organization;
 use Illuminate\Http\JsonResponse;
@@ -47,7 +48,9 @@ class DeploymentTargetController extends Controller
         $projects  = Project::where('vertical_code', $vertical->code())->orderBy('name')->get(['id', 'name']);
         $employees = Employee::orderBy('full_name')->get(['id', 'full_name', 'employee_code']);
 
-        return view('deployment::targets.create', compact('vertical', 'projects', 'employees'));
+        [$organizations, $orgLocked] = $this->resolveOrganizations();
+
+        return view('deployment::targets.create', compact('vertical', 'projects', 'employees', 'organizations', 'orgLocked'));
     }
 
     public function store(Request $request, CreateDeploymentTargetAction $action): RedirectResponse
@@ -124,5 +127,45 @@ class DeploymentTargetController extends Controller
         } catch (\RuntimeException $e) {
             return back()->withErrors(['advance' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * AJAX: trả về readiness_template_slug / data_collection_template_slug đã cấu hình
+     * cho vertical hiện tại của 1 organization — dùng để preview khi chọn "Tổ chức tham chiếu"
+     * trên form tạo target.
+     */
+    public function organizationSlugs(Request $request): JsonResponse
+    {
+        $vertical = $request->attributes->get('_vertical');
+        $orgId    = $request->integer('organization_id');
+
+        if (! $orgId) {
+            return response()->json(['found' => false]);
+        }
+
+        $template = VerticalTemplate::where('organization_id', $orgId)
+            ->where('code', $vertical->code())
+            ->first(['readiness_template_slug', 'data_collection_template_slug']);
+
+        if (! $template) {
+            return response()->json(['found' => false]);
+        }
+
+        return response()->json([
+            'found'                         => true,
+            'readiness_template_slug'       => $template->readiness_template_slug,
+            'data_collection_template_slug' => $template->data_collection_template_slug,
+        ]);
+    }
+
+    /** Giống DepartmentController::_resolveOrganizations() — khoá theo org của user, hoặc cho chọn nếu là user hệ thống. */
+    private function resolveOrganizations(): array
+    {
+        $userOrgId = auth()->user()->organization_id;
+        if ($userOrgId) {
+            return [Organization::where('id', $userOrgId)->get(['id', 'name']), true];
+        }
+
+        return [Organization::orderBy('name')->get(['id', 'name']), false];
     }
 }

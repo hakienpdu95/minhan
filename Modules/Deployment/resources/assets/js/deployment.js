@@ -254,6 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (targetForm) {
         initFormValidation(TARGET_FORM_SEL);
         initAllTomSelects(targetForm);
+        _initOrgSlugsPreview(targetForm);
     }
 
     const progressForm = document.querySelector(PROGRESS_FORM_SEL);
@@ -266,8 +267,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const verticalTemplateForm = document.querySelector(VERTICAL_TEMPLATE_FORM_SEL);
     if (verticalTemplateForm) {
         initFormValidation(VERTICAL_TEMPLATE_FORM_SEL);
+        initAllTomSelects(verticalTemplateForm);   // #ts-organization (select.ts-init) — #ts-default-roles không có class ts-init nên không bị ảnh hưởng
         _setupCodeAutoFill(verticalTemplateForm);
         _setupDefaultRolesTags(verticalTemplateForm);
+        _initVerticalTemplateSurveySelects(verticalTemplateForm);
     }
 });
 
@@ -334,6 +337,113 @@ function _toSlug(str) {
         .trim()
         .replace(/\s+/g, '-')
         .replace(/-{2,}/g, '-');
+}
+
+/**
+ * Tổ chức tham chiếu (#ts-organization) → preview slug khảo sát sẵn sàng /
+ * thu thập dữ liệu đã cấu hình cho vertical hiện tại (readiness_template_slug /
+ * data_collection_template_slug trên vertical_templates của tổ chức đó).
+ * Cùng pattern với Department's _initOrgCascades — TomSelect .on('change') → fetch.
+ */
+function _initOrgSlugsPreview(form) {
+    const apiUrl = form.dataset.orgSlugsApi;
+    const preview = form.querySelector('#org-slugs-preview');
+    const readinessEl = form.querySelector('#org-slug-readiness');
+    const dataCollectionEl = form.querySelector('#org-slug-data-collection');
+    if (!apiUrl || !preview || !readinessEl || !dataCollectionEl) return;
+
+    const fetchSlugs = (orgId) => {
+        if (!orgId) {
+            preview.classList.add('hidden');
+            return;
+        }
+        fetch(`${apiUrl}?organization_id=${encodeURIComponent(orgId)}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        })
+            .then(r => r.ok ? r.json() : { found: false })
+            .then(json => {
+                if (!json.found) {
+                    preview.classList.add('hidden');
+                    return;
+                }
+                readinessEl.textContent = json.readiness_template_slug || '—';
+                dataCollectionEl.textContent = json.data_collection_template_slug || '—';
+                preview.classList.remove('hidden');
+            })
+            .catch(() => preview.classList.add('hidden'));
+    };
+
+    const orgSelect = form.querySelector('#ts-organization');
+    if (orgSelect) {
+        orgSelect.tomselect?.on('change', (orgId) => fetchSlugs(orgId));
+        return;
+    }
+
+    // orgLocked = true → không có select, chỉ có hidden input với org id cố định
+    const lockedInput = form.querySelector('#org-slugs-locked-id');
+    if (lockedInput?.value) fetchSlugs(lockedInput.value);
+}
+
+/**
+ * Slug khảo sát sẵn sàng / thu thập dữ liệu (#ts-readiness-slug, #ts-data-collection-slug)
+ * trên form vertical-templates — nạp options từ surveys theo tổ chức đã chọn.
+ * KHÔNG tự nạp danh sách toàn hệ thống khi chưa có tổ chức nào được chọn — chỉ nạp
+ * khi có hành vi chọn tổ chức (đổi #ts-organization ở trang create, hoặc tổ chức đã
+ * cố định sẵn của bản ghi ở trang edit).
+ */
+function _initVerticalTemplateSurveySelects(form) {
+    const readinessEl      = form.querySelector('#ts-readiness-slug');
+    const dataCollectionEl = form.querySelector('#ts-data-collection-slug');
+    const tsReadiness      = readinessEl?.tomselect;
+    const tsDataCollection = dataCollectionEl?.tomselect;
+    if (!tsReadiness && !tsDataCollection) return;
+
+    const apiUrl = readinessEl?.dataset.surveyOptionsApi || dataCollectionEl?.dataset.surveyOptionsApi;
+    if (!apiUrl) return;
+
+    const loadBoth = (orgId) => {
+        if (tsReadiness) {
+            _loadSurveyOptions(apiUrl, tsReadiness, orgId, readinessEl.dataset.selectedValue || '');
+        }
+        if (tsDataCollection) {
+            _loadSurveyOptions(apiUrl, tsDataCollection, orgId, dataCollectionEl.dataset.selectedValue || '');
+        }
+    };
+
+    const orgEl = form.querySelector('#ts-organization');
+    if (orgEl) {
+        // Trang create: nếu form re-render sau lỗi validate và đã có tổ chức chọn sẵn (old()) thì
+        // nạp lại đúng lựa chọn đó; nếu chưa chọn gì thì để trống, không tự nạp toàn hệ thống.
+        const initialOrgId = orgEl.tomselect?.getValue() ?? '';
+        if (initialOrgId) loadBoth(initialOrgId);
+
+        orgEl.tomselect?.on('change', (orgId) => {
+            tsReadiness?.clear(true);
+            tsReadiness?.clearOptions();
+            tsDataCollection?.clear(true);
+            tsDataCollection?.clearOptions();
+            if (orgId) loadBoth(orgId);   // chỉ nạp khi user thực sự chọn 1 tổ chức
+        });
+    } else if (form.dataset.lockedOrgId) {
+        // Trang edit: chỉ nạp khi bản ghi đã thuộc về 1 tổ chức cụ thể — mẫu thư viện
+        // dùng chung (organization_id null) thì không có "tổ chức đã chọn" để nạp theo.
+        loadBoth(form.dataset.lockedOrgId);
+    }
+}
+
+function _loadSurveyOptions(apiUrl, tsInstance, orgId, pendingValue) {
+    tsInstance.disable();
+    fetch(`${apiUrl}?organization_id=${encodeURIComponent(orgId || '')}`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+    })
+        .then(r => r.ok ? r.json() : [])
+        .then(items => {
+            tsInstance.clearOptions();
+            tsInstance.addOptions(items.map(i => ({ value: i.id, text: i.text })));
+            tsInstance.enable();
+            if (pendingValue) tsInstance.setValue(pendingValue, true);
+        })
+        .catch(() => tsInstance.enable());
 }
 
 /** Vai trò mặc định (default_roles) — tag input tự do, không có danh sách cố định. */

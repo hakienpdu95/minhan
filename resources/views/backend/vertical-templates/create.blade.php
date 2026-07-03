@@ -52,6 +52,28 @@
                         </svg>
                         Thông tin bản mẫu
                     </h2>
+
+                    {{-- Tổ chức sở hữu — để trống = mẫu thư viện dùng chung; chọn tổ chức = tạo luôn bản instance riêng cho tổ chức đó --}}
+                    <div class="form-control mb-4">
+                        <label class="label py-0 pb-1.5" for="ts-organization">
+                            <span class="label-text font-medium">Tổ chức sở hữu</span>
+                            <span class="label-text-alt text-xs text-base-content/40">organization_id — không bắt buộc</span>
+                        </label>
+                        <select id="ts-organization"
+                                name="organization_id"
+                                class="select select-bordered select-sm w-full ts-init @error('organization_id') select-error @enderror"
+                                data-ts-placeholder="— Mẫu thư viện dùng chung —">
+                            <option value="">— Mẫu thư viện dùng chung —</option>
+                            @foreach($organizations as $org)
+                            <option value="{{ $org->id }}" @selected(old('organization_id') == $org->id)>
+                                {{ $org->name }}
+                            </option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1 text-xs text-base-content/40">Để trống nếu tạo mẫu dùng chung cho mọi tổ chức nhân bản. Chọn tổ chức nếu muốn tạo thẳng bản instance riêng cho tổ chức đó.</p>
+                        @error('organization_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                    </div>
+
                     @include('backend.vertical-templates._fields')
                 </div>
             </div>

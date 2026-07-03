@@ -75,6 +75,8 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
 
     // ── Vertical templates — thư viện mẫu (System Admin) ──────────────────
     Route::resource('vertical-templates', VerticalTemplateController::class)->except(['show']);
+    Route::get('vertical-templates/survey-options', [VerticalTemplateController::class, 'surveyOptions'])
+        ->name('vertical-templates.survey-options');
 
     Route::prefix('vertical-templates/{vertical_template}/phases')
         ->name('vertical-templates.phases.')

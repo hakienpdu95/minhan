@@ -57,23 +57,41 @@
     </div>
 
     <div class="form-control sm:col-span-1">
-        <label class="label py-0 pb-1.5">
+        <label class="label py-0 pb-1.5" for="ts-readiness-slug">
             <span class="label-text font-medium">Slug khảo sát sẵn sàng</span>
             <span class="label-text-alt text-xs text-base-content/40">Không bắt buộc</span>
         </label>
-        <input type="text" name="readiness_template_slug" value="{{ old('readiness_template_slug', $tpl?->readiness_template_slug) }}"
-               class="input input-bordered input-sm w-full font-mono @error('readiness_template_slug') input-error @enderror"
-               placeholder="readiness_v1">
+        <select id="ts-readiness-slug" name="readiness_template_slug"
+                class="select select-bordered select-sm w-full ts-init @error('readiness_template_slug') select-error @enderror"
+                data-ts-placeholder="— Chọn khảo sát —"
+                data-survey-options-api="{{ route('backend.vertical-templates.survey-options') }}"
+                data-selected-value="{{ old('readiness_template_slug', $tpl?->readiness_template_slug) }}">
+            @if($tpl?->readiness_template_slug || old('readiness_template_slug'))
+            <option value="{{ old('readiness_template_slug', $tpl?->readiness_template_slug) }}" selected>
+                {{ old('readiness_template_slug', $tpl?->readiness_template_slug) }}
+            </option>
+            @endif
+        </select>
+        <p class="mt-1 text-xs text-base-content/40">Danh sách nạp theo tổ chức đã chọn ở trên (hoặc khảo sát dùng chung).</p>
         @error('readiness_template_slug')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
     </div>
     <div class="form-control sm:col-span-1">
-        <label class="label py-0 pb-1.5">
+        <label class="label py-0 pb-1.5" for="ts-data-collection-slug">
             <span class="label-text font-medium">Slug khảo sát thu thập dữ liệu</span>
             <span class="label-text-alt text-xs text-base-content/40">Không bắt buộc</span>
         </label>
-        <input type="text" name="data_collection_template_slug" value="{{ old('data_collection_template_slug', $tpl?->data_collection_template_slug) }}"
-               class="input input-bordered input-sm w-full font-mono @error('data_collection_template_slug') input-error @enderror"
-               placeholder="data_collection_v1">
+        <select id="ts-data-collection-slug" name="data_collection_template_slug"
+                class="select select-bordered select-sm w-full ts-init @error('data_collection_template_slug') select-error @enderror"
+                data-ts-placeholder="— Chọn khảo sát —"
+                data-survey-options-api="{{ route('backend.vertical-templates.survey-options') }}"
+                data-selected-value="{{ old('data_collection_template_slug', $tpl?->data_collection_template_slug) }}">
+            @if($tpl?->data_collection_template_slug || old('data_collection_template_slug'))
+            <option value="{{ old('data_collection_template_slug', $tpl?->data_collection_template_slug) }}" selected>
+                {{ old('data_collection_template_slug', $tpl?->data_collection_template_slug) }}
+            </option>
+            @endif
+        </select>
+        <p class="mt-1 text-xs text-base-content/40">Danh sách nạp theo tổ chức đã chọn ở trên (hoặc khảo sát dùng chung).</p>
         @error('data_collection_template_slug')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
     </div>
 

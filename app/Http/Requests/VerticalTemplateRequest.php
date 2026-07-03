@@ -15,15 +15,24 @@ class VerticalTemplateRequest extends FormRequest
 
     public function rules(): array
     {
-        $ignoreId = $this->route('vertical_template')?->id;
+        $routeTemplate = $this->route('vertical_template');
+        $ignoreId      = $routeTemplate?->id;
+
+        // Create: organization_id lấy từ request (select trên form, có thể để trống = thư viện).
+        // Update: form edit không có select này — giữ nguyên organization_id hiện có của bản ghi,
+        // không lấy từ request (tránh vô tình ghi đè về null khi field không được gửi lên).
+        $orgId = $routeTemplate ? $routeTemplate->organization_id : $this->input('organization_id');
 
         return [
             'code' => [
                 'required', 'string', 'max:50', 'regex:/^[a-z0-9]+(-[a-z0-9]+)*$/',
                 Rule::unique('vertical_templates', 'code')
-                    ->whereNull('organization_id')
+                    ->where(fn ($query) => $orgId
+                        ? $query->where('organization_id', $orgId)
+                        : $query->whereNull('organization_id'))
                     ->ignore($ignoreId),
             ],
+            'organization_id'               => ['nullable', 'integer', 'exists:organizations,id'],
             'label'                         => ['required', 'string', 'max:100'],
             'target_label'                  => ['required', 'string', 'max:50'],
             'target_org_category'           => ['required', 'string', 'max:30'],
@@ -41,7 +50,7 @@ class VerticalTemplateRequest extends FormRequest
         return [
             'code.required'              => 'Vui lòng nhập mã vertical.',
             'code.regex'                 => 'Mã vertical chỉ gồm chữ thường, số, dấu gạch ngang (vd: truy-xuat-nguon-goc).',
-            'code.unique'                => 'Mã vertical này đã tồn tại trong thư viện.',
+            'code.unique'                => 'Mã vertical này đã tồn tại (trong thư viện, hoặc đã có bản instance của tổ chức đã chọn).',
             'label.required'             => 'Vui lòng nhập tên hiển thị.',
             'target_label.required'      => 'Vui lòng nhập nhãn đối tượng triển khai.',
             'target_org_category.required' => 'Vui lòng nhập nhóm đối tượng.',

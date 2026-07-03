@@ -46,7 +46,8 @@
 <form method="POST"
       action="{{ route('deployment.targets.store', ['vertical' => $vertical->code()]) }}"
       novalidate
-      data-target-form>
+      data-target-form
+      data-org-slugs-api="{{ route('deployment.targets.organization-slugs', ['vertical' => $vertical->code()]) }}">
     @csrf
 
     <div class="grid grid-cols-1 xl:grid-cols-[1fr_268px] gap-6 items-start">
@@ -253,6 +254,41 @@
                             @endforeach
                         </select>
                         @error('assigned_employee_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                    </div>
+
+                    {{-- Tổ chức tham chiếu — chọn để xem slug khảo sát đã cấu hình cho vertical này --}}
+                    <div class="form-control mb-1">
+                        <label class="label py-0 pb-1" for="ts-organization">
+                            <span class="label-text text-xs font-medium">Tổ chức tham chiếu</span>
+                        </label>
+                        @if($orgLocked)
+                            <input type="text"
+                                   value="{{ $organizations->first()->name }}"
+                                   readonly
+                                   class="input input-bordered input-sm w-full bg-base-200 cursor-not-allowed">
+                            <input type="hidden" id="org-slugs-locked-id" value="{{ $organizations->first()->id }}">
+                        @else
+                            <select id="ts-organization"
+                                    class="select select-bordered select-sm w-full ts-init"
+                                    data-ts-placeholder="— Chọn tổ chức —">
+                                <option value="">— Chọn tổ chức —</option>
+                                @foreach($organizations as $org)
+                                <option value="{{ $org->id }}">{{ $org->name }}</option>
+                                @endforeach
+                            </select>
+                        @endif
+                        <p class="mt-1 text-xs text-base-content/40">Xem slug khảo sát đã cấu hình cho vertical này.</p>
+                    </div>
+
+                    <div id="org-slugs-preview" class="hidden bg-base-200/60 rounded-lg p-3 mb-4 space-y-1.5 text-xs">
+                        <div class="flex justify-between gap-2">
+                            <span class="text-base-content/50">Slug khảo sát sẵn sàng</span>
+                            <span id="org-slug-readiness" class="font-mono font-medium text-base-content text-right">—</span>
+                        </div>
+                        <div class="flex justify-between gap-2">
+                            <span class="text-base-content/50">Slug khảo sát thu thập dữ liệu</span>
+                            <span id="org-slug-data-collection" class="font-mono font-medium text-base-content text-right">—</span>
+                        </div>
                     </div>
 
                     <div class="flex gap-2">

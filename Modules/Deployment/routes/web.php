@@ -48,6 +48,7 @@ Route::middleware(['auth', 'tenant'])
             // ── Targets ───────────────────────────────────────────────────────
             Route::prefix('targets')->name('targets.')->group(function () {
                 Route::get('/lookup',            [DeploymentTargetController::class, 'lookup'])->name('lookup');
+                Route::get('/organization-slugs', [DeploymentTargetController::class, 'organizationSlugs'])->name('organization-slugs');
                 Route::get('/',                  [DeploymentTargetController::class, 'index'])->name('index');
                 Route::get('/create',            [DeploymentTargetController::class, 'create'])->name('create');
                 Route::post('/',                 [DeploymentTargetController::class, 'store'])->name('store');

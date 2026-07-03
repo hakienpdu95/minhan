@@ -37,7 +37,8 @@
         <summary class="collapse-title text-sm font-semibold">Thông tin cơ bản</summary>
         <div class="collapse-content">
             <form method="POST" action="{{ route('backend.vertical-templates.update', $template) }}"
-                  novalidate data-vertical-template-form class="space-y-4">
+                  novalidate data-vertical-template-form class="space-y-4"
+                  data-locked-org-id="{{ $template->organization_id }}">
                 @csrf
                 @method('PUT')
                 @include('backend.vertical-templates._fields')
