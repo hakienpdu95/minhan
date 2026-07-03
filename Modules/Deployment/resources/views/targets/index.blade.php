@@ -32,7 +32,7 @@
                     <select name="phase" class="select select-bordered select-sm w-40">
                         <option value="">Tất cả</option>
                         @foreach($phases as $phase)
-                        <option value="{{ $phase }}" @selected(request('phase') === $phase)>{{ $phase }}</option>
+                        <option value="{{ $phase }}" @selected(request('phase') === $phase)>{{ $phaseLabels[$phase] ?? $phase }}</option>
                         @endforeach
                     </select>
                 </div>

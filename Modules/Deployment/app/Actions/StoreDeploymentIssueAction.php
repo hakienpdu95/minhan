@@ -23,6 +23,8 @@ class StoreDeploymentIssueAction
             'title'                => $data->title,
             'description'          => $data->description,
             'severity'             => $data->severity->value,
+            'issue_type'           => $data->issue_type,
+            'severity_detail'      => $data->severity_detail,
             'status'               => IssueStatus::Open->value,
             'owner_id'             => $data->owner_id,
             'created_by'           => auth()->id(),

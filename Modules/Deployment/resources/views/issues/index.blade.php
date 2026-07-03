@@ -56,6 +56,17 @@
                         @endforeach
                     </select>
                 </div>
+                @if($issueTypes)
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text text-xs">Loại issue</span></label>
+                    <select name="issue_type" class="select select-bordered select-sm w-36">
+                        <option value="">Tất cả</option>
+                        @foreach($issueTypes as $code => $label)
+                        <option value="{{ $code }}" @selected(request('issue_type') === $code)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
                 <button type="submit" class="btn btn-sm btn-neutral">Lọc</button>
             </form>
         </div>
@@ -69,6 +80,7 @@
                     <th>Tiêu đề</th>
                     <th>{{ $vertical->targetLabel() }}</th>
                     <th>Mức độ</th>
+                    <th>Loại</th>
                     <th>Trạng thái</th>
                     <th>Người phụ trách</th>
                     <th>Ngày tạo</th>
@@ -85,6 +97,7 @@
                             {{ $issue->severity?->label() }}
                         </span>
                     </td>
+                    <td class="text-sm text-base-content/60">{{ $issueTypes[$issue->issue_type] ?? $issue->issue_type ?? '—' }}</td>
                     <td>
                         <span class="badge badge-sm {{ $issue->status?->badgeClass() }}">
                             {{ $issue->status?->label() }}
@@ -106,7 +119,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="7" class="text-center py-8 text-base-content/40">Không có issue nào.</td></tr>
+                <tr><td colspan="8" class="text-center py-8 text-base-content/40">Không có issue nào.</td></tr>
                 @endforelse
             </tbody>
         </table>

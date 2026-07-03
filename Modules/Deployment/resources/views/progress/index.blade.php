@@ -92,13 +92,17 @@
                                 Phase <span class="text-error">*</span>
                             </span>
                         </label>
-                        <input type="text"
-                               id="field-phase"
-                               name="phase"
-                               value="{{ old('phase', $currentTarget?->current_phase) }}"
-                               class="input input-bordered input-sm w-full @error('phase') input-error @enderror"
-                               placeholder="VD: Khảo sát, Đào tạo, Vận hành"
-                               data-req="Vui lòng nhập phase hiện tại.">
+                        <select id="field-phase"
+                                name="phase"
+                                class="select select-bordered select-sm w-full @error('phase') select-error @enderror"
+                                data-req="Vui lòng chọn phase hiện tại.">
+                            <option value="">— Chọn phase —</option>
+                            @foreach($phases as $p)
+                            <option value="{{ $p }}" @selected(old('phase', $currentTarget?->current_phase) === $p)>
+                                {{ $phaseLabels[$p] ?? $p }}
+                            </option>
+                            @endforeach
+                        </select>
                         @error('phase')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
@@ -179,8 +183,11 @@
                     <div class="min-w-0 flex-1">
                         {{-- Phase + percent --}}
                         <div class="flex items-center gap-2 flex-wrap mb-1.5">
-                            <span class="badge badge-outline badge-sm font-medium">{{ $log->phase }}</span>
+                            <span class="badge badge-outline badge-sm font-medium">{{ $phaseLabels[$log->phase] ?? $log->phase }}</span>
                             <span class="text-sm font-semibold text-base-content">{{ $log->percent }}%</span>
+                            @if($log->checklistItem)
+                            <span class="badge badge-ghost badge-sm">🗒 {{ $log->checklistItem->item_label }}</span>
+                            @endif
                         </div>
                         {{-- Progress bar --}}
                         <div class="w-full bg-base-200 rounded-full h-1.5 mb-2">

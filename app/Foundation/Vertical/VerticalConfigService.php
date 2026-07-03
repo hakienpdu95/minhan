@@ -30,6 +30,17 @@ class VerticalConfigService
         return $rows ?: ($vertical->defaultLegalDocTypes() ?? []);
     }
 
+    /** Danh mục loại issue — hoàn toàn do từng tổ chức tự định nghĩa qua UI, không có default cứng. */
+    public static function issueTypes(DatabaseVertical $vertical): array
+    {
+        return VerticalConfigItem::where('vertical_template_id', $vertical->template()->id)
+            ->where('config_group', 'issue_type')
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->pluck('label', 'code')
+            ->toArray();
+    }
+
     public static function configItems(DatabaseVertical $vertical, string $configGroup): Collection
     {
         return VerticalConfigItem::where('vertical_template_id', $vertical->template()->id)

@@ -17,6 +17,29 @@ class SubscribeOrganizationAction
 {
     use AsAction;
 
+    /**
+     * Gán plan mặc định (config('subscription.default_plan')) cho 1 tổ chức — dùng cho mọi
+     * nơi tạo Organization mà không đi qua StoreOrganizationAction/event OrganizationCreated
+     * (vd. tạo tổ chức đích khi tạo Deployment Target). Trả null nếu chưa cấu hình plan mặc
+     * định nào đang active — im lặng bỏ qua, giống hệt AutoSubscribeOnOrgCreated, để 2 nơi
+     * gọi cùng 1 hành vi, không lệch nhau.
+     */
+    public static function subscribeToDefaultPlan(Organization $org): ?Subscription
+    {
+        $plan = Plan::where('slug', config('subscription.default_plan', 'starter'))
+            ->where('is_active', true)
+            ->first();
+
+        if (! $plan) {
+            return null;
+        }
+
+        return static::run($org, new SubscribeData(
+            planId: $plan->id,
+            idempotentKey: 'auto-' . $org->id,
+        ));
+    }
+
     public function handle(Organization $org, SubscribeData $data): Subscription
     {
         // Idempotency check — exact match on slug to avoid false positives

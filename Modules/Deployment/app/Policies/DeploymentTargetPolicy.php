@@ -29,6 +29,26 @@ class DeploymentTargetPolicy
             || $user->hasRole($target->vertical_code . '_pm');
     }
 
+    /**
+     * Tick checklist là việc của người thực địa (surveyor/data_entry/data_ops), không chỉ PM —
+     * tách riêng khỏi update() vì update() còn dùng cho sửa target (đổi PM, ghi chú...).
+     */
+    public function toggleChecklist(User $user, DeploymentTarget $target): bool
+    {
+        if ($user->hasAnyRole(['CEO', 'Ops', 'System_Admin'])) {
+            return true;
+        }
+
+        $fieldRoleSuffixes = ['pm', 'surveyor', 'data_entry', 'data_ops'];
+
+        return $user->roles->contains(
+            fn ($r) => in_array($r->name, array_map(
+                fn ($suffix) => $target->vertical_code . '_' . $suffix,
+                $fieldRoleSuffixes
+            ))
+        );
+    }
+
     public function advance(User $user, DeploymentTarget $target): bool
     {
         return $user->hasAnyRole(['CEO', 'System_Admin'])

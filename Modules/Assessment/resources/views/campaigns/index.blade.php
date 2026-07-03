@@ -8,24 +8,7 @@
         <h1 class="text-2xl font-bold">Open Assessment Marketplace</h1>
         <p class="text-sm text-base-content/50 mt-0.5">Tham gia chiến dịch đánh giá từ các tổ chức, nhận kết quả vào Career Journal</p>
     </div>
-    @if($user->trust_level < 2)
-    <a href="{{ route('passport.verify.index') }}" class="btn btn-warning btn-sm gap-1.5">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        Cần Trust Level 2+ để tham gia
-    </a>
-    @endif
 </div>
-
-{{-- Trust notice --}}
-@if($user->trust_level < 2)
-<div class="alert alert-warning mb-5">
-    <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-    <div>
-        <p class="font-semibold">Bạn cần xác minh điện thoại (Trust Level 2) để tham gia Marketplace.</p>
-        <p class="text-sm">Hiện tại: Lv{{ $user->trust_level }} — <a href="{{ route('passport.verify.index') }}" class="underline">Xác minh ngay</a></p>
-    </div>
-</div>
-@endif
 
 @if($campaigns->isEmpty())
 <div class="card bg-base-100 border border-base-200 shadow-sm">

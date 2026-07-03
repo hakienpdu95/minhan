@@ -36,29 +36,18 @@ class ToggleChecklistItemAction
     {
         $targetId = $item->deployment_target_id;
         $phase    = $item->phase;
-
-        $total = DeploymentChecklistItem::withoutTenant()
-            ->where('deployment_target_id', $targetId)
-            ->where('phase', $phase)
-            ->count();
-
-        $done = DeploymentChecklistItem::withoutTenant()
-            ->where('deployment_target_id', $targetId)
-            ->where('phase', $phase)
-            ->where('is_done', true)
-            ->count();
-
-        $pct  = $total > 0 ? (int) round($done / $total * 100) : 0;
-        $verb = $item->is_done ? 'Hoàn thành' : 'Bỏ hoàn thành';
+        $pct      = DeploymentChecklistItem::phaseCompletionPct($targetId, $phase);
+        $verb     = $item->is_done ? 'Hoàn thành' : 'Bỏ hoàn thành';
 
         DeploymentProgressLog::create([
-            'organization_id'      => $item->organization_id,
-            'deployment_target_id' => $targetId,
-            'phase'                => $phase,
-            'percent'              => $pct,
-            'remark'               => "{$verb}: {$item->item_label}",
-            'logged_by'            => auth()->id(),
-            'logged_at'            => now(),
+            'organization_id'              => $item->organization_id,
+            'deployment_target_id'         => $targetId,
+            'deployment_checklist_item_id' => $item->id,
+            'phase'                        => $phase,
+            'percent'                      => $pct,
+            'remark'                       => "{$verb}: {$item->item_label}",
+            'logged_by'                    => auth()->id(),
+            'logged_at'                    => now(),
         ]);
 
         // Notify when phase checklist reaches 100%

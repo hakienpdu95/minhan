@@ -3,6 +3,7 @@
 namespace Modules\Deployment\Database\Seeders;
 
 use App\Foundation\Vertical\VerticalChecklistItem;
+use App\Foundation\Vertical\VerticalConfigItem;
 use App\Foundation\Vertical\VerticalPhase;
 use App\Foundation\Vertical\VerticalTemplate;
 use Illuminate\Database\Seeder;
@@ -56,7 +57,32 @@ class DefaultVerticalTemplateSeeder extends Seeder
             }
         }
 
+        foreach ($this->issueTypes() as $sortOrder => $issueType) {
+            VerticalConfigItem::updateOrCreate(
+                ['vertical_template_id' => $template->id, 'config_group' => 'issue_type', 'code' => $issueType['code']],
+                [
+                    'label'       => $issueType['label'],
+                    'is_required' => false,
+                    'is_active'   => true,
+                    'sort_order'  => $sortOrder,
+                ]
+            );
+        }
+
         $this->command?->info('[DefaultVerticalTemplate] Seeded "Truy xuất nguồn gốc Nông sản" (' . count($this->phases()) . ' phase).');
+    }
+
+    /**
+     * Gợi ý khởi điểm, không bắt buộc — mỗi tổ chức tự sửa/xoá/thêm loại issue riêng
+     * qua trang Cấu hình vertical (không phải danh mục cố định của hệ thống).
+     */
+    private function issueTypes(): array
+    {
+        return [
+            ['code' => 'pest_disease', 'label' => 'Sâu bệnh'],
+            ['code' => 'equipment',    'label' => 'Thiết bị'],
+            ['code' => 'other',        'label' => 'Khác'],
+        ];
     }
 
     private function phases(): array

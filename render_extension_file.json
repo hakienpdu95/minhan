@@ -158,7 +158,11 @@
         "emergency_contact_phone///string///20///_NULL///NULL///__///__",
         "resigned_at///date///__///_NULL///NULL///__///__",
         "resignation_reason///text///__///_NULL///NULL///__///__",
-        "notes///text///__///_NULL///NULL///__///__"
+        "notes///text///__///_NULL///NULL///__///__",
+        "digital_competency_score///decimal///5,2///_NULL///NULL///__///Điểm năng lực số — model đã khai báo trong $casts nhưng thiếu migration, gây MissingAttributeException khi tạo/đọc Employee",
+        "digital_maturity_level///string///64///_NULL///NULL///__///band_code/persona_code mức độ trưởng thành số — set bởi UpdateEmployeeDigitalCompetencyListener",
+        "latest_assessment_result_id///unsignedBigInteger///__///_NULL///NULL///->constrained('assessment_results')->onDelete('set null')///Kết quả assessment TDWCF gần nhất",
+        "last_assessed_at///timestamp///__///_NULL///NULL///__///__"
     ],
     [
         "employee_history///add///__///",
@@ -427,5 +431,19 @@
         "difficulty///unsignedTinyInteger///__///_NULL///NULL///__///__",
         "__index///index///__///__///__///domain_code///__",
         "__index///index///__///__///__///difficulty///__"
+    ],
+    [
+        "deployment_issues///add///__///Thêm issue_type (mã VerticalConfigItem, tuỳ biến theo từng tổ chức) và severity_detail (mô tả chi tiết mức độ, tách khỏi description chung)",
+        "issue_type///string///50///_NULL///NULL///__///Mã loại issue — tra theo vertical_config_items(config_group=issue_type) của đúng vertical_template_id tổ chức, không FK cứng vì danh mục tự tổ chức định nghĩa riêng",
+        "severity_detail///text///__///_NULL///NULL///__///Mô tả chi tiết mức độ/tình trạng (vd: diện tích nhiễm, biện pháp đã xử lý) — tách khỏi description chung"
+    ],
+    [
+        "deployment_progress_logs///add///__///Liên kết trực tiếp log tới checklist item — cho phép truy vết + ghi chú nhật ký riêng theo từng đề mục, thay vì chỉ nhúng tên mục vào remark dạng text",
+        "deployment_checklist_item_id///unsignedBigInteger///__///_NULL///NULL///->constrained('deployment_checklist_items')->onDelete('set null')///Null nếu log ghi nhận chung (form Nhật ký tiến độ), có giá trị nếu log gắn với 1 mục checklist cụ thể (tick hoặc ghi chú riêng)",
+        "__index///index///__///__///__///deployment_checklist_item_id///__"
+    ],
+    [
+        "deployment_checklist_items///add///__///Cho phép PM chỉ định trước ai (hồ sơ nhân sự) phụ trách từng đề mục checklist — tách khỏi done_by (chỉ biết được sau khi đã làm)",
+        "assigned_employee_id///unsignedBigInteger///__///_NULL///NULL///->constrained('employees')->onDelete('set null')///Nhân viên được PM chỉ định phụ trách mục này — khác done_by (người thực tế đã tick)"
     ]
 ]

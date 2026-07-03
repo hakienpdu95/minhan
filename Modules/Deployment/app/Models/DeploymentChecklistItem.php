@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Shared\Tenancy\Traits\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Modules\Employee\Models\Employee;
 
 class DeploymentChecklistItem extends Model
 {
@@ -24,6 +26,7 @@ class DeploymentChecklistItem extends Model
         'done_by',
         'done_at',
         'notes',
+        'assigned_employee_id',
     ];
 
     protected $casts = [
@@ -40,5 +43,35 @@ class DeploymentChecklistItem extends Model
     public function doneBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'done_by');
+    }
+
+    /** PM chỉ định trước ai phụ trách mục này — khác doneBy() (biết sau khi đã làm). */
+    public function assignedEmployee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'assigned_employee_id');
+    }
+
+    /** Nhật ký của riêng mục này — vừa log tự động khi tick, vừa ghi chú thủ công. */
+    public function progressLogs(): HasMany
+    {
+        return $this->hasMany(DeploymentProgressLog::class, 'deployment_checklist_item_id')
+            ->orderByDesc('logged_at');
+    }
+
+    /** % hoàn thành của cả phase chứa mục này — dùng chung cho toggle và ghi chú, tránh lệch số liệu. */
+    public static function phaseCompletionPct(int $targetId, string $phase): int
+    {
+        $total = static::withoutTenant()
+            ->where('deployment_target_id', $targetId)
+            ->where('phase', $phase)
+            ->count();
+
+        $done = static::withoutTenant()
+            ->where('deployment_target_id', $targetId)
+            ->where('phase', $phase)
+            ->where('is_done', true)
+            ->count();
+
+        return $total > 0 ? (int) round($done / $total * 100) : 0;
     }
 }

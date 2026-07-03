@@ -10,7 +10,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Modules\Deployment\Actions\AdvancePhaseAction;
+use Modules\Deployment\Actions\AssignTargetEmployeeAction;
 use Modules\Deployment\Actions\CreateDeploymentTargetAction;
+use Modules\Deployment\Data\AssignTargetEmployeeData;
 use Modules\Deployment\Data\CreateDeploymentTargetData;
 use Modules\Deployment\Models\DeploymentTarget;
 use Modules\Deployment\Queries\ListDeploymentTargetsHandler;
@@ -33,11 +35,12 @@ class DeploymentTargetController extends Controller
             project_id:    $request->integer('project_id') ?: null,
         );
 
-        $targets  = (new ListDeploymentTargetsHandler)->handle($query)->paginate(20)->withQueryString();
-        $phases   = $vertical->phases();
-        $projects = Project::where('vertical_code', $vertical->code())->orderBy('name')->get(['id', 'name']);
+        $targets     = (new ListDeploymentTargetsHandler)->handle($query)->paginate(20)->withQueryString();
+        $phases      = $vertical->phases();
+        $phaseLabels = $vertical->phaseLabels();
+        $projects    = Project::where('vertical_code', $vertical->code())->orderBy('name')->get(['id', 'name']);
 
-        return view('deployment::targets.index', compact('vertical', 'targets', 'phases', 'projects'));
+        return view('deployment::targets.index', compact('vertical', 'targets', 'phases', 'phaseLabels', 'projects'));
     }
 
     public function create(Request $request): View
@@ -79,14 +82,35 @@ class DeploymentTargetController extends Controller
             'createdBy',
         ]);
 
-        $checklist   = $target->checklistForPhase($target->current_phase)->with('doneBy')->get();
+        $checklist   = $target->checklistForPhase($target->current_phase)
+            ->with(['doneBy', 'progressLogs.loggedBy', 'assignedEmployee'])
+            ->get();
         $phaseProgress = $target->phaseProgress($target->current_phase);
         $phases      = $vertical->phases();
+        $phaseLabels = $vertical->phaseLabels();
         $openIssues  = $target->issues()->where('status', 'open')->count();
+        // withoutTenant() + where tường minh theo target_organization_id (tổ chức ĐANG ĐƯỢC
+        // TRIỂN KHAI, vd. HTX) — không phải organization_id (tenant vận hành vertical, vd.
+        // THUCHOCVN) và không phải TenantContext của người xem. Nhân viên "phụ trách"
+        // checklist/target thuộc về chính tổ chức đang được triển khai.
+        $employees   = Employee::withoutTenant()
+            ->where('organization_id', $target->target_organization_id)
+            ->orderBy('full_name')
+            ->get(['id', 'full_name', 'employee_code']);
 
         return view('deployment::targets.show', compact(
-            'vertical', 'target', 'checklist', 'phaseProgress', 'phases', 'openIssues'
+            'vertical', 'target', 'checklist', 'phaseProgress', 'phases', 'phaseLabels', 'openIssues', 'employees'
         ));
+    }
+
+    public function assignEmployee(Request $request, DeploymentTarget $target, AssignTargetEmployeeAction $action): RedirectResponse
+    {
+        $this->authorize('update', $target);
+
+        $data = AssignTargetEmployeeData::validateAndCreate($request->all());
+        $action->handle($target, $data);
+
+        return back()->with('success', 'Đã cập nhật người phụ trách.');
     }
 
     public function lookup(Request $request): JsonResponse

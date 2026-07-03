@@ -12,6 +12,7 @@ use Spatie\LaravelData\Attributes\Validation\Nullable;
 use Spatie\LaravelData\Attributes\Validation\Required;
 use Spatie\LaravelData\Attributes\Validation\StringType;
 use Spatie\LaravelData\Data;
+use Spatie\LaravelData\Support\Validation\ValidationContext;
 
 class StoreEmployeeData extends Data
 {
@@ -89,9 +90,14 @@ class StoreEmployeeData extends Data
         public readonly ?string $work_location,
     ) {}
 
-    public static function rules(): array
+    public static function rules(ValidationContext $context): array
     {
-        $orgId = TenantContext::getOrganizationId();
+        // Dùng organization_id thực sự được submit (form cho phép super-admin/tài khoản
+        // không khoá cứng 1 tổ chức chọn tổ chức khác để tạo nhân viên) — không phải
+        // TenantContext::getOrganizationId() (tổ chức hiện tại của session), vì 2 giá trị
+        // này lệch nhau chính là nguyên nhân "The selected branch/department id is invalid."
+        // dù branch/department chọn trên form là hợp lệ, thuộc đúng tổ chức đã chọn.
+        $orgId = $context->payload['organization_id'] ?? TenantContext::getOrganizationId();
 
         return [
             'organization_id' => ['required', 'integer', 'exists:organizations,id'],

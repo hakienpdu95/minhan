@@ -12,6 +12,7 @@ use Modules\Deployment\Data\CreateDeploymentTargetData;
 use Modules\Deployment\Models\DeploymentChecklistItem;
 use Modules\Deployment\Models\DeploymentTarget;
 use Modules\Deployment\Notifications\TargetCreatedNotification;
+use Modules\Subscription\Features\Subscribe\Actions\SubscribeOrganizationAction;
 
 class CreateDeploymentTargetAction
 {
@@ -39,6 +40,13 @@ class CreateDeploymentTargetAction
                     'status'        => 'active',
                     'source'        => 'vertical_created',
                 ]);
+
+                // forceCreate() ở đây không đi qua StoreOrganizationAction nên không tự fire
+                // OrganizationCreated -> không được AutoSubscribeOnOrgCreated gán subscription
+                // mặc định như tổ chức tạo qua dashboard/organizations. Gọi thẳng cùng logic
+                // để tổ chức đích (HTX) cũng có subscription ngay — tránh tài khoản của tổ
+                // chức đó bị CheckSubscription chặn khi đăng nhập lần đầu.
+                SubscribeOrganizationAction::subscribeToDefaultPlan($targetOrg);
             }
 
             // 2. Create DeploymentTarget

@@ -47,6 +47,7 @@
                 'hierarchy'      => ['label' => 'Phân cấp địa lý',       'icon' => 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
                 'activity_type'  => ['label' => 'Loại hoạt động',         'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01'],
                 'doc_type'       => ['label' => 'Loại giấy tờ',           'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
+                'issue_type'     => ['label' => 'Loại issue',             'icon' => 'M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z'],
             ];
         @endphp
         @foreach($tabs as $key => $t)
@@ -74,7 +75,7 @@
         @if($items->isEmpty())
         <div class="card bg-base-100 border border-base-200">
             <div class="card-body py-10 text-center text-sm text-base-content/40">
-                Không có mục nào cho nhóm này.
+                Chưa có mục nào cho nhóm này — thêm mục đầu tiên bên dưới.
             </div>
         </div>
         @else
@@ -89,9 +90,9 @@
                     {{-- Column headers --}}
                     <div class="grid grid-cols-12 gap-3 px-4 py-2 border-b border-base-200 bg-base-50 text-xs font-semibold text-base-content/40 uppercase tracking-wide rounded-t-2xl">
                         <div class="col-span-3">Mã</div>
-                        <div class="col-span-6">Nhãn hiển thị</div>
+                        <div class="col-span-5">Nhãn hiển thị</div>
                         <div class="col-span-2 text-center">Bật</div>
-                        <div class="col-span-1"></div>
+                        <div class="col-span-2"></div>
                     </div>
 
                     <div class="divide-y divide-base-200">
@@ -105,7 +106,7 @@
                                 @endif
                             </div>
                             {{-- Label (editable) --}}
-                            <div class="col-span-6">
+                            <div class="col-span-5">
                                 <input type="text"
                                        name="items[{{ $item->id }}][label]"
                                        value="{{ old('items.' . $item->id . '.label', $item->label) }}"
@@ -124,9 +125,17 @@
                                 <input type="hidden" name="items[{{ $item->id }}][is_active]" value="1">
                                 @endif
                             </div>
-                            {{-- Status indicator --}}
-                            <div class="col-span-1 flex justify-end">
+                            {{-- Status indicator + xoá --}}
+                            <div class="col-span-2 flex justify-end items-center gap-2">
                                 <div class="w-2 h-2 rounded-full {{ $item->is_active ? 'bg-success' : 'bg-base-300' }}"></div>
+                                @unless($item->is_required)
+                                <button type="submit"
+                                        form="delete-config-item-{{ $item->id }}"
+                                        class="btn btn-ghost btn-xs text-error"
+                                        onclick="return confirm('Xoá mục &quot;{{ $item->label }}&quot;?')">
+                                    Xoá
+                                </button>
+                                @endunless
                             </div>
                         </div>
                         @endforeach
@@ -143,7 +152,51 @@
                 </button>
             </div>
         </form>
+
+        {{-- Form xoá riêng từng mục — tách khỏi form lưu hàng loạt ở trên vì khác method/action --}}
+        @foreach($items as $item)
+        @unless($item->is_required)
+        <form id="delete-config-item-{{ $item->id }}" method="POST"
+              action="{{ route('backend.organizations.verticals.config.items.destroy', [$organization, $vertical->code(), $item]) }}"
+              class="hidden">
+            @csrf
+            @method('DELETE')
+        </form>
+        @endunless
+        @endforeach
         @endif
+
+        {{-- Thêm mục mới — mỗi tổ chức tự định nghĩa khái niệm riêng cho nhóm này --}}
+        <form method="POST"
+              action="{{ route('backend.organizations.verticals.config.items.store', [$organization, $vertical->code()]) }}"
+              class="mt-4">
+            @csrf
+            <input type="hidden" name="config_group" value="{{ $tabKey }}">
+            <div class="card bg-base-100 border border-dashed border-base-300">
+                <div class="card-body py-3">
+                    <div class="flex flex-wrap items-end gap-3">
+                        <div class="form-control">
+                            <label class="label py-1"><span class="label-text text-xs">Mã mới</span></label>
+                            <input type="text" name="item_code" placeholder="vd: sau_benh"
+                                   class="input input-sm input-bordered w-40 font-mono @error('item_code') input-error @enderror">
+                        </div>
+                        <div class="form-control flex-1 min-w-[160px]">
+                            <label class="label py-1"><span class="label-text text-xs">Nhãn hiển thị</span></label>
+                            <input type="text" name="label" placeholder="vd: Sâu bệnh"
+                                   class="input input-sm input-bordered w-full @error('label') input-error @enderror">
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-outline btn-primary gap-1.5">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            Thêm mục cho {{ $tabMeta['label'] }}
+                        </button>
+                    </div>
+                    @error('item_code')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
+                    @error('label')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
+                </div>
+            </div>
+        </form>
     </div>
     @endforeach
 

@@ -59,13 +59,26 @@ return new class extends Migration {
             if (!Schema::hasColumn('employees', 'notes')) {
                 $table->text('notes')->nullable()->after('resignation_reason');
             }
+            if (!Schema::hasColumn('employees', 'digital_competency_score')) {
+                $table->decimal('digital_competency_score', 5, 2)->nullable()->after('notes')->comment('Điểm năng lực số — model đã khai báo trong $casts nhưng thiếu migration, gây MissingAttributeException khi tạo/đọc Employee');
+            }
+            if (!Schema::hasColumn('employees', 'digital_maturity_level')) {
+                $table->string('digital_maturity_level', 64)->nullable()->after('digital_competency_score')->comment('band_code/persona_code mức độ trưởng thành số — set bởi UpdateEmployeeDigitalCompetencyListener');
+            }
+            if (!Schema::hasColumn('employees', 'latest_assessment_result_id')) {
+                $table->foreignId('latest_assessment_result_id')->nullable()->constrained('assessment_results')->nullOnDelete()->after('digital_maturity_level')->comment('Kết quả assessment TDWCF gần nhất');
+            }
+            if (!Schema::hasColumn('employees', 'last_assessed_at')) {
+                $table->timestamp('last_assessed_at')->nullable()->after('latest_assessment_result_id');
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('employees', function (Blueprint $table) {
-            $cols = array_filter(['personal_email', 'address', 'national_id_issued', 'bank_account', 'bank_name', 'probation_end_date', 'contract_start', 'contract_end', 'salary_base', 'salary_currency', 'work_location', 'emergency_contact_name', 'emergency_contact_phone', 'resigned_at', 'resignation_reason', 'notes'], fn($c) => Schema::hasColumn('employees', $c));
+            if (Schema::hasColumn('employees', 'latest_assessment_result_id')) $table->dropForeign(['latest_assessment_result_id']);
+            $cols = array_filter(['personal_email', 'address', 'national_id_issued', 'bank_account', 'bank_name', 'probation_end_date', 'contract_start', 'contract_end', 'salary_base', 'salary_currency', 'work_location', 'emergency_contact_name', 'emergency_contact_phone', 'resigned_at', 'resignation_reason', 'notes', 'digital_competency_score', 'digital_maturity_level', 'latest_assessment_result_id', 'last_assessed_at'], fn($c) => Schema::hasColumn('employees', $c));
             if (!empty($cols)) $table->dropColumn(array_values($cols));
         });
     }

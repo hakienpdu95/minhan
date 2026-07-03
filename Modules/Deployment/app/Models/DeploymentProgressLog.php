@@ -16,6 +16,7 @@ class DeploymentProgressLog extends Model
     protected $fillable = [
         'organization_id',
         'deployment_target_id',
+        'deployment_checklist_item_id',
         'phase',
         'percent',
         'remark',
@@ -36,5 +37,10 @@ class DeploymentProgressLog extends Model
     public function loggedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'logged_by');
+    }
+
+    public function checklistItem(): BelongsTo
+    {
+        return $this->belongsTo(DeploymentChecklistItem::class, 'deployment_checklist_item_id');
     }
 }

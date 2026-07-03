@@ -98,8 +98,13 @@ class UpdateEmployeeData extends Data
 
     public static function rules(): array
     {
-        $orgId      = TenantContext::getOrganizationId();
-        $currentId  = request()->route('employee')?->id;
+        // Scope theo tổ chức thực sự của employee đang sửa (route model binding), không phải
+        // TenantContext::getOrganizationId() (tổ chức hiện tại của session) — 2 giá trị lệch
+        // nhau với tài khoản không khoá cứng 1 tổ chức (super-admin) gây lỗi "invalid" y hệt
+        // StoreEmployeeData dù đã sửa đúng branch/department của chính tổ chức đó.
+        $employee   = request()->route('employee');
+        $orgId      = $employee?->organization_id ?? TenantContext::getOrganizationId();
+        $currentId  = $employee?->id;
 
         return [
             'employee_code' => [
@@ -127,7 +132,7 @@ class UpdateEmployeeData extends Data
             'branch_id'     => ['required', 'integer', Rule::exists('branches', 'id')->where('organization_id', $orgId)],
             'department_id' => ['required', 'integer', Rule::exists('departments', 'id')->where('organization_id', $orgId)],
             'job_title_id'  => ['nullable', 'integer', Rule::exists('job_titles', 'id')->where('organization_id', $orgId)],
-            'manager_id'    => ['nullable', 'integer', Rule::exists('employees', 'id')->where('organization_id', $orgId)->ignore($currentId)],
+            'manager_id'    => ['nullable', 'integer', Rule::exists('employees', 'id')->where('organization_id', $orgId)],
             'gender'               => ['nullable', 'string', 'in:male,female,other'],
             'date_of_birth'        => ['nullable', 'date'],
             'hired_at'             => ['nullable', 'date'],

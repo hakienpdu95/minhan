@@ -18,6 +18,8 @@ interface VerticalDefinition
     public function defaultItemCodePrefix(): ?string;
 
     public function phases(): array;
+    /** Map key => nhãn hiển thị, cùng thứ tự với phases() — dùng cho UI, không dùng để so sánh/index. */
+    public function phaseLabels(): array;
     public function defaultChecklist(): array;
     public function readinessTemplateSlag(): ?string;
     public function exportConfig(): ?array;

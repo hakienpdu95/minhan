@@ -102,7 +102,7 @@
                         @endphp
                         <div class="flex items-center gap-3 text-sm">
                             <span class="w-2 h-2 rounded-full bg-{{ $pColor }} shrink-0"></span>
-                            <span class="w-28 text-xs shrink-0 capitalize">{{ $phase }}</span>
+                            <span class="w-28 text-xs shrink-0 truncate" title="{{ $phaseLabels[$phase] ?? $phase }}">{{ $phaseLabels[$phase] ?? $phase }}</span>
                             <div class="flex-1 bg-base-200 rounded-full h-2 overflow-hidden">
                                 <div class="h-2 rounded-full bg-{{ $pColor }} transition-all" style="width: {{ $pct }}%"></div>
                             </div>

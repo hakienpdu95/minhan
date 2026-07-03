@@ -13,11 +13,13 @@ class UpdateDeploymentIssueAction
     public function handle(DeploymentIssue $issue, UpdateDeploymentIssueData $data): void
     {
         $issue->update([
-            'title'       => $data->title,
-            'description' => $data->description,
-            'severity'    => $data->severity->value,
-            'status'      => $data->status->value,
-            'owner_id'    => $data->owner_id,
+            'title'           => $data->title,
+            'description'     => $data->description,
+            'severity'        => $data->severity->value,
+            'issue_type'      => $data->issue_type,
+            'severity_detail' => $data->severity_detail,
+            'status'          => $data->status->value,
+            'owner_id'        => $data->owner_id,
         ]);
     }
 }

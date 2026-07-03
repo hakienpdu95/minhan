@@ -28,6 +28,10 @@ class ListDeploymentIssuesHandler
             $builder->where('status', $query->status);
         }
 
+        if ($query->issue_type) {
+            $builder->where('issue_type', $query->issue_type);
+        }
+
         return $builder;
     }
 }

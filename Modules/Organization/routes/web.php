@@ -28,6 +28,8 @@ Route::middleware(['auth'])->prefix('dashboard')->name('backend.')->group(functi
             Route::delete('/{code}',         [OrganizationVerticalController::class, 'deactivate'])->name('deactivate');
             Route::get('/{code}/config',     [OrganizationVerticalController::class, 'config'])->name('config');
             Route::patch('/{code}/config',   [OrganizationVerticalController::class, 'updateConfig'])->name('updateConfig');
+            Route::post('/{code}/config/items',          [OrganizationVerticalController::class, 'storeConfigItem'])->name('config.items.store');
+            Route::delete('/{code}/config/items/{item}', [OrganizationVerticalController::class, 'destroyConfigItem'])->name('config.items.destroy');
             Route::get('/{code}/preview',    [OrganizationVerticalController::class, 'previewDashboard'])->name('preview');
         });
 });

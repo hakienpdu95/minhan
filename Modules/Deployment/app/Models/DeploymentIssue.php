@@ -26,6 +26,8 @@ class DeploymentIssue extends Model
         'title',
         'description',
         'severity',
+        'issue_type',
+        'severity_detail',
         'status',
         'owner_id',
         'resolved_at',

@@ -23,6 +23,9 @@ class DeploymentProgressController extends Controller
             ->orderBy('created_at')
             ->get();
 
+        $phases      = $vertical->phases();
+        $phaseLabels = $vertical->phaseLabels();
+
         $logs = collect();
         $currentTarget = null;
 
@@ -30,13 +33,15 @@ class DeploymentProgressController extends Controller
             $currentTarget = $targets->firstWhere('id', $targetId);
             if ($currentTarget) {
                 $logs = DeploymentProgressLog::where('deployment_target_id', $targetId)
-                    ->with('loggedBy')
+                    ->with(['loggedBy', 'checklistItem'])
                     ->orderByDesc('logged_at')
                     ->get();
             }
         }
 
-        return view('deployment::progress.index', compact('vertical', 'targets', 'logs', 'currentTarget'));
+        return view('deployment::progress.index', compact(
+            'vertical', 'targets', 'logs', 'currentTarget', 'phases', 'phaseLabels'
+        ));
     }
 
     public function store(Request $request, LogProgressAction $action): RedirectResponse

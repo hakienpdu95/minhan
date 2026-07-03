@@ -54,11 +54,16 @@ Route::middleware(['auth', 'tenant'])
                 Route::post('/',                 [DeploymentTargetController::class, 'store'])->name('store');
                 Route::get('/{target}',          [DeploymentTargetController::class, 'show'])->name('show');
                 Route::post('/{target}/advance', [DeploymentTargetController::class, 'advance'])->name('advance');
+                Route::patch('/{target}/assign', [DeploymentTargetController::class, 'assignEmployee'])->name('assign');
             });
 
             // ── Checklist ─────────────────────────────────────────────────────
             Route::post('checklist/{item}/toggle', [DeploymentChecklistController::class, 'toggle'])
                 ->name('checklist.toggle');
+            Route::post('checklist/{item}/note', [DeploymentChecklistController::class, 'addNote'])
+                ->name('checklist.note');
+            Route::patch('checklist/{item}/assign', [DeploymentChecklistController::class, 'assignEmployee'])
+                ->name('checklist.assign');
 
             // ── Validator ─────────────────────────────────────────────────────
             Route::prefix('validator')->name('validator.')->group(function () {
@@ -73,6 +78,7 @@ Route::middleware(['auth', 'tenant'])
                 Route::post('/',                 [DeploymentIssueController::class, 'store'])->name('store');
                 Route::get('/{issue}',           [DeploymentIssueController::class, 'show'])->name('show');
                 Route::patch('/{issue}',         [DeploymentIssueController::class, 'update'])->name('update');
+                Route::patch('/{issue}/assign',  [DeploymentIssueController::class, 'assignOwner'])->name('assign');
                 Route::post('/{issue}/resolve',  [DeploymentIssueController::class, 'resolve'])->name('resolve');
             });
 

@@ -11,6 +11,9 @@
         <div class="flex gap-2 mt-2">
             <span class="badge {{ $issue->severity?->badgeClass() }}">{{ $issue->severity?->label() }}</span>
             <span class="badge {{ $issue->status?->badgeClass() }}">{{ $issue->status?->label() }}</span>
+            @if($issue->issue_type)
+            <span class="badge badge-outline">{{ $issueTypes[$issue->issue_type] ?? $issue->issue_type }}</span>
+            @endif
         </div>
     </div>
 
@@ -25,14 +28,40 @@
                     <dt class="text-base-content/50 text-xs">Mô tả</dt>
                     <dd class="mt-1 whitespace-pre-wrap">{{ $issue->description ?? '—' }}</dd>
                 </div>
+                @if($issue->severity_detail)
+                <div>
+                    <dt class="text-base-content/50 text-xs">Chi tiết mức độ</dt>
+                    <dd class="mt-1 whitespace-pre-wrap">{{ $issue->severity_detail }}</dd>
+                </div>
+                @endif
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <dt class="text-base-content/50 text-xs">Đối tượng</dt>
                         <dd>{{ $issue->target?->targetOrganization?->name ?? '—' }}</dd>
                     </div>
-                    <div>
-                        <dt class="text-base-content/50 text-xs">Người phụ trách</dt>
-                        <dd>{{ $issue->owner?->name ?? '—' }}</dd>
+                    <div x-data="{ open: false }">
+                        <dt class="text-base-content/50 text-xs flex items-center justify-between">
+                            Người phụ trách
+                            @can('update', $issue)
+                            <button type="button" x-on:click="open = !open" class="link link-primary text-xs">Đổi</button>
+                            @endcan
+                        </dt>
+                        <dd>{{ $issue->owner?->name ?? '— Chưa chỉ định —' }}</dd>
+                        @can('update', $issue)
+                        <form x-show="open" x-cloak method="POST"
+                              action="{{ route('deployment.issues.assign', ['vertical' => $vertical->code(), 'issue' => $issue->id]) }}"
+                              class="flex gap-2 mt-1.5">
+                            @csrf
+                            @method('PATCH')
+                            <select name="owner_id" class="select select-bordered select-xs flex-1">
+                                <option value="">— Chưa chỉ định —</option>
+                                @foreach($owners as $o)
+                                <option value="{{ $o->id }}" @selected($issue->owner_id == $o->id)>{{ $o->name }}</option>
+                                @endforeach
+                            </select>
+                            <button type="submit" class="btn btn-primary btn-xs shrink-0">Lưu</button>
+                        </form>
+                        @endcan
                     </div>
                     <div>
                         <dt class="text-base-content/50 text-xs">Tạo bởi</dt>

@@ -34,7 +34,7 @@
                         @foreach($targets as $t)
                         <option value="{{ $t->id }}"
                                 data-project="{{ $t->project_id }}"
-                                @selected(old('deployment_target_id') == $t->id)>
+                                @selected(old('deployment_target_id', $selectedTarget?->id) == $t->id)>
                             {{ $t->targetOrganization?->name }}
                         </option>
                         @endforeach
@@ -42,7 +42,7 @@
                     @error('deployment_target_id')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
 
-                <input type="hidden" name="project_id" value="{{ old('project_id') }}">
+                <input type="hidden" name="project_id" value="{{ old('project_id', $selectedTarget?->project_id) }}">
 
                 <div class="form-control mb-4">
                     <label class="label"><span class="label-text">Tiêu đề <span class="text-error">*</span></span></label>
@@ -65,6 +65,42 @@
                         @endforeach
                     </select>
                     @error('severity')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
+                </div>
+
+                @if($issueTypes)
+                <div class="form-control mb-4">
+                    <label class="label"><span class="label-text">Loại issue</span></label>
+                    <select name="issue_type" class="select select-bordered @error('issue_type') select-error @enderror">
+                        <option value="">— Không phân loại —</option>
+                        @foreach($issueTypes as $code => $label)
+                        <option value="{{ $code }}" @selected(old('issue_type') === $code)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-base-content/40 mt-1">
+                        Danh mục do tổ chức tự cấu hình — chỉnh tại trang Cấu hình vertical.
+                    </p>
+                    @error('issue_type')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
+                </div>
+                @endif
+
+                <div class="form-control mb-4">
+                    <label class="label"><span class="label-text">Chi tiết mức độ</span></label>
+                    <textarea name="severity_detail" rows="3"
+                              placeholder="Vd: diện tích nhiễm ~10%, đã phun VBIO 2 lần..."
+                              class="textarea textarea-bordered @error('severity_detail') textarea-error @enderror">{{ old('severity_detail') }}</textarea>
+                    @error('severity_detail')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
+                </div>
+
+                <div class="form-control mb-4">
+                    <label class="label"><span class="label-text">Người phụ trách</span></label>
+                    <select name="owner_id" class="select select-bordered @error('owner_id') select-error @enderror">
+                        <option value="">— Chưa chỉ định —</option>
+                        @foreach($owners as $o)
+                        <option value="{{ $o->id }}" @selected(old('owner_id') == $o->id)>{{ $o->name }}</option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-base-content/40 mt-1">Sẽ nhận thông báo khi issue được tạo.</p>
+                    @error('owner_id')<p class="text-error text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
 
                 <div class="flex gap-2 mt-4">

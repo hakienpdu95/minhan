@@ -11,6 +11,7 @@ use App\Foundation\VerticalRegistry;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Modules\Organization\Models\Organization;
 
@@ -192,5 +193,80 @@ class OrganizationVerticalController extends Controller
         return redirect()
             ->route('backend.organizations.verticals.config', [$organization, $code])
             ->with('success', 'Đã lưu cấu hình.');
+    }
+
+    // ── Thêm/xoá mục danh mục — mỗi tổ chức tự định nghĩa khái niệm riêng ─────
+    // (vd. loại issue của tổ chức A khác tổ chức B), không giới hạn ở các mục
+    // đã seed sẵn từ thư viện.
+
+    public function storeConfigItem(Request $request, Organization $organization, string $code): RedirectResponse
+    {
+        $this->authorize('update', $organization);
+
+        $vertical = VerticalRegistry::resolveForOrganization($organization->id, $code);
+        if (! $vertical) {
+            abort(404, "Vertical '{$code}' không tồn tại.");
+        }
+
+        $validated = $request->validate([
+            'config_group' => ['required', 'string', Rule::in(['hierarchy', 'activity_type', 'doc_type', 'issue_type'])],
+            'item_code'    => ['required', 'string', 'max:50', 'regex:/^[a-z0-9]+(_[a-z0-9]+)*$/'],
+            'label'        => ['required', 'string', 'max:100'],
+        ], [
+            'item_code.required' => 'Vui lòng nhập mã.',
+            'item_code.regex'    => 'Mã chỉ gồm chữ thường, số, dấu gạch dưới (vd: sau_benh).',
+            'label.required'     => 'Vui lòng nhập nhãn hiển thị.',
+        ]);
+
+        $templateId = $vertical->template()->id;
+
+        $exists = VerticalConfigItem::where('vertical_template_id', $templateId)
+            ->where('config_group', $validated['config_group'])
+            ->where('code', $validated['item_code'])
+            ->exists();
+
+        if ($exists) {
+            return back()->withErrors(['item_code' => 'Mã này đã tồn tại trong nhóm.'])->withInput();
+        }
+
+        $maxSort = VerticalConfigItem::where('vertical_template_id', $templateId)
+            ->where('config_group', $validated['config_group'])
+            ->max('sort_order');
+
+        VerticalConfigItem::create([
+            'vertical_template_id' => $templateId,
+            'config_group'         => $validated['config_group'],
+            'code'                 => $validated['item_code'],
+            'label'                => $validated['label'],
+            'is_required'          => false,
+            'is_active'            => true,
+            'sort_order'           => ($maxSort ?? 0) + 1,
+        ]);
+
+        VerticalRegistry::clearCache($organization->id, $code);
+
+        return redirect()
+            ->route('backend.organizations.verticals.config', [$organization, $code])
+            ->with('success', 'Đã thêm mục cấu hình.');
+    }
+
+    public function destroyConfigItem(Organization $organization, string $code, VerticalConfigItem $item): RedirectResponse
+    {
+        $this->authorize('update', $organization);
+
+        $vertical = VerticalRegistry::resolveForOrganization($organization->id, $code);
+        if (! $vertical || $item->vertical_template_id !== $vertical->template()->id) {
+            abort(404);
+        }
+
+        if ($item->is_required) {
+            return back()->withErrors(['item' => 'Không thể xoá mục bắt buộc.']);
+        }
+
+        $item->delete();
+
+        VerticalRegistry::clearCache($organization->id, $code);
+
+        return back()->with('success', 'Đã xoá mục cấu hình.');
     }
 }

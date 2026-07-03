@@ -31,6 +31,11 @@ class DatabaseVertical implements VerticalDefinition
         return $this->template->phases->pluck('key')->all();
     }
 
+    public function phaseLabels(): array
+    {
+        return $this->template->phases->pluck('label', 'key')->all();
+    }
+
     public function defaultChecklist(): array
     {
         return $this->template->phases

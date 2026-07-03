@@ -21,8 +21,9 @@ class DeploymentDashboardController extends Controller
         // ── KPI cards ────────────────────────────────────────────────────────
         $targets   = DeploymentTarget::where('vertical_code', $code)->get();
         $targetIds = $targets->pluck('id');
-        $phases    = $vertical->phases();
-        $lastPhase = end($phases);
+        $phases      = $vertical->phases();
+        $phaseLabels = $vertical->phaseLabels();
+        $lastPhase   = end($phases);
 
         $totalTargets   = $targets->count();
         $inProgress     = $targets->filter(fn($t) => $t->current_phase !== 'draft' && $t->current_phase !== $lastPhase)->count();
@@ -78,7 +79,7 @@ class DeploymentDashboardController extends Controller
         return view('deployment::dashboard.index', compact(
             'vertical',
             'totalTargets', 'inProgress', 'completed', 'openIssueCount',
-            'byPhase', 'phases',
+            'byPhase', 'phases', 'phaseLabels',
             'topTargets',
             'recentIssues',
             'teamMembers',

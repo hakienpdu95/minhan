@@ -9,5 +9,6 @@ class ListDeploymentIssuesQuery
         public readonly ?int    $project_id = null,
         public readonly ?string $severity  = null,
         public readonly ?string $status    = null,
+        public readonly ?string $issue_type = null,
     ) {}
 }
