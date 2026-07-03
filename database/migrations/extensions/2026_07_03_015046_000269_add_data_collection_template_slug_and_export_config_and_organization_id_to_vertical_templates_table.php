@@ -32,6 +32,9 @@ return new class extends Migration {
             if (!Schema::hasColumn('vertical_templates', 'activated_by')) {
                 $table->foreignId('activated_by')->nullable()->constrained('users')->nullOnDelete()->after('activated_at')->comment('Người kích hoạt');
             }
+            if (!Schema::hasIndex('vertical_templates', 'uq_vertical_template_org_code')) {
+                $table->unique(['organization_id', 'code'], 'uq_vertical_template_org_code');
+            }
         });
     }
 

@@ -11,6 +11,9 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('vertical_templates', function (Blueprint $table) {
+            if (Schema::hasIndex('vertical_templates', 'vertical_templates_code_unique')) {
+                $table->dropUnique('vertical_templates_code_unique');
+            }
             $cols = array_filter(['phases', 'default_checklist', 'default_activity_types', 'default_legal_doc_types', 'default_hierarchy', 'export_adapter'], fn($c) => Schema::hasColumn('vertical_templates', $c));
             if (!empty($cols)) $table->dropColumn(array_values($cols));
         });

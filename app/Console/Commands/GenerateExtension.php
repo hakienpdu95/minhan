@@ -234,19 +234,50 @@ class GenerateExtension extends Command
         }
     }
 
+    // ── DROP INDEX (dùng trong block action=drop) ───────────────────
+    // Directive: "__index///<unique|index|fulltext|spatial>///__///__///__///<name1;name2>///comment"
+    // colMod chứa danh sách tên index cần xoá (phân cách ';'), KHÔNG phải danh sách cột —
+    // vì dropUnique()/dropIndex() chỉ cần tên index đã tồn tại.
+
+    private function buildDropIndexDirective(string $colMod, string $indexType, string $tableName, array &$lines): void
+    {
+        $method = match (strtolower($indexType)) {
+            'fulltext' => 'dropFullText',
+            'unique'   => 'dropUnique',
+            'spatial'  => 'dropSpatialIndex',
+            default    => 'dropIndex',
+        };
+
+        foreach (explode(';', $colMod) as $name) {
+            $name = trim($name);
+            if ($name === '' || $name === '__') continue;
+
+            $lines[] = "if (Schema::hasIndex('$tableName', '$name')) {";
+            $lines[] = "    \$table->$method('$name');";
+            $lines[] = "}";
+        }
+    }
+
     // ── DROP ───────────────────────────────────────────────────────
 
     private function buildDropBody(array $rows, string $tableName): array
     {
-        $upLines   = [];
-        $downLines = [];
-        $fkCols    = [];
-        $allNames  = [];
+        $upLines    = [];
+        $downLines  = [];
+        $fkCols     = [];
+        $allNames   = [];
+        $indexLines = [];
 
         foreach ($rows as $row) {
             $p = explode('///', $row);
             while (count($p) < 7) $p[] = '__';
             [$colName, $colType, , , , $colMod] = $p;
+
+            // __index trong block drop = xoá index/unique theo tên (không phải cột thật)
+            if ($colName === '__index') {
+                $this->buildDropIndexDirective($colMod, $colType, $tableName, $indexLines);
+                continue;
+            }
 
             // Skip special directives — không phải cột thật
             if (in_array($colName, self::SPECIAL_DIRECTIVES)) continue;
@@ -257,10 +288,15 @@ class GenerateExtension extends Command
             }
         }
 
-        // Up: drop FK trước, drop cột sau — wrap trong hasColumn check để idempotent
-        // khi migration chạy lại trên DB đã drop rồi (JSON/generated bị regenerate mỗi lần chạy)
+        // Up: drop FK trước (MySQL không cho xoá index đang backing một FK — lỗi 1553),
+        // rồi drop index/unique (nếu 2+ cột sắp xoá cùng thuộc 1 composite key, drop cột
+        // trực tiếp mà không dọn index sẽ gây lỗi 1072 "Key column ... doesn't exist" vì
+        // key bị chỉnh sửa dở dang ngay trong cùng câu ALTER TABLE), rồi mới drop cột.
         foreach ($fkCols as $fk) {
             $upLines[] = "if (Schema::hasColumn('$tableName', '$fk')) \$table->dropForeign(['$fk']);";
+        }
+        foreach ($indexLines as $line) {
+            $upLines[] = $line;
         }
         $namesArg  = implode(', ', array_map(fn($n) => "'$n'", $allNames));
         $upLines[] = "\$cols = array_filter([$namesArg], fn(\$c) => Schema::hasColumn('$tableName', \$c));";
