@@ -71,4 +71,6 @@ class DatabaseVertical implements VerticalDefinition
     }
 
     public function template(): VerticalTemplate { return $this->template; }
+
+    public function isActive(): bool { return $this->template->status === 'active'; }
 }

@@ -33,6 +33,8 @@ class DeploymentTarget extends Model
         'organization_id',
         'project_id',
         'vertical_code',
+        'deployment_id',
+        'blueprint_version_id',
         'target_organization_id',
         'current_phase',
         'assigned_employee_id',
@@ -53,6 +55,16 @@ class DeploymentTarget extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function deployment(): BelongsTo
+    {
+        return $this->belongsTo(\Modules\Deployment\Models\Deployment::class);
+    }
+
+    public function blueprintVersion(): BelongsTo
+    {
+        return $this->belongsTo(\Modules\BusinessBlueprint\Models\BlueprintVersion::class);
     }
 
     public function targetOrganization(): BelongsTo

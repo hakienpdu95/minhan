@@ -17,6 +17,14 @@
             </a>
         </div>
 
+        @can(\App\Enums\PermissionEnum::SOLUTION_CATALOG_VIEW->value)
+        <a href="{{ route('solution_catalog.index') }}"
+           class="nav-link {{ request()->routeIs('solution_catalog.*') ? 'active' : '' }}">
+            <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            <span class="nav-label">Danh mục Solution</span>
+        </a>
+        @endcan
+
         @auth
         <a href="{{ route('backend.surveys.my') }}"
            class="nav-link {{ request()->routeIs('backend.surveys.my') ? 'active' : '' }}">
@@ -67,6 +75,26 @@
             </div>
         </details>
         @endif
+
+        @can(\App\Enums\PermissionEnum::OCOP_PRODUCT_VIEW->value)
+        <details {{ request()->routeIs('ocop.products.*') ? 'open' : '' }}>
+            <summary class="nav-summary {{ request()->routeIs('ocop.products.*') ? 'active' : '' }}">
+                <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622C17.176 19.29 21 14.591 21 9a12.02 12.02 0 00-.382-3.016z"/></svg>
+                <span class="nav-label">Sản phẩm OCOP</span>
+                <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+            </summary>
+            <div class="sub-menu">
+                <a href="{{ route('ocop.products.index') }}" class="sub-link {{ request()->routeIs('ocop.products.index') ? 'active' : '' }}">Danh sách sản phẩm</a>
+                @can(\App\Enums\PermissionEnum::OCOP_PRODUCT_MANAGE->value)
+                <a href="{{ route('ocop.products.create') }}" class="sub-link {{ request()->routeIs('ocop.products.create') ? 'active' : '' }}">Đăng ký sản phẩm</a>
+                @endcan
+                @can(\App\Enums\PermissionEnum::OCOP_PRACTICE_USE->value)
+                <a href="{{ route('ocop.practice.start') }}" class="sub-link {{ request()->routeIs('ocop.practice.start') ? 'active' : '' }}">Luyện tập chấm điểm</a>
+                <a href="{{ route('ocop.practice.history') }}" class="sub-link {{ request()->routeIs('ocop.practice.history') ? 'active' : '' }}">Lịch sử luyện tập</a>
+                @endcan
+            </div>
+        </details>
+        @endcan
 
         @if(auth()->user()?->hasAnyPermission(['leads.view_all','leads.view_assigned','leads.view_source']))
         <p class="section-title" style="margin-top:16px;">CRM</p>
@@ -141,6 +169,44 @@
                     <a href="{{ route('backend.vertical-templates.create') }}" class="sub-link {{ request()->routeIs('backend.vertical-templates.create') ? 'active' : '' }}">Thêm bản mẫu</a>
                 </div>
             </details>
+            @endcan
+
+            @can(\App\Enums\PermissionEnum::SOLUTION_CATALOG_MANAGE->value)
+            <details {{ request()->routeIs('business_solutions.admin.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('business_solutions.admin.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                    <span class="nav-label">Danh mục Business Solution</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('business_solutions.admin.index') }}" class="sub-link {{ request()->routeIs('business_solutions.admin.index') ? 'active' : '' }}">Danh sách Solution</a>
+                    <a href="{{ route('business_solutions.admin.create') }}" class="sub-link {{ request()->routeIs('business_solutions.admin.create') ? 'active' : '' }}">Thêm Solution</a>
+                </div>
+            </details>
+            @endcan
+
+            @can(\App\Enums\PermissionEnum::BLUEPRINT_VIEW->value)
+            <details {{ request()->routeIs('business_blueprint.admin.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('business_blueprint.admin.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 4.5v15m6-15v15M4.5 9h15m-15 6h15M5 4.5h14A1.5 1.5 0 0120.5 6v12a1.5 1.5 0 01-1.5 1.5H5A1.5 1.5 0 013.5 18V6A1.5 1.5 0 015 4.5z"/></svg>
+                    <span class="nav-label">Business Blueprint</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('business_blueprint.admin.index') }}" class="sub-link {{ request()->routeIs('business_blueprint.admin.index') ? 'active' : '' }}">Danh sách Blueprint</a>
+                    @can(\App\Enums\PermissionEnum::BLUEPRINT_CREATE->value)
+                    <a href="{{ route('business_blueprint.admin.create') }}" class="sub-link {{ request()->routeIs('business_blueprint.admin.create') ? 'active' : '' }}">Thêm Blueprint</a>
+                    @endcan
+                </div>
+            </details>
+            @endcan
+
+            @can(\App\Enums\PermissionEnum::SOLUTION_ACTIVATE->value)
+            <a href="{{ route('organization_solutions.index') }}"
+               class="nav-link {{ request()->routeIs('organization_solutions.*') ? 'active' : '' }}">
+                <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                <span class="nav-label">Solution của tổ chức</span>
+            </a>
             @endcan
 
             @can('viewAny', \Modules\Branch\Models\Branch::class)
@@ -696,6 +762,22 @@
                     <a href="{{ route('subscription.admin.invoices.index') }}"
                        class="sub-link {{ request()->routeIs('subscription.admin.invoices.*') ? 'active' : '' }}">
                         Invoices
+                    </a>
+                </div>
+            </details>
+            @endcan
+
+            @can(\App\Enums\PermissionEnum::OCOP_RUBRIC_MANAGE->value)
+            <details {{ request()->routeIs('ocop_rubric.admin.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('ocop_rubric.admin.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622C17.176 19.29 21 14.591 21 9a12.02 12.02 0 00-.382-3.016z"/></svg>
+                    <span class="nav-label">Bộ tiêu chí OCOP</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('ocop_rubric.admin.product-groups.index') }}"
+                       class="sub-link {{ request()->routeIs('ocop_rubric.admin.product-groups.*') ? 'active' : '' }}">
+                        Danh mục Bộ sản phẩm
                     </a>
                 </div>
             </details>

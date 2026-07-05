@@ -10,13 +10,19 @@ use Modules\Assessment\Database\Seeders\MarketplaceDemoSeeder;
 use Modules\Auth\Database\Seeders\AuthDatabaseSeeder;
 use Modules\Deployment\Database\Seeders\DataCollectionV1Seeder;
 use Modules\Deployment\Database\Seeders\DefaultVerticalTemplateSeeder;
+use Modules\Deployment\Database\Seeders\DeploymentEnginePermissionSeeder;
+use Modules\Deployment\Database\Seeders\HtxTienDuongDemoSeeder;
 use Modules\Deployment\Database\Seeders\ReadinessV1SurveySeeder;
 use Modules\JobPosting\Database\Seeders\JobPostingDatabaseSeeder;
 use Modules\JobTitle\Database\Seeders\JobTitleDatabaseSeeder;
 use Modules\Lead\Database\Seeders\LeadDatabaseSeeder;
 use Modules\LeadPipelineStage\Database\Seeders\LeadPipelineStageSeeder;
 use Modules\LeadSource\Database\Seeders\LeadSourceSeeder;
+use Modules\BusinessBlueprint\Database\Seeders\BusinessBlueprintDatabaseSeeder;
+use Modules\BusinessSolution\Database\Seeders\BusinessSolutionDatabaseSeeder;
+use Modules\OcopRubric\Database\Seeders\OcopRubricDatabaseSeeder;
 use Modules\Organization\Database\Seeders\OrganizationRolePermissionSeeder;
+use Modules\OrganizationSolution\Database\Seeders\OrganizationSolutionDatabaseSeeder;
 use Modules\Recruitment\Database\Seeders\RecruitmentDatabaseSeeder;
 use Modules\Subscription\Database\Seeders\SubscriptionDatabaseSeeder;
 use Modules\Survey\Database\Seeders\SurveyDatabaseSeeder;
@@ -100,6 +106,24 @@ class SystemDataSeeder extends Seeder
             DataCollectionV1Seeder::class,
             ReadinessV1SurveySeeder::class,
             DefaultVerticalTemplateSeeder::class,
+
+            // ── 18. OCOP Rubric: permissions + 5 hạng sao + 26 Bộ sản phẩm ──
+            OcopRubricDatabaseSeeder::class,
+
+            // ── 19. Business Solution: permissions + verticals + 3 solution bespoke ──
+            BusinessSolutionDatabaseSeeder::class,
+
+            // ── 20. Business Blueprint: permissions (blueprint.*) ─────────
+            BusinessBlueprintDatabaseSeeder::class,
+
+            // ── 21. Organization Solution: permissions (organization_solution.*) ──
+            OrganizationSolutionDatabaseSeeder::class,
+
+            // ── 22. Deployment Engine: permissions (deployment_engine.*) ──
+            DeploymentEnginePermissionSeeder::class,
+
+            // ── 23. Demo end-to-end: HTX Tiên Dương kích hoạt + deploy AI-TXNG ──
+            HtxTienDuongDemoSeeder::class,
         ]);
 
         $this->command->newLine();

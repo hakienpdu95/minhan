@@ -15,6 +15,15 @@ final class OrganizationScope implements Scope
 {
     public function apply(Builder $builder, Model $model): void
     {
+        // super-admin (tài khoản quản trị hệ thống mặc định) xem/thao tác được dữ liệu của
+        // MỌI tổ chức — không bị giới hạn theo TenantContext hiện tại. Cùng quy tắc đã áp
+        // dụng cho resolveRouteBinding() (BelongsToOrganization trait), giờ áp dụng luôn cho
+        // mọi query list/index để nhất quán (trước đây chỉ bypass được khi truy cập 1 bản ghi
+        // qua route-model-binding, còn danh sách vẫn bị lọc theo org "system" mặc định).
+        if (auth()->check() && auth()->user()->hasRole('super-admin')) {
+            return;
+        }
+
         if (TenantContext::isSet()) {
             $builder->where(
                 $model->getTable() . '.organization_id',

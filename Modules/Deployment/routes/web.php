@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\PermissionEnum as P;
 use Illuminate\Support\Facades\Route;
 use Modules\Deployment\Http\Controllers\DeploymentChecklistController;
+use Modules\Deployment\Http\Controllers\DeploymentEngineController;
 use Modules\Deployment\Http\Controllers\DeploymentDashboardController;
 use Modules\Deployment\Http\Controllers\DeploymentIssueController;
 use Modules\Deployment\Http\Controllers\DeploymentLandingController;
@@ -137,4 +139,25 @@ Route::middleware(['auth', 'tenant'])
             Route::get('/checklist/{target}', [DeploymentChecklistController::class, 'mobile'])
                 ->name('checklist');
         });
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Deployment Engine — spec §4.5/§4.7 (DeployOrganizationSolutionAction)
+| Không dùng {vertical} URL — chạy trên OrganizationSolution/Deployment trực tiếp.
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['web', 'auth', 'tenant'])
+    ->prefix('dashboard/deployments')
+    ->name('deployments.')
+    ->group(function (): void {
+        Route::post('organization-solutions/{organizationSolution}/deploy', [DeploymentEngineController::class, 'deploy'])
+            ->middleware('can:' . P::DEPLOYMENT_RUN->value)
+            ->name('deploy');
+        Route::get('{deployment}/logs', [DeploymentEngineController::class, 'logs'])
+            ->middleware('can:' . P::DEPLOYMENT_VIEW_LOGS->value)
+            ->name('logs');
+        Route::get('{deployment}/snapshots', [DeploymentEngineController::class, 'snapshots'])
+            ->middleware('can:' . P::DEPLOYMENT_VIEW_LOGS->value)
+            ->name('snapshots');
     });

@@ -63,6 +63,24 @@ return [
         P::RECRUITMENT_VIEW->value,
         // Marketplace: View
         P::MARKETPLACE_VIEW->value,
+        // OCOP Product: Full (đăng ký + quản lý sản phẩm OCOP của tổ chức)
+        P::OCOP_PRODUCT_VIEW->value,
+        P::OCOP_PRODUCT_MANAGE->value,
+        // OCOP Scoring: Full (luyện tập + tự đánh giá — văn bản chuẩn bị hồ sơ pháp lý)
+        P::OCOP_PRACTICE_USE->value,
+        P::OCOP_SELF_ASSESS_USE->value,
+        // Business Solution: View (biết tổ chức có thể kích hoạt Solution nào)
+        P::SOLUTION_CATALOG_VIEW->value,
+        // Business Blueprint: View (xem thư viện Blueprint)
+        P::BLUEPRINT_VIEW->value,
+        // Organization Solution: Full (chủ tổ chức tự kích hoạt/cấu hình/tạm ngưng)
+        P::SOLUTION_ACTIVATE->value,
+        P::SOLUTION_CONFIGURE->value,
+        P::SOLUTION_SUSPEND->value,
+        P::SOLUTION_ARCHIVE->value,
+        // Deployment Engine: Full (chạy deploy + xem log)
+        P::DEPLOYMENT_RUN->value,
+        P::DEPLOYMENT_VIEW_LOGS->value,
     ],
 
     R::SALES->value => [
@@ -88,6 +106,10 @@ return [
         // Reports: Personal + Team
         P::REPORTS_PERSONAL->value,
         P::REPORTS_TEAM->value,
+        // Business Solution: View
+        P::SOLUTION_CATALOG_VIEW->value,
+        // Business Blueprint: View
+        P::BLUEPRINT_VIEW->value,
     ],
 
     R::OPS->value => [
@@ -130,6 +152,15 @@ return [
         P::ASSESSMENT_RESULTS->value,
         // Job Posting: View only
         P::JOB_POSTING_VIEW->value,
+        // OCOP Product: Full
+        P::OCOP_PRODUCT_VIEW->value,
+        P::OCOP_PRODUCT_MANAGE->value,
+        // OCOP Scoring: Practice only (self-assessment dành riêng CEO — trách nhiệm hồ sơ pháp lý)
+        P::OCOP_PRACTICE_USE->value,
+        // Business Solution: View
+        P::SOLUTION_CATALOG_VIEW->value,
+        // Business Blueprint: View
+        P::BLUEPRINT_VIEW->value,
     ],
 
     R::MARKETING->value => [
@@ -152,6 +183,10 @@ return [
         P::REPORTS_MARKETING->value,
         // Marketplace: View (Marketing monitors public listings)
         P::MARKETPLACE_VIEW->value,
+        // Business Solution: View
+        P::SOLUTION_CATALOG_VIEW->value,
+        // Business Blueprint: View
+        P::BLUEPRINT_VIEW->value,
     ],
 
     R::HR->value => [
@@ -183,6 +218,12 @@ return [
         P::MARKETPLACE_VIEW->value,
         P::MARKETPLACE_CREATE->value,
         P::MARKETPLACE_EDIT->value,
+        // OCOP Scoring: Practice only — nhân viên luyện tập, không sửa sản phẩm
+        P::OCOP_PRACTICE_USE->value,
+        // Business Solution: View
+        P::SOLUTION_CATALOG_VIEW->value,
+        // Business Blueprint: View
+        P::BLUEPRINT_VIEW->value,
     ],
 
     R::AI_OP->value => [
@@ -216,6 +257,10 @@ return [
         P::ASSESSMENT_CONFIG->value,
         P::ASSESSMENT_RESULTS->value,
         P::ASSESSMENT_REPROCESS->value,
+        // Business Solution: View
+        P::SOLUTION_CATALOG_VIEW->value,
+        // Business Blueprint: View
+        P::BLUEPRINT_VIEW->value,
     ],
 
     R::ADMIN->value => [
@@ -274,6 +319,27 @@ return [
         P::MARKETPLACE_MANAGE->value,
         // Vertical templates: Full manage (dashboard/vertical-templates — thư viện mẫu)
         P::VERTICAL_TEMPLATES_MANAGE->value,
+        // OCOP Rubric: Full manage (danh mục 26 Bộ sản phẩm + cây tiêu chí — QĐ 26/2026/QĐ-TTg)
+        P::OCOP_RUBRIC_MANAGE->value,
+        // Business Solution: Full manage (tạo/sửa/publish/archive danh mục) + View
+        P::SOLUTION_CATALOG_MANAGE->value,
+        P::SOLUTION_CATALOG_VIEW->value,
+        // Business Blueprint: Full manage (Business Analyst/Product Owner chưa có role riêng — xem PermissionEnum)
+        P::BLUEPRINT_VIEW->value,
+        P::BLUEPRINT_CREATE->value,
+        P::BLUEPRINT_EDIT->value,
+        P::BLUEPRINT_DELETE->value,
+        P::BLUEPRINT_PUBLISH->value,
+        P::BLUEPRINT_ARCHIVE->value,
+        P::BLUEPRINT_CLONE->value,
+        // Organization Solution: Full (hỗ trợ tổ chức kích hoạt/cấu hình khi cần)
+        P::SOLUTION_ACTIVATE->value,
+        P::SOLUTION_CONFIGURE->value,
+        P::SOLUTION_SUSPEND->value,
+        P::SOLUTION_ARCHIVE->value,
+        // Deployment Engine: Full (hỗ trợ tổ chức chạy deploy khi cần)
+        P::DEPLOYMENT_RUN->value,
+        P::DEPLOYMENT_VIEW_LOGS->value,
     ],
 
     R::VIEWER->value => [
@@ -285,6 +351,12 @@ return [
         P::SOP_VIEW->value,
         // Reports: Shared only
         P::REPORTS_SHARED->value,
+        // OCOP Product: View only
+        P::OCOP_PRODUCT_VIEW->value,
+        // Business Solution: View
+        P::SOLUTION_CATALOG_VIEW->value,
+        // Business Blueprint: View
+        P::BLUEPRINT_VIEW->value,
         // CRM Leads = No, Workflow = No, Prompt = No
     ],
 ];

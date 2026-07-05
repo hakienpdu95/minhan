@@ -19,9 +19,13 @@ class RequireVertical
             abort(400, 'Vertical code không được xác định.');
         }
 
-        $vertical = VerticalRegistry::resolveForOrganization(TenantContext::getOrganizationId(), $code);
+        // super-admin (tài khoản quản trị hệ thống) xem/thao tác được vertical của MỌI tổ
+        // chức — không giới hạn theo TenantContext hiện tại (thường mặc định là org "system").
+        $vertical = $request->user()?->hasRole('super-admin')
+            ? VerticalRegistry::resolveForSuperAdmin($code)
+            : VerticalRegistry::resolveForOrganization(TenantContext::getOrganizationId(), $code);
 
-        if (! $vertical || $vertical->template()->status !== 'active') {
+        if (! $vertical || ! $vertical->isActive()) {
             // Phân biệt 404 (code không tồn tại ở thư viện) vs 403 (có nhưng chưa kích hoạt cho tổ chức này)
             if (! VerticalRegistry::exists($code)) {
                 abort(404, "Vertical '{$code}' không tồn tại.");

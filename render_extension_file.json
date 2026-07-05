@@ -389,7 +389,9 @@
         "deployment_targets///add///__///",
         "readiness_response_id///unsignedBigInteger///__///_NULL///NULL///->constrained('survey_responses')->onDelete('set null')///__",
         "readiness_score///unsignedTinyInteger///__///_NULL///NULL///__///0-100 readiness score; null = not assessed yet",
-        "data_collection_response_id///unsignedBigInteger///__///_NULL///NULL///->constrained('survey_responses')->onDelete('set null')///__"
+        "data_collection_response_id///unsignedBigInteger///__///_NULL///NULL///->constrained('survey_responses')->onDelete('set null')///__",
+        "deployment_id///unsignedBigInteger///__///_NULL///NULL///->constrained('deployments')->onDelete('set null')///Deployment Engine (spec Phần 4) — pin runtime vào lần deploy đã tạo ra nó",
+        "blueprint_version_id///unsignedBigInteger///__///_NULL///NULL///->constrained('blueprint_versions')->onDelete('set null')///Deployment Engine (spec Phần 4) — pin runtime vào đúng Blueprint Version đã deploy"
     ],
     [
         "vertical_templates///add///__///",

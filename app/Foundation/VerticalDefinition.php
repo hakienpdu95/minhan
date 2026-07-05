@@ -34,4 +34,7 @@ interface VerticalDefinition
 
     public function verticalRoles(): array;
     public function sidebarGroups(): array;
+
+    /** Vertical này có đang active cho tổ chức hiện tại không (RequireVertical middleware). */
+    public function isActive(): bool;
 }

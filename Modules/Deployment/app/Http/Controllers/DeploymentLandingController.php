@@ -4,6 +4,7 @@ namespace Modules\Deployment\Http\Controllers;
 
 use App\Foundation\Vertical\DatabaseVertical;
 use App\Foundation\Vertical\VerticalTemplate;
+use App\Foundation\VerticalRegistry;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -24,12 +25,17 @@ class DeploymentLandingController extends Controller
 
         if ($orgId || $isSuperAdmin) {
             // Super-admin sees all active verticals across orgs; others see their own org's
-            $verticals = $isSuperAdmin
+            // ->toBase(): Eloquent\Collection::map() chỉ downgrade về Support\Collection khi
+            // KHÔNG rỗng và có phần tử không phải Model — với query rỗng nó vẫn giữ nguyên
+            // kiểu Eloquent, khiến merge() phía dưới cố gọi getKey() trên DatabaseVertical/
+            // BlueprintToVerticalDefinitionAdapter (không phải Model) và crash.
+            $templateVerticals = $isSuperAdmin
                 ? VerticalTemplate::whereNotNull('organization_id')
                     ->where('status', 'active')
                     ->where('is_active', true)
                     ->get()
                     ->map(fn (VerticalTemplate $t) => new DatabaseVertical($t))
+                    ->toBase()
                     ->unique(fn ($v) => $v->code())   // dedupe (multiple orgs same code)
                     ->values()
                 : VerticalTemplate::where('organization_id', $orgId)
@@ -37,7 +43,15 @@ class DeploymentLandingController extends Controller
                     ->where('is_active', true)
                     ->get()
                     ->map(fn (VerticalTemplate $t) => new DatabaseVertical($t))
+                    ->toBase()
                     ->values();
+
+            // Vertical được deploy từ Business Blueprint mới (song song vertical_templates).
+            $blueprintVerticals = VerticalRegistry::activeBlueprintVerticals($isSuperAdmin ? null : $orgId);
+
+            $verticals = $templateVerticals->merge($blueprintVerticals)
+                ->unique(fn ($v) => $v->code())
+                ->values();
 
             foreach ($verticals as $v) {
                 $targetQuery = $isSuperAdmin

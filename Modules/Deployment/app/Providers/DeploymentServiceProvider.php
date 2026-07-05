@@ -3,6 +3,7 @@
 namespace Modules\Deployment\Providers;
 
 use Illuminate\Support\Facades\Gate;
+use Modules\Deployment\Console\Commands\BackfillDeploymentRecordsCommand;
 use Modules\Deployment\Models\DeploymentIssue;
 use Modules\Deployment\Models\DeploymentTarget;
 use Modules\Deployment\Policies\DeploymentIssuePolicy;
@@ -25,5 +26,11 @@ class DeploymentServiceProvider extends ModuleServiceProvider
 
         Gate::policy(DeploymentTarget::class, DeploymentTargetPolicy::class);
         Gate::policy(DeploymentIssue::class, DeploymentIssuePolicy::class);
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                BackfillDeploymentRecordsCommand::class,
+            ]);
+        }
     }
 }
