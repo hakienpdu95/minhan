@@ -6,23 +6,22 @@
 
 ---
 
-## 🔴 BLOCKER — cần xử lý TRƯỚC KHI làm bất cứ gì khác
+## ✅ BLOCKER ĐÃ XỬ LÝ — Migration ledger (2026-07-16, cùng ngày)
 
-**Migration ledger của DB `minhan` không khớp thực tế** — phát hiện khi debug lỗi `employees` doesn't exist.
+**Đã fix** — người dùng tự xử lý DB, xác nhận "đầy đủ bảng rồi, vào được bình thường". Đã tự kiểm tra lại và xác nhận:
 
-- Bảng tracking `migrations` chỉ ghi nhận **218/541** migration là "đã chạy", nhưng DB có ~1484 bảng thật. Phần lớn schema hiện tại (leads, customers, tasks, sop_processes, kc_items...) được tạo bằng cách khác ngoài `php artisan migrate` (nghi vấn: import SQL dump trực tiếp).
-- Hệ quả 2 loại:
-  1. **~150+ bảng thật sự CHƯA tồn tại**: `employees`, `departments`, `branches`, `job_titles`, `kc_items`, `kc_categories`, tất cả bảng của module Leave/KpiGoal/JobPosting/Marketplace/OcopRubric/BusinessSolution/BusinessBlueprint/Deployment/AiCopilot... → bất kỳ trang nào chạm tới các module này sẽ lỗi `Base table or view not found`.
-  2. **~200+ migration "Pending" nhưng bảng ĐÃ tồn tại** (leads, customers, sop_processes, tasks...) → nếu chạy `php artisan migrate` trực tiếp sẽ vỡ ngay ở migration đầu tiên với lỗi "table already exists" (vì các file gốc trong `Modules/*/database/migrations/` không có guard `Schema::hasTable()`, khác với `database/migrations/generated/` và `extensions/` — 2 thư mục đó đã tự guard an toàn).
-- Do blocker này, **chưa verify được UI qua browser thật** — mọi trang dùng `layouts.backend` cũng đang lỗi vì `SidebarComposer` query bảng `vertical_templates` (cũng thuộc nhóm bảng thiếu).
-- **Đã có sẵn hướng xử lý an toàn** (đã dừng lại theo yêu cầu, chưa thực thi): với mỗi migration "Pending" mà bảng đích đã tồn tại thật → insert 1 dòng vào bảng `migrations` để đánh dấu "đã chạy" (chỉ ghi tracking, không chạy SQL) → sau đó `php artisan migrate` chỉ còn tạo đúng phần bảng thiếu thật. Script kiểm tra đã viết sẵn tại `/tmp/claude-1000/-var-www-html-minhan/13bb450e-3e8d-48b5-aa9f-b67c06c1f185/scratchpad/reconcile_migrations.php` (lưu ý: đường dẫn scratchpad theo session, có thể không còn khi mở phiên mới — cần viết lại logic nếu cần, nội dung không phức tạp).
-- **Việc cần làm**: quyết định hướng xử lý (tự làm / để tôi làm tiếp theo hướng đã đề xuất / có DBA riêng), backup DB trước khi đụng vào nếu là dữ liệu quan trọng.
+- `employees`, `departments`, `branches`, `job_titles`, `kc_items`, `vertical_templates`, `business_projects`, `business_contexts`, `deliverables` — tất cả `Schema::hasTable()` = OK.
+- `layouts.backend` và `layouts.partials.sidebar` render sạch (trước đó lỗi do `SidebarComposer` query `vertical_templates`) — **đã verify qua render trực tiếp, không chỉ tin lời báo**.
+- **Lưu ý phụ**: DB có vẻ đã được reseed/import mới hoàn toàn — Organization/User ID đã đổi (Demo Organization giờ là `id=2`, không còn `id=8`; CEO User giờ `id=3`). Dữ liệu test cũ (Lead/Customer/BusinessProject tạo lúc verify Vertical Slice 1) đã mất theo, đã tạo lại bộ test mới ở id=1 để verify lại toàn bộ luồng — **kết quả: PASS 100%** (R1 block, Gate check, Submit/Approve qua Ringlesoft, Advance stage — y hệt lần trước).
+- Sau khi DB đầy đủ, đã render **toàn bộ 3 trang qua layout thật** (`index`, `show` của BusinessProject, `leads/show`) — phát hiện thêm 1 bug thật (xem mục Ghi chú kỹ thuật, đã sửa).
+
+Migration ledger vẫn còn ~203 migration "Pending" (không phải 0) nhưng không còn là blocker — các bảng cốt lõi đã đủ và app chạy được. Không cần động tiếp vào bảng `migrations` trừ khi gặp lỗi cụ thể mới.
 
 ---
 
 ## ✅ ĐÃ HOÀN THÀNH — Vertical Slice 1 (Nền tảng + Lead Convert + Context Workspace)
 
-Module `Modules/BusinessProject` mới, đã verify end-to-end qua tinker (không qua browser vì blocker trên):
+Module `Modules/BusinessProject` mới, đã verify end-to-end qua tinker **và render toàn bộ view qua layout thật** (sau khi DB fix — xem mục trên):
 
 - Migrations: `business_projects`, `business_project_members`, `business_contexts`, `deliverables`, `deliverable_versions`, `deliverable_evidence_links`, + ALTER `leads` (cột `converted_business_project_id`).
 - Models + Enums (`BusinessProjectStage`, `DeliverableStatus`, `ProjectMemberRole`, `DeliverableType`).
@@ -33,7 +32,8 @@ Module `Modules/BusinessProject` mới, đã verify end-to-end qua tinker (khôn
 - Policies (`BusinessProjectPolicy`, `DeliverablePolicy`), Controllers, Routes, Views (Project Header + Tabs + Right Sidebar Deliverables theo Phần 5B spec).
 - Lead module: nút "Convert to Business Project" + card hiển thị sau khi convert.
 - Sidebar entry mới.
-- Test end-to-end qua tinker: Lead → Customer (tự convert) → Business Project → Business Context → chặn đúng R1 (tạo Context lần 2) → Gate chặn đúng khi chưa duyệt → Submit → Approve (CEO, qua Ringlesoft thật) → Gate mở → Advance sang Discovery → Gate ở Discovery đúng hiện placeholder.
+- Test end-to-end qua tinker: Lead → Customer (tự convert) → Business Project → Business Context → chặn đúng R1 (tạo Context lần 2) → Gate chặn đúng khi chưa duyệt → Submit → Approve (CEO, qua Ringlesoft thật) → Gate mở → Advance sang Discovery → Gate ở Discovery đúng hiện placeholder. **Chạy lại 100% PASS sau khi DB fix + reseed.**
+- Render qua layout đầy đủ (`layouts.backend`): trang `index`, `show` của Business Project, và `leads/show` (card Convert) — cả 3 sạch, không lỗi.
 
 ---
 
@@ -45,7 +45,7 @@ Không phải bug, nhưng cần biết để làm tiếp đúng hướng:
 2. **Chưa đăng ký feature gate Subscription** (`feature:module.businessproject`) — route hiện không bị gate theo subscription plan, khác với Lead/Sop dùng `feature:module.X`. Quyết định có chủ đích (BCOS là công cụ nội bộ), nhưng cần xác nhận lại nếu sau này bán platform này cho tenant khác.
 3. **Chưa có test tự động (PHPUnit/Pest)** cho module `BusinessProject` — `tests/Feature` và `tests/Unit` còn trống. Verify hiện tại chỉ qua script tinker thủ công (không lặp lại được tự động trong CI).
 4. **Context Canvas UI còn đơn giản** — 3 textarea tự do (company_profile/stakeholders/strategic_goals dạng `{notes: "..."}`), chưa phải canvas có cấu trúc field đúng như Handbook mô tả. Đủ dùng cho MVP, cần polish ở Phase 2/3.
-5. **Dữ liệu test còn trong DB** (Lead, Customer, Business Project tạo ra lúc verify) — có thể giữ làm demo hoặc xóa, tùy ý.
+5. **Dữ liệu test còn trong DB** (Lead, Customer, Business Project id=1, tạo lại sau khi DB reseed) — có thể giữ làm demo hoặc xóa, tùy ý. Lưu ý: có 1 row `deliverable_versions` (id=1) đã được update thủ công qua tinker để fix `created_at` null (không phải qua Action) — nếu muốn dữ liệu "sạch" hoàn toàn thì xóa hết bộ test này và tạo lại qua UI thật.
 
 ---
 
@@ -83,5 +83,7 @@ Workflow Engine, Template Engine nâng cao, Digital Signature, Import/Export, fu
 - `$table->uuid()` không tự sinh giá trị — luôn phải tự set `'uuid' => Str::uuid()` khi tạo record.
 - Spatie Permission dùng Teams (`organization_id`) — test qua tinker phải tự gọi `app(PermissionRegistrar::class)->setPermissionsTeamId($orgId)` trước khi check role/permission, nếu không luôn trả rỗng.
 - `ringlesoft/laravel-process-approval`: 1 Model class chỉ được có đúng 1 flow (`makeApprovable()` ném exception nếu gọi lại) — luôn check tồn tại trước.
+- **[Bug đã fix]** Model với `$timestamps = false` + cột DB `->useCurrent()` (như `DeliverableVersion`, giống `sop_versions`): nếu `Model::create([...])` KHÔNG tự set `'created_at' => now()`, Eloquent KHÔNG tự refetch từ DB để lấy giá trị default sau khi insert — object trong PHP có `created_at = null` ngay sau `create()`, dù DB đã lưu đúng giờ. Gây lỗi `Call to a member function format() on null` khi hiển thị version trong Blade. **Luôn tự set `created_at` trong PHP khi tạo record `$timestamps=false`**, không dựa vào DB default — đã sửa ở `CreateBusinessContextAction`/`UpdateBusinessContextAction`.
+- **Kiểm thử qua tinker chỉ render 1 view riêng lẻ KHÔNG đủ để bắt bug này** — phải render toàn bộ trang qua đúng luồng dữ liệu thật (tạo record qua Action, sau đó load lại và render list/versions) mới phát hiện được. Bài học: verify Blade cần render đúng route/luồng controller thật, không chỉ view đơn lẻ với dữ liệu giả lập.
 
 Toàn bộ chi tiết implementation đã lưu trong memory (`bcos-vertical-slice-1-implementation.md`, `bcos-spec-gap-analysis.md`) để phiên sau tự động nhớ lại.
