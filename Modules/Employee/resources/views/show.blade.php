@@ -145,7 +145,7 @@
                     </div>
                 </div>
 
-                @if(auth()->user()?->hasAnyRole(['System_Admin', 'HR']))
+                @if(auth()->user()?->hasAnyRole(['system_admin', 'hr']))
                 <div class="divider my-3 text-xs text-base-content/40">Thông tin lương (HR)</div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                     <div>
@@ -342,7 +342,7 @@
         </div>
 
         {{-- Bank info (HR only) --}}
-        @if(auth()->user()?->hasAnyRole(['System_Admin', 'HR']) && ($employee->bank_account || $employee->bank_name))
+        @if(auth()->user()?->hasAnyRole(['system_admin', 'hr']) && ($employee->bank_account || $employee->bank_name))
         <div class="card bg-base-100 shadow-sm border border-base-200">
             <div class="card-body gap-2">
                 <h3 class="font-semibold text-sm">Tài khoản ngân hàng</h3>
@@ -361,7 +361,7 @@
         @endif
 
         {{-- Ghi chú HR --}}
-        @if(auth()->user()?->hasAnyRole(['System_Admin', 'HR']) && $employee->notes)
+        @if(auth()->user()?->hasAnyRole(['system_admin', 'hr']) && $employee->notes)
         <div class="card bg-base-100 shadow-sm border border-warning/30">
             <div class="card-body gap-2">
                 <h3 class="font-semibold text-sm">Ghi chú HR</h3>

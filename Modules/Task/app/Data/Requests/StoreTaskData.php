@@ -22,6 +22,9 @@ class StoreTaskData extends Data
         #[Required]
         public readonly int $project_id,
 
+        #[Nullable]
+        public readonly ?int $business_project_id,
+
         #[Required, StringType, Max(500)]
         public readonly string $title,
 
@@ -64,6 +67,7 @@ class StoreTaskData extends Data
         return [
             'organization_id' => ['nullable', 'integer', 'exists:organizations,id'],
             'project_id'      => ['required', 'integer', Rule::exists('projects', 'id')->where('organization_id', $orgId)],
+            'business_project_id' => ['nullable', 'integer', Rule::exists('business_projects', 'id')->where('organization_id', $orgId)],
             'title'           => ['required', 'string', 'max:500'],
             'task_type'       => ['required', 'string', Rule::in(array_column(TaskType::cases(), 'value'))],
             'status'          => ['required', 'string', Rule::in(array_column(TaskStatus::cases(), 'value'))],

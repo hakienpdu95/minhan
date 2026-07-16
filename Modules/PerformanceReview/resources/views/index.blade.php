@@ -7,7 +7,7 @@
     'apiUrl'    => route('backend.api.performance-reviews'),
     'statuses'  => $statuses,
     'templates' => $templates,
-    'canDelete' => auth()->user()->can('delete', \Modules\PerformanceReview\Models\PerformanceReview::class),
+    'canDelete' => auth()->user()->can('delete', new \Modules\PerformanceReview\Models\PerformanceReview),
 ]) }})">
 
     {{-- ── Page header ──────────────────────────────────────────────────── --}}

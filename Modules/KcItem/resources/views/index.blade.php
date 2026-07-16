@@ -10,7 +10,7 @@
     'categories'  => $categories,
     'visibilities'=> $visibilities,
     'tagsApiUrl'  => $tagsApiUrl,
-    'canDelete'   => auth()->user()->can('delete', \Modules\KcItem\Models\KcItem::class),
+    'canDelete'   => auth()->user()->can('delete', new \Modules\KcItem\Models\KcItem),
 ]) }})">
 
     {{-- ── Page header ──────────────────────────────────────────────────── --}}
@@ -97,6 +97,26 @@
                                placeholder="Nhập từ khóa..."
                                class="grow bg-transparent outline-none text-sm"/>
                         <button x-show="filters.search" @click="clearSearch()"
+                                class="text-base-content/30 hover:text-base-content transition-colors">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Ngành (Industry) --}}
+                <div class="form-control w-44">
+                    <label class="label py-0.5">
+                        <span class="label-text text-xs font-medium">Ngành</span>
+                    </label>
+                    <div class="input input-sm input-bordered flex items-center gap-2 bg-base-100">
+                        <input id="filter-industry" type="text"
+                               x-model="filters.industry"
+                               @input.debounce.350ms="onFilterChange()"
+                               placeholder="VD: Bảo hiểm..."
+                               class="grow bg-transparent outline-none text-sm"/>
+                        <button x-show="filters.industry" @click="filters.industry = ''; onFilterChange()"
                                 class="text-base-content/30 hover:text-base-content transition-colors">
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>

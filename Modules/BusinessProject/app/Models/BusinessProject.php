@@ -81,6 +81,54 @@ class BusinessProject extends TenantAwareModel
         return $this->hasMany(Deliverable::class);
     }
 
+    public function milestones(): HasMany
+    {
+        return $this->hasMany(Milestone::class);
+    }
+
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(\Modules\Task\Models\Task::class);
+    }
+
+    public function meetings(): HasMany
+    {
+        return $this->hasMany(Meeting::class);
+    }
+
+    public function issues(): HasMany
+    {
+        return $this->hasMany(Issue::class);
+    }
+
+    public function risks(): HasMany
+    {
+        return $this->hasMany(Risk::class);
+    }
+
+    public function changeRequests(): HasMany
+    {
+        return $this->hasMany(ChangeRequest::class);
+    }
+
+    /**
+     * Rule R7 — Knowledge Asset gắn project (spec Phần 6.3). Liên kết 2 chiều đầy đủ (industry,
+     * types case_study/lessons_learned/best_practice...) là Phase 2 — ở đây chỉ đủ để đếm điều
+     * kiện gate.
+     */
+    public function kcItems(): HasMany
+    {
+        return $this->hasMany(\Modules\KcItem\Models\KcItem::class);
+    }
+
+    /**
+     * Giai đoạn 8 — Customer Success Workspace (CSAT/NPS, follow-up, renewal, New Opportunity).
+     */
+    public function successReviews(): HasMany
+    {
+        return $this->hasMany(SuccessReview::class);
+    }
+
     // ── Scopes ───────────────────────────────────────────────────────────
 
     public function scopeActive(Builder $query): Builder

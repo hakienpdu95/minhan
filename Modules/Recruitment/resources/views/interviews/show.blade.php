@@ -42,7 +42,7 @@
             @php
                 $isPanelist = $interview->panelists->contains('user_id', auth()->id());
             @endphp
-            @if($isPanelist || auth()->user()->hasRole('HR_Admin'))
+            @if($isPanelist || auth()->user()->hasRole('hr'))
             <a href="{{ route('backend.recruitment.interviews.evaluations.create', $interview) }}"
                class="btn btn-primary btn-sm">Nộp đánh giá</a>
             @endif

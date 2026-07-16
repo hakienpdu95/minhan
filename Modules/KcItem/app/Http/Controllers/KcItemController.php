@@ -75,7 +75,7 @@ class KcItemController extends Controller
         ));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $orgId = TenantContext::getOrganizationId();
 
@@ -95,7 +95,14 @@ class KcItemController extends Controller
 
         [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
 
-        return view('kcitem::create', compact('categories', 'types', 'visibilities', 'tagsApiUrl', 'organizations', 'defaultOrgId', 'orgLocked'));
+        // BCOS (Business Consulting OS) — prefill khi mở form từ Closing/Knowledge Workspace của 1
+        // Business Project (query string, xem Modules\BusinessProject\Http\Controllers\ClosingController
+        // và KnowledgeController).
+        $businessProjectId = $request->integer('business_project_id') ?: null;
+        $prefillType       = $request->string('type')->toString() ?: null;
+        $prefillIndustry   = $request->string('industry')->toString() ?: null;
+
+        return view('kcitem::create', compact('categories', 'types', 'visibilities', 'tagsApiUrl', 'organizations', 'defaultOrgId', 'orgLocked', 'businessProjectId', 'prefillType', 'prefillIndustry'));
     }
 
     public function store(Request $request, StoreKcItemAction $action): RedirectResponse

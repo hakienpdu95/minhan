@@ -6,7 +6,7 @@
 <div class="p-6">
 <div x-data="kcTagListPage({{ Js::from([
     'apiUrl'    => route('backend.api.kc-tags'),
-    'canDelete' => auth()->user()->can('delete', \Modules\KcItem\Models\KcTag::class),
+    'canDelete' => auth()->user()->can('delete', new \Modules\KcItem\Models\KcTag),
 ]) }})">
 
     {{-- ── Page header ──────────────────────────────────────────────────── --}}

@@ -36,6 +36,7 @@ class StoreTaskAction
             'uuid'             => (string) Str::uuid(),
             'organization_id'  => $data->organization_id ?? auth()->user()->organization_id ?? TenantContext::getOrganizationId(),
             'project_id'       => $data->project_id,
+            'business_project_id' => $data->business_project_id,
             'parent_id'        => $parentId,
             'employee_id'      => $data->employee_id,
             'title'            => $data->title,

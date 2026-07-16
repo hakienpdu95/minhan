@@ -448,7 +448,7 @@
                         @error('stage_id')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                     </div>
 
-                    @can('assign', \Modules\Lead\Models\Lead::class)
+                    @can('assign', new \Modules\Lead\Models\Lead)
                     <div class="form-control mb-3">
                         <label class="label py-0 pb-1">
                             <span class="label-text text-xs font-medium">Người phụ trách</span>

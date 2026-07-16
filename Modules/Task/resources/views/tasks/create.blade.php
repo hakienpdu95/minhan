@@ -52,6 +52,10 @@
 
 <form method="POST" action="{{ route('backend.tasks.store') }}" novalidate data-task-form>
     @csrf
+    {{-- BCOS: gắn Task với Business Project khi mở form từ Delivery Workspace (query string) --}}
+    @if($businessProjectId ?? null)
+    <input type="hidden" name="business_project_id" value="{{ old('business_project_id', $businessProjectId) }}">
+    @endif
 
     <div class="grid grid-cols-1 xl:grid-cols-[1fr_268px] gap-6 items-start">
 
@@ -108,7 +112,7 @@
                         <label class="label py-0 pb-1.5">
                             <span class="label-text font-medium">Tiêu đề <span class="text-error">*</span></span>
                         </label>
-                        <input type="text" name="title" value="{{ old('title') }}"
+                        <input type="text" name="title" value="{{ old('title', $prefillTitle ?? '') }}"
                                class="input input-bordered input-sm w-full @error('title') input-error @enderror"
                                placeholder="Nhập tiêu đề công việc..." autofocus maxlength="500"
                                data-req="Vui lòng nhập tiêu đề công việc">

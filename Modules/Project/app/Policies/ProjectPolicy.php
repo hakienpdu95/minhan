@@ -9,26 +9,26 @@ class ProjectPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'CEO', 'HR', 'Ops', 'Sales', 'Marketing', 'Viewer']);
+        return $user->hasAnyRole(['system_admin', 'ceo', 'hr', 'ops', 'sales', 'marketing', 'viewer']);
     }
 
     public function view(User $user, Project $project): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'CEO', 'HR', 'Ops', 'Sales', 'Marketing', 'Viewer']);
+        return $user->hasAnyRole(['system_admin', 'ceo', 'hr', 'ops', 'sales', 'marketing', 'viewer']);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'CEO', 'HR', 'Ops']);
+        return $user->hasAnyRole(['system_admin', 'ceo', 'hr', 'ops']);
     }
 
     public function update(User $user, Project $project): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'CEO', 'HR', 'Ops']);
+        return $user->hasAnyRole(['system_admin', 'ceo', 'hr', 'ops']);
     }
 
     public function delete(User $user, Project $project): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'CEO']);
+        return $user->hasAnyRole(['system_admin', 'ceo']);
     }
 }

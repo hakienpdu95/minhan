@@ -9,7 +9,7 @@
     'employmentTypes'=> $employmentTypes,
     'branches'       => $branches,
     'departments'    => $departments,
-    'canDelete'      => auth()->user()->can('delete', \Modules\Employee\Models\Employee::class),
+    'canDelete'      => auth()->user()->can('delete', new \Modules\Employee\Models\Employee),
 ]) }})">
 
     {{-- ── Page header ──────────────────────────────────────────────────── --}}

@@ -17,7 +17,7 @@ class BusinessContextController extends Controller
 {
     public function store(BusinessProject $businessProject, Request $request): RedirectResponse
     {
-        $this->authorize('update', $businessProject);
+        $this->authorize('manageContext', $businessProject);
 
         $data = StoreBusinessContextData::validateAndCreate($request->all());
 
@@ -30,7 +30,7 @@ class BusinessContextController extends Controller
 
     public function update(BusinessProject $businessProject, Request $request): RedirectResponse
     {
-        $this->authorize('update', $businessProject);
+        $this->authorize('manageContext', $businessProject);
 
         $context = $businessProject->context ?? abort(404);
 

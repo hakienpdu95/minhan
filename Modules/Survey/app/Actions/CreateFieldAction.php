@@ -59,6 +59,9 @@ class CreateFieldAction
             FieldType::Rating   => 'rat',
             FieldType::Date     => 'dt',
             FieldType::Boolean  => 'bool',
+            FieldType::Matrix   => 'mtx',
+            FieldType::Ranking  => 'rnk',
+            FieldType::Nps      => 'nps',
         };
 
         $chars = 'abcdefghijklmnopqrstuvwxyz0123456789';

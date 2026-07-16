@@ -31,15 +31,26 @@
     @endif
 </div>
 
-{{-- Vertical Tabs = 8 Workspace (Phần 5B) — điều hướng chính, KHÔNG dùng sidebar module rời. --}}
+{{--
+    Vertical Tabs = 8 Workspace (Phần 5B) — điều hướng chính, KHÔNG dùng sidebar module rời.
+    8/8 workspace đã triển khai (Context/Discovery/Diagnosis/Transformation/Delivery/Closing/
+    Knowledge/Customer Success) — không còn tab disabled.
+--}}
 <div role="tablist" class="tabs tabs-bordered mb-4">
-    <a role="tab" class="tab tab-active">Context</a>
-    @foreach(['discovery' => 'Discovery', 'diagnosis' => 'Diagnosis', 'transformation' => 'Transformation', 'delivery' => 'Delivery', 'closing' => 'Closing', 'knowledge' => 'Knowledge', 'customer_success' => 'Customer Success'] as $key => $label)
-    <a role="tab" class="tab tab-disabled text-base-content/30" title="Chưa triển khai ở Phase này">
-        {{ $label }}
-        <svg class="w-3 h-3 ml-1 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 10-8 0v4h8z"/>
-        </svg>
-    </a>
-    @endforeach
+    <a role="tab" href="{{ route('backend.business-projects.show', $businessProject) }}"
+       class="tab @if(request()->routeIs('backend.business-projects.show')) tab-active @endif">Context</a>
+    <a role="tab" href="{{ route('backend.business-projects.discovery.show', $businessProject) }}"
+       class="tab @if(request()->routeIs('backend.business-projects.discovery.*')) tab-active @endif">Discovery</a>
+    <a role="tab" href="{{ route('backend.business-projects.diagnosis.show', $businessProject) }}"
+       class="tab @if(request()->routeIs('backend.business-projects.diagnosis.*')) tab-active @endif">Diagnosis</a>
+    <a role="tab" href="{{ route('backend.business-projects.transformation.show', $businessProject) }}"
+       class="tab @if(request()->routeIs('backend.business-projects.transformation.*')) tab-active @endif">Transformation</a>
+    <a role="tab" href="{{ route('backend.business-projects.delivery.show', $businessProject) }}"
+       class="tab @if(request()->routeIs('backend.business-projects.delivery.*')) tab-active @endif">Delivery</a>
+    <a role="tab" href="{{ route('backend.business-projects.closing.show', $businessProject) }}"
+       class="tab @if(request()->routeIs('backend.business-projects.closing.*')) tab-active @endif">Closing</a>
+    <a role="tab" href="{{ route('backend.business-projects.knowledge.show', $businessProject) }}"
+       class="tab @if(request()->routeIs('backend.business-projects.knowledge.*')) tab-active @endif">Knowledge</a>
+    <a role="tab" href="{{ route('backend.business-projects.customer-success.show', $businessProject) }}"
+       class="tab @if(request()->routeIs('backend.business-projects.customer-success.*')) tab-active @endif">Customer Success</a>
 </div>

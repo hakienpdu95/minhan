@@ -5,7 +5,7 @@
 @section('content')
 
 {{-- Delete form — ngoài để tránh nested form --}}
-@can('delete', \Modules\Lead\Models\LeadTagDefinition::class)
+@can('delete', new \Modules\Lead\Models\LeadTagDefinition)
 <form id="form-delete-tag" method="POST" class="hidden">
     @csrf @method('DELETE')
 </form>
@@ -131,7 +131,7 @@
 @endcan
 
 {{-- Delete confirm modal --}}
-@can('delete', \Modules\Lead\Models\LeadTagDefinition::class)
+@can('delete', new \Modules\Lead\Models\LeadTagDefinition)
 <dialog id="deleteTagModal" class="modal">
     <div class="modal-box max-w-sm">
         <h3 class="font-bold text-lg text-error">Xác nhận xóa</h3>

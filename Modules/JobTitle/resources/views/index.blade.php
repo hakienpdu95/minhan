@@ -7,7 +7,7 @@
     'apiUrl'     => route('backend.api.job-titles'),
     'categories' => $categories,
     'statuses'   => $statuses,
-    'canDelete'  => auth()->user()->can('delete', \Modules\JobTitle\Models\JobTitle::class),
+    'canDelete'  => auth()->user()->can('delete', new \Modules\JobTitle\Models\JobTitle),
 ]) }})">
 
     {{-- ── Page header ──────────────────────────────────────────────────── --}}

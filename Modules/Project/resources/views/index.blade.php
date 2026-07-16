@@ -9,7 +9,7 @@
     'priorities'  => $priorities,
     'branches'    => $branches,
     'departments' => $departments,
-    'canDelete'   => auth()->user()->can('delete', \Modules\Project\Models\Project::class),
+    'canDelete'   => auth()->user()->can('delete', new \Modules\Project\Models\Project),
 ]) }})">
 
     {{-- ── Page header ──────────────────────────────────────────────────── --}}

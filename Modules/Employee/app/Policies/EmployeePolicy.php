@@ -9,46 +9,46 @@ class EmployeePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'HR', 'CEO', 'Viewer', 'Ops']);
+        return $user->hasAnyRole(['system_admin', 'hr', 'ceo', 'viewer', 'ops']);
     }
 
     public function view(User $user, Employee $employee): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'HR', 'CEO', 'Viewer', 'Ops']);
+        return $user->hasAnyRole(['system_admin', 'hr', 'ceo', 'viewer', 'ops']);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'HR']);
+        return $user->hasAnyRole(['system_admin', 'hr']);
     }
 
     public function update(User $user, Employee $employee): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'HR']);
+        return $user->hasAnyRole(['system_admin', 'hr']);
     }
 
     public function delete(User $user, Employee $employee): bool
     {
-        return $user->hasRole('System_Admin');
+        return $user->hasRole('system_admin');
     }
 
     public function transfer(User $user, Employee $employee): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'HR']);
+        return $user->hasAnyRole(['system_admin', 'hr']);
     }
 
     public function offboard(User $user, Employee $employee): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'HR']);
+        return $user->hasAnyRole(['system_admin', 'hr']);
     }
 
     public function viewSalary(User $user, Employee $employee): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'HR']);
+        return $user->hasAnyRole(['system_admin', 'hr']);
     }
 
     public function updateSalary(User $user, Employee $employee): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'HR']);
+        return $user->hasAnyRole(['system_admin', 'hr']);
     }
 }

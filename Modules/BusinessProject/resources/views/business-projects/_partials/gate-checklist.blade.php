@@ -31,7 +31,13 @@
                     @disabled(!$gateResult->canAdvance)
                     class="btn btn-primary btn-sm w-full"
                     title="{{ $gateResult->canAdvance ? '' : 'Chưa đủ điều kiện — xem checklist phía trên' }}">
+                {{-- Rời khỏi Closing (qua Gate R6/R7) chính là "Đóng dự án" (spec Giai đoạn 6) —
+                     cùng 1 nút advance-stage chung, chỉ đổi label cho đúng ngôn ngữ nghiệp vụ. --}}
+                @if($gateResult->stage === 'closing')
+                Đóng dự án
+                @else
                 Chuyển sang {{ \Modules\BusinessProject\Enums\BusinessProjectStage::from($gateResult->nextStage)->label() }}
+                @endif
             </button>
         </form>
         @endif

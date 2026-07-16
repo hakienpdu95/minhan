@@ -9,7 +9,7 @@
     'taskTypes' => $taskTypes,
     'projects'  => $projects,
     'employees' => $employees,
-    'canDelete' => auth()->user()->can('delete', \Modules\Task\Models\Task::class),
+    'canDelete' => auth()->user()->can('delete', new \Modules\Task\Models\Task),
 ]) }})">
 
     {{-- ── Page header ──────────────────────────────────────────────────── --}}

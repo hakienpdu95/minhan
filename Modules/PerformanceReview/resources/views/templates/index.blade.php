@@ -6,7 +6,7 @@
 <div x-data="rtListPage({{ Js::from([
     'apiUrl'      => route('backend.api.review-templates'),
     'periodTypes' => $periodTypes,
-    'canDelete'   => auth()->user()->can('delete', \Modules\PerformanceReview\Models\PerformanceReview::class),
+    'canDelete'   => auth()->user()->can('delete', new \Modules\PerformanceReview\Models\PerformanceReview),
 ]) }})">
 
     {{-- ── Page header ──────────────────────────────────────────────────── --}}

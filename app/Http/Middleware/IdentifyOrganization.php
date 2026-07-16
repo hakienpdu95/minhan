@@ -34,6 +34,15 @@ class IdentifyOrganization
         if ($organization?->isActive()) {
             TenantContext::set($organization);
             $request->session()->put('organization_id', $organization->id);
+
+            // Spatie Permission dùng Teams (team_foreign_key = organization_id) — nếu không
+            // set team id ở đây, MỌI check role()/permission() của user (model_has_roles,
+            // model_has_permissions — team-scoped) sẽ luôn resolve rỗng vì mặc định team id
+            // là null, dù TenantContext đã đúng. Đây là middleware DUY NHẤT được wire global
+            // vào 'web' group (bootstrap/app.php) nên set ở đây áp dụng cho toàn app.
+            setPermissionsTeamId($organization->id);
+        } else {
+            setPermissionsTeamId(null);
         }
 
         return $next($request);

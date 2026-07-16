@@ -9,26 +9,26 @@ class KcCategoryPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'CEO', 'Ops', 'HR', 'AI_Operator', 'Sales', 'Marketing', 'Viewer']);
+        return $user->hasAnyRole(['system_admin', 'ceo', 'ops', 'hr', 'ai_operator', 'sales', 'marketing', 'viewer']);
     }
 
     public function view(User $user, KcCategory $kcCategory): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'CEO', 'Ops', 'HR', 'AI_Operator', 'Sales', 'Marketing', 'Viewer']);
+        return $user->hasAnyRole(['system_admin', 'ceo', 'ops', 'hr', 'ai_operator', 'sales', 'marketing', 'viewer']);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'Ops', 'AI_Operator']);
+        return $user->hasAnyRole(['system_admin', 'ops', 'ai_operator']);
     }
 
     public function update(User $user, KcCategory $kcCategory): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'Ops', 'AI_Operator']);
+        return $user->hasAnyRole(['system_admin', 'ops', 'ai_operator']);
     }
 
     public function delete(User $user, KcCategory $kcCategory): bool
     {
-        return $user->hasRole('System_Admin');
+        return $user->hasRole('system_admin');
     }
 }

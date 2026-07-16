@@ -306,6 +306,17 @@
                             </div>
                         </div>
 
+                        {{-- Industry — BCOS Knowledge Workspace --}}
+                        <div class="form-control">
+                            <label class="label py-0 pb-1">
+                                <span class="label-text text-sm font-medium">Ngành (Industry)</span>
+                                <span class="label-text-alt text-xs text-base-content/40">VD: Bảo hiểm, Nông nghiệp, Sản xuất, Logistics...</span>
+                            </label>
+                            <input type="text" name="industry" value="{{ old('industry', $kcItem->industry) }}"
+                                   class="input input-bordered input-sm w-full" placeholder="Ngành của doanh nghiệp trong dự án này">
+                            @error('industry')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
+                        </div>
+
                     </div>
                 </div>
 

@@ -23,7 +23,9 @@ class KcItem extends TenantAwareModel implements HasMedia
     protected $fillable = [
         'uuid',
         'category_id',
+        'business_project_id',
         'domain_code',
+        'industry',
         'difficulty',
         'organization_id',
         'title',
@@ -68,6 +70,15 @@ class KcItem extends TenantAwareModel implements HasMedia
     public function category(): BelongsTo
     {
         return $this->belongsTo(KcCategory::class, 'category_id');
+    }
+
+    /**
+     * BCOS (Business Consulting OS) — Knowledge Asset gắn với Business Project (Rule R7, nullable
+     * — KcItem ngoài BCOS vẫn hợp lệ).
+     */
+    public function businessProject(): BelongsTo
+    {
+        return $this->belongsTo(\Modules\BusinessProject\Models\BusinessProject::class);
     }
 
     public function owner(): BelongsTo

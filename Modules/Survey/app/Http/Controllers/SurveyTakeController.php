@@ -87,7 +87,7 @@ class SurveyTakeController extends Controller
         }
 
         $data = new SurveyResponseData(
-            answers:        SurveyAnswerData::collect($answersArray),
+            answers:        SurveyAnswerData::collect($answersArray, \Spatie\LaravelData\DataCollection::class),
             respondent_ref: auth()->user()->email,
             respondent_ip:  null,
         );

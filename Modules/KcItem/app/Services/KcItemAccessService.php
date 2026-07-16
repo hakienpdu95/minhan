@@ -13,7 +13,7 @@ class KcItemAccessService
     public function canView(User $user, KcItem $item): bool
     {
         // 1. Admin → ALLOW
-        if ($user->hasRole('System_Admin')) {
+        if ($user->hasRole('system_admin')) {
             return true;
         }
 
@@ -29,7 +29,7 @@ class KcItemAccessService
 
         // 4. internal → nhân viên hợp lệ
         if ($item->visibility === KcItemVisibility::Internal) {
-            return $user->hasAnyRole(['CEO', 'Sales', 'Ops', 'Marketing', 'HR', 'AI_Operator', 'System_Admin', 'Viewer']);
+            return $user->hasAnyRole(['ceo', 'sales', 'ops', 'marketing', 'hr', 'ai_operator', 'system_admin', 'viewer']);
         }
 
         // 5. restricted → kiểm tra kc_access_controls
@@ -51,7 +51,7 @@ class KcItemAccessService
             return null;
         }
 
-        if ($user->hasRole('System_Admin') || $user->id === $item->owner_id) {
+        if ($user->hasRole('system_admin') || $user->id === $item->owner_id) {
             return 'manage';
         }
 
@@ -119,7 +119,7 @@ class KcItemAccessService
      */
     public function applyVisibilityScope($query, User $user): void
     {
-        if ($user->hasRole('System_Admin')) {
+        if ($user->hasRole('system_admin')) {
             return;
         }
 

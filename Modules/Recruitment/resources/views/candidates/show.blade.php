@@ -256,7 +256,7 @@
                                         <p class="text-sm whitespace-pre-wrap">{{ $note->content }}</p>
                                         <p class="text-xs opacity-40 mt-1">{{ $note->createdBy?->name }} · {{ $note->created_at?->format('d/m/Y H:i') }}</p>
                                     </div>
-                                    @if($note->created_by === auth()->id() || auth()->user()->hasRole('HR_Admin'))
+                                    @if($note->created_by === auth()->id() || auth()->user()->hasRole('hr'))
                                     <button class="btn btn-ghost btn-xs text-error shrink-0"
                                             @click="deleteNote({{ $note->id }})">Xóa</button>
                                     @endif

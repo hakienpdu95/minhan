@@ -11,7 +11,7 @@
     'experienceLevels'=> $experienceLevels,
     'industries'      => $industries,
     'departments'     => $departments,
-    'canDelete'       => auth()->user()->can('delete', \Modules\JobPosting\Models\JpJobPost::class),
+    'canDelete'       => auth()->user()->can('delete', new \Modules\JobPosting\Models\JpJobPost),
 ]) }})">
 
     {{-- ── Page header ──────────────────────────────────────────────────── --}}

@@ -18,6 +18,9 @@ class LeadSourcesSeeder extends Seeder
             ['code' => 'referral', 'label' => 'Giới thiệu',        'color' => 'teal',   'icon' => 'ti-users',          'sort_order' => 6],
             ['code' => 'event',    'label' => 'Sự kiện',           'color' => 'teal',   'icon' => 'ti-calendar-event', 'sort_order' => 7],
             ['code' => 'website',  'label' => 'Website',            'color' => 'blue',   'icon' => 'ti-world',          'sort_order' => 8],
+            // BCOS Giai đoạn 8 — "New Opportunity" từ Customer Success Workspace của 1 Business
+            // Project đã Closed (khép vòng lặp toàn hệ thống, xem CreateLeadFromOpportunityAction).
+            ['code' => 'business_project', 'label' => 'Dự án BCOS (New Opportunity)', 'color' => 'indigo', 'icon' => 'ti-briefcase', 'sort_order' => 9],
         ];
 
         foreach ($sources as $source) {

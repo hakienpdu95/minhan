@@ -3,6 +3,7 @@
 namespace Modules\BusinessProject\Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Modules\BusinessProject\Models\ChangeRequest;
 use Modules\BusinessProject\Models\Deliverable;
 use RingleSoft\LaravelProcessApproval\Models\ProcessApprovalFlow;
 use Spatie\Permission\Models\Permission;
@@ -17,6 +18,9 @@ class BusinessProjectPermissionSeeder extends Seeder
         'business_project.manage',
         'business_context.manage',
         'business_context.approve',
+        'business_discovery.manage',
+        'business_transformation.manage',
+        'business_delivery.manage',
     ];
 
     private const ROLES = [
@@ -45,6 +49,7 @@ class BusinessProjectPermissionSeeder extends Seeder
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         $this->seedApprovalFlow();
+        $this->seedChangeRequestApprovalFlow();
 
         $this->command?->info('  ✓ BusinessProject permissions + roles + approval flow seeded.');
     }
@@ -61,6 +66,20 @@ class BusinessProjectPermissionSeeder extends Seeder
 
         if (! $exists) {
             Deliverable::makeApprovable(['lead_consultant' => 'APPROVE'], 'Deliverable Approval');
+        }
+    }
+
+    /**
+     * Change Request (Rule R5, Giai đoạn 5) KHÔNG phải Deliverable — Ringlesoft chỉ cho phép
+     * 1 Model = 1 flow, nên cần đăng ký flow RIÊNG "Change Request Approval" (cùng step role
+     * lead_consultant, đúng Ma trận Phần 4 — Approval nội bộ trước khi ảnh hưởng scope).
+     */
+    private function seedChangeRequestApprovalFlow(): void
+    {
+        $exists = ProcessApprovalFlow::where('approvable_type', ChangeRequest::class)->exists();
+
+        if (! $exists) {
+            ChangeRequest::makeApprovable(['lead_consultant' => 'APPROVE'], 'Change Request Approval');
         }
     }
 }

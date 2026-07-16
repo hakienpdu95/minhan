@@ -49,6 +49,10 @@ class UpdateBusinessContextAction
 
                 // Sửa nội dung sau khi đã submit/approve coi như quay lại draft —
                 // phải Gửi phê duyệt lại (đúng nguyên tắc "duyệt lại khi có thay đổi").
+                // resetApprovalCycle() bắt buộc phải gọi ở đây — nếu không, submit() lần sau sẽ
+                // ném RequestAlreadySubmittedException (Ringlesoft không tự cho phép nộp lại,
+                // xem Deliverable::resetApprovalCycle()).
+                $deliverable->resetApprovalCycle();
                 $deliverable->update([
                     'current_version' => $nextVersion,
                     'status' => DeliverableStatus::Draft->value,

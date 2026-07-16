@@ -26,7 +26,7 @@ class MeController
             'roles'        => $user->getRoleNames(),
         ];
 
-        if ($user->hasRole('System_Admin')) {
+        if ($user->hasRole('system_admin')) {
             $data['permissions'] = $user->getAllPermissions()
                 ->pluck('name')
                 ->sort()

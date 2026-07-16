@@ -7,28 +7,33 @@ use Modules\KcItem\Models\KcItem;
 
 class KcItemPolicy
 {
+    /**
+     * BCOS (Business Consulting OS) — `lead_consultant`/`consultant`/`pm` thêm vào để dùng được
+     * link "Tạo Knowledge Asset mới" từ Closing Workspace (Modules\BusinessProject, Rule R7),
+     * cùng pattern đã áp dụng cho `Modules\Task\Policies\TaskPolicy`.
+     */
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'CEO', 'Ops', 'HR', 'AI_Operator', 'Sales', 'Marketing', 'Viewer']);
+        return $user->hasAnyRole(['system_admin', 'ceo', 'ops', 'hr', 'ai_operator', 'sales', 'marketing', 'viewer', 'lead_consultant', 'consultant', 'pm']);
     }
 
     public function view(User $user, KcItem $kcItem): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'CEO', 'Ops', 'HR', 'AI_Operator', 'Sales', 'Marketing', 'Viewer']);
+        return $user->hasAnyRole(['system_admin', 'ceo', 'ops', 'hr', 'ai_operator', 'sales', 'marketing', 'viewer', 'lead_consultant', 'consultant', 'pm']);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'Ops', 'AI_Operator', 'HR', 'Marketing']);
+        return $user->hasAnyRole(['system_admin', 'ops', 'ai_operator', 'hr', 'marketing', 'ceo', 'lead_consultant', 'consultant', 'pm']);
     }
 
     public function update(User $user, KcItem $kcItem): bool
     {
-        if ($user->hasRole('System_Admin')) {
+        if ($user->hasRole('system_admin')) {
             return true;
         }
 
-        if ($user->hasAnyRole(['Ops', 'AI_Operator', 'HR', 'Marketing'])) {
+        if ($user->hasAnyRole(['ops', 'ai_operator', 'hr', 'marketing'])) {
             return $kcItem->isEditable();
         }
 
@@ -37,13 +42,13 @@ class KcItemPolicy
 
     public function delete(User $user, KcItem $kcItem): bool
     {
-        return $user->hasRole('System_Admin');
+        return $user->hasRole('system_admin');
     }
 
     public function submit(User $user, KcItem $kcItem): bool
     {
         return $kcItem->canSubmit()
-            && $user->hasAnyRole(['System_Admin', 'Ops', 'AI_Operator', 'HR', 'Marketing']);
+            && $user->hasAnyRole(['system_admin', 'ops', 'ai_operator', 'hr', 'marketing']);
     }
 
     public function approve(User $user, KcItem $kcItem): bool
@@ -52,12 +57,12 @@ class KcItemPolicy
             return false;
         }
 
-        if (! $user->hasAnyRole(['System_Admin', 'Ops', 'AI_Operator'])) {
+        if (! $user->hasAnyRole(['system_admin', 'ops', 'ai_operator'])) {
             return false;
         }
 
         // Tác giả không được tự duyệt (trừ admin)
-        if ($user->id === $kcItem->owner_id && ! $user->hasRole('System_Admin')) {
+        if ($user->id === $kcItem->owner_id && ! $user->hasRole('system_admin')) {
             return false;
         }
 
@@ -71,12 +76,12 @@ class KcItemPolicy
 
     public function archive(User $user, KcItem $kcItem): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'Ops', 'AI_Operator']);
+        return $user->hasAnyRole(['system_admin', 'ops', 'ai_operator']);
     }
 
     public function rollback(User $user, KcItem $kcItem): bool
     {
-        if ($user->hasRole('System_Admin')) {
+        if ($user->hasRole('system_admin')) {
             return true;
         }
 
@@ -84,6 +89,6 @@ class KcItemPolicy
             return true;
         }
 
-        return $user->hasRole('Ops');
+        return $user->hasRole('ops');
     }
 }

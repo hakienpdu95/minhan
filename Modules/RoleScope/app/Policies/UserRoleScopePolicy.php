@@ -9,26 +9,26 @@ class UserRoleScopePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'HR', 'CEO']);
+        return $user->hasAnyRole(['system_admin', 'hr', 'ceo']);
     }
 
     public function view(User $user, UserRoleScope $scope): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'HR', 'CEO']);
+        return $user->hasAnyRole(['system_admin', 'hr', 'ceo']);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'HR']);
+        return $user->hasAnyRole(['system_admin', 'hr']);
     }
 
     public function update(User $user, UserRoleScope $scope): bool
     {
-        return $user->hasAnyRole(['System_Admin', 'HR']);
+        return $user->hasAnyRole(['system_admin', 'hr']);
     }
 
     public function delete(User $user, UserRoleScope $scope): bool
     {
-        return $user->hasRole('System_Admin');
+        return $user->hasRole('system_admin');
     }
 }

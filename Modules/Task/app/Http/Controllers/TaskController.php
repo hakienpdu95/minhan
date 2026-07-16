@@ -87,9 +87,15 @@ class TaskController extends Controller
         ));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $orgId = TenantContext::getOrganizationId();
+
+        // BCOS (Business Consulting OS) — prefill khi mở form từ Delivery Workspace của 1
+        // Business Project (query string, xem Modules\BusinessProject\Http\Controllers\DeliveryController).
+        // Không thêm field chọn Business Project trên form chung — chỉ passthrough khi đến từ đó.
+        $businessProjectId = $request->integer('business_project_id') ?: null;
+        $prefillTitle = $request->string('title')->toString();
 
         [$organizations, $defaultOrgId, $orgLocked] = $this->_resolveOrganizations();
 
@@ -124,7 +130,7 @@ class TaskController extends Controller
 
         return view('task::tasks.create', compact(
             'projects', 'employees', 'statuses', 'priorities', 'taskTypes',
-            'organizations', 'defaultOrgId', 'orgLocked'
+            'organizations', 'defaultOrgId', 'orgLocked', 'businessProjectId', 'prefillTitle'
         ));
     }
 

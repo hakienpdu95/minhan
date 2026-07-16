@@ -203,7 +203,7 @@ document.addEventListener('alpine:init', function () {
         var tagTsInst      = null;
 
         return {
-            filters:    { search: '', status: '', type: '', category_id: '', tag_id: '' },
+            filters:    { search: '', status: '', type: '', category_id: '', tag_id: '', industry: '' },
             hiddenCols: [],
 
             get toggleableCols() {
@@ -214,12 +214,13 @@ document.addEventListener('alpine:init', function () {
 
             get hasFilters() {
                 var f = this.filters;
-                return !!(f.search || f.status || f.type || f.category_id || f.tag_id);
+                return !!(f.search || f.status || f.type || f.category_id || f.tag_id || f.industry);
             },
 
             get activeChips() {
                 var chips = [], f = this.filters;
                 if (f.search)      chips.push({ key: 'search',   label: 'Tìm: ' + f.search });
+                if (f.industry)    chips.push({ key: 'industry', label: 'Ngành: ' + f.industry });
                 if (f.type) {
                     var t = types.find(function (x) { return x.value === f.type; });
                     chips.push({ key: 'type', label: 'Loại: ' + (t ? t.text : f.type) });
@@ -259,6 +260,7 @@ document.addEventListener('alpine:init', function () {
                         if (f.type)        p.type        = f.type;
                         if (f.category_id) p.category_id = f.category_id;
                         if (f.tag_id)      p.tag_id      = f.tag_id;
+                        if (f.industry)    p.industry    = f.industry;
                         return p;
                     },
                     ajaxResponse: function (_u, _p, res) { return res; },
@@ -372,6 +374,7 @@ document.addEventListener('alpine:init', function () {
                 if (p.has('tp'))   this.filters.type        = p.get('tp');
                 if (p.has('cat'))  this.filters.category_id = p.get('cat');
                 if (p.has('tag'))  this.filters.tag_id      = p.get('tag');
+                if (p.has('ind'))  this.filters.industry    = p.get('ind');
             },
 
             saveState: function () {
@@ -381,6 +384,7 @@ document.addEventListener('alpine:init', function () {
                 if (f.type)        p.set('tp',  f.type);
                 if (f.category_id) p.set('cat', f.category_id);
                 if (f.tag_id)      p.set('tag', f.tag_id);
+                if (f.industry)    p.set('ind', f.industry);
                 var qs = p.toString();
                 history.replaceState(null, '', qs ? '?' + qs : location.pathname);
             },
@@ -394,6 +398,7 @@ document.addEventListener('alpine:init', function () {
                 var self = this;
                 var actions = {
                     search:   function () { self.filters.search = ''; },
+                    industry: function () { self.filters.industry = ''; },
                     type:     function () { self.filters.type = '';        if (typeTsInst)     typeTsInst.clear(true); },
                     status:   function () { self.filters.status = '';      if (statusTsInst)   statusTsInst.clear(true); },
                     category: function () { self.filters.category_id = ''; if (categoryTsInst) categoryTsInst.clear(true); },
@@ -405,7 +410,7 @@ document.addEventListener('alpine:init', function () {
             },
 
             reset: function () {
-                this.filters = { search: '', status: '', type: '', category_id: '', tag_id: '' };
+                this.filters = { search: '', status: '', type: '', category_id: '', tag_id: '', industry: '' };
                 if (typeTsInst)     typeTsInst.clear(true);
                 if (statusTsInst)   statusTsInst.clear(true);
                 if (categoryTsInst) categoryTsInst.clear(true);

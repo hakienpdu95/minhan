@@ -489,7 +489,7 @@
 
                     </div>
 
-                    @if(auth()->user()?->hasAnyRole(['System_Admin', 'HR']))
+                    @if(auth()->user()?->hasAnyRole(['system_admin', 'hr']))
                     <div class="divider text-xs text-base-content/40">Thông tin lương (chỉ HR)</div>
 
                     <div class="form-control">
@@ -563,7 +563,7 @@
 
                     </div>
 
-                    @if(auth()->user()?->hasAnyRole(['System_Admin', 'HR']))
+                    @if(auth()->user()?->hasAnyRole(['system_admin', 'hr']))
                     <div class="divider text-xs text-base-content/40">Thông tin ngân hàng (chỉ HR)</div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

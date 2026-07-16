@@ -25,6 +25,9 @@ class StoreKcItemData extends Data
         #[Required]
         public readonly int $category_id,
 
+        #[Nullable]
+        public readonly ?int $business_project_id,
+
         #[Required, StringType]
         public readonly string $type,
 
@@ -42,6 +45,9 @@ class StoreKcItemData extends Data
 
         #[Nullable, StringType, Max(10)]
         public readonly ?string $domain_code = null,
+
+        #[Nullable, StringType, Max(100)]
+        public readonly ?string $industry = null,
 
         public readonly ?int $difficulty = null,
 
@@ -71,7 +77,9 @@ class StoreKcItemData extends Data
                     ->whereNull('deleted_at'),
             ],
             'category_id' => ['required', 'integer', 'exists:kc_categories,id'],
-            'type'        => ['required', 'string', Rule::in(['document', 'sop', 'video', 'form', 'faq', 'case_study', 'policy'])],
+            'business_project_id' => ['nullable', 'integer', Rule::exists('business_projects', 'id')->where('organization_id', $orgId)],
+            'type'        => ['required', 'string', Rule::in(array_column(\Modules\KcItem\Enums\KcItemType::cases(), 'value'))],
+            'industry'    => ['nullable', 'string', 'max:100'],
             'visibility'  => ['nullable', 'string', Rule::in(['public', 'internal', 'restricted', 'private'])],
             'effective_date' => ['nullable', 'date'],
             'expired_date'   => ['nullable', 'date', 'after_or_equal:effective_date'],

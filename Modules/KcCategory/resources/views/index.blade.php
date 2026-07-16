@@ -6,7 +6,7 @@
 <div x-data="kcCategoryListPage({{ Js::from([
     'apiUrl'    => route('backend.api.kc-categories'),
     'statuses'  => $statuses,
-    'canDelete' => auth()->user()->can('delete', \Modules\KcCategory\Models\KcCategory::class),
+    'canDelete' => auth()->user()->can('delete', new \Modules\KcCategory\Models\KcCategory),
 ]) }})">
 
     {{-- ── Page header ──────────────────────────────────────────────────── --}}

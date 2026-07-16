@@ -23,6 +23,7 @@ class Task extends TenantAwareModel
         'uuid',
         'organization_id',
         'project_id',
+        'business_project_id',
         'parent_id',
         'employee_id',
         'title',
@@ -80,6 +81,15 @@ class Task extends TenantAwareModel
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * BCOS (Business Consulting OS) — task nằm trong Delivery Workspace của 1 Business Project
+     * (spec Phần 6.3, nullable — task ngoài BCOS vẫn hợp lệ).
+     */
+    public function businessProject(): BelongsTo
+    {
+        return $this->belongsTo(\Modules\BusinessProject\Models\BusinessProject::class);
     }
 
     public function parent(): BelongsTo

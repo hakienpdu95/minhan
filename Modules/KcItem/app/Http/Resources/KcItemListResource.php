@@ -33,6 +33,7 @@ class KcItemListResource extends JsonResource
             'is_featured'    => (bool) $this->is_featured,
             'is_pinned'      => (bool) $this->is_pinned,
             'summary'        => $this->summary,
+            'industry'       => $this->industry,
 
             'category' => $this->category ? [
                 'id'        => $this->category->id,

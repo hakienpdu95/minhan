@@ -117,6 +117,13 @@ class RolePermissionSeeder extends Seeder
                 P::BUSINESS_PROJECT_CREATE->value,
                 P::BUSINESS_CONTEXT_MANAGE->value,
                 P::BUSINESS_CONTEXT_APPROVE->value,
+                P::BUSINESS_DIAGNOSIS_MANAGE->value,
+                P::BUSINESS_DISCOVERY_MANAGE->value,
+                P::BUSINESS_TRANSFORMATION_MANAGE->value,
+                P::BUSINESS_DELIVERY_MANAGE->value,
+                P::BUSINESS_CLOSING_MANAGE->value,
+                P::BUSINESS_KNOWLEDGE_MANAGE->value,
+                P::BUSINESS_CUSTOMER_SUCCESS_MANAGE->value,
             ],
 
             // ─────────────────────────────────────────────────────────
@@ -363,24 +370,49 @@ class RolePermissionSeeder extends Seeder
                 P::BUSINESS_PROJECT_CREATE->value,
                 P::BUSINESS_CONTEXT_MANAGE->value,
                 P::BUSINESS_CONTEXT_APPROVE->value,
+                P::BUSINESS_DIAGNOSIS_MANAGE->value,
+                P::BUSINESS_DISCOVERY_MANAGE->value,
+                P::BUSINESS_TRANSFORMATION_MANAGE->value,
+                P::BUSINESS_DELIVERY_MANAGE->value,
+                P::BUSINESS_CLOSING_MANAGE->value,
+                P::BUSINESS_KNOWLEDGE_MANAGE->value,
             ],
 
             RoleEnum::CONSULTANT->value => [
                 P::BUSINESS_PROJECT_VIEW->value,
                 P::BUSINESS_CONTEXT_MANAGE->value,
+                P::BUSINESS_DIAGNOSIS_MANAGE->value,
+                P::BUSINESS_DISCOVERY_MANAGE->value,
+                P::BUSINESS_TRANSFORMATION_MANAGE->value,
+                P::BUSINESS_DELIVERY_MANAGE->value,
             ],
 
+            // BA không quản lý Diagnosis (Ma trận Phần 7.2: hàng "Gửi phê duyệt Diagnosis" là "—"
+            // cho BA, chỉ Founder/Lead Consultant/Consultant).
             RoleEnum::BUSINESS_ANALYST->value => [
                 P::BUSINESS_PROJECT_VIEW->value,
                 P::BUSINESS_CONTEXT_MANAGE->value,
+                P::BUSINESS_DISCOVERY_MANAGE->value,
             ],
 
+            // PM không quản lý Context/Discovery (Ma trận Phần 7.2: hàng "Nhập Context/Discovery"
+            // là "—" cho PM) — chỉ tham gia từ Transformation trở đi (ghi nhận + tick Confirmed
+            // R4; Weekly Report/Issue/Risk ở Delivery; Đóng dự án R6/R7 — matrix "✅" cho PM ở cả
+            // 3 hàng này, khác Consultant/BA/Customer Success đều "—" ở hàng Đóng dự án).
             RoleEnum::PROJECT_MANAGER->value => [
                 P::BUSINESS_PROJECT_VIEW->value,
+                P::BUSINESS_TRANSFORMATION_MANAGE->value,
+                P::BUSINESS_DELIVERY_MANAGE->value,
+                P::BUSINESS_CLOSING_MANAGE->value,
+                P::BUSINESS_KNOWLEDGE_MANAGE->value,
             ],
 
+            // Ma trận Phần 7.2 "CSAT/NPS, Renewal, tạo Lead mới": chỉ Founder + Customer Success
+            // (Lead Consultant/Consultant/BA/PM đều "—") — role Customer Success chỉ cần
+            // đúng 1 quyền workspace này, không cần các quyền workspace khác.
             RoleEnum::CUSTOMER_SUCCESS->value => [
                 P::BUSINESS_PROJECT_VIEW->value,
+                P::BUSINESS_CUSTOMER_SUCCESS_MANAGE->value,
             ],
         ];
     }

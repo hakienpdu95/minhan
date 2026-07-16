@@ -68,6 +68,12 @@ Schedule::command('notifications:task-overdue')
     ->dailyAt('08:30')
     ->onOneServer();
 
+// BCOS Customer Success (Giai đoạn 8): nhắc CS staff khi follow-up dự án đến hạn hôm nay
+Schedule::command('notifications:success-followup-due')
+    ->name('notifications:success-followup-due')
+    ->dailyAt('08:15')
+    ->onOneServer();
+
 // KPI: thông báo kpi_missed cho goals kết thúc ngày hôm qua mà chưa đạt
 Schedule::command('notifications:kpi-missed')
     ->name('notifications:kpi-missed')

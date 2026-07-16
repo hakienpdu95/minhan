@@ -49,7 +49,7 @@ class CandidateNoteController extends Controller
         }
 
         // Chỉ cho phép xóa note của chính mình hoặc HR Admin
-        if ($note->created_by !== auth()->id() && !auth()->user()->hasRole('HR_Admin')) {
+        if ($note->created_by !== auth()->id() && !auth()->user()->hasRole('hr')) {
             abort(403, 'Bạn không có quyền xóa ghi chú này');
         }
 

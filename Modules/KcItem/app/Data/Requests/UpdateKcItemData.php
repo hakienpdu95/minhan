@@ -40,6 +40,9 @@ class UpdateKcItemData extends Data
         #[Nullable, StringType, Max(10)]
         public readonly ?string $domain_code = null,
 
+        #[Nullable, StringType, Max(100)]
+        public readonly ?string $industry = null,
+
         public readonly ?int $difficulty = null,
 
         public readonly bool $is_featured = false,
@@ -69,7 +72,8 @@ class UpdateKcItemData extends Data
                     ->ignore($currentId),
             ],
             'category_id' => ['required', 'integer', 'exists:kc_categories,id'],
-            'type'        => ['required', 'string', Rule::in(['document', 'sop', 'video', 'form', 'faq', 'case_study', 'policy'])],
+            'type'        => ['required', 'string', Rule::in(array_column(\Modules\KcItem\Enums\KcItemType::cases(), 'value'))],
+            'industry'    => ['nullable', 'string', 'max:100'],
             'visibility'  => ['nullable', 'string', Rule::in(['public', 'internal', 'restricted', 'private'])],
             'effective_date' => ['nullable', 'date'],
             'expired_date'   => ['nullable', 'date', 'after_or_equal:effective_date'],

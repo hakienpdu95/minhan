@@ -8,7 +8,7 @@
     'functions'     => $functions,
     'statuses'      => $statuses,
     'branchOptions' => $branchOptions,
-    'canDelete'     => auth()->user()->can('delete', \Modules\Department\Models\Department::class),
+    'canDelete'     => auth()->user()->can('delete', new \Modules\Department\Models\Department),
 ]) }})">
 
     {{-- ── Page header ──────────────────────────────────────────────────── --}}

@@ -10,7 +10,7 @@
     'types'         => $types,
     'statuses'      => $statuses,
     'parentOptions' => $parentOptions,
-    'canDelete'     => auth()->user()->can('delete', \Modules\Branch\Models\Branch::class),
+    'canDelete'     => auth()->user()->can('delete', new \Modules\Branch\Models\Branch),
 ]) }})">
 
     {{-- ── Page header ──────────────────────────────────────────────────── --}}

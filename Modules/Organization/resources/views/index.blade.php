@@ -8,7 +8,7 @@
     'wardsApi'  => url('/api/provinces'),
     'provinces' => $provinces,
     'statuses'  => $statuses,
-    'canDelete' => auth()->user()->can('delete', \Modules\Organization\Models\Organization::class),
+    'canDelete' => auth()->user()->can('delete', new \Modules\Organization\Models\Organization),
 ]) }})">
 
     {{-- ── Page header ──────────────────────────────────────────────────── --}}

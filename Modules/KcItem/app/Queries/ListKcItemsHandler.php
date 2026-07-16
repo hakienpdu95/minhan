@@ -34,7 +34,7 @@ class ListKcItemsHandler implements QueryHandlerInterface
             ->where('kc_items.organization_id', TenantContext::getOrganizationId());
 
         // Áp dụng visibility scope cho non-admin users
-        if (auth()->check() && ! auth()->user()->hasRole('System_Admin')) {
+        if (auth()->check() && ! auth()->user()->hasRole('system_admin')) {
             $this->accessService->applyVisibilityScope($q, auth()->user());
         }
 
@@ -62,6 +62,10 @@ class ListKcItemsHandler implements QueryHandlerInterface
 
         if ($query->visibility !== null && $query->visibility !== '') {
             $q->where('kc_items.visibility', $query->visibility);
+        }
+
+        if ($query->industry !== null && $query->industry !== '') {
+            $q->where('kc_items.industry', 'like', '%' . $query->industry . '%');
         }
 
         // ── Date range ───────────────────────────────────────────────────────

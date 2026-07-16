@@ -22,6 +22,10 @@
           data-kc-item-form
           x-data="kcItemForm()">
         @csrf
+        {{-- BCOS: gắn Knowledge Asset với Business Project khi mở form từ Closing Workspace --}}
+        @if($businessProjectId ?? null)
+        <input type="hidden" name="business_project_id" value="{{ old('business_project_id', $businessProjectId) }}">
+        @endif
 
         <div class="grid grid-cols-1 xl:grid-cols-[1fr_268px] gap-6 items-start">
 
@@ -149,7 +153,7 @@
                                     class="select select-bordered select-sm w-full">
                                 <option value="">— Chọn loại —</option>
                                 @foreach($types as $t)
-                                <option value="{{ $t['value'] }}" {{ old('type') === $t['value'] ? 'selected' : '' }}>
+                                <option value="{{ $t['value'] }}" {{ old('type', $prefillType ?? '') === $t['value'] ? 'selected' : '' }}>
                                     {{ $t['text'] }}
                                 </option>
                                 @endforeach
@@ -220,6 +224,18 @@
                                 </select>
                                 @error('difficulty')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                             </div>
+                        </div>
+
+                        {{-- Industry — BCOS Knowledge Workspace: gắn ngành để search lại ở Discovery
+                             dự án sau (spec Giai đoạn 7 "khép vòng tri thức") --}}
+                        <div class="form-control">
+                            <label class="label py-0 pb-1">
+                                <span class="label-text text-sm font-medium">Ngành (Industry)</span>
+                                <span class="label-text-alt text-xs text-base-content/40">VD: Bảo hiểm, Nông nghiệp, Sản xuất, Logistics...</span>
+                            </label>
+                            <input type="text" name="industry" value="{{ old('industry', $prefillIndustry ?? '') }}"
+                                   class="input input-bordered input-sm w-full" placeholder="Ngành của doanh nghiệp trong dự án này">
+                            @error('industry')<p class="mt-1 text-xs text-error">{{ $message }}</p>@enderror
                         </div>
 
                     </div>

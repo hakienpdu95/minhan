@@ -8,7 +8,7 @@
     'roles'       => $roles->map(fn($r) => ['value' => $r->id, 'text' => $r->name])->values()->all(),
     'scopeLevels' => $scopeLevels,
     'statuses'    => $statuses,
-    'canDelete'   => auth()->user()->can('delete', \Modules\RoleScope\Models\UserRoleScope::class),
+    'canDelete'   => auth()->user()->can('delete', new \Modules\RoleScope\Models\UserRoleScope),
 ]) }})">
 
     {{-- ── Page header ──────────────────────────────────────────────────── --}}

@@ -208,4 +208,11 @@ enum PermissionEnum: string
     case BUSINESS_PROJECT_MANAGE  = 'business_project.manage';   // System Admin — config
     case BUSINESS_CONTEXT_MANAGE  = 'business_context.manage';   // Tạo/sửa Business Context Canvas
     case BUSINESS_CONTEXT_APPROVE = 'business_context.approve';  // Rule R1 gate — duyệt Context Report
+    case BUSINESS_DIAGNOSIS_MANAGE = 'business_diagnosis.manage'; // Ghi Diagnosis Matrix/Evidence + gửi phê duyệt (R3)
+    case BUSINESS_DISCOVERY_MANAGE = 'business_discovery.manage'; // Ghi Interview/Observation/TPS Canvas/Discovery Report
+    case BUSINESS_TRANSFORMATION_MANAGE = 'business_transformation.manage'; // Ghi Canvas/Roadmap/Milestone/Proposal/SOW + tick Confirmed (R4)
+    case BUSINESS_DELIVERY_MANAGE = 'business_delivery.manage'; // Ghi Weekly Report/Meeting/Issue/Risk/Change Request (R5)
+    case BUSINESS_CLOSING_MANAGE = 'business_closing.manage'; // Ghi Final Report + gắn Knowledge Asset, đóng dự án (R6/R7)
+    case BUSINESS_KNOWLEDGE_MANAGE = 'business_knowledge.manage'; // Knowledge Workspace — gắn/tạo Knowledge Asset (lessons learned/best practice/industry knowledge)
+    case BUSINESS_CUSTOMER_SUCCESS_MANAGE = 'business_customer_success.manage'; // Customer Success Workspace — CSAT/NPS, follow-up, renewal, tạo Lead mới (Ma trận 7.2: chỉ Founder + Customer Success)
 }

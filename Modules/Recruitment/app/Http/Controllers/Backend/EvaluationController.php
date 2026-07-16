@@ -20,7 +20,7 @@ class EvaluationController extends Controller
 
         // Kiểm tra user có trong panel không (hoặc là HR Admin)
         $isPanelist = $interview->panelists->contains('user_id', auth()->id());
-        abort_unless($isPanelist || auth()->user()->hasRole('HR_Admin'), 403, 'Bạn không trong panel phỏng vấn này');
+        abort_unless($isPanelist || auth()->user()->hasRole('hr'), 403, 'Bạn không trong panel phỏng vấn này');
 
         // Load đánh giá cũ nếu có (draft)
         $existing = $interview->evaluations()->where('evaluator_id', auth()->id())->with('criteria')->first();
@@ -35,7 +35,7 @@ class EvaluationController extends Controller
         $this->authorize('view', $interview->application);
 
         $isPanelist = $interview->panelists()->where('user_id', auth()->id())->exists();
-        abort_unless($isPanelist || auth()->user()->hasRole('HR_Admin'), 403);
+        abort_unless($isPanelist || auth()->user()->hasRole('hr'), 403);
 
         $validated = $request->validate([
             'overall_score'  => ['required', 'integer', 'min:1', 'max:10'],

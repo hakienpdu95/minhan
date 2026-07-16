@@ -7,7 +7,7 @@
     'apiUrl'     => route('backend.api.org-charts'),
     'viewTypes'  => $viewTypes,
     'groupBys'   => $groupBys,
-    'canDelete'  => auth()->user()->can('delete', \Modules\OrgChart\Models\OrgChartConfig::class),
+    'canDelete'  => auth()->user()->can('delete', new \Modules\OrgChart\Models\OrgChartConfig),
 ]) }})">
 
     {{-- ── Page header ──────────────────────────────────────────────────── --}}

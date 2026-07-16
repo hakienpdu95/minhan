@@ -35,7 +35,7 @@ class UserApiController extends Controller
         $sortDir   = is_array($sortRaw) && ($sortRaw['dir'] ?? '') === 'asc' ? 'asc' : 'desc';
 
         // Admin sees all (or filters by chosen org); non-admin is locked to their org
-        $isAdmin = $request->user()->hasAnyRole(['super-admin', 'System_Admin']);
+        $isAdmin = $request->user()->hasAnyRole(['super-admin', 'system_admin']);
 
         if ($isAdmin) {
             $orgId = $request->filled('organization_id')

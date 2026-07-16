@@ -43,6 +43,7 @@ class KcItemApiController extends Controller
             dateFrom:   $request->input('date_from'),
             dateTo:     $request->input('date_to'),
             tagId:      $tagId,
+            industry:   $request->input('industry'),
         );
 
         $paginator = $handler->handle($query);

@@ -110,4 +110,26 @@ class Deliverable extends TenantAwareModel implements ApprovableModel
 
         return true;
     }
+
+    /**
+     * Ringlesoft `approvalStatus` (ProcessApprovalStatus) là vòng đời 1 CHIỀU — package không hỗ
+     * trợ resubmit lần 2 trên cùng 1 record (`isSubmitted()` luôn true sau lần submit đầu, dù
+     * cột `status` của app đã set lại 'draft'). Bug thật phát hiện khi test Change Request mở
+     * khóa SOW: gọi method này SAU KHI set `status` app về draft, để `submit()` hoạt động lại —
+     * tái tạo state ban đầu giống hệt `bootApprovable()` lúc tạo record, không có API reset sẵn
+     * từ vendor. Dùng ở mọi nơi "sửa nội dung sau khi đã duyệt, cần duyệt lại" (Context sau khi
+     * approved, SOW sau khi Change Request impacts_scope được duyệt).
+     */
+    public function resetApprovalCycle(): void
+    {
+        if (! $this->isSubmitted()) {
+            return;
+        }
+
+        $this->approvalStatus()->update([
+            'steps' => $this->approvalFlowSteps()->map(fn ($step) => $step->toApprovalStatusArray()),
+            'status' => \RingleSoft\LaravelProcessApproval\Enums\ApprovalStatusEnum::CREATED->value,
+            'creator_id' => \Illuminate\Support\Facades\Auth::id(),
+        ]);
+    }
 }

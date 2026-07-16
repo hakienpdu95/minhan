@@ -19,5 +19,6 @@ class ListKcItemsQuery implements QueryInterface
         public readonly ?string $dateFrom   = null,
         public readonly ?string $dateTo     = null,
         public readonly ?int    $tagId      = null,
+        public readonly ?string $industry   = null,
     ) {}
 }
