@@ -34,6 +34,16 @@ class BusinessProjectPolicy
     }
 
     /**
+     * Phần 10 spec — BCOS Admin Dashboard: "chỉ Founder/Admin truy cập" (cấp toàn hệ thống,
+     * khác Business Project Dashboard của 1 project cụ thể) — dùng đúng cặp role đã lặp lại
+     * nhiều lần trong Policy này (`view()`, `manageWorkspace()`), không phải quyền mới.
+     */
+    public function viewBcosDashboard(User $user): bool
+    {
+        return $user->hasAnyRole(['ceo', 'system_admin']);
+    }
+
+    /**
      * Fallback dùng bởi `authorizeResource()` (route PUT/PATCH resource chung — hiện chưa có
      * route nào gọi thẳng ability này). Các Controller ghi dữ liệu theo từng workspace PHẢI
      * dùng ability riêng (manageContext/manageDiscovery/manageTransformation...), KHÔNG dùng

@@ -215,4 +215,5 @@ enum PermissionEnum: string
     case BUSINESS_CLOSING_MANAGE = 'business_closing.manage'; // Ghi Final Report + gắn Knowledge Asset, đóng dự án (R6/R7)
     case BUSINESS_KNOWLEDGE_MANAGE = 'business_knowledge.manage'; // Knowledge Workspace — gắn/tạo Knowledge Asset (lessons learned/best practice/industry knowledge)
     case BUSINESS_CUSTOMER_SUCCESS_MANAGE = 'business_customer_success.manage'; // Customer Success Workspace — CSAT/NPS, follow-up, renewal, tạo Lead mới (Ma trận 7.2: chỉ Founder + Customer Success)
+    case BUSINESS_TEMPLATE_MANAGE = 'business_template.manage'; // Template Library — soạn/chuẩn hóa template Deliverable (Founder full, Lead Consultant chuẩn hóa — Ma trận 7.2 "Duyệt Knowledge/SOP/Framework")
 }

@@ -1,6 +1,7 @@
 {{--
     Statement of Work (SOW) — cùng luồng Rule R4 như Proposal (xem _proposal.blade.php).
-    Biến cần truyền vào: $businessProject, $sow (Deliverable|null).
+    Biến cần truyền vào: $businessProject, $sow (Deliverable|null), $sowTemplates
+    (DeliverableTemplate[] — Template Library, Phase 2 mảng 5/5).
 --}}
 @php
     $sowContent = $sow?->versions->first()?->content ?? [];
@@ -18,19 +19,40 @@
         </div>
 
         @if(!$sow || $sow->status->value !== 'confirmed')
-        <form action="{{ route('backend.business-projects.transformation.sow.save', $businessProject) }}" method="POST" class="space-y-4">
+        <form action="{{ route('backend.business-projects.transformation.sow.save', $businessProject) }}" method="POST" class="space-y-4"
+              x-data="{
+                  templates: {{ Js::from($sowTemplates->map(fn($t) => ['id' => $t->id, 'name' => $t->name, 'content' => $t->content])) }},
+                  applyTemplate(id) {
+                      const t = this.templates.find(x => x.id == id);
+                      if (!t) return;
+                      this.$refs.scope.value = t.content.scope ?? '';
+                      this.$refs.deliverables.value = t.content.deliverables ?? '';
+                      this.$refs.responsibilities.value = t.content.responsibilities ?? '';
+                  }
+              }">
             @csrf
+            @if($sowTemplates->isNotEmpty())
+            <div class="form-control">
+                <label class="label py-0 pb-1"><span class="label-text text-xs font-medium">Bắt đầu từ Template</span></label>
+                <select name="template_id" class="select select-bordered select-sm w-full" @change="applyTemplate($event.target.value)">
+                    <option value="">— Không dùng template —</option>
+                    @foreach($sowTemplates as $t)
+                    <option value="{{ $t->id }}">{{ $t->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
             <div>
                 <label class="label label-text text-sm font-medium">Phạm vi (Scope)</label>
-                <textarea name="scope" rows="2" class="textarea textarea-bordered w-full">{{ old('scope', $sowContent['scope'] ?? '') }}</textarea>
+                <textarea name="scope" rows="2" class="textarea textarea-bordered w-full" x-ref="scope">{{ old('scope', $sowContent['scope'] ?? '') }}</textarea>
             </div>
             <div>
                 <label class="label label-text text-sm font-medium">Kết quả bàn giao (Deliverables)</label>
-                <textarea name="deliverables" rows="2" class="textarea textarea-bordered w-full">{{ old('deliverables', $sowContent['deliverables'] ?? '') }}</textarea>
+                <textarea name="deliverables" rows="2" class="textarea textarea-bordered w-full" x-ref="deliverables">{{ old('deliverables', $sowContent['deliverables'] ?? '') }}</textarea>
             </div>
             <div>
                 <label class="label label-text text-sm font-medium">Trách nhiệm các bên (Responsibilities)</label>
-                <textarea name="responsibilities" rows="2" class="textarea textarea-bordered w-full">{{ old('responsibilities', $sowContent['responsibilities'] ?? '') }}</textarea>
+                <textarea name="responsibilities" rows="2" class="textarea textarea-bordered w-full" x-ref="responsibilities">{{ old('responsibilities', $sowContent['responsibilities'] ?? '') }}</textarea>
             </div>
             <button type="submit" class="btn btn-primary btn-sm">
                 {{ $sow ? 'Cập nhật SOW' : 'Lưu SOW' }}

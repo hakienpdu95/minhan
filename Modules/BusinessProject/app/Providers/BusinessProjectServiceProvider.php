@@ -6,9 +6,11 @@ use Illuminate\Support\Facades\Gate;
 use Modules\BusinessProject\Models\BusinessProject;
 use Modules\BusinessProject\Models\ChangeRequest;
 use Modules\BusinessProject\Models\Deliverable;
+use Modules\BusinessProject\Models\DeliverableTemplate;
 use Modules\BusinessProject\Policies\BusinessProjectPolicy;
 use Modules\BusinessProject\Policies\ChangeRequestPolicy;
 use Modules\BusinessProject\Policies\DeliverablePolicy;
+use Modules\BusinessProject\Policies\DeliverableTemplatePolicy;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class BusinessProjectServiceProvider extends ModuleServiceProvider
@@ -40,5 +42,6 @@ class BusinessProjectServiceProvider extends ModuleServiceProvider
         Gate::policy(BusinessProject::class, BusinessProjectPolicy::class);
         Gate::policy(Deliverable::class, DeliverablePolicy::class);
         Gate::policy(ChangeRequest::class, ChangeRequestPolicy::class);
+        Gate::policy(DeliverableTemplate::class, DeliverableTemplatePolicy::class);
     }
 }

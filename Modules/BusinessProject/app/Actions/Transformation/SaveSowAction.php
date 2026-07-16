@@ -25,6 +25,7 @@ class SaveSowAction
                 'responsibilities' => $data->responsibilities,
             ],
             'Cập nhật Statement of Work.',
+            $data->template_id,
         );
     }
 }

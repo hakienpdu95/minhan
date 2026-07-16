@@ -10,6 +10,7 @@ class StoreSowData extends Data
         public readonly ?string $scope,
         public readonly ?string $deliverables,
         public readonly ?string $responsibilities,
+        public readonly ?int $template_id = null,
     ) {}
 
     public static function rules(): array
@@ -18,6 +19,7 @@ class StoreSowData extends Data
             'scope' => ['nullable', 'string'],
             'deliverables' => ['nullable', 'string'],
             'responsibilities' => ['nullable', 'string'],
+            'template_id' => ['nullable', 'integer', 'exists:deliverable_templates,id'],
         ];
     }
 }

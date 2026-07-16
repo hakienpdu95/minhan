@@ -28,6 +28,7 @@ class Deliverable extends TenantAwareModel implements ApprovableModel
         'type',
         'title',
         'parent_id',
+        'template_id',
         'current_version',
         'status',
         'confirmed_at',
@@ -62,6 +63,11 @@ class Deliverable extends TenantAwareModel implements ApprovableModel
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(DeliverableTemplate::class, 'template_id');
     }
 
     public function children(): HasMany

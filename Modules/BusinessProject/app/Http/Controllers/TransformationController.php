@@ -25,6 +25,7 @@ use Modules\BusinessProject\Enums\DeliverableType;
 use Modules\BusinessProject\Enums\MilestoneCategory;
 use Modules\BusinessProject\Models\BusinessProject;
 use Modules\BusinessProject\Models\Deliverable;
+use Modules\BusinessProject\Models\DeliverableTemplate;
 use Modules\BusinessProject\Queries\StageGate\CheckStageGateEligibilityHandler;
 use Modules\BusinessProject\Queries\StageGate\CheckStageGateEligibilityQuery;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -49,6 +50,18 @@ class TransformationController extends Controller
 
         $gateResult = $handler->handle(new CheckStageGateEligibilityQuery($businessProject));
 
+        // Template Library (Phase 2 mảng 5/5) — chỉ Proposal/SOW có selector template (2 loại
+        // duy nhất spec Phần 4 nêu tên cụ thể "Template Service (mẫu Proposal/SOW chuẩn)").
+        $proposalTemplates = DeliverableTemplate::availableTo($businessProject->organization_id)
+            ->forType(DeliverableType::Proposal->value)
+            ->where('is_active', true)
+            ->get(['id', 'name', 'content']);
+
+        $sowTemplates = DeliverableTemplate::availableTo($businessProject->organization_id)
+            ->forType(DeliverableType::Sow->value)
+            ->where('is_active', true)
+            ->get(['id', 'name', 'content']);
+
         return view('businessproject::business-projects.transformation.show', [
             'businessProject' => $businessProject,
             'canvas' => $canvas,
@@ -58,6 +71,8 @@ class TransformationController extends Controller
             'milestonesByCategory' => $milestonesByCategory,
             'milestoneCategories' => MilestoneCategory::ordered(),
             'gateResult' => $gateResult,
+            'proposalTemplates' => $proposalTemplates,
+            'sowTemplates' => $sowTemplates,
         ]);
     }
 

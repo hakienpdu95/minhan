@@ -1,7 +1,7 @@
 # BCOS — TRẠNG THÁI TRIỂN KHAI & VIỆC CÒN LẠI
 
-> Cập nhật: 2026-07-16 (Customer Success Workspace — **Phase 2, mảng 3/5** — 8/8 workspace đã
-> triển khai hết, không còn tab disabled). Đối chiếu với
+> Cập nhật: 2026-07-17 (Template Library — **Phase 2, mảng 5/5 — TOÀN BỘ PHASE 2 ĐÃ HOÀN THÀNH**).
+> 8/8 workspace đã triển khai hết, không còn tab disabled. Đối chiếu với
 > `spec/nghiencuu/bcos_master_flow.md` (Phần 9 — Lộ trình) và plan đã duyệt
 > `/home/hacom/.claude1/plans/declarative-discovering-garden.md`.
 > Mục đích: để biết chính xác đã làm gì, còn gì, ưu tiên gì cho phiên làm việc tiếp theo.
@@ -501,21 +501,126 @@ VD `DeliverableAwaitingApprovalNotification`) — không có `queue:work` chạy
 trường dev này; cần lưu ý nếu sau này bật queue worker thật, có thể cần dọn/kiểm tra queue backlog
 trước.
 
-## ⬜ CHƯA LÀM — Phase 2 (Chuẩn hóa, theo Phần 9 spec) — 3/5 mảng xong
+## ✅ ĐÃ HOÀN THÀNH — BCOS Admin Dashboard + KPI (Phase 2, mảng 4/5), 2026-07-17
 
-- ~~**Diagnosis Workspace đầy đủ + Approval R3**~~ — ✅ Đã xong (xem mục "ĐÃ HOÀN THÀNH — Diagnosis Workspace" ở trên).
-- ~~**Knowledge Workspace hoàn chỉnh**~~ — ✅ Đã xong (xem mục "ĐÃ HOÀN THÀNH — Knowledge Workspace mở rộng" ở trên).
-- ~~**Customer Success: tích hợp Survey engine cho CSAT/NPS, follow-up, New Opportunity → Lead mới**~~ — ✅ Đã xong (xem mục "ĐÃ HOÀN THÀNH — Customer Success Workspace" ở trên).
-- BCOS Dashboard + KPI (theo Phần 10 spec: Gate Compliance Rate, Knowledge Reuse Rate, Cycle Time, Deliverable Version Discipline, CSAT/NPS, R7 Fulfillment Rate) — export CSV.
-- Template Library chuẩn (Template Service — hiện chưa xây, `deliverables.template_id` chưa dùng).
+Theo `bcos_master_flow.md` Phần 10 — "BCOS tự đo chính nó". Màn hình mới, cross-project, **chỉ
+Founder/Admin truy cập** (`BusinessProjectPolicy::viewBcosDashboard()`, route
+`backend.business-projects.bcos-dashboard.show`, link từ trang Business Projects index).
 
-**Lưu ý khi làm mảng tiếp theo**: pattern permission đã lặp lại 5 lần giờ (Context/Discovery/
-Diagnosis/Transformation/Delivery/Closing = 6 workspace) — mỗi workspace mới luôn 3 chỗ:
-`PermissionEnum`, `RolePermissionSeeder`, ability riêng `manageX` trong `BusinessProjectPolicy`
-(KHÔNG gộp vào `manageAnyWorkspace()` OR-list mà bỏ qua ability riêng). Nếu 2 workspace phụ thuộc
-lẫn nhau (VD tương lai: Knowledge phụ thuộc Closing), dùng đúng pattern cross-workspace guard vừa
-làm ở Diagnosis→Transformation: đặt check ở tầng Controller của workspace PHỤ THUỘC, không nhét
-vào action generic.
+- **`business_project_stage_history`** (migration `2026_07_17_100017_...`) — bảng MỚI duy nhất
+  của mảng này, nhưng đúng nguyên tắc spec tự nêu ("nếu 1 KPI cần bảng riêng, nghĩa là mô hình dữ
+  liệu đang thiếu, bổ sung Ở NGUỒN") — trước đây KHÔNG có cách nào biết 1 project vào/rời 1 stage
+  lúc nào (chỉ có `current_stage` hiện tại), giờ `AdvanceBusinessProjectStageAction` ghi 1 hàng mỗi
+  lần advance. Cycle Time chỉ tính được từ dữ liệu MỚI (không backfill được lịch sử advance trước
+  khi bảng này tồn tại).
+- **6 KPI, tất cả tính trực tiếp từ dữ liệu đã có (`BcosDashboardController`)**:
+  1. Gate Compliance Rate — % project active KHÔNG bị "trễ" (đủ điều kiện qua gate ≥7 ngày mà
+     chưa advance).
+  2. Knowledge Reuse Rate — **ƯỚC TÍNH** (không sửa được chính xác vì `deliverable_evidence_links`
+     là Deliverable↔Deliverable, KHÔNG phải Deliverable↔KcItem — phát hiện khi research; và
+     `kc_view_logs` không có cột `business_project_id` nên không biết chính xác người xem đang ở
+     project nào) — join `kc_view_logs.user_id` qua `business_project_members` của project KHÁC
+     project gốc, ghi rõ "ước tính" trên UI, không giả vờ là số chính xác.
+  3. Average Cycle Time theo giai đoạn — từ `business_project_stage_history` (mới).
+  4. Deliverable Version Discipline — % deliverable `confirmed` có ≥2 version. Sub-metric "% dùng
+     Template chuẩn" **BỎ QUA** — cột `deliverables.template_id` KHÔNG tồn tại trong schema (khác
+     ghi nhớ trước đây tưởng "có cột nhưng chưa dùng" — thực tế chưa từng migrate), chờ Template
+     Library (mảng 5/5).
+  5. CSAT/NPS trung bình + Renewal Rate — trực tiếp từ `success_reviews` (Giai đoạn 8).
+  6. R7 Fulfillment Rate — % project đã `closed` có ≥1 Knowledge Asset + trung bình/project.
+- **Export CSV** — spec nói "tái dụng cơ chế export ở Report module" nhưng research xác nhận
+  KHÔNG có service export dùng chung nào để gọi — mọi export trong codebase (Report/Lead/
+  ActivityLog/Deployment) đều theo đúng 1 convention lặp lại: build `Collection` mảng
+  associative (key = tên cột) rồi `(new FastExcel($rows))->download(...)`. Áp dụng ĐÚNG convention
+  đó (6 endpoint export riêng, 1/KPI, đuôi `.csv` thay vì `.xlsx` mặc định của các nơi khác) —
+  không phải xây engine export mới, cũng không có gì "dùng chung" theo nghĩa gọi 1 class có sẵn.
+
+**Verify**: tinker seed dữ liệu thật (1 project closed có Knowledge Asset + deliverable confirmed
+2-version + success_review CSAT=5/NPS=10/renewal=renewed, 1 project active "cũ" để test không bị
+đếm nhầm là stuck khi gate chưa đủ điều kiện, 1 KcViewLog mô phỏng reuse cross-project) + HTTP thật
+đầy đủ: dashboard hiển thị đúng cả 6 KPI (100% ở các KPI có 1/1 mẫu đạt, CSAT=5/NPS=10/Renewal=100%
+đúng dữ liệu, Cycle Time hiện đúng 1 giai đoạn có dữ liệu + "Chưa đủ dữ liệu" cho các giai đoạn
+khác), cả 6 export CSV đều 200 + `text/csv` + nội dung UTF-8 đúng tiếng Việt, quyền truy cập đúng
+(CEO xem được, Sales bị 403 + link ẩn đúng trên trang index qua `@can`). Regression cả 8/8 tab
+workspace vẫn 200. **1 lỗi phát hiện lúc verify hoá ra là lỗi TỰ TẠO của chính test data** (tinker
+tạo `DeliverableVersion` trực tiếp, quên set `created_at` — model này `$timestamps=false` nên
+không tự set, khác `UpsertSingletonDeliverableAction` thật luôn set tường minh) — không phải bug
+thật của code, đã xác nhận bằng cách so sánh với action thật rồi sửa lại data test. Toàn bộ dữ liệu
+test đã forceDelete, mật khẩu tạm (`ceo@demo.test`, `sales@demo.test`) đã khôi phục đúng (restore
+theo hash gốc đã lưu, hoặc theo password mặc định `password` ghi trong `UserSeeder.php` khi không
+kịp lưu hash gốc trước khi đổi — bài học: LUÔN lưu hash gốc TRƯỚC khi đổi password test, kể cả với
+user "phụ" chỉ dùng để test 403).
+
+## ✅ ĐÃ HOÀN THÀNH — Template Library (Phase 2, mảng 5/5 — HẾT PHASE 2), 2026-07-17
+
+Theo `bcos_master_flow.md` — "Template Service" (nhắc tên ở Phần 1/4/6/9 nhưng KHÔNG có 1 mục
+Giai đoạn riêng như Giai đoạn 1-8 — mảng ít chi tiết nhất trong toàn bộ spec).
+
+- **`deliverable_templates`** (bảng MỚI, migration `2026_07_17_100018_...`) — `organization_id`
+  NULLABLE (mirror ĐÚNG pattern `lead_sources`/`lead_pipeline_stages`: null = template dùng chung
+  mọi tổ chức, có giá trị = riêng 1 org), `type` (string khớp `DeliverableType`, không FK cứng —
+  cùng lý do `deliverables.type`), `content` JSON cùng shape với `DeliverableVersion.content` của
+  type đó (prefill thẳng vào form, không cần transform). Model `DeliverableTemplate` — Model
+  THƯỜNG (không phải TenantAwareModel, vì cần hỗ trợ org=null).
+- **`deliverables.template_id`** (cột MỚI, cùng migration) — cột này TRƯỚC ĐÂY hoàn toàn không tồn
+  tại (đã xác nhận qua `Schema::getColumnListing` ở mảng Dashboard/KPI, sửa lại ghi nhớ sai trước
+  đó "có cột nhưng chưa dùng"). `Deliverable::template()` relation. `UpsertSingletonDeliverableAction`
+  nhận thêm tham số optional `?int $templateId` — set MỘT LẦN lúc tạo deliverable mới (không đổi
+  lại khi update sau đó, đây là "nguồn gốc" không phải "lần áp dụng cuối"). Đây LÀ hành động đóng
+  gap sub-metric "% dùng Template chuẩn" của KPI Deliverable Version Discipline (Dashboard mảng
+  4/5) — lần đầu tiên cột này có dữ liệu thật.
+- **`TemplateLibraryController`** — CRUD đầy đủ (index nhóm theo type/create/edit/update/destroy
+  soft-delete), permission mới `business_template.manage` (CEO + Lead Consultant + System Admin —
+  Ma trận 7.2 hàng "Duyệt Knowledge/SOP/Framework" cho tinh thần tương tự: Founder full, Lead
+  Consultant chuẩn hóa). `DeliverableTemplatePolicy` riêng (KHÔNG theo pattern `manageWorkspace()`
+  của `BusinessProjectPolicy` — template không gắn 1 Business Project cụ thể, không cần check
+  `isMember()`). Link từ trang Business Projects index (cùng vị trí link "BCOS Dashboard").
+- **Chứng minh vòng lặp đầy đủ ở Proposal + SOW** (2 loại DUY NHẤT spec gọi tên cụ thể — Phần 4:
+  "Template Service (mẫu Proposal/SOW chuẩn)") — dropdown "Bắt đầu từ Template" trên cả 2 form
+  (Alpine.js `x-ref` prefill textarea từ `content` JSON của template chọn, KHÔNG cần round-trip
+  server), `template_id` submit kèm form, ghi vào Deliverable khi tạo mới. KHÔNG wiring vào toàn
+  bộ 10 loại Deliverable khác (Context/TPS Canvas/Diagnosis Matrix/Weekly Report/Final Report...)
+  — quyết định phạm vi có chủ đích: `UpsertSingletonDeliverableAction` (action DÙNG CHUNG cho ~8
+  loại singleton deliverable) đã có sẵn tham số `templateId`, nên các workspace khác có thể bật
+  UI selector bất cứ lúc nào sau này (chỉ cần thêm dropdown + Alpine prefill giống Proposal/SOW),
+  không cần sửa lại tầng Action/DB.
+
+**2 lỗi nhỏ tự tạo, tự sửa lúc verify (không phải bug thiết kế)**: (1) namespace sai của trait
+`LogsActivity` (`Spatie\Activitylog\Traits\LogsActivity` không tồn tại, đúng phải là
+`Spatie\Activitylog\Models\Concerns\LogsActivity`) — lỗi gõ nhầm lúc viết `DeliverableTemplate`
+model, phát hiện ngay ở lần tinker đầu tiên. (2) `TemplateLibraryController` giả định key
+`description` luôn có trong mảng `validated()` dù field optional không gửi lên — sửa bằng
+`?? null`. Cả 2 sửa ngay tại chỗ, verify lại xác nhận không còn lỗi.
+
+**Verify**: tinker (tạo `DeliverableTemplate` global, deliverableType() resolve đúng) + HTTP thật
+đầy đủ: CRUD Template qua UI (create → list đúng nhóm theo type → edit prefill đúng JSON → xóa
+soft-delete đúng, không còn hiện trong list); mở Transformation Workspace của project thật thấy
+đúng dropdown "Bắt đầu từ Template" liệt kê template vừa tạo; submit Proposal kèm `template_id`
+→ Deliverable tạo ra có `template_id` đúng + relation `template()` resolve đúng tên. Quyền hạn
+đúng (CEO/Lead Consultant/System Admin qua được, `ops` role bị 403). Regression cả 8/8 tab
+workspace + BCOS Dashboard + KcItem index đều 200. Toàn bộ dữ liệu test đã forceDelete, mật khẩu
+tạm (`ceo@demo.test`, `ops@demo.test`) đã khôi phục đúng, cache đã clear.
+
+---
+
+## 🎉 PHASE 2 HOÀN THÀNH TOÀN BỘ (5/5 mảng, 2026-07-17)
+
+Diagnosis Workspace+Approval R3 → Knowledge Workspace mở rộng → Customer Success Workspace →
+BCOS Admin Dashboard+KPI → Template Library — cả 5 mảng đã xong, **8/8 workspace BCOS đều là
+link thật, không còn tab disabled nào**. Việc tiếp theo tự nhiên là Phase 3/4 (xem mục dưới) —
+không còn "phần thiếu của Phase 2".
+
+**Lưu ý tổng kết khi bắt đầu Phase 3/4**: pattern permission đã lặp lại NHIỀU lần qua toàn bộ
+Phase 2 (Context/Discovery/Diagnosis/Transformation/Delivery/Closing/Knowledge/Customer Success =
+8 workspace, cộng Template Library là 1 resource cấp tổ chức riêng) — mỗi workspace/resource mới
+luôn 3 chỗ: `PermissionEnum`, `RolePermissionSeeder`, ability riêng (`manageX` trong
+`BusinessProjectPolicy`, hoặc Policy riêng nếu KHÔNG gắn với 1 Business Project cụ thể như
+`DeliverableTemplatePolicy`) — KHÔNG gộp vào 1 OR-list chung mà bỏ qua ability riêng. Nếu 2
+workspace phụ thuộc lẫn nhau, dùng đúng pattern cross-workspace guard đã làm ở Diagnosis→
+Transformation: đặt check ở tầng Controller của workspace PHỤ THUỘC, không nhét vào action
+generic. Nếu 1 KPI/tính năng cần dữ liệu mà bảng hiện có không đủ, đọc kỹ nguyên tắc Phần 10 tự
+nêu: bổ sung Ở NGUỒN (bảng/cột mới phục vụ toàn hệ thống), không phải bảng thống kê song song
+riêng cho 1 con số.
 
 ## ⬜ CHƯA LÀM — Phase 3/4 (Tự động hóa / AI Ready)
 

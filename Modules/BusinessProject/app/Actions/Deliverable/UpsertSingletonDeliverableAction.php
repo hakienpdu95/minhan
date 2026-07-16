@@ -30,8 +30,9 @@ class UpsertSingletonDeliverableAction
         string $title,
         array $content,
         string $changeSummary,
+        ?int $templateId = null,
     ): Deliverable {
-        return DB::transaction(function () use ($businessProject, $type, $title, $content, $changeSummary): Deliverable {
+        return DB::transaction(function () use ($businessProject, $type, $title, $content, $changeSummary, $templateId): Deliverable {
             $deliverable = $businessProject->deliverables()
                 ->where('type', $type->value)
                 ->whereNull('parent_id')
@@ -45,6 +46,10 @@ class UpsertSingletonDeliverableAction
                     'workspace' => $type->workspace()->value,
                     'type' => $type->value,
                     'title' => $title,
+                    // Template Library (Phase 2 mảng 5/5) — chỉ ghi nhận template lúc TẠO MỚI,
+                    // không đổi lại nếu deliverable đã tồn tại (đây là nguồn gốc, không phải
+                    // "lần cuối áp dụng").
+                    'template_id' => $templateId,
                     'current_version' => 0,
                     'status' => DeliverableStatus::Draft->value,
                     'created_by' => Auth::id(),

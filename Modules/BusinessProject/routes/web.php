@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\BusinessProject\Http\Controllers\BcosDashboardController;
 use Modules\BusinessProject\Http\Controllers\BusinessContextController;
 use Modules\BusinessProject\Http\Controllers\BusinessProjectController;
 use Modules\BusinessProject\Http\Controllers\ClosingController;
@@ -9,6 +10,7 @@ use Modules\BusinessProject\Http\Controllers\DeliveryController;
 use Modules\BusinessProject\Http\Controllers\DiagnosisController;
 use Modules\BusinessProject\Http\Controllers\DiscoveryController;
 use Modules\BusinessProject\Http\Controllers\KnowledgeController;
+use Modules\BusinessProject\Http\Controllers\TemplateLibraryController;
 use Modules\BusinessProject\Http\Controllers\TransformationController;
 
 // Chưa gắn middleware feature:module.businessproject (Subscription feature gate) ở
@@ -17,6 +19,20 @@ use Modules\BusinessProject\Http\Controllers\TransformationController;
 // phạm vi Vertical Slice 1.
 Route::middleware(['auth', 'verified'])->prefix('dashboard/business-projects')->name('backend.business-projects.')->group(function () {
     Route::get('/', [BusinessProjectController::class, 'index'])->name('index');
+
+    // Phần 10 spec — BCOS Admin Dashboard (cross-project, Founder/Admin only). Đăng ký TRƯỚC
+    // route `/{businessProject}` để không bị wildcard nuốt mất ("bcos-dashboard" không phải UUID
+    // hợp lệ nên route model binding sẽ 404 nếu để route show ở trên).
+    Route::prefix('bcos-dashboard')->name('bcos-dashboard.')->group(function () {
+        Route::get('/', [BcosDashboardController::class, 'show'])->name('show');
+        Route::get('/export/gate-compliance', [BcosDashboardController::class, 'exportGateCompliance'])->name('export.gate-compliance');
+        Route::get('/export/knowledge-reuse', [BcosDashboardController::class, 'exportKnowledgeReuse'])->name('export.knowledge-reuse');
+        Route::get('/export/cycle-time', [BcosDashboardController::class, 'exportCycleTime'])->name('export.cycle-time');
+        Route::get('/export/deliverable-discipline', [BcosDashboardController::class, 'exportDeliverableDiscipline'])->name('export.deliverable-discipline');
+        Route::get('/export/csat-nps', [BcosDashboardController::class, 'exportCsatNps'])->name('export.csat-nps');
+        Route::get('/export/r7-fulfillment', [BcosDashboardController::class, 'exportR7Fulfillment'])->name('export.r7-fulfillment');
+    });
+
     Route::get('/{businessProject}', [BusinessProjectController::class, 'show'])->name('show');
     Route::post('/{businessProject}/advance-stage', [BusinessProjectController::class, 'advanceStage'])->name('advance-stage');
 
@@ -104,4 +120,15 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard/business-projects')->
         Route::post('/reviews/{successReview}/follow-up-done', [CustomerSuccessController::class, 'markFollowUpDone'])->name('reviews.follow-up-done');
         Route::post('/lead', [CustomerSuccessController::class, 'createLead'])->name('lead.create');
     });
+});
+
+// Template Library (Phase 2, mảng 5/5) — cấu hình cấp tổ chức, KHÔNG gắn với 1 Business Project
+// cụ thể, nên đứng ngoài group `/business-projects/{businessProject}` ở trên.
+Route::middleware(['auth', 'verified'])->prefix('dashboard/template-library')->name('backend.template-library.')->group(function () {
+    Route::get('/', [TemplateLibraryController::class, 'index'])->name('index');
+    Route::get('/create', [TemplateLibraryController::class, 'create'])->name('create');
+    Route::post('/', [TemplateLibraryController::class, 'store'])->name('store');
+    Route::get('/{templateLibrary}/edit', [TemplateLibraryController::class, 'edit'])->name('edit');
+    Route::put('/{templateLibrary}', [TemplateLibraryController::class, 'update'])->name('update');
+    Route::delete('/{templateLibrary}', [TemplateLibraryController::class, 'destroy'])->name('destroy');
 });

@@ -9,6 +9,7 @@ class StoreProposalData extends Data
     public function __construct(
         public readonly ?string $solution,
         public readonly ?string $collaboration_plan,
+        public readonly ?int $template_id = null,
     ) {}
 
     public static function rules(): array
@@ -16,6 +17,7 @@ class StoreProposalData extends Data
         return [
             'solution' => ['nullable', 'string'],
             'collaboration_plan' => ['nullable', 'string'],
+            'template_id' => ['nullable', 'integer', 'exists:deliverable_templates,id'],
         ];
     }
 }

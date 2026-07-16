@@ -24,6 +24,7 @@ class SaveProposalAction
                 'collaboration_plan' => $data->collaboration_plan,
             ],
             'Cập nhật Proposal.',
+            $data->template_id,
         );
     }
 }

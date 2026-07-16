@@ -22,8 +22,8 @@
                 'milestonesByCategory' => $milestonesByCategory,
                 'milestoneCategories' => $milestoneCategories,
             ])
-            @include('businessproject::business-projects.transformation._proposal', ['businessProject' => $businessProject, 'proposal' => $proposal])
-            @include('businessproject::business-projects.transformation._sow', ['businessProject' => $businessProject, 'sow' => $sow])
+            @include('businessproject::business-projects.transformation._proposal', ['businessProject' => $businessProject, 'proposal' => $proposal, 'proposalTemplates' => $proposalTemplates])
+            @include('businessproject::business-projects.transformation._sow', ['businessProject' => $businessProject, 'sow' => $sow, 'sowTemplates' => $sowTemplates])
         </div>
 
         <div class="space-y-4">

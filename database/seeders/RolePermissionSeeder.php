@@ -124,6 +124,7 @@ class RolePermissionSeeder extends Seeder
                 P::BUSINESS_CLOSING_MANAGE->value,
                 P::BUSINESS_KNOWLEDGE_MANAGE->value,
                 P::BUSINESS_CUSTOMER_SUCCESS_MANAGE->value,
+                P::BUSINESS_TEMPLATE_MANAGE->value,
             ],
 
             // ─────────────────────────────────────────────────────────
@@ -347,6 +348,7 @@ class RolePermissionSeeder extends Seeder
                 // Business Project (BCOS): Config — System Admin hỗ trợ, không thay Founder/Lead Consultant
                 P::BUSINESS_PROJECT_VIEW->value,
                 P::BUSINESS_PROJECT_MANAGE->value,
+                P::BUSINESS_TEMPLATE_MANAGE->value,
             ],
 
             // ─────────────────────────────────────────────────────────
@@ -376,6 +378,7 @@ class RolePermissionSeeder extends Seeder
                 P::BUSINESS_DELIVERY_MANAGE->value,
                 P::BUSINESS_CLOSING_MANAGE->value,
                 P::BUSINESS_KNOWLEDGE_MANAGE->value,
+                P::BUSINESS_TEMPLATE_MANAGE->value,
             ],
 
             RoleEnum::CONSULTANT->value => [
