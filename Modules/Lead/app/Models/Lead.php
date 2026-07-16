@@ -34,7 +34,7 @@ class Lead extends TenantAwareModel implements ScoringSubjectInterface
     protected $table = 'leads';
 
     protected $fillable = [
-        'organization_id', 'contact_id', 'customer_id',
+        'organization_id', 'contact_id', 'customer_id', 'converted_business_project_id',
         'contact_name', 'contact_phone', 'contact_company',
         'stage_id', 'stage_changed_at',
         'source_id', 'source_detail',
@@ -71,6 +71,11 @@ class Lead extends TenantAwareModel implements ScoringSubjectInterface
     public function customer(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(\Modules\Customer\Models\Customer::class, 'customer_id');
+    }
+
+    public function businessProject(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\Modules\BusinessProject\Models\BusinessProject::class, 'converted_business_project_id');
     }
 
     public function stage(): \Illuminate\Database\Eloquent\Relations\BelongsTo

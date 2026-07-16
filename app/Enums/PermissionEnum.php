@@ -199,4 +199,13 @@ enum PermissionEnum: string
     // CEO=Full (chạy deploy + xem log của tổ chức mình) | System_Admin=Full (hỗ trợ)
     case DEPLOYMENT_RUN       = 'deployment_engine.run';
     case DEPLOYMENT_VIEW_LOGS = 'deployment_engine.view_logs';
+
+    // ══ BUSINESS PROJECT (Business Consulting OS — BCOS) ═══════════════
+    // CEO=Full | Lead_Consultant=Full | Consultant/BA=Manage context (project của mình)
+    // PM=View | Customer_Success=(chưa cần ở Vertical Slice 1) | Admin=Config
+    case BUSINESS_PROJECT_VIEW    = 'business_project.view';
+    case BUSINESS_PROJECT_CREATE  = 'business_project.create';   // Convert Lead -> Business Project
+    case BUSINESS_PROJECT_MANAGE  = 'business_project.manage';   // System Admin — config
+    case BUSINESS_CONTEXT_MANAGE  = 'business_context.manage';   // Tạo/sửa Business Context Canvas
+    case BUSINESS_CONTEXT_APPROVE = 'business_context.approve';  // Rule R1 gate — duyệt Context Report
 }

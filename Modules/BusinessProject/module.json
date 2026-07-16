@@ -1,0 +1,11 @@
+{
+    "name": "BusinessProject",
+    "alias": "businessproject",
+    "description": "Business Consulting OS — quản lý Business Project theo 8 Workspace (Context, Discovery, Diagnosis, Transformation, Delivery, Closing, Knowledge, Customer Success), Deliverable Engine có version + approval, Stage Gate Engine enforce Business Rules R1-R7.",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\BusinessProject\\Providers\\BusinessProjectServiceProvider"
+    ],
+    "files": []
+}

@@ -660,6 +660,52 @@
             </div>
             @endif
 
+            {{-- Business Consulting OS: Convert to Business Project --}}
+            @if($lead->converted_business_project_id && $lead->businessProject)
+            <div class="card bg-base-100 shadow-sm border border-primary/30 bg-primary/5">
+                <div class="card-body py-3 px-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-semibold text-sm text-primary">Đã chuyển thành Business Project</h3>
+                        <span class="badge badge-xs badge-primary">{{ $lead->businessProject->code }}</span>
+                    </div>
+                    <a href="{{ route('backend.business-projects.show', $lead->businessProject) }}"
+                       class="flex items-center gap-2.5 group">
+                        <div class="min-w-0">
+                            <p class="font-medium text-sm group-hover:text-primary transition-colors truncate">
+                                {{ $lead->businessProject->name }}
+                            </p>
+                            <p class="text-xs text-base-content/50">
+                                Giai đoạn: {{ $lead->businessProject->current_stage->label() }}
+                            </p>
+                        </div>
+                        <svg class="w-3.5 h-3.5 text-base-content/30 group-hover:text-primary ml-auto shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+            @elseif(auth()->user()?->can('business_project.create'))
+            <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body py-3 px-4">
+                    <h3 class="font-semibold text-sm mb-2">Business Consulting OS</h3>
+                    <form action="{{ route('lead.convert-to-business-project', $lead) }}" method="POST" class="space-y-2">
+                        @csrf
+                        <input type="text" name="name" required placeholder="Tên Business Project"
+                               class="input input-sm input-bordered w-full"
+                               value="{{ $lead->contact_company ?? $lead->contact_name }}">
+                        <select name="project_role" required class="select select-sm select-bordered w-full">
+                            <option value="lead_consultant">Vai trò của bạn: Lead Consultant</option>
+                            <option value="consultant">Vai trò của bạn: Consultant</option>
+                            <option value="pm">Vai trò của bạn: Project Manager</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary btn-sm w-full">
+                            Convert to Business Project
+                        </button>
+                    </form>
+                </div>
+            </div>
+            @endif
+
             {{-- Tags --}}
             <div class="card bg-base-100 shadow-sm border border-base-200">
                 <div class="card-body py-3 px-4">

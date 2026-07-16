@@ -652,6 +652,24 @@
         </div>
         @endauth
 
+        @if(auth()->user()?->hasAnyPermission(['business_project.view','business_project.create']))
+        <p class="section-title" style="margin-top:16px;">Business Consulting OS</p>
+        <div class="nav-group">
+
+            <details {{ request()->routeIs('backend.business-projects.*') ? 'open' : '' }}>
+                <summary class="nav-summary {{ request()->routeIs('backend.business-projects.*') ? 'active' : '' }}">
+                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3m4-14h6m-6 4h6m-6 4h6"/></svg>
+                    <span class="nav-label">Business Projects</span>
+                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
+                </summary>
+                <div class="sub-menu">
+                    <a href="{{ route('backend.business-projects.index') }}" class="sub-link {{ request()->routeIs('backend.business-projects.index') ? 'active' : '' }}">Danh sách Business Project</a>
+                </div>
+            </details>
+
+        </div>
+        @endif
+
         @if(auth()->user()?->hasAnyPermission(['sop.view','sop.view_related','sop.create','sop.create_hr','sop.edit','sop.approve','sop.config']))
         <p class="section-title" style="margin-top:16px;">Vận hành</p>
         <div class="nav-group">

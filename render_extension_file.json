@@ -322,7 +322,9 @@
     [
         "leads///add///__///",
         "customer_id///unsignedBigInteger///__///_NULL///NULL///__///__",
-        "__index///index///__///__///__///organization_id,customer_id|idx_lead_customer///__"
+        "__index///index///__///__///__///organization_id,customer_id|idx_lead_customer///__",
+        "converted_business_project_id///unsignedBigInteger///__///_NULL///NULL///__///__",
+        "__index///index///__///__///__///organization_id,converted_business_project_id|idx_lead_business_project///__"
     ],
     [
         "customers///add///__///",

@@ -103,8 +103,11 @@ Reverb isn't started. Run it:
 
 Notification Thông báo in-app  + push — (thông báo trên chuông) tất cả module đều cần
 
-Đọc file docs/form-ui-spec.md và implement theo đúng spec đó, áp dụng spec này vào module AiCopilot
+Đọc file spec/nghiencuu/bcos_master_flow.md và implement theo đúng spec đó, áp dụng spec này vào module AiCopilot
 
 # > Thêm org selector theo pattern _resolveOrganizations() vào form create/edit của  module X
 
 # > Áp dụng pattern org selector của career-pathway-admin create vào form [tên module].
+
+Đọc spec/nghiencuu/bcos_todo_status.md để nắm trạng thái BCOS, rồi xử lý blocker migration ledger theo hướng đã đề xuất trong đó (mark-as-ran cho migration mà bảng đã tồn tại thật, rồi chạy migrate cho
+  ▎ phần thiếu thật). Sau khi DB ổn, tiếp tục làm Discovery Workspace theo đúng thứ tự trong file đó.

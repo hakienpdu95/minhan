@@ -19,6 +19,7 @@ use Modules\Lead\Database\Seeders\LeadDatabaseSeeder;
 use Modules\LeadPipelineStage\Database\Seeders\LeadPipelineStageSeeder;
 use Modules\LeadSource\Database\Seeders\LeadSourceSeeder;
 use Modules\BusinessBlueprint\Database\Seeders\BusinessBlueprintDatabaseSeeder;
+use Modules\BusinessProject\Database\Seeders\BusinessProjectDatabaseSeeder;
 use Modules\BusinessSolution\Database\Seeders\BusinessSolutionDatabaseSeeder;
 use Modules\OcopRubric\Database\Seeders\OcopRubricDatabaseSeeder;
 use Modules\Organization\Database\Seeders\OrganizationRolePermissionSeeder;
@@ -124,6 +125,9 @@ class SystemDataSeeder extends Seeder
 
             // ── 23. Demo end-to-end: HTX Tiên Dương kích hoạt + deploy AI-TXNG ──
             HtxTienDuongDemoSeeder::class,
+
+            // ── 24. Business Project (BCOS): permissions + roles + Ringlesoft approval flow ──
+            BusinessProjectDatabaseSeeder::class,
         ]);
 
         $this->command->newLine();

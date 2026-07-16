@@ -35,5 +35,6 @@
     "BusinessSolution": true,
     "BusinessBlueprint": true,
     "OrganizationSolution": true,
-    "SolutionCatalog": true
+    "SolutionCatalog": true,
+    "BusinessProject": true
 }

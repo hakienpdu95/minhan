@@ -1,0 +1,30 @@
+{
+    "name": "nwidart/businessproject",
+    "description": "",
+    "authors": [
+        {
+            "name": "KienDH",
+            "email": "bonhuyn@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\BusinessProject\\": "app/",
+            "Modules\\BusinessProject\\Database\\Factories\\": "database/factories/",
+            "Modules\\BusinessProject\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\BusinessProject\\Tests\\": "tests/"
+        }
+    }
+}

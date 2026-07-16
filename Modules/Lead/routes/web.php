@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\BusinessProject\Http\Controllers\LeadConversionController;
 use Modules\Lead\Http\Controllers\LeadController;
 use Modules\Lead\Http\Controllers\LeadTagController;
 
@@ -18,6 +19,10 @@ Route::middleware(['auth', 'verified', 'feature:module.lead'])->prefix('leads')-
     // ── AJAX actions ─────────────────────────────────────────────────
     Route::post('/{lead}/change-stage', [LeadController::class, 'changeStage'])->name('change-stage');
     Route::post('/{lead}/assign',       [LeadController::class, 'assign'])->name('assign');
+
+    // ── Business Consulting OS: chuyển Lead thành Business Project ────
+    Route::post('/{lead}/convert-to-business-project', [LeadConversionController::class, 'store'])
+        ->name('convert-to-business-project');
 
     // ── Export ────────────────────────────────────────────────────────
     Route::get('/export/excel', [LeadController::class, 'export'])->name('export');

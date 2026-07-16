@@ -111,6 +111,12 @@ class RolePermissionSeeder extends Seeder
 
                 // Marketplace: view
                 P::MARKETPLACE_VIEW->value,
+
+                // Business Project (BCOS): Full — Founder duyệt mọi Deliverable (Phần 7.2 spec)
+                P::BUSINESS_PROJECT_VIEW->value,
+                P::BUSINESS_PROJECT_CREATE->value,
+                P::BUSINESS_CONTEXT_MANAGE->value,
+                P::BUSINESS_CONTEXT_APPROVE->value,
             ],
 
             // ─────────────────────────────────────────────────────────
@@ -330,6 +336,10 @@ class RolePermissionSeeder extends Seeder
 
                 // Vertical templates: full manage (dashboard/vertical-templates — thư viện mẫu)
                 P::VERTICAL_TEMPLATES_MANAGE->value,
+
+                // Business Project (BCOS): Config — System Admin hỗ trợ, không thay Founder/Lead Consultant
+                P::BUSINESS_PROJECT_VIEW->value,
+                P::BUSINESS_PROJECT_MANAGE->value,
             ],
 
             // ─────────────────────────────────────────────────────────
@@ -340,6 +350,37 @@ class RolePermissionSeeder extends Seeder
                 P::TASKS_VIEW_LIMITED->value,
                 P::SOP_VIEW->value,
                 P::REPORTS_SHARED->value,
+            ],
+
+            // ─────────────────────────────────────────────────────────
+            // Business Consulting OS (BCOS) — vai trò trong Business Project.
+            // Global role để Ringlesoft laravel-process-approval route theo Spatie Role;
+            // giới hạn "chỉ project được phân công" nằm ở Policy (business_project_members),
+            // KHÔNG nằm ở permission toàn cục này (đúng 2-lớp phân quyền, Phần 7.1 spec).
+            // ─────────────────────────────────────────────────────────
+            RoleEnum::LEAD_CONSULTANT->value => [
+                P::BUSINESS_PROJECT_VIEW->value,
+                P::BUSINESS_PROJECT_CREATE->value,
+                P::BUSINESS_CONTEXT_MANAGE->value,
+                P::BUSINESS_CONTEXT_APPROVE->value,
+            ],
+
+            RoleEnum::CONSULTANT->value => [
+                P::BUSINESS_PROJECT_VIEW->value,
+                P::BUSINESS_CONTEXT_MANAGE->value,
+            ],
+
+            RoleEnum::BUSINESS_ANALYST->value => [
+                P::BUSINESS_PROJECT_VIEW->value,
+                P::BUSINESS_CONTEXT_MANAGE->value,
+            ],
+
+            RoleEnum::PROJECT_MANAGER->value => [
+                P::BUSINESS_PROJECT_VIEW->value,
+            ],
+
+            RoleEnum::CUSTOMER_SUCCESS->value => [
+                P::BUSINESS_PROJECT_VIEW->value,
             ],
         ];
     }
