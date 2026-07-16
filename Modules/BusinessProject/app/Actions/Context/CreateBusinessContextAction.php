@@ -54,6 +54,7 @@ class CreateBusinessContextAction
                 ],
                 'change_summary' => 'Khởi tạo Business Context Report.',
                 'created_by' => Auth::id(),
+                'created_at' => now(),
             ]);
 
             $context = BusinessContext::create([

@@ -44,6 +44,7 @@ class UpdateBusinessContextAction
                     ],
                     'change_summary' => 'Cập nhật Business Context Report.',
                     'created_by' => Auth::id(),
+                    'created_at' => now(),
                 ]);
 
                 // Sửa nội dung sau khi đã submit/approve coi như quay lại draft —
