@@ -26,6 +26,7 @@ npx vite build --config vite.config.backend.js  # Backend module bundles
 php artisan migrate
 php artisan db:seed
 php artisan db:seed --class="Modules\Auth\Database\Seeders\AuthDatabaseSeeder"
+php artisan db:seed --class="Modules\BusinessProject\Database\Seeders\BcosDemoSeeder"  # demo data cho toàn bộ luồng BCOS (3 project, 8 workspace)
 
 # Module scaffolding
 php artisan module:make ModuleName

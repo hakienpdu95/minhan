@@ -21,10 +21,16 @@ return new class extends Migration
             ) NOT NULL"
         );
 
-        Schema::table('kc_items', function (Blueprint $table) {
-            $table->string('industry', 100)->nullable()->after('domain_code');
-            $table->index('industry');
-        });
+        // Idempotency: cột `industry` đã tồn tại trên DB này từ trước khi migration này được
+        // record vào bảng `migrations` (phát hiện khi seed demo data — DB có `industry` nhưng
+        // enum `type` vẫn ở danh sách cũ, tức lần chạy trước bị dừng giữa chừng và không ghi
+        // nhận vào bảng migrations). Bọc `hasColumn` để migration chạy lại an toàn.
+        if (! Schema::hasColumn('kc_items', 'industry')) {
+            Schema::table('kc_items', function (Blueprint $table) {
+                $table->string('industry', 100)->nullable()->after('domain_code');
+                $table->index('industry');
+            });
+        }
     }
 
     public function down(): void
