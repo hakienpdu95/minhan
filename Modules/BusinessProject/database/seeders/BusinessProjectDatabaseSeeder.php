@@ -13,6 +13,7 @@ class BusinessProjectDatabaseSeeder extends Seeder
     {
         $this->call([
             BusinessProjectPermissionSeeder::class,
+            BcosAutomationSeeder::class,
         ]);
     }
 }

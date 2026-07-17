@@ -36,6 +36,7 @@ class SaveDiagnosisOverviewAction
                 'findings' => $findings,
             ],
             'Cập nhật Diagnosis Report overview.',
+            $data->template_id,
         );
     }
 }

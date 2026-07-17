@@ -18,11 +18,30 @@
             @endif
         </div>
 
-        <form action="{{ route('backend.business-projects.closing.final-report.save', $businessProject) }}" method="POST" class="space-y-4">
+        <form action="{{ route('backend.business-projects.closing.final-report.save', $businessProject) }}" method="POST" class="space-y-4"
+              x-data="{
+                  templates: {{ Js::from($finalReportTemplates->map(fn($t) => ['id' => $t->id, 'name' => $t->name, 'content' => $t->content])) }},
+                  applyTemplate(id) {
+                      const t = this.templates.find(x => x.id == id);
+                      if (!t) return;
+                      this.$refs.summary.value = t.content.summary ?? '';
+                  }
+              }">
             @csrf
+            @if($finalReportTemplates->isNotEmpty())
+            <div class="form-control">
+                <label class="label py-0 pb-1"><span class="label-text text-xs font-medium">Bắt đầu từ Template</span></label>
+                <select name="template_id" class="select select-bordered select-sm w-full" @change="applyTemplate($event.target.value)">
+                    <option value="">— Không dùng template —</option>
+                    @foreach($finalReportTemplates as $t)
+                    <option value="{{ $t->id }}">{{ $t->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
             <div>
                 <label class="label label-text text-sm font-medium">Đánh giá kết quả dự án &amp; giá trị mang lại</label>
-                <textarea name="summary" rows="4" class="textarea textarea-bordered w-full"
+                <textarea name="summary" rows="4" class="textarea textarea-bordered w-full" x-ref="summary"
                           placeholder="Tổng kết kết quả đạt được, giá trị mang lại cho doanh nghiệp...">{{ old('summary', $reportContent['summary'] ?? '') }}</textarea>
             </div>
             <button type="submit" class="btn btn-primary btn-sm">

@@ -21,6 +21,7 @@ use Modules\BusinessProject\Enums\DiagnosisCategory;
 use Modules\BusinessProject\Enums\DiagnosisEffort;
 use Modules\BusinessProject\Enums\DiagnosisImpact;
 use Modules\BusinessProject\Models\BusinessProject;
+use Modules\BusinessProject\Models\DeliverableTemplate;
 use Modules\BusinessProject\Queries\StageGate\CheckStageGateEligibilityHandler;
 use Modules\BusinessProject\Queries\StageGate\CheckStageGateEligibilityQuery;
 
@@ -51,6 +52,11 @@ class DiagnosisController extends Controller
 
         $gateResult = $handler->handle(new CheckStageGateEligibilityQuery($businessProject));
 
+        $diagnosisTemplates = DeliverableTemplate::availableTo($businessProject->organization_id)
+            ->forType(DeliverableType::DiagnosisReport->value)
+            ->where('is_active', true)
+            ->get(['id', 'name', 'content']);
+
         return view('businessproject::business-projects.diagnosis.show', [
             'businessProject' => $businessProject,
             'diagnosisReport' => $diagnosisReport,
@@ -59,6 +65,7 @@ class DiagnosisController extends Controller
             'impacts' => DiagnosisImpact::cases(),
             'efforts' => DiagnosisEffort::cases(),
             'gateResult' => $gateResult,
+            'diagnosisTemplates' => $diagnosisTemplates,
         ]);
     }
 

@@ -48,6 +48,44 @@
             <button type="submit" class="btn btn-primary btn-sm">Thêm bản ghi</button>
         </form>
 
+        <div class="divider my-1"></div>
+
+        <details class="collapse collapse-arrow border border-base-200 rounded-lg">
+            <summary class="collapse-title text-sm font-medium py-2 min-h-0">Import hàng loạt (Excel/CSV)</summary>
+            <div class="collapse-content">
+                @if(session('import_errors') && count(session('import_errors')) > 0)
+                <div class="alert alert-warning text-xs mb-3 items-start">
+                    <div>
+                        <p class="font-medium mb-1">{{ count(session('import_errors')) }} dòng bị bỏ qua:</p>
+                        <ul class="list-disc list-inside space-y-0.5">
+                            @foreach(session('import_errors') as $err)
+                            <li>{{ $err }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+                @endif
+
+                <p class="text-xs text-base-content/60 mb-2">
+                    Cột bắt buộc: <code>type</code> (giá trị hợp lệ:
+                    {{ collect($recordTypes)->map(fn($t) => $t->value)->implode(', ') }}),
+                    <code>title</code>. Cột tuỳ chọn: <code>notes</code>, <code>occurred_at</code>
+                    (yyyy-mm-dd), <code>participants</code>. Tối đa 500 dòng/lần.
+                </p>
+
+                <a href="{{ route('backend.business-projects.discovery.records.import-template', $businessProject) }}"
+                   class="btn btn-ghost btn-xs mb-3">Tải template mẫu</a>
+
+                <form action="{{ route('backend.business-projects.discovery.records.import', $businessProject) }}"
+                      method="POST" enctype="multipart/form-data" class="flex flex-wrap items-center gap-2">
+                    @csrf
+                    <input type="file" name="import_file" accept=".xlsx,.xls,.csv"
+                           class="file-input file-input-bordered file-input-sm" required>
+                    <button type="submit" class="btn btn-secondary btn-sm">Import</button>
+                </form>
+            </div>
+        </details>
+
         @if($report?->children->isNotEmpty())
         <div class="divider"></div>
         <h3 class="font-semibold text-sm mb-2">Danh sách bản ghi ({{ $report->children->count() }})</h3>

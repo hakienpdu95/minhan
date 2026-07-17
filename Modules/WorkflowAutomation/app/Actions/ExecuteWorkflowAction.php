@@ -2,6 +2,8 @@
 
 namespace Modules\WorkflowAutomation\Actions;
 
+use App\Shared\Tenancy\Models\Organization;
+use App\Shared\Tenancy\TenantContext;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\ActivityLog\Core\ActivityLogger;
 use Modules\WorkflowAutomation\Core\ActionRegistry;
@@ -37,6 +39,35 @@ class ExecuteWorkflowAction
             return;
         }
 
+        // Queue workers have no HTTP request, so TenantContext + Spatie's Permission team id
+        // (both set by IdentifyOrganization middleware — the only place that wires them, see
+        // its own comment) are empty here. Every OrganizationScope-scoped model query
+        // (Workflow, Deliverable, ...) fail-closes to an empty result, and every team-scoped
+        // role()/permission() check resolves rỗng, when the context is unset. Without
+        // restoring both from the payload, workflows dispatched onto a real queue
+        // (QUEUE_CONNECTION != sync — the default here) silently no-op.
+        $organization = $payload->organizationId ? Organization::find($payload->organizationId) : null;
+
+        if (!$organization) {
+            $this->run($workflowId, $payload, $runId);
+            return;
+        }
+
+        // Queue workers are long-lived processes handling many jobs — always restore to avoid
+        // leaking this job's tenant into the next one handled by the same worker.
+        setPermissionsTeamId($organization->id);
+        try {
+            TenantContext::runForOrganization(
+                $organization,
+                fn () => $this->run($workflowId, $payload, $runId),
+            );
+        } finally {
+            setPermissionsTeamId(null);
+        }
+    }
+
+    private function run(int $workflowId, TriggerPayload $payload, string $runId): void
+    {
         $workflow = Workflow::with(['conditions', 'stepGroups', 'steps', 'variables'])->find($workflowId);
         if (!$workflow || !$workflow->is_active) return;
 

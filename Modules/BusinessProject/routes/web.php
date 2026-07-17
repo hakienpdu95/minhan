@@ -47,6 +47,8 @@ Route::middleware(['auth', 'verified'])->prefix('dashboard/business-projects')->
     Route::prefix('/{businessProject}/discovery')->name('discovery.')->group(function () {
         Route::get('/', [DiscoveryController::class, 'show'])->name('show');
         Route::post('/records', [DiscoveryController::class, 'storeRecord'])->name('records.store');
+        Route::get('/records/import-template', [DiscoveryController::class, 'importRecordsTemplate'])->name('records.import-template');
+        Route::post('/records/import', [DiscoveryController::class, 'importRecords'])->name('records.import');
         Route::post('/tps-canvas', [DiscoveryController::class, 'saveTpsCanvas'])->name('tps-canvas.save');
         Route::post('/report', [DiscoveryController::class, 'saveReport'])->name('report.save');
     });

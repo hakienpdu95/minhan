@@ -6,7 +6,7 @@ use App\Shared\Contracts\QueryHandlerInterface;
 use App\Shared\Contracts\QueryInterface;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
+use Modules\KcItem\Contracts\KcItemSearchDriver;
 use Modules\KcItem\Models\KcItem;
 use Modules\KcItem\Services\KcItemAccessService;
 
@@ -16,7 +16,10 @@ class ListKcItemsHandler implements QueryHandlerInterface
         'title', 'type', 'status', 'visibility', 'view_count', 'version', 'created_at', 'updated_at',
     ];
 
-    public function __construct(private KcItemAccessService $accessService) {}
+    public function __construct(
+        private KcItemAccessService $accessService,
+        private KcItemSearchDriver $searchDriver,
+    ) {}
 
     public function handle(QueryInterface $query): LengthAwarePaginator
     {
@@ -40,11 +43,7 @@ class ListKcItemsHandler implements QueryHandlerInterface
 
         // ── Text search ─────────────────────────────────────────────────────
         if ($query->search !== null && $query->search !== '') {
-            $term = '%' . $query->search . '%';
-            $q->where(function (Builder $sub) use ($term): void {
-                $sub->where('kc_items.title',   'like', $term)
-                    ->orWhere('kc_items.summary', 'like', $term);
-            });
+            $this->searchDriver->apply($q, $query->search);
         }
 
         // ── Exact filters ────────────────────────────────────────────────────

@@ -7,6 +7,7 @@ use App\Traits\HasTenantMedia;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Laravel\Scout\Searchable;
 use Modules\Assessment\Models\RoadmapMilestone;
 use Modules\KcCategory\Models\KcCategory;
 use Modules\KcItem\Enums\KcItemStatus;
@@ -17,6 +18,7 @@ use Spatie\MediaLibrary\HasMedia;
 class KcItem extends TenantAwareModel implements HasMedia
 {
     use HasTenantMedia;
+    use Searchable;
 
     protected $table = 'kc_items';
 
@@ -64,6 +66,48 @@ class KcItem extends TenantAwareModel implements HasMedia
         'effective_date' => 'datetime',
         'expired_date'   => 'datetime',
     ];
+
+    // ── Scout (full-text search — MeilisearchKcItemSearchDriver) ───────────────
+
+    public function searchableAs(): string
+    {
+        return 'kc_items';
+    }
+
+    /**
+     * `php artisan scout:import` chạy trong context console — không có `TenantContext` (chỉ
+     * `IdentifyOrganization` middleware set, vòng đời HTTP request) — `OrganizationScope` fail-
+     * closed về rỗng khi context chưa set (xem `OrganizationScope::apply()`), khiến import bulk
+     * âm thầm đẩy 0 record lên Meilisearch nếu không bypass tường minh ở đây. Index cần TOÀN BỘ
+     * KcItem của MỌI org (lọc theo `organization_id` ở tầng driver/query lúc search), không phải
+     * riêng 1 tenant.
+     */
+    protected function makeAllSearchableUsing($query)
+    {
+        return $query->withoutTenant();
+    }
+
+    /**
+     * Chỉ đưa field cần cho tìm kiếm + lọc lên Meilisearch — KHÔNG đồng nghĩa "nguồn dữ liệu",
+     * MySQL vẫn là single source of truth (đọc lại record thật qua whereIn ở
+     * MeilisearchKcItemSearchDriver, không trả thẳng nội dung từ index).
+     * `organization_id` bắt buộc có mặt để driver filter đúng tenant (Meilisearch không tự áp
+     * OrganizationScope như Eloquent).
+     */
+    public function toSearchableArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'organization_id' => $this->organization_id,
+            'title' => $this->title,
+            'summary' => $this->summary,
+            'content' => strip_tags((string) $this->content),
+            'type' => $this->type?->value,
+            'status' => $this->status?->value,
+            'visibility' => $this->visibility?->value,
+            'industry' => $this->industry,
+        ];
+    }
 
     // ── Relationships ─────────────────────────────────────────────────────────
 

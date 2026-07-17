@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Auth;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Modules\BusinessProject\Enums\BusinessProjectStage;
 use Modules\BusinessProject\Events\BusinessProjectClosed;
+use Modules\BusinessProject\Events\BusinessProjectStageAdvanced;
 use Modules\BusinessProject\Exceptions\GateViolationException;
 use Modules\BusinessProject\Models\BusinessProject;
 use Modules\BusinessProject\Models\BusinessProjectStageHistory;
@@ -53,6 +54,8 @@ class AdvanceBusinessProjectStageAction
             'changed_at' => now(),
             'created_at' => now(),
         ]);
+
+        event(new BusinessProjectStageAdvanced($businessProject, $stageFrom, $result->nextStage));
 
         if ($isClosingProject) {
             event(new BusinessProjectClosed($businessProject));

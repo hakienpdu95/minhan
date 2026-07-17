@@ -4,10 +4,13 @@ namespace Modules\KcItem\Providers;
 
 use Illuminate\Support\Facades\Gate;
 use Modules\KcItem\Console\Commands\ExpireKcItemsCommand;
+use Modules\KcItem\Contracts\KcItemSearchDriver;
 use Modules\KcItem\Models\KcItem;
 use Modules\KcItem\Models\KcTag;
 use Modules\KcItem\Policies\KcItemPolicy;
 use Modules\KcItem\Policies\KcTagPolicy;
+use Modules\KcItem\Search\FullTextKcItemSearchDriver;
+use Modules\KcItem\Search\MeilisearchKcItemSearchDriver;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class KcItemServiceProvider extends ModuleServiceProvider
@@ -27,7 +30,15 @@ class KcItemServiceProvider extends ModuleServiceProvider
 
     public function boot(): void
     {
+        // registerConfig() (chạy trong parent::boot()) merge config/config.php trước — module
+        // config KHÔNG có sẵn ở register() (nwidart chỉ merge config ở boot(), khác quy ước
+        // thường thấy), nên binding đọc config phải đặt ở đây, sau parent::boot().
         parent::boot();
+
+        $this->app->bind(KcItemSearchDriver::class, match (config('kcitem.search.driver', 'fulltext')) {
+            'meilisearch' => MeilisearchKcItemSearchDriver::class,
+            default => FullTextKcItemSearchDriver::class,
+        });
 
         Gate::policy(KcItem::class, KcItemPolicy::class);
         Gate::policy(KcTag::class, KcTagPolicy::class);

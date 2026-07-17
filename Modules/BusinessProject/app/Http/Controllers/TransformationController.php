@@ -15,6 +15,7 @@ use Modules\BusinessProject\Actions\Transformation\SaveProposalAction;
 use Modules\BusinessProject\Actions\Transformation\SaveSowAction;
 use Modules\BusinessProject\Actions\Transformation\SaveTransformationDesignCanvasAction;
 use Modules\BusinessProject\Actions\Transformation\SaveTransformationRoadmapAction;
+use Modules\BusinessProject\Contracts\DeliverableSignatureProvider;
 use Modules\BusinessProject\Data\Requests\StoreMilestoneData;
 use Modules\BusinessProject\Data\Requests\StoreProposalData;
 use Modules\BusinessProject\Data\Requests\StoreSowData;
@@ -32,7 +33,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class TransformationController extends Controller
 {
-    public function show(BusinessProject $businessProject, CheckStageGateEligibilityHandler $handler): View
+    public function show(BusinessProject $businessProject, CheckStageGateEligibilityHandler $handler, DeliverableSignatureProvider $signer): View
     {
         $this->authorize('view', $businessProject);
 
@@ -43,6 +44,9 @@ class TransformationController extends Controller
         $proposal = $this->findSingleton($businessProject, DeliverableType::Proposal);
         $sow = $this->findSingleton($businessProject, DeliverableType::Sow);
 
+        $proposalSignature = $proposal?->latestSignature();
+        $sowSignature = $sow?->latestSignature();
+
         $milestonesByCategory = $businessProject->milestones()
             ->orderBy('target_date')
             ->get()
@@ -50,8 +54,9 @@ class TransformationController extends Controller
 
         $gateResult = $handler->handle(new CheckStageGateEligibilityQuery($businessProject));
 
-        // Template Library (Phase 2 mảng 5/5) — chỉ Proposal/SOW có selector template (2 loại
-        // duy nhất spec Phần 4 nêu tên cụ thể "Template Service (mẫu Proposal/SOW chuẩn)").
+        // Template Library — Phase 2 mảng 5/5 chỉ nối Proposal/SOW (2 loại spec Phần 4 nêu tên cụ
+        // thể); Phase 3 "Template Engine nâng cao" nối nốt Design Canvas + Roadmap (đơn giản, cùng
+        // pattern free-text singleton).
         $proposalTemplates = DeliverableTemplate::availableTo($businessProject->organization_id)
             ->forType(DeliverableType::Proposal->value)
             ->where('is_active', true)
@@ -59,6 +64,16 @@ class TransformationController extends Controller
 
         $sowTemplates = DeliverableTemplate::availableTo($businessProject->organization_id)
             ->forType(DeliverableType::Sow->value)
+            ->where('is_active', true)
+            ->get(['id', 'name', 'content']);
+
+        $canvasTemplates = DeliverableTemplate::availableTo($businessProject->organization_id)
+            ->forType(DeliverableType::TransformationDesignCanvas->value)
+            ->where('is_active', true)
+            ->get(['id', 'name', 'content']);
+
+        $roadmapTemplates = DeliverableTemplate::availableTo($businessProject->organization_id)
+            ->forType(DeliverableType::TransformationRoadmap->value)
             ->where('is_active', true)
             ->get(['id', 'name', 'content']);
 
@@ -73,6 +88,12 @@ class TransformationController extends Controller
             'gateResult' => $gateResult,
             'proposalTemplates' => $proposalTemplates,
             'sowTemplates' => $sowTemplates,
+            'canvasTemplates' => $canvasTemplates,
+            'roadmapTemplates' => $roadmapTemplates,
+            'proposalSignature' => $proposalSignature,
+            'proposalSignatureVerified' => $proposalSignature ? $signer->verify($proposalSignature) : null,
+            'sowSignature' => $sowSignature,
+            'sowSignatureVerified' => $sowSignature ? $signer->verify($sowSignature) : null,
         ]);
     }
 
@@ -156,15 +177,24 @@ class TransformationController extends Controller
         return $this->back($businessProject, $deliverable->title.' đã bị từ chối.');
     }
 
-    public function confirm(BusinessProject $businessProject, string $type): RedirectResponse
+    public function confirm(BusinessProject $businessProject, string $type, Request $request): RedirectResponse
     {
         $deliverable = $this->resolveDeliverable($businessProject, $type);
 
         $this->authorize('manage', $deliverable);
 
+        // Xác thực lại danh tính TRƯỚC khi ký (tách riêng khỏi việc ký số — xem
+        // ConfirmDeliverableAction) — chống trường hợp phiên đăng nhập bị bỏ quên/chiếm dụng lúc
+        // bấm Confirmed, đúng tinh thần "chữ ký" phải gắn chắc với đúng người.
+        $request->validate([
+            'password' => ['required', 'current_password'],
+        ], [
+            'password.current_password' => 'Mật khẩu không đúng — vui lòng nhập lại để xác nhận ký.',
+        ]);
+
         ConfirmDeliverableAction::run($deliverable);
 
-        return $this->back($businessProject, $deliverable->title.' đã được xác nhận (Confirmed).');
+        return $this->back($businessProject, $deliverable->title.' đã được xác nhận (Confirmed) và ký số nội bộ.');
     }
 
     /**

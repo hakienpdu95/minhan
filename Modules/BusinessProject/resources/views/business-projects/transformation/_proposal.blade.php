@@ -84,17 +84,33 @@
             @endif
 
             @if($proposal->status->value === 'approved')
-            <form action="{{ route('backend.business-projects.transformation.confirm', ['businessProject' => $businessProject, 'type' => 'proposal']) }}" method="POST">
+            <form action="{{ route('backend.business-projects.transformation.confirm', ['businessProject' => $businessProject, 'type' => 'proposal']) }}"
+                  method="POST" class="flex flex-wrap items-center gap-2">
                 @csrf
+                <input type="password" name="password" placeholder="Nhập lại mật khẩu để ký"
+                       class="input input-bordered input-sm" required autocomplete="current-password">
                 <button type="submit" class="btn btn-primary btn-sm">Xác nhận đã ký với khách (Confirmed)</button>
             </form>
+            @error('password')<p class="text-error text-xs w-full">{{ $message }}</p>@enderror
             @endif
 
             @if($proposal->status->value === 'confirmed')
-            <span class="text-xs text-base-content/50">
-                Đã confirmed lúc {{ $proposal->confirmed_at?->format('d/m/Y H:i') }}
-                @if($proposal->confirmedBy)bởi {{ $proposal->confirmedBy->name }}@endif
-            </span>
+            <div class="text-xs text-base-content/50">
+                <p>
+                    Đã confirmed lúc {{ $proposal->confirmed_at?->format('d/m/Y H:i') }}
+                    @if($proposal->confirmedBy)bởi {{ $proposal->confirmedBy->name }}@endif
+                </p>
+                @if($proposalSignature)
+                <p class="mt-0.5">
+                    @if($proposalSignatureVerified)
+                    <span class="badge badge-success badge-xs">✓ Chữ ký hợp lệ</span>
+                    @else
+                    <span class="badge badge-error badge-xs">⚠ Chữ ký không khớp</span>
+                    @endif
+                    <span class="ml-1">{{ $proposalSignature->algorithm }} &middot; nội bộ, không thay thế chữ ký số pháp lý</span>
+                </p>
+                @endif
+            </div>
             @endif
         </div>
         @endif

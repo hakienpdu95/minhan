@@ -200,6 +200,35 @@ return [
             ],
         ],
 
+        // ── Business Project / BCOS ───────────────────────────────────────
+        'business_project.closed' => [
+            'label'  => 'Business Project đóng (Rule R6/R7)',
+            'module' => 'BusinessProject',
+            'event'  => \Modules\BusinessProject\Events\BusinessProjectClosed::class,
+            'subject'=> 'businessProject',
+            'fields' => [
+                ['key' => 'subject.id',            'label' => 'Project ID', 'type' => 'integer'],
+                ['key' => 'subject.attr.code',     'label' => 'Mã dự án',   'type' => 'string'],
+                ['key' => 'subject.attr.name',     'label' => 'Tên dự án',  'type' => 'string'],
+            ],
+        ],
+        'business_project.stage_advanced' => [
+            'label'  => 'Business Project chuyển giai đoạn',
+            'module' => 'BusinessProject',
+            'event'  => \Modules\BusinessProject\Events\BusinessProjectStageAdvanced::class,
+            'subject'=> 'businessProject',
+            'extra'  => ['stage_from' => 'stageFrom', 'stage_to' => 'stageTo'],
+            'fields' => [
+                ['key' => 'subject.id',        'label' => 'Project ID',    'type' => 'integer'],
+                ['key' => 'extra.stage_from',  'label' => 'Từ giai đoạn',  'type' => 'string'],
+                ['key' => 'extra.stage_to',    'label' => 'Đến giai đoạn', 'type' => 'string'],
+            ],
+            'config' => [
+                ['key' => 'stage_to', 'label' => 'Chỉ khi chuyển đến giai đoạn', 'type' => 'text',
+                 'hint' => 'Để trống = mọi giai đoạn. VD: knowledge, customer_success'],
+            ],
+        ],
+
         // ── State Machine (Mô hình B — §6) ────────────────────────────────
         'entity.state_changed' => [
             'label'  => 'Đối tượng đổi trạng thái',

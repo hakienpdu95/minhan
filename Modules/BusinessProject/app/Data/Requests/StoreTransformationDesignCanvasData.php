@@ -20,6 +20,7 @@ class StoreTransformationDesignCanvasData extends Data
         public readonly ?string $resources,
         public readonly ?string $risks,
         public readonly ?string $success_metrics,
+        public readonly ?int $template_id = null,
     ) {}
 
     public static function rules(): array
@@ -33,6 +34,7 @@ class StoreTransformationDesignCanvasData extends Data
             'resources' => ['nullable', 'string'],
             'risks' => ['nullable', 'string'],
             'success_metrics' => ['nullable', 'string'],
+            'template_id' => ['nullable', 'integer', 'exists:deliverable_templates,id'],
         ];
     }
 }

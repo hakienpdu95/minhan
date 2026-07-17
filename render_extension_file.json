@@ -434,7 +434,11 @@
         "domain_code///string///10///_NULL///NULL///__///__",
         "difficulty///unsignedTinyInteger///__///_NULL///NULL///__///__",
         "__index///index///__///__///__///domain_code///__",
-        "__index///index///__///__///__///difficulty///__"
+        "__index///index///__///__///__///difficulty///__",
+        "business_project_id///unsignedBigInteger///__///_NULL///NULL///__///__",
+        "industry///string///100///_NULL///NULL///__///__",
+        "__index///index///__///__///__///organization_id,business_project_id|idx_kcitem_business_project///__",
+        "__index///index///__///__///__///industry///__"
     ],
     [
         "deployment_issues///add///__///Thêm issue_type (mã VerticalConfigItem, tuỳ biến theo từng tổ chức) và severity_detail (mô tả chi tiết mức độ, tách khỏi description chung)",
@@ -449,5 +453,14 @@
     [
         "deployment_checklist_items///add///__///Cho phép PM chỉ định trước ai (hồ sơ nhân sự) phụ trách từng đề mục checklist — tách khỏi done_by (chỉ biết được sau khi đã làm)",
         "assigned_employee_id///unsignedBigInteger///__///_NULL///NULL///->constrained('employees')->onDelete('set null')///Nhân viên được PM chỉ định phụ trách mục này — khác done_by (người thực tế đã tick)"
+    ],
+    [
+        "tasks///add///__///",
+        "business_project_id///unsignedBigInteger///__///_NULL///NULL///__///__",
+        "__index///index///__///__///__///organization_id,business_project_id|idx_task_business_project///__"
+    ],
+    [
+        "deliverables///add///__///",
+        "template_id///unsignedBigInteger///__///_NULL///NULL///->constrained('deliverable_templates')->onDelete('set null')///__"
     ]
 ]

@@ -23,6 +23,7 @@ class SaveFinalReportAction
                 'summary' => $data->summary,
             ],
             'Cập nhật Final Project Report.',
+            $data->template_id,
         );
     }
 }

@@ -29,6 +29,7 @@ class SaveBusinessDiscoveryReportAction
                 'summary' => $data->summary,
             ],
             'Cập nhật Business Discovery Report.',
+            $data->template_id,
         );
     }
 }

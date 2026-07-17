@@ -15,6 +15,7 @@ use Modules\BusinessProject\Data\Requests\AttachKnowledgeAssetData;
 use Modules\BusinessProject\Data\Requests\StoreFinalReportData;
 use Modules\BusinessProject\Enums\DeliverableType;
 use Modules\BusinessProject\Models\BusinessProject;
+use Modules\BusinessProject\Models\DeliverableTemplate;
 use Modules\BusinessProject\Queries\StageGate\CheckStageGateEligibilityHandler;
 use Modules\BusinessProject\Queries\StageGate\CheckStageGateEligibilityQuery;
 use Modules\KcItem\Models\KcItem;
@@ -43,12 +44,18 @@ class ClosingController extends Controller
 
         $gateResult = $handler->handle(new CheckStageGateEligibilityQuery($businessProject));
 
+        $finalReportTemplates = DeliverableTemplate::availableTo($businessProject->organization_id)
+            ->forType(DeliverableType::FinalReport->value)
+            ->where('is_active', true)
+            ->get(['id', 'name', 'content']);
+
         return view('businessproject::business-projects.closing.show', [
             'businessProject' => $businessProject,
             'finalReport' => $finalReport,
             'knowledgeAssets' => $knowledgeAssets,
             'attachableKcItems' => $attachableKcItems,
             'gateResult' => $gateResult,
+            'finalReportTemplates' => $finalReportTemplates,
         ]);
     }
 

@@ -18,12 +18,31 @@
             @endif
         </div>
 
-        <form action="{{ route('backend.business-projects.discovery.report.save', $businessProject) }}" method="POST" class="space-y-4">
+        <form action="{{ route('backend.business-projects.discovery.report.save', $businessProject) }}" method="POST" class="space-y-4"
+              x-data="{
+                  templates: {{ Js::from($discoveryReportTemplates->map(fn($t) => ['id' => $t->id, 'name' => $t->name, 'content' => $t->content])) }},
+                  applyTemplate(id) {
+                      const t = this.templates.find(x => x.id == id);
+                      if (!t) return;
+                      this.$refs.summary.value = t.content.summary ?? '';
+                  }
+              }">
             @csrf
+            @if($discoveryReportTemplates->isNotEmpty())
+            <div class="form-control">
+                <label class="label py-0 pb-1"><span class="label-text text-xs font-medium">Bắt đầu từ Template</span></label>
+                <select name="template_id" class="select select-bordered select-sm w-full" @change="applyTemplate($event.target.value)">
+                    <option value="">— Không dùng template —</option>
+                    @foreach($discoveryReportTemplates as $t)
+                    <option value="{{ $t->id }}">{{ $t->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
 
             <div>
                 <label class="label label-text text-sm font-medium">Tổng hợp hiện trạng &amp; phát hiện</label>
-                <textarea name="summary" rows="5" class="textarea textarea-bordered w-full"
+                <textarea name="summary" rows="5" class="textarea textarea-bordered w-full" x-ref="summary"
                           placeholder="Tổng hợp hiện trạng doanh nghiệp và các phát hiện chính sau Discovery...">{{ old('summary', $reportContent['summary'] ?? '') }}</textarea>
             </div>
 

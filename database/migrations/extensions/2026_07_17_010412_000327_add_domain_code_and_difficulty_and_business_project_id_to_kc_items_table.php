@@ -23,13 +23,25 @@ return new class extends Migration {
             if (!Schema::hasIndex('kc_items', 'kc_items_difficulty_index')) {
                 $table->index('difficulty');
             }
+            if (!Schema::hasColumn('kc_items', 'business_project_id')) {
+                $table->unsignedBigInteger('business_project_id')->nullable()->after('difficulty');
+            }
+            if (!Schema::hasColumn('kc_items', 'industry')) {
+                $table->string('industry', 100)->nullable()->after('business_project_id');
+            }
+            if (!Schema::hasIndex('kc_items', 'idx_kcitem_business_project')) {
+                $table->index(['organization_id', 'business_project_id'], 'idx_kcitem_business_project');
+            }
+            if (!Schema::hasIndex('kc_items', 'kc_items_industry_index')) {
+                $table->index('industry');
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('kc_items', function (Blueprint $table) {
-            $cols = array_filter(['domain_code', 'difficulty'], fn($c) => Schema::hasColumn('kc_items', $c));
+            $cols = array_filter(['domain_code', 'difficulty', 'business_project_id', 'industry'], fn($c) => Schema::hasColumn('kc_items', $c));
             if (!empty($cols)) $table->dropColumn(array_values($cols));
         });
     }

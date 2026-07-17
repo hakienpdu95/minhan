@@ -31,6 +31,7 @@ class SaveTpsCanvasAction
                 'scope' => $data->scope,
             ],
             'Cập nhật TPS Canvas.',
+            $data->template_id,
         );
     }
 }

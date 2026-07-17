@@ -19,11 +19,30 @@
             @endif
         </div>
 
-        <form action="{{ route('backend.business-projects.transformation.roadmap.save', $businessProject) }}" method="POST" class="space-y-3 mb-4">
+        <form action="{{ route('backend.business-projects.transformation.roadmap.save', $businessProject) }}" method="POST" class="space-y-3 mb-4"
+              x-data="{
+                  templates: {{ Js::from($roadmapTemplates->map(fn($t) => ['id' => $t->id, 'name' => $t->name, 'content' => $t->content])) }},
+                  applyTemplate(id) {
+                      const t = this.templates.find(x => x.id == id);
+                      if (!t) return;
+                      this.$refs.overview.value = t.content.overview ?? '';
+                  }
+              }">
             @csrf
+            @if($roadmapTemplates->isNotEmpty())
+            <div class="form-control">
+                <label class="label py-0 pb-1"><span class="label-text text-xs font-medium">Bắt đầu từ Template</span></label>
+                <select name="template_id" class="select select-bordered select-sm w-full" @change="applyTemplate($event.target.value)">
+                    <option value="">— Không dùng template —</option>
+                    @foreach($roadmapTemplates as $t)
+                    <option value="{{ $t->id }}">{{ $t->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
             <div>
                 <label class="label label-text text-sm font-medium">Tổng quan lộ trình</label>
-                <textarea name="overview" rows="3" class="textarea textarea-bordered w-full"
+                <textarea name="overview" rows="3" class="textarea textarea-bordered w-full" x-ref="overview"
                           placeholder="Tóm tắt lộ trình chuyển đổi theo 3 tầng: Quick Wins, Capability Building, Transformation...">{{ old('overview', $roadmapContent['overview'] ?? '') }}</textarea>
             </div>
             <button type="submit" class="btn btn-primary btn-sm">

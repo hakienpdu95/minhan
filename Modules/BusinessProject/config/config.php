@@ -12,4 +12,10 @@ return [
             'enforced' => true,
         ],
     ],
+
+    // Rule R4 — chữ ký nội bộ khi Confirmed. 'internal_rsa' (mặc định, không cần hạ tầng ngoài)
+    // hoặc provider CA thật sau này. Xem Modules/BusinessProject/app/Contracts/DeliverableSignatureProvider.php.
+    'signature' => [
+        'provider' => env('BCOS_SIGNATURE_PROVIDER', 'internal_rsa'),
+    ],
 ];

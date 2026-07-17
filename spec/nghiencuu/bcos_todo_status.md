@@ -1,10 +1,363 @@
 # BCOS — TRẠNG THÁI TRIỂN KHAI & VIỆC CÒN LẠI
 
-> Cập nhật: 2026-07-17 (Template Library — **Phase 2, mảng 5/5 — TOÀN BỘ PHASE 2 ĐÃ HOÀN THÀNH**).
-> 8/8 workspace đã triển khai hết, không còn tab disabled. Đối chiếu với
+> Cập nhật: 2026-07-17 (Phase 3 — Template Engine nâng cao, mảng thứ 5/5 — **TOÀN BỘ PHASE 3 ĐÃ HOÀN THÀNH**).
+> 8/8 workspace Phase 2 đã triển khai hết, không còn tab disabled. Đối chiếu với
 > `spec/nghiencuu/bcos_master_flow.md` (Phần 9 — Lộ trình) và plan đã duyệt
 > `/home/hacom/.claude1/plans/declarative-discovering-garden.md`.
 > Mục đích: để biết chính xác đã làm gì, còn gì, ưu tiên gì cho phiên làm việc tiếp theo.
+
+---
+
+## ✅ ĐÃ HOÀN THÀNH — Template Engine nâng cao (Phase 3, mảng 5/5 — HẾT PHASE 3), 2026-07-17
+
+Handbook chỉ nhắc tên "Template Engine" đúng 1 lần trong toàn bộ tài liệu (mục 5.9 Roadmap), không
+mô tả chi tiết gì thêm — đã đọc lại `handbook.docx` (convert qua LibreOffice headless để đọc được
+nội dung, file `.docx` nhị phân) để xác nhận trước khi hỏi lại user. Hỏi lại user và chọn hướng cụ
+thể nhất, rủi ro thấp nhất: nối "Bắt đầu từ Template" (đã xây ở Phase 2 mảng 5/5, nhưng cố ý chỉ
+nối 2/10+ loại — Proposal/SOW) vào **6 loại deliverable singleton dạng free-text còn lại** —
+đúng như chính code Phase 2 đã tự ghi chú "workspace khác có thể bật UI selector bất cứ lúc nào
+sau này, không cần sửa lại tầng Action/DB".
+
+- **6 loại đã nối**: TPS Canvas, Business Discovery Report (Discovery), Diagnosis Report overview
+  (Diagnosis — CHỈ field `overview`, không đụng `findings` mảng riêng), Transformation Design
+  Canvas (8 field, dùng `Object.keys(t.content).forEach()` để map generic thay vì hard-code từng
+  field vì Canvas có nhiều field động qua `@foreach($fields as $key => $label)`), Transformation
+  Roadmap overview (KHÔNG đụng form Milestone bên dưới — 2 form độc lập trên cùng view), Final
+  Report (Closing). Mỗi loại: thêm `template_id` vào `StoreXxxData` (rule
+  `nullable|integer|exists:deliverable_templates,id`) → `SaveXxxAction` truyền `$data->template_id`
+  vào `UpsertSingletonDeliverableAction::run()` (tham số đã có sẵn từ Phase 2, không sửa Action
+  chung) → Controller `show()` fetch template theo đúng `DeliverableType` tương ứng → View thêm
+  y hệt pattern Alpine.js (`x-data` + `applyTemplate()` + dropdown) đã dùng ở Proposal/SOW.
+- **KHÔNG nối** (cố ý, ghi lại lý do): Business Context Report (Data field là `?array` lồng nhau
+  `{notes: "..."}`, khác cấu trúc flat-string 6 loại trên, cộng thêm Rule R1 "form chỉ hiện 1
+  lần" khiến việc áp template ít giá trị hơn — cần thiết kế riêng nếu làm sau); Weekly Report,
+  Interview/Observation... (không phải singleton — mỗi lần là 1 bản ghi MỚI qua Action riêng,
+  không có trạng thái "draft đang sửa" để prefill); Case Study template, CSAT form (Knowledge/
+  Customer Success — không dùng `UpsertSingletonDeliverableAction`, cấu trúc khác hẳn).
+
+**Verify**: tạo project test + 1 `DeliverableTemplate` (type=`tps_canvas`) qua tinker, HTTP thật
+(curl + cookie jar, login CEO, `php artisan serve` cổng riêng): render cả 4 trang
+(Discovery/Diagnosis/Transformation/Closing) đều 200; dropdown "Bắt đầu từ Template" CHỈ hiện ở
+Discovery (nơi có template thật) — đúng hành vi ẩn khi rỗng như Proposal/SOW; submit form TPS
+Canvas kèm `template_id=1` qua POST thật → xác nhận `deliverables.template_id` lưu đúng, nội dung
+version lưu đúng. Không log lỗi mới. Toàn bộ dữ liệu test (BusinessProject, Deliverable+version,
+DeliverableTemplate) đã dọn sạch.
+
+---
+
+## 🎉 PHASE 3 HOÀN THÀNH TOÀN BỘ (5/5 mảng, 2026-07-17)
+
+Workflow Engine → Full-text search Knowledge (MySQL FULLTEXT, sau nâng cấp Meilisearch theo yêu
+cầu user) → Import/Export Discovery records → Digital Signature nội bộ → Template Engine nâng
+cao — cả 5 mảng đã xong. Cả 3 mảng có seam mở rộng (Full-text search, Digital Signature, Workflow
+Executor) đều theo cùng pattern interface + config-driven binding, không đụng code gọi khi đổi
+implementation sau này. **Việc tiếp theo tự nhiên là Phase 4 — AI Ready** (AI Discovery/Diagnosis/
+Proposal/Weekly Summary/Knowledge Search Assistant), theo đúng roadmap `bcos_master_flow.md` Phần
+9 — chưa cần làm sớm, chỉ ghi lại để không quên.
+
+---
+
+## ✅ ĐÃ HOÀN THÀNH — Digital Signature nội bộ (Phase 3, mảng 4/5), 2026-07-17
+
+Hỏi lại user trước khi chọn giải pháp: KHÔNG dùng chữ ký số PKI có CA cấp phép thật (VNPT-CA,
+VNPT SmartCA...) vì chỉ dùng nội bộ (khách vẫn ký ngoài hệ thống theo đúng spec R4, hệ thống chỉ
+ghi nhận) — loại đó tốn phí/tích hợp SDK ngoài, giá trị pháp lý chỉ cần khi ký với bên ngoài.
+Thay vào đó nâng cấp bước "tick Confirmed" (trước đây chỉ lưu `confirmed_at`/`confirmed_by`)
+thành 1 chữ ký mật mã nội bộ, thiết kế theo đúng yêu cầu user "linh hoạt để sau này tích hợp chữ
+ký số thật" — cùng pattern interface + config-driven binding đã dùng cho Full-text search/Workflow
+Executor.
+
+- **2 bảng mới** (append-only, không sửa/xoá sau khi ghi — cùng nguyên tắc `deliverable_versions`/
+  `business_project_stage_history`): `user_signing_keys` (1 keypair RSA-2048/user, sinh lười lúc
+  ký lần đầu, private key LUÔN lưu mã hoá qua `Crypt::encryptString` dùng `APP_KEY`) và
+  `deliverable_signatures` (1 hàng/lần Confirmed, có thể nhiều hàng nếu deliverable confirmed lại
+  sau chu kỳ Change Request mở khoá SOW).
+- **`Modules\BusinessProject\Contracts\DeliverableSignatureProvider`** (interface: `sign()`,
+  `verify()`, `provider()`) — seam để đổi cơ chế ký mà KHÔNG sửa `ConfirmDeliverableAction`/
+  Controller/View, bind qua `config('businessproject.signature.provider')` (mặc định
+  `internal_rsa`, đổi qua `BCOS_SIGNATURE_PROVIDER` trong `.env`).
+- **`InternalRsaSignatureProvider`** (implementation hiện tại) — RSA-2048 "self-issued" (KHÔNG
+  CA cấp). `sign()`: hash SHA-256 của payload chuẩn hoá (nội dung version + danh tính signer,
+  KHÔNG gồm thời điểm ký — để `verify()` sau này tái tạo được y hệt từ dữ liệu ổn định) rồi
+  `openssl_sign` bằng private key của signer. `verify()`: (1) so khớp lại content_hash để phát
+  hiện nội dung bị đổi sau khi ký, (2) `openssl_verify` để xác nhận đúng signer đã ký bằng
+  private key của họ. **Đã ghi rõ giới hạn an toàn trong code** (đã trao đổi với user trước khi
+  làm): đây KHÔNG phải chữ ký số hợp pháp theo Nghị định 130/2018 — private key nằm trên server,
+  admin có DB + `APP_KEY` vẫn giải mã được, chỉ chống được sửa nội dung sau ký + chối bỏ ở mức
+  nội bộ, không thay thế chữ ký số pháp lý khi cần ký với bên ngoài.
+- **Xác thực lại mật khẩu TRƯỚC khi ký** (`TransformationController::confirm()`, dùng rule có sẵn
+  `current_password` của Laravel) — tách riêng khỏi tầng ký (Controller lo xác thực danh tính,
+  Action+Provider lo ký mật mã), chống trường hợp phiên đăng nhập bị bỏ quên lúc bấm Confirmed.
+  `ConfirmDeliverableAction` gọi `DeliverableSignatureProvider::sign()` trước khi set
+  status=confirmed — giữ nguyên `confirmed_at`/`confirmed_by` (không phá chỗ khác đang đọc 2 cột
+  này) và bổ sung thêm bản ghi chữ ký.
+- UI (`_proposal.blade.php`/`_sow.blade.php`): thêm ô nhập mật khẩu vào form Confirm; khi đã
+  confirmed hiện badge "✓ Chữ ký hợp lệ"/"⚠ Chữ ký không khớp" (tính `verify()` mỗi lần render,
+  không cache) kèm ghi chú rõ "nội bộ, không thay thế chữ ký số pháp lý" — không để user hiểu
+  lầm đây là chữ ký số chính thức.
+
+**Verify**: tinker dựng Proposal + SOW thật qua đúng luồng (`SaveProposalAction`/`SaveSowAction`
+→ submit → approve) rồi `ConfirmDeliverableAction::run()` — xác nhận tạo `UserSigningKey` (RSA-2048,
+private key mã hoá — kiểm tra trực tiếp KHÔNG phải PEM plaintext) + `DeliverableSignature` đúng,
+`verify()` trả `true`. Test tamper: sửa tay `content_hash` → `verify()` trả `false` đúng, phục hồi
+lại → `true` trở lại. HTTP thật (curl + cookie jar, login CEO, `php artisan serve` cổng riêng):
+nhập sai mật khẩu → chặn đúng (SOW vẫn `approved`, không bị confirmed), nhập đúng mật khẩu → 302
+thành công, trang hiện đúng badge "Chữ ký hợp lệ" cho cả Proposal và SOW. Không log lỗi mới. Toàn
+bộ dữ liệu test (BusinessProject, Deliverable+version, DeliverableSignature, UserSigningKey của
+user test) đã forceDelete/xoá sạch qua `withoutTenant()`.
+
+**Việc còn lại tự nhiên cho mảng này**: khi cần chữ ký số CÓ giá trị pháp lý thật (ký với khách
+hàng ngay trong hệ thống thay vì "ngoài hệ thống" như hiện tại) — viết provider mới (VNPT-CA,
+VNPT SmartCA...) implements `DeliverableSignatureProvider`, đổi `BCOS_SIGNATURE_PROVIDER`, không
+sửa `ConfirmDeliverableAction`/Controller/View/bảng dữ liệu hiện có.
+
+---
+
+## ✅ ĐÃ HOÀN THÀNH — Nâng cấp Full-text search Knowledge lên Meilisearch, 2026-07-17
+
+Tiếp nối mục "Full-text search Knowledge (Phase 3, mảng 2/5)" — lúc đó chọn MySQL FULLTEXT vì
+chưa có Meilisearch trên VPS. User tự cài Meilisearch xong (đã cấu hình sẵn `SCOUT_DRIVER`,
+`MEILISEARCH_HOST`, `MEILISEARCH_KEY` trong `.env`) và yêu cầu áp dụng — đây CHÍNH LÀ tình huống
+mảng trước đã chủ động thiết kế sẵn seam để phục vụ: chỉ cần thêm 1 driver mới, không sửa
+`ListKcItemsHandler`/Controller/View.
+
+- `composer require laravel/scout meilisearch/meilisearch-php`. `KcItem` model: thêm
+  `Searchable` trait + `toSearchableArray()` (chỉ đưa field cần tìm/lọc: title/summary/content/
+  organization_id/type/status/visibility/industry — KHÔNG đồng nghĩa "nguồn dữ liệu", MySQL vẫn
+  là single source of truth) + `searchableAs()` (index `kc_items`).
+- **`MeilisearchKcItemSearchDriver implements KcItemSearchDriver`** (interface đã có sẵn từ mảng
+  trước) — search Meilisearch lấy ID khớp, `whereIn('kc_items.id', $ids)` lại trên MySQL để mọi
+  filter/sort/pagination còn lại của Handler áp dụng như cũ trên dữ liệu thật (không trả thẳng
+  nội dung từ index). KHÔNG tự áp relevance ordering (FIELD()) — giữ đối xứng với
+  `FullTextKcItemSearchDriver` (chỉ lọc, không sắp xếp) để đổi driver qua config không đổi hành
+  vi sort mặc định Consultant đã quen.
+- `config/scout.php`: `index-settings.kc_items` khai `filterableAttributes` (organization_id, type,
+  status, visibility, industry — Meilisearch KHÔNG tự hiểu field nào lọc được như SQL, phải khai
+  tường minh) + `searchableAttributes`. Chạy `php artisan scout:sync-index-settings` để đẩy cấu
+  hình lên engine thật.
+- `KcItemServiceProvider::boot()` thêm case `'meilisearch' => MeilisearchKcItemSearchDriver::class`
+  vào `match()` sẵn có — đổi driver 100% qua `.env` (`KC_SEARCH_DRIVER=meilisearch`), không cần
+  deploy lại code khác.
+
+### 🐛 Bug tự phát hiện + tự sửa: CÙNG LOẠI gotcha `withoutTenant()` đã ghi nhớ, lần thứ 3 xuất hiện
+
+`php artisan scout:import` chạy trong context console (không HTTP, không `TenantContext`) —
+`OrganizationScope` fail-closed khi context rỗng → import bulk BAN ĐẦU âm thầm đẩy **0 document**
+lên Meilisearch dù lệnh báo "All records have been imported" (đúng nghĩa đen: đã import hết 0 bản
+ghi nó nhìn thấy được). Phát hiện ngay khi kiểm tra trực tiếp `numberOfDocuments` qua Meilisearch
+API (không tin lời báo thành công của artisan). **Đã fix**: override
+`KcItem::makeAllSearchableUsing($query)` (hook chính thức của Scout cho việc này) trả về
+`$query->withoutTenant()` — index cần TOÀN BỘ KcItem mọi org (lọc theo `organization_id` ở tầng
+driver lúc search), không phải riêng 1 tenant. Đồng bộ real-time (create/update/delete qua HTTP
+request) KHÔNG bị ảnh hưởng — chỉ ảnh hưởng đường bulk import chạy console. Đây là bug thứ 3 cùng
+họ với gotcha đã ghi trong memory (`feedback-tenant-cleanup-verification.md`) — bất kỳ thao tác
+nào chạm `TenantAwareModel` ngoài vòng đời HTTP request (console command, queue job, artisan
+command) đều cần tự hỏi "context có đang set đúng không" trước khi tin kết quả.
+
+**Verify**: `scout:sync-index-settings` xác nhận đồng bộ settings; `scout:import` sau khi fix xác
+nhận đúng 1 document (seed thật) lên index (kiểm tra trực tiếp qua Meilisearch REST API, không
+qua lời báo của artisan). Tạo 2 KcItem test (org 2) — xác nhận đồng bộ real-time tự động (không
+cần chạy import lại) qua đếm `numberOfDocuments`. Search qua `ListKcItemsHandler` thật: cụm từ khớp
+đúng 1/2 kết quả như dự kiến, chuỗi vô nghĩa trả 0, và xác nhận ưu điểm thật của Meilisearch so
+với MySQL FULLTEXT — tìm **"ban le" (không dấu) khớp đúng "bán lẻ"** (MySQL FULLTEXT không làm
+được, phải gõ đúng dấu). Xác nhận **cách ly tenant đúng**: đổi sang org khác, search cùng từ khoá
+→ 0 kết quả (không thấy dữ liệu org 2). HTTP thật (curl + cookie jar, login CEO) cho cả API và
+trang index — 200, đúng dữ liệu. Xoá KcItem test — xác nhận Meilisearch tự động gỡ khỏi index
+đúng (`numberOfDocuments` giảm lại). Toàn bộ dữ liệu test đã forceDelete qua `withoutTenant()`.
+
+---
+
+## ✅ ĐÃ HOÀN THÀNH — Import/Export Discovery records (Phase 3, mảng 3/5), 2026-07-17
+
+Spec chỉ ghi "Import/Export" không chỉ định entity — hỏi lại user, chọn **Discovery Workspace**
+(spec Giai đoạn 2 tự gọi đây là "nơi nhập liệu thủ công nhiều nhất") thay vì KcItem/Lead. Export
+mở rộng KHÔNG làm ở mảng này (đã có sẵn pattern FastExcel dùng ở BCOS Dashboard từ Phase 2, không
+cần thêm gì mới) — mảng này tập trung vào phần thật sự mới: **Import**.
+
+- **`ImportDiscoveryRecordsAction`** — nhận `BusinessProject` + `Collection` các dòng đã đọc từ
+  file (key = tên cột header), validate TỪNG DÒNG độc lập qua chính `StoreDiscoveryRecordData::rules()`
+  (không viết rule riêng cho import, cùng 1 nguồn validate với form nhập tay) — dòng lỗi bị bỏ
+  qua kèm thông báo rõ "Dòng N: lý do", KHÔNG chặn các dòng còn lại (partial success, đúng
+  nguyên tắc "no silent caps" — báo rõ ràng dòng nào bị bỏ, không âm thầm cắt). Dòng hợp lệ đi
+  qua ĐÚNG `AddDiscoveryRecordAction` — action DÙNG CHUNG với form nhập tay trên UI, không tự chế
+  logic tạo Deliverable riêng cho đường import (đúng nguyên tắc Phần 1 #5).
+- **`DiscoveryController::importRecordsTemplate`** — xuất file `.xlsx` mẫu (1 dòng ví dụ, đúng 5
+  cột `type/title/notes/occurred_at/participants`) qua FastExcel, cùng convention export đã có.
+  **`DiscoveryController::importRecords`** — nhận upload (`mimes:xlsx,xls,csv`, tối đa 2MB), giới
+  hạn tường minh 500 dòng/lần (vượt → chặn kèm thông báo, không cắt bớt âm thầm), gọi Action trên,
+  redirect kèm session flash `import_errors` (mảng lỗi từng dòng) để UI liệt kê đầy đủ.
+- UI: thêm khối `<details>` "Import hàng loạt (Excel/CSV)" thu gọn trong `_records.blade.php` —
+  link tải template + form upload + hiển thị danh sách lỗi (nếu có) ngay dưới.
+
+### 🐛 Bug tự phát hiện + tự sửa ngay khi verify (không phải lỗi thiết kế)
+
+`FastExcel` chọn reader (XLSX/CSV/ODS) dựa vào **đuôi file của path truyền vào** `import($path)` —
+nhưng `UploadedFile::getRealPath()` của Laravel trả về path tạm KHÔNG có đuôi (VD `/tmp/phpXXXXXX`),
+khiến FastExcel luôn mặc định đọc như XLSX (định dạng zip) dù file thật là CSV → lỗi
+`Not a zip archive`. Phát hiện ngay ở lần verify HTTP thật đầu tiên (tinker không bắt được vì không
+đi qua upload thật). **Đã fix**: copy file upload sang 1 path tạm CÓ đúng đuôi
+(`getClientOriginalExtension()`) trước khi đưa cho FastExcel, xoá lại ngay sau khi đọc xong
+(`finally` + `@unlink`).
+
+**Verify**: tạo BusinessProject test qua tinker, dựng file CSV 4 dòng (2 hợp lệ: interview +
+observation, 1 sai `type`, 1 thiếu `title`) — HTTP thật (curl + cookie jar, login CEO,
+`php artisan serve` cổng riêng): tải template `.xlsx` thật (200, đúng định dạng Excel qua lệnh
+`file`), upload CSV qua route import (302 → flash "Đã nhập 2/4 bản ghi" + liệt kê đúng 2 dòng lỗi
+kèm lý do), xác nhận trong DB đúng 2 Deliverable con được tạo (nội dung/type/ngày/người tham gia
+khớp đúng file gốc), 2 dòng lỗi KHÔNG tạo bản ghi nào. Toàn bộ dữ liệu test (BusinessProject +
+Deliverable + version) đã forceDelete qua `withoutTenant()`, server tạm + file tạm đã dọn sạch.
+
+**Việc còn lại tự nhiên cho mảng này**: import chỉ áp dụng cho Discovery record (5 loại khảo sát),
+CHƯA mở rộng sang KcItem/entity khác — nếu cần sau này, lặp lại đúng pattern
+`ImportXxxAction` + validate qua `StoreXxxData::rules()` có sẵn, không cần thiết kế lại.
+
+---
+
+## ✅ ĐÃ HOÀN THÀNH — Full-text search Knowledge (Phase 3, mảng 2/5), 2026-07-17
+
+Spec gốc ghi "full-text search (Scout + Meilisearch)" nhưng sau khi hỏi lại user: **quyết định
+dùng MySQL FULLTEXT thay Meilisearch** — user tự vận hành VPS Ubuntu, không muốn thêm 1 service
+nền phải quản lý dài hạn (backup/update/RAM) chỉ để phục vụ tra cứu nội bộ quy mô nhỏ. Yêu cầu rõ
+của user: **phải làm linh hoạt để sau này đổi sang Meilisearch khi cần scale mà không viết lại
+từ đầu** — đây là lý do có tầng interface thay vì gọi thẳng MySQL trong Handler.
+
+- **`Modules\KcItem\Contracts\KcItemSearchDriver`** (interface, 1 method `apply(Builder, string): Builder`)
+  — seam duy nhất để đổi driver. `ListKcItemsHandler` (entry point search DUY NHẤT của KcItem,
+  đã xác nhận qua grep — không có chỗ nào khác tự chế LIKE search riêng) inject interface này
+  thay vì hard-code LIKE, không đổi gì khác khi đổi driver sau này.
+- **`FullTextKcItemSearchDriver`** (implementation hiện tại) — `whereFullText(['title','summary',
+  'content'], ..., ['mode'=>'boolean'])` (MySQL MATCH...AGAINST, builtin từ Laravel, KHÔNG cần
+  Scout/package ngoài). Free text → boolean query: mỗi từ ≥3 ký tự thành `+từ*` (bắt buộc khớp +
+  prefix match), loại ký tự đặc biệt boolean mode tránh lỗi cú pháp. Fallback LIKE khi câu tìm
+  kiếm không còn token nào đủ dài (toàn từ ngắn/ký tự đặc biệt) — không trả rỗng oan.
+- **Binding qua config** (`config('kcitem.search.driver')`, mặc định `fulltext`, đăng ký ở
+  `KcItemServiceProvider::boot()` — **PHẢI đặt ở `boot()` không phải `register()`**: phát hiện
+  nwidart `ModuleServiceProvider::registerConfig()` chỉ chạy trong `boot()`, khác quy ước
+  thường thấy — config module chưa merge xong nếu đọc ở `register()`, đã tự bắt lỗi này trước
+  khi verify). Đổi sang Meilisearch sau này: thêm 1 class `implements KcItemSearchDriver` + thêm
+  1 case trong `match()` — không đụng `ListKcItemsHandler`/Controller/View.
+- Migration mới: `ADD FULLTEXT INDEX` trên `kc_items(title, summary, content)` (InnoDB hỗ trợ
+  FULLTEXT từ 5.6, không cần đổi storage engine).
+
+**Giới hạn biết trước** (ghi rõ trong code, không sửa vì cần đổi cấu hình server MySQL —
+`innodb_ft_min_token_size`, không nên tự ý sửa khi chỉ đang làm 1 tính năng): từ tiếng Việt
+ngắn hơn 3 ký tự (là, và, có...) không được lập chỉ mục FULLTEXT nên không match được khi đứng
+riêng — fallback LIKE chỉ xử lý trường hợp CẢ câu tìm kiếm không còn token nào đủ dài, không bù
+từng từ ngắn lẫn trong câu dài hơn.
+
+### 🐛 Bug tự tạo, tự phát hiện khi verify lại (không phải lỗi thiết kế)
+
+Khi verify, phát hiện **1 bản ghi KcItem test của phiên Workflow Engine TRƯỚC ĐÓ (`bcos_todo_status.md`
+mục "Workflow Engine tích hợp BCOS") thực ra CHƯA được xoá** dù log phiên đó ghi "đã forceDelete,
+kc_items total: 0" — nguyên nhân: script cleanup gọi `TenantContext::flush()` TRƯỚC khi query
+`KcItem::where(...)`, khiến `OrganizationScope` (global scope fail-closed khi context rỗng, xem
+`OrganizationScope::apply()`) trả về **rỗng giả** — verify tưởng đã xoá nhưng thực ra chưa động
+tới bản ghi thật, chỉ là query không thấy nó. **Bài học quan trọng cho mọi phiên sau**: khi dọn
+dữ liệu test trên model `TenantAwareModel`, PHẢI dùng `Model::withoutTenant()->...` tường minh,
+KHÔNG được flush/bỏ trống `TenantContext` rồi query trần — context rỗng che giấu dữ liệu (trả
+rỗng), không phải "thấy hết dữ liệu mọi org" như trực giác thường nghĩ. Đã xoá đúng bản ghi mồ
+côi này (`KcItem` id 2 + `KcCategory` id 2) trong phiên này.
+
+**Verify**: tinker tạo 2 KcItem cùng category (title/summary/content tiếng Việt có dấu khác nhau
+rõ rệt) — search theo cụm từ khớp đúng 1 kết quả, từ chung ("automation") khớp cả 2, chuỗi vô
+nghĩa trả 0 kết quả (không rơi vào fallback LIKE oan), tìm theo tiền tố 1 từ vẫn khớp đúng. HTTP
+thật (curl + cookie jar, login CEO, `php artisan serve` cổng riêng) cho route API
+`GET /backend/api/kc-items?search=...` và trang index `GET /dashboard/kc-items?search=...` — cả
+2 đều 200, JSON đúng nội dung, không log lỗi mới. Regression: không có chỗ nào khác tự
+`new ListKcItemsHandler(...)` thủ công (đều qua DI container) nên thêm tham số constructor không
+gây lỗi ở nơi gọi khác. Toàn bộ dữ liệu test (KcItem, KcCategory dùng cho test này VÀ bản ghi mồ
+côi phát hiện thêm) đã forceDelete qua `withoutTenant()`, server tạm đã dừng.
+
+**Việc còn lại tự nhiên cho mảng này**: nếu sau này scale cần Meilisearch — cài Scout +
+`meilisearch/meilisearch-php`, thêm class `MeilisearchKcItemSearchDriver implements
+KcItemSearchDriver` (dùng `Laravel\Scout\Searchable` trên `KcItem` model + filter theo
+`organization_id` làm filterable attribute — Meilisearch KHÔNG tự áp tenant scope như MySQL query,
+phải filter thủ công), đổi `KC_SEARCH_DRIVER=meilisearch` trong `.env` — không sửa
+`ListKcItemsHandler`/Controller/View.
+
+---
+
+## ✅ ĐÃ HOÀN THÀNH — Workflow Engine tích hợp BCOS (Phase 3, mảng 1/5), 2026-07-17
+
+Đánh giá codebase trước khi chọn: trong 5 mảng Phase 3 (Workflow Engine, Template Engine nâng
+cao, Digital Signature, Import/Export, Full-text search Knowledge), Workflow Engine được chọn làm
+trước vì `Modules/WorkflowAutomation` đã là engine khai báo trưởng thành (đang dùng thật cho Lead),
+không cần hạ tầng ngoài (khác Full-text search cần Meilisearch chưa cài), và có gap cụ thể đã xác
+nhận qua code: event `BusinessProjectClosed` bắn từ Phase 1 nhưng CHƯA từng có Listener nào bắt —
+đúng khớp yêu cầu spec Giai đoạn 6 ("đóng thành công → tự động tạo Project Retrospective (gợi ý) →
+kích hoạt Customer Success Workspace") mà chưa ai làm.
+
+- **2 trigger mới** trong `config/workflow_automation.php` (KHÔNG cần class riêng, đúng nguyên tắc
+  engine "thêm entry config = thêm trigger"): `business_project.closed` (map event có sẵn
+  `BusinessProjectClosed`) và `business_project.stage_advanced` (event MỚI
+  `BusinessProjectStageAdvanced`, bắn ở MỌI lần advance — không chỉ lúc đóng — để domain khác dùng
+  sau này, VD tự động thông báo khi vào Diagnosis/Transformation, chưa wiring workflow cụ thể nào
+  cho trigger này ở mảng này, chỉ mở hạ tầng).
+- **`CreateProjectRetrospectiveExecutor`** (`Modules/BusinessProject/app/Workflow/`) — ActionExecutor
+  domain-specific theo đúng pattern `Modules\Lead\Workflow\CreateLeadExecutor` (executor sống trong
+  module domain, KHÔNG trong WorkflowAutomation, đăng ký qua `ActionRegistry` ở
+  `BusinessProjectServiceProvider::boot()`). Tạo 1 Meeting `type=retrospective` CHƯA lên lịch
+  (`held_at=null` — đúng "gợi ý", không tự chế nội dung Retrospective thay Lead Consultant/PM),
+  idempotent (skip nếu project đã có Retrospective).
+- **Workflow mặc định seed cho MỖI Organization** (`SeedBcosDefaultWorkflowAction`) — 1 Workflow
+  "BCOS — Đóng dự án: Retrospective + Kích hoạt Customer Success" trigger
+  `business_project.closed`, 2 step: tạo Retrospective (executor trên) + thông báo role
+  `customer_success` (dùng lại NGUYÊN `notification.send` executor có sẵn, target
+  `role:customer_success` — không viết executor thông báo riêng). Record là Workflow THẬT đi qua
+  builder UI có sẵn (Founder/Admin xem/sửa/tắt được sau này, không phải Listener code cứng — đúng
+  nguyên tắc Phần 1 #5 "1 service dùng mọi nơi"). Org mới tự có qua Listener
+  `SeedBcosWorkflowsOnOrganizationCreated` (bắt `OrganizationCreated`, cùng pattern
+  `Subscription\...\AutoSubscribeOnOrgCreated`); org cũ backfill qua seeder
+  `BcosAutomationSeeder` (gọi trong `BusinessProjectDatabaseSeeder`, idempotent).
+
+### 🐛 Bug thật của chính WorkflowAutomation module phát hiện + fix khi verify qua queue THẬT
+
+**`ExecuteWorkflowAction` không restore tenant context trong queue worker** — `QUEUE_CONNECTION=database`
+(không phải `sync`) trong môi trường này, nghĩa là job chạy ở process worker riêng, KHÔNG có
+`TenantContext`/Spatie Permission team id (cả 2 chỉ được set bởi `IdentifyOrganization` middleware,
+chỉ chạy trong vòng đời HTTP request). `Workflow::find($id)` dùng `OrganizationScope` — fail-closed
+về `WHERE 0=1` khi context rỗng (xem `OrganizationScope::apply()`) — nghĩa là **MỌI workflow trong
+TOÀN BỘ hệ thống (không riêng BCOS) âm thầm không chạy được khi xử lý qua queue worker thật**, chỉ
+"hoạt động" khi test qua tinker/sync vì TenantContext còn sót lại từ request/tinker session. Bug
+tồn tại từ trước (ảnh hưởng cả Lead workflow), chỉ phát hiện khi verify BCOS trigger qua
+`php artisan queue:work` thật (không phải tinker) — **chặn thẳng tính năng vừa build nếu không
+sửa**. **Đã fix**: `ExecuteWorkflowAction::handle()` resolve `Organization` từ
+`$payload->organizationId` (đã có sẵn trong `TriggerPayload`), bọc toàn bộ phần thực thi còn lại
+(tách thành `run()`) trong `TenantContext::runForOrganization()` + `setPermissionsTeamId()` (restore
+về `null` ở `finally` — quan trọng vì queue worker là **process sống lâu**, xử lý nhiều job liên
+tiếp, không reset tenant nghĩa là job sau lây nhiễm tenant của job trước).
+
+**Phát hiện thêm 1 bug KHÁC, KHÔNG sửa (ngoài phạm vi, đã tồn tại từ trước, không liên quan
+BCOS)**: cột `notifications.id` trong DB là `bigint auto_increment`, nhưng
+`Illuminate\Notifications\Channels\DatabaseChannel` (stock Laravel) insert `id` bằng
+`Str::uuid()` — mọi notification qua kênh `database` (bất kỳ notification nào trong toàn app, VD
+`DeliverableAwaitingApprovalNotification` đã có sẵn từ trước) đều FAIL khi xử lý qua queue thật
+(`SQLSTATE... Incorrect integer value`). Xác nhận đây chính là nguồn gốc "~63 job pending/fail tồn
+đọng" đã ghi nhận ở phiên Customer Success Workspace (Phase 2). Không sửa vì phạm vi quá rộng (ảnh
+hưởng toàn bộ hệ thống notification, không riêng Workflow Engine/BCOS) — cần 1 phiên riêng để rà
+soát (có thể là chỉnh migration `notifications` dùng `uuid` làm PK, hoặc override
+`DatabaseNotification` model).
+
+**Verify**: build fixture thật qua Action thật (không tự chế insert) trong tinker — BusinessProject
+stage=closing, Final Report qua `SaveFinalReportAction`→`SubmitDeliverableForApprovalAction`→
+`ApproveDeliverableAction`, KcItem qua `AttachKnowledgeAssetAction` — gọi
+`AdvanceBusinessProjectStageAction::run()` thật (không bypass gate), xác nhận gate R6/R7 pass,
+project chuyển `closed`/`knowledge`, đúng 1 job dispatch lên queue `workflows`. **Xử lý job qua
+`php artisan queue:work --queue=workflows --once` THẬT (process riêng, không tinker)** — cả 2 step
+chạy thành công (status Pass), Meeting Retrospective được tạo đúng
+(`type=retrospective, held_at=null`), `workflow_executions` ghi đúng `steps_success=2`. Notification
+step tự nó chạy thành công (đúng gọi `->notify()`) — thất bại chỉ ở tầng
+`SendQueuedNotifications` do bug `notifications.id` nêu trên, KHÔNG phải lỗi code BCOS/Workflow
+Engine. Backfill 3 tổ chức hiện có qua `BcosAutomationSeeder`, xác nhận `ActionRegistry`/
+`TriggerRegistry` resolve đúng cả executor lẫn 2 trigger mới. Toàn bộ dữ liệu test (BusinessProject,
+Deliverable+version, Meeting, KcItem, KcCategory, User test, jobs/failed_jobs/workflow_executions
+phát sinh từ test) đã forceDelete/xoá sạch, `run_count`/`last_run_at` của 3 Workflow seed thật đã
+reset về trạng thái chưa từng chạy.
+
+**Việc còn lại tự nhiên cho mảng này** (chưa làm, ghi lại để không quên): trigger
+`business_project.stage_advanced` mới chỉ là hạ tầng (chưa có Workflow nào dùng) — có thể seed
+thêm tự động hoá theo từng stage cụ thể sau này (VD tự thông báo khi vào Diagnosis) khi có nhu cầu
+thật, không seed trước cho "đủ bộ".
 
 ---
 

@@ -80,6 +80,21 @@ class Deliverable extends TenantAwareModel implements ApprovableModel
         return $this->hasMany(DeliverableVersion::class)->orderByDesc('version_number');
     }
 
+    /**
+     * Rule R4 — chữ ký nội bộ khi Confirmed (xem ConfirmDeliverableAction +
+     * DeliverableSignatureProvider). Append-only, có thể nhiều hàng nếu deliverable từng
+     * confirmed lại sau chu kỳ sửa/resubmit (xem Deliverable::resetApprovalCycle()).
+     */
+    public function signatures(): HasMany
+    {
+        return $this->hasMany(DeliverableSignature::class)->orderByDesc('signed_at');
+    }
+
+    public function latestSignature(): ?DeliverableSignature
+    {
+        return $this->signatures->first();
+    }
+
     public function confirmedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'confirmed_by');

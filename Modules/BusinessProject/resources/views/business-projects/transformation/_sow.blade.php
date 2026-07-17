@@ -88,17 +88,33 @@
             @endif
 
             @if($sow->status->value === 'approved')
-            <form action="{{ route('backend.business-projects.transformation.confirm', ['businessProject' => $businessProject, 'type' => 'sow']) }}" method="POST">
+            <form action="{{ route('backend.business-projects.transformation.confirm', ['businessProject' => $businessProject, 'type' => 'sow']) }}"
+                  method="POST" class="flex flex-wrap items-center gap-2">
                 @csrf
+                <input type="password" name="password" placeholder="Nhập lại mật khẩu để ký"
+                       class="input input-bordered input-sm" required autocomplete="current-password">
                 <button type="submit" class="btn btn-primary btn-sm">Xác nhận đã ký với khách (Confirmed)</button>
             </form>
+            @error('password')<p class="text-error text-xs w-full">{{ $message }}</p>@enderror
             @endif
 
             @if($sow->status->value === 'confirmed')
-            <span class="text-xs text-base-content/50">
-                Đã confirmed lúc {{ $sow->confirmed_at?->format('d/m/Y H:i') }}
-                @if($sow->confirmedBy)bởi {{ $sow->confirmedBy->name }}@endif
-            </span>
+            <div class="text-xs text-base-content/50">
+                <p>
+                    Đã confirmed lúc {{ $sow->confirmed_at?->format('d/m/Y H:i') }}
+                    @if($sow->confirmedBy)bởi {{ $sow->confirmedBy->name }}@endif
+                </p>
+                @if($sowSignature)
+                <p class="mt-0.5">
+                    @if($sowSignatureVerified)
+                    <span class="badge badge-success badge-xs">✓ Chữ ký hợp lệ</span>
+                    @else
+                    <span class="badge badge-error badge-xs">⚠ Chữ ký không khớp</span>
+                    @endif
+                    <span class="ml-1">{{ $sowSignature->algorithm }} &middot; nội bộ, không thay thế chữ ký số pháp lý</span>
+                </p>
+                @endif
+            </div>
             @endif
         </div>
         @endif

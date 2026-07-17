@@ -34,6 +34,7 @@ class SaveTransformationDesignCanvasAction
                 'success_metrics' => $data->success_metrics,
             ],
             'Cập nhật Transformation Design Canvas.',
+            $data->template_id,
         );
     }
 }
