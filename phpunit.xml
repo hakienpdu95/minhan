@@ -10,7 +10,6 @@
             <directory>Modules/Survey/tests/Unit</directory>
             <directory>Modules/Sop/tests/Unit</directory>
             <directory>Modules/Subscription/tests/Unit</directory>
-            <directory>Modules/OcopRubric/tests/Unit</directory>
             <directory>Modules/BusinessSolution/tests/Unit</directory>
             <directory>Modules/BusinessBlueprint/tests/Unit</directory>
             <directory>Modules/OrganizationSolution/tests/Unit</directory>
@@ -21,7 +20,6 @@
             <directory>Modules/Survey/tests/Feature</directory>
             <directory>Modules/Sop/tests/Feature</directory>
             <directory>Modules/Subscription/tests/Feature</directory>
-            <directory>Modules/OcopRubric/tests/Feature</directory>
             <directory>Modules/BusinessSolution/tests/Feature</directory>
             <directory>Modules/BusinessBlueprint/tests/Feature</directory>
             <directory>Modules/OrganizationSolution/tests/Feature</directory>

@@ -463,42 +463,6 @@
             </details>
             @endif
 
-            @can(\App\Enums\PermissionEnum::OCOP_PRODUCT_VIEW->value)
-            <details {{ request()->routeIs('ocop.products.*') ? 'open' : '' }}>
-                <summary class="nav-summary {{ request()->routeIs('ocop.products.*') ? 'active' : '' }}">
-                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622C17.176 19.29 21 14.591 21 9a12.02 12.02 0 00-.382-3.016z"/></svg>
-                    <span class="nav-label">Sản phẩm OCOP</span>
-                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
-                </summary>
-                <div class="sub-menu">
-                    <a href="{{ route('ocop.products.index') }}" class="sub-link {{ request()->routeIs('ocop.products.index') ? 'active' : '' }}">Danh sách sản phẩm</a>
-                    @can(\App\Enums\PermissionEnum::OCOP_PRODUCT_MANAGE->value)
-                    <a href="{{ route('ocop.products.create') }}" class="sub-link {{ request()->routeIs('ocop.products.create') ? 'active' : '' }}">Đăng ký sản phẩm</a>
-                    @endcan
-                    @can(\App\Enums\PermissionEnum::OCOP_PRACTICE_USE->value)
-                    <a href="{{ route('ocop.practice.start') }}" class="sub-link {{ request()->routeIs('ocop.practice.start') ? 'active' : '' }}">Luyện tập chấm điểm</a>
-                    <a href="{{ route('ocop.practice.history') }}" class="sub-link {{ request()->routeIs('ocop.practice.history') ? 'active' : '' }}">Lịch sử luyện tập</a>
-                    @endcan
-                </div>
-            </details>
-            @endcan
-
-            @can(\App\Enums\PermissionEnum::OCOP_RUBRIC_MANAGE->value)
-            <details {{ request()->routeIs('ocop_rubric.admin.*') ? 'open' : '' }}>
-                <summary class="nav-summary {{ request()->routeIs('ocop_rubric.admin.*') ? 'active' : '' }}">
-                    <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622C17.176 19.29 21 14.591 21 9a12.02 12.02 0 00-.382-3.016z"/></svg>
-                    <span class="nav-label">Bộ tiêu chí OCOP</span>
-                    <svg class="nav-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m9 18 6-6-6-6"/></svg>
-                </summary>
-                <div class="sub-menu">
-                    <a href="{{ route('ocop_rubric.admin.product-groups.index') }}"
-                       class="sub-link {{ request()->routeIs('ocop_rubric.admin.product-groups.*') ? 'active' : '' }}">
-                        Danh mục Bộ sản phẩm
-                    </a>
-                </div>
-            </details>
-            @endcan
-
             @can(\App\Enums\PermissionEnum::VERTICAL_TEMPLATES_MANAGE->value)
             <details {{ request()->routeIs('backend.vertical-templates.*') ? 'open' : '' }}>
                 <summary class="nav-summary {{ request()->routeIs('backend.vertical-templates.*') ? 'active' : '' }}">

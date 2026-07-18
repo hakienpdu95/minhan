@@ -156,20 +156,6 @@ enum PermissionEnum: string
     // Admin=Full manage (dashboard/vertical-templates)
     case VERTICAL_TEMPLATES_MANAGE = 'vertical_templates.manage';
 
-    // ══ OCOP RUBRIC (Bộ tiêu chí OCOP — QĐ 26/2026/QĐ-TTg) ═════════
-    // System Admin=Full manage (danh mục 26 Bộ sản phẩm + cây tiêu chí)
-    case OCOP_RUBRIC_MANAGE = 'ocop_rubric.manage';
-
-    // ══ OCOP PRODUCT (Sản phẩm OCOP của tổ chức) ═══════════════════
-    // CEO/Ops=Full | Viewer=View only
-    case OCOP_PRODUCT_VIEW   = 'ocop_product.view';
-    case OCOP_PRODUCT_MANAGE = 'ocop_product.manage';
-
-    // ══ OCOP SCORING (Luyện tập / Tự đánh giá theo bộ tiêu chí) ════
-    // CEO/Ops/HR=Practice | CEO/Ops=Self-assessment (văn bản chuẩn bị hồ sơ pháp lý)
-    case OCOP_PRACTICE_USE    = 'ocop_practice.use';
-    case OCOP_SELF_ASSESS_USE = 'ocop_self_assess.use';
-
     // ══ BUSINESS SOLUTION (Danh mục Business Solution) ═════════════
     // System Admin=Full manage | Tất cả role khác=View (biết tổ chức có thể kích hoạt Solution nào)
     case SOLUTION_CATALOG_VIEW   = 'solution_catalog.view';

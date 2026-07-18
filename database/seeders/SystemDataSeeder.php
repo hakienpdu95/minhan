@@ -21,7 +21,6 @@ use Modules\LeadSource\Database\Seeders\LeadSourceSeeder;
 use Modules\BusinessBlueprint\Database\Seeders\BusinessBlueprintDatabaseSeeder;
 use Modules\BusinessProject\Database\Seeders\BusinessProjectDatabaseSeeder;
 use Modules\BusinessSolution\Database\Seeders\BusinessSolutionDatabaseSeeder;
-use Modules\OcopRubric\Database\Seeders\OcopRubricDatabaseSeeder;
 use Modules\Organization\Database\Seeders\OrganizationRolePermissionSeeder;
 use Modules\OrganizationSolution\Database\Seeders\OrganizationSolutionDatabaseSeeder;
 use Modules\Recruitment\Database\Seeders\RecruitmentDatabaseSeeder;
@@ -108,25 +107,22 @@ class SystemDataSeeder extends Seeder
             ReadinessV1SurveySeeder::class,
             DefaultVerticalTemplateSeeder::class,
 
-            // ── 18. OCOP Rubric: permissions + 5 hạng sao + 26 Bộ sản phẩm ──
-            OcopRubricDatabaseSeeder::class,
-
-            // ── 19. Business Solution: permissions + verticals + 3 solution bespoke ──
+            // ── 18. Business Solution: permissions + verticals + 3 solution bespoke ──
             BusinessSolutionDatabaseSeeder::class,
 
-            // ── 20. Business Blueprint: permissions (blueprint.*) ─────────
+            // ── 19. Business Blueprint: permissions (blueprint.*) ─────────
             BusinessBlueprintDatabaseSeeder::class,
 
-            // ── 21. Organization Solution: permissions (organization_solution.*) ──
+            // ── 20. Organization Solution: permissions (organization_solution.*) ──
             OrganizationSolutionDatabaseSeeder::class,
 
-            // ── 22. Deployment Engine: permissions (deployment_engine.*) ──
+            // ── 21. Deployment Engine: permissions (deployment_engine.*) ──
             DeploymentEnginePermissionSeeder::class,
 
-            // ── 23. Demo end-to-end: HTX Tiên Dương kích hoạt + deploy AI-TXNG ──
+            // ── 22. Demo end-to-end: HTX Tiên Dương kích hoạt + deploy AI-TXNG ──
             HtxTienDuongDemoSeeder::class,
 
-            // ── 24. Business Project (BCOS): permissions + roles + Ringlesoft approval flow ──
+            // ── 23. Business Project (BCOS): permissions + roles + Ringlesoft approval flow ──
             BusinessProjectDatabaseSeeder::class,
         ]);
 
