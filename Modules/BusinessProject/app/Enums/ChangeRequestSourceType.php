@@ -10,8 +10,8 @@ enum ChangeRequestSourceType: string
     public function label(): string
     {
         return match ($this) {
-            self::Issue => 'Issue',
-            self::Risk => 'Risk',
+            self::Issue => 'Vấn đề phát sinh',
+            self::Risk => 'Rủi ro',
         };
     }
 }

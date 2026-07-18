@@ -21,10 +21,10 @@ enum DiagnosisPriority: string
     public function label(): string
     {
         return match ($this) {
-            self::QuickWin => 'Quick Win',
-            self::Strategic => 'Strategic',
-            self::FillIn => 'Fill-in',
-            self::LowPriority => 'Low Priority',
+            self::QuickWin => 'Làm ngay (Quick Win)',
+            self::Strategic => 'Chiến lược',
+            self::FillIn => 'Làm khi có điều kiện',
+            self::LowPriority => 'Ưu tiên thấp',
         };
     }
 

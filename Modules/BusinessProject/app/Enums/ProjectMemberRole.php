@@ -15,13 +15,13 @@ enum ProjectMemberRole: string
     public function label(): string
     {
         return match ($this) {
-            self::Sponsor => 'Executive Sponsor',
-            self::Owner => 'Project Owner',
-            self::LeadConsultant => 'Lead Consultant',
-            self::Consultant => 'Consultant',
-            self::Ba => 'Business Analyst',
-            self::Pm => 'Project Manager',
-            self::CustomerSuccess => 'Customer Success',
+            self::Sponsor => 'Nhà tài trợ (Executive Sponsor)',
+            self::Owner => 'Chủ dự án',
+            self::LeadConsultant => 'Chuyên gia tư vấn chính',
+            self::Consultant => 'Chuyên gia tư vấn',
+            self::Ba => 'Chuyên viên Phân tích Nghiệp vụ (BA)',
+            self::Pm => 'Quản lý dự án (PM)',
+            self::CustomerSuccess => 'Chăm sóc khách hàng',
         };
     }
 }

@@ -38,19 +38,19 @@
 --}}
 <div role="tablist" class="tabs tabs-bordered mb-4">
     <a role="tab" href="{{ route('backend.business-projects.show', $businessProject) }}"
-       class="tab @if(request()->routeIs('backend.business-projects.show')) tab-active @endif">Context</a>
+       class="tab @if(request()->routeIs('backend.business-projects.show')) tab-active @endif">Bối cảnh Doanh nghiệp</a>
     <a role="tab" href="{{ route('backend.business-projects.discovery.show', $businessProject) }}"
-       class="tab @if(request()->routeIs('backend.business-projects.discovery.*')) tab-active @endif">Discovery</a>
+       class="tab @if(request()->routeIs('backend.business-projects.discovery.*')) tab-active @endif">Khảo sát</a>
     <a role="tab" href="{{ route('backend.business-projects.diagnosis.show', $businessProject) }}"
-       class="tab @if(request()->routeIs('backend.business-projects.diagnosis.*')) tab-active @endif">Diagnosis</a>
+       class="tab @if(request()->routeIs('backend.business-projects.diagnosis.*')) tab-active @endif">Chẩn đoán</a>
     <a role="tab" href="{{ route('backend.business-projects.transformation.show', $businessProject) }}"
-       class="tab @if(request()->routeIs('backend.business-projects.transformation.*')) tab-active @endif">Transformation</a>
+       class="tab @if(request()->routeIs('backend.business-projects.transformation.*')) tab-active @endif">Chuyển đổi</a>
     <a role="tab" href="{{ route('backend.business-projects.delivery.show', $businessProject) }}"
-       class="tab @if(request()->routeIs('backend.business-projects.delivery.*')) tab-active @endif">Delivery</a>
+       class="tab @if(request()->routeIs('backend.business-projects.delivery.*')) tab-active @endif">Triển khai</a>
     <a role="tab" href="{{ route('backend.business-projects.closing.show', $businessProject) }}"
-       class="tab @if(request()->routeIs('backend.business-projects.closing.*')) tab-active @endif">Closing</a>
+       class="tab @if(request()->routeIs('backend.business-projects.closing.*')) tab-active @endif">Đóng dự án</a>
     <a role="tab" href="{{ route('backend.business-projects.knowledge.show', $businessProject) }}"
-       class="tab @if(request()->routeIs('backend.business-projects.knowledge.*')) tab-active @endif">Knowledge</a>
+       class="tab @if(request()->routeIs('backend.business-projects.knowledge.*')) tab-active @endif">Tri thức</a>
     <a role="tab" href="{{ route('backend.business-projects.customer-success.show', $businessProject) }}"
-       class="tab @if(request()->routeIs('backend.business-projects.customer-success.*')) tab-active @endif">Customer Success</a>
+       class="tab @if(request()->routeIs('backend.business-projects.customer-success.*')) tab-active @endif">Chăm sóc khách hàng</a>
 </div>

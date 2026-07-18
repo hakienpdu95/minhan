@@ -10,7 +10,7 @@
 <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body">
         <div class="flex items-center justify-between mb-3">
-            <h2 class="font-semibold">Diagnosis Report</h2>
+            <h2 class="font-semibold">Báo cáo Chẩn đoán (Diagnosis Report)</h2>
             @if($diagnosisReport && $diagnosisReport->current_version > 0)
             <span class="badge {{ $diagnosisReport->status->badgeClass() }}">
                 {{ $diagnosisReport->status->label() }} &middot; v{{ $diagnosisReport->current_version }}

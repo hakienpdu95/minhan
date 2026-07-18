@@ -10,7 +10,7 @@
 
 <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body">
-        <h2 class="font-semibold mb-3">Diagnosis Matrix ({{ count($findings) }})</h2>
+        <h2 class="font-semibold mb-3">Ma trận Chẩn đoán (Diagnosis Matrix) ({{ count($findings) }})</h2>
 
         <form action="{{ route('backend.business-projects.diagnosis.findings.store', $businessProject) }}" method="POST" class="space-y-3 mb-4">
             @csrf
@@ -44,7 +44,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="label label-text text-sm font-medium">Effort</label>
+                    <label class="label label-text text-sm font-medium">Nỗ lực (Effort)</label>
                     <select name="effort" class="select select-bordered select-sm w-full">
                         @foreach($efforts as $effort)
                         <option value="{{ $effort->value }}">{{ $effort->label() }}</option>
@@ -53,7 +53,7 @@
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-outline btn-sm">Thêm finding</button>
+            <button type="submit" class="btn btn-outline btn-sm">Thêm phát hiện</button>
         </form>
 
         @if(count($findings) > 0)
@@ -64,8 +64,8 @@
                         <th>Vấn đề</th>
                         <th>Nhóm</th>
                         <th>Nguyên nhân gốc</th>
-                        <th>Impact</th>
-                        <th>Priority</th>
+                        <th>Tác động</th>
+                        <th>Mức ưu tiên</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -93,7 +93,7 @@
             </table>
         </div>
         @else
-        <p class="text-xs text-base-content/40">Chưa có finding nào.</p>
+        <p class="text-xs text-base-content/40">Chưa có phát hiện nào.</p>
         @endif
     </div>
 </div>

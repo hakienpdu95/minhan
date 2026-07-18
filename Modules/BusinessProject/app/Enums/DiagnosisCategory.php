@@ -17,11 +17,11 @@ enum DiagnosisCategory: string
     public function label(): string
     {
         return match ($this) {
-            self::People => 'People',
-            self::Process => 'Process',
-            self::Data => 'Data',
-            self::Digital => 'Digital',
-            self::Management => 'Management',
+            self::People => 'Con người',
+            self::Process => 'Quy trình',
+            self::Data => 'Dữ liệu',
+            self::Digital => 'Công nghệ',
+            self::Management => 'Quản lý',
         };
     }
 }

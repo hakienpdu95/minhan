@@ -20,7 +20,7 @@
 <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body">
         <div class="flex items-center justify-between mb-3">
-            <h2 class="font-semibold">Transformation Design Canvas</h2>
+            <h2 class="font-semibold">Sơ đồ Thiết kế Chuyển đổi (Transformation Design Canvas)</h2>
             @if($canvas && $canvas->current_version > 0)
             <span class="badge {{ $canvas->status->badgeClass() }}">
                 {{ $canvas->status->label() }} &middot; v{{ $canvas->current_version }}

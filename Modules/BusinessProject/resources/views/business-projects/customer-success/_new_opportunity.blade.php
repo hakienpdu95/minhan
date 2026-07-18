@@ -6,7 +6,7 @@
 --}}
 <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body">
-        <h2 class="font-semibold mb-3">New Opportunity</h2>
+        <h2 class="font-semibold mb-3">Cơ hội mới</h2>
         <p class="text-xs text-base-content/50 mb-3">
             Phát hiện cơ hội mới từ khách hàng cũ? Tạo Lead để đội Sales tiếp tục theo dõi —
             nguồn Lead sẽ ghi rõ xuất phát từ dự án {{ $businessProject->code }}.

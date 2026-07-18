@@ -19,7 +19,7 @@ class DeploymentIssuePolicy
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['ceo', 'ops', 'system_admin'])
+        return $user->hasAnyRole(['super-admin', 'ceo', 'ops', 'system_admin'])
             || $user->roles->contains(fn ($r) => str_ends_with($r->name, '_pm'))
             || $user->roles->contains(fn ($r) => str_ends_with($r->name, '_surveyor'));
     }
@@ -27,7 +27,7 @@ class DeploymentIssuePolicy
     public function update(User $user, DeploymentIssue $issue): bool
     {
         $verticalCode = $issue->target?->vertical_code ?? '';
-        return $user->hasAnyRole(['ceo', 'ops', 'system_admin'])
+        return $user->hasAnyRole(['super-admin', 'ceo', 'ops', 'system_admin'])
             || $user->hasRole($verticalCode . '_pm')
             || ($issue->owner_id === $user->id);
     }

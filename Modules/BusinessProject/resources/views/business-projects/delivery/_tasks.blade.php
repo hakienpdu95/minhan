@@ -7,7 +7,7 @@
 --}}
 <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body">
-        <h2 class="font-semibold mb-3">Tasks ({{ $tasks->count() }})</h2>
+        <h2 class="font-semibold mb-3">Danh sách Task ({{ $tasks->count() }})</h2>
 
         @forelse($tasks as $task)
         <div class="flex items-center justify-between text-xs border-b border-base-200 py-1.5 last:border-0">

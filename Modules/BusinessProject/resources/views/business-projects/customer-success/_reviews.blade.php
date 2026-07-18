@@ -23,7 +23,7 @@
 
             @if($review->follow_up_at)
             <p>
-                <span class="font-medium">Follow-up:</span> {{ $review->follow_up_at->format('d/m/Y') }}
+                <span class="font-medium">Theo dõi:</span> {{ $review->follow_up_at->format('d/m/Y') }}
                 @if($review->followed_up_at)
                     <span class="badge badge-success badge-xs">Đã xong ({{ $review->followed_up_at->format('d/m/Y') }})</span>
                 @else
@@ -39,7 +39,7 @@
 
             @if($review->renewal_status && $review->renewal_status->value !== 'none')
             <p>
-                <span class="font-medium">Renewal:</span>
+                <span class="font-medium">Gia hạn:</span>
                 <span class="badge {{ $review->renewal_status->badgeClass() }} badge-xs">{{ $review->renewal_status->label() }}</span>
                 @if($review->renewal_note) <span class="text-base-content/50">— {{ $review->renewal_note }}</span> @endif
             </p>
@@ -47,7 +47,7 @@
 
             @if($review->new_lead_id)
             <p>
-                <span class="font-medium">New Opportunity:</span>
+                <span class="font-medium">Cơ hội mới:</span>
                 <a href="{{ route('lead.show', $review->newLead) }}" class="link link-primary">{{ $review->newLead?->title }}</a>
             </p>
             @endif

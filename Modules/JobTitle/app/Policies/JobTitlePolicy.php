@@ -9,17 +9,17 @@ class JobTitlePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['system_admin', 'hr', 'ceo', 'viewer', 'ops']);
+        return $user->hasAnyRole(['super-admin', 'system_admin', 'hr', 'ceo', 'viewer', 'ops']);
     }
 
     public function view(User $user, JobTitle $jobTitle): bool
     {
-        return $user->hasAnyRole(['system_admin', 'hr', 'ceo', 'viewer', 'ops']);
+        return $user->hasAnyRole(['super-admin', 'system_admin', 'hr', 'ceo', 'viewer', 'ops']);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['system_admin', 'hr']);
+        return $user->hasAnyRole(['super-admin', 'system_admin', 'hr']);
     }
 
     public function update(User $user, JobTitle $jobTitle): bool
@@ -28,7 +28,7 @@ class JobTitlePolicy
             return false;
         }
 
-        return $user->hasAnyRole(['system_admin', 'hr']);
+        return $user->hasAnyRole(['super-admin', 'system_admin', 'hr']);
     }
 
     public function delete(User $user, JobTitle $jobTitle): bool
@@ -37,6 +37,6 @@ class JobTitlePolicy
             return false;
         }
 
-        return $user->hasRole('system_admin');
+        return $user->hasAnyRole(['super-admin', 'system_admin']);
     }
 }

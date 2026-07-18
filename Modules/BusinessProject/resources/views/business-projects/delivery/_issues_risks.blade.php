@@ -7,10 +7,10 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {{-- Issues --}}
             <div>
-                <h2 class="font-semibold mb-3">Issues ({{ $issues->count() }})</h2>
+                <h2 class="font-semibold mb-3">Vấn đề phát sinh ({{ $issues->count() }})</h2>
                 <form action="{{ route('backend.business-projects.delivery.issues.store', $businessProject) }}" method="POST" class="space-y-2 mb-3">
                     @csrf
-                    <input type="text" name="title" class="input input-bordered input-sm w-full" placeholder="Tiêu đề Issue" required>
+                    <input type="text" name="title" class="input input-bordered input-sm w-full" placeholder="Tiêu đề vấn đề phát sinh" required>
                     <div class="flex gap-2">
                         <select name="severity" class="select select-bordered select-sm flex-1">
                             @foreach(\Modules\BusinessProject\Enums\IssueSeverity::cases() as $severity)
@@ -35,7 +35,7 @@
 
                     @if($issue->status->value === 'open')
                     <details>
-                        <summary class="link link-error text-xs cursor-pointer">Escalate thành Change Request</summary>
+                        <summary class="link link-error text-xs cursor-pointer">Chuyển thành Yêu cầu thay đổi</summary>
                         <form action="{{ route('backend.business-projects.delivery.issues.escalate', ['businessProject' => $businessProject, 'issue' => $issue->id]) }}" method="POST" class="space-y-1.5 mt-2">
                             @csrf
                             <input type="text" name="title" class="input input-bordered input-xs w-full" placeholder="Tiêu đề Change Request" required>
@@ -44,31 +44,31 @@
                                 <input type="checkbox" name="impacts_scope" value="1" class="checkbox checkbox-xs">
                                 Ảnh hưởng phạm vi hợp đồng (SOW)
                             </label>
-                            <button type="submit" class="btn btn-error btn-xs">Escalate</button>
+                            <button type="submit" class="btn btn-error btn-xs">Xác nhận chuyển</button>
                         </form>
                     </details>
                     @endif
                 </div>
                 @empty
-                <p class="text-xs text-base-content/40">Chưa có Issue nào.</p>
+                <p class="text-xs text-base-content/40">Chưa có vấn đề phát sinh nào.</p>
                 @endforelse
             </div>
 
             {{-- Risks --}}
             <div>
-                <h2 class="font-semibold mb-3">Risks ({{ $risks->count() }})</h2>
+                <h2 class="font-semibold mb-3">Rủi ro ({{ $risks->count() }})</h2>
                 <form action="{{ route('backend.business-projects.delivery.risks.store', $businessProject) }}" method="POST" class="space-y-2 mb-3">
                     @csrf
-                    <input type="text" name="title" class="input input-bordered input-sm w-full" placeholder="Tiêu đề Risk" required>
+                    <input type="text" name="title" class="input input-bordered input-sm w-full" placeholder="Tiêu đề rủi ro" required>
                     <div class="flex gap-2">
                         <select name="likelihood" class="select select-bordered select-sm flex-1">
                             @foreach(\Modules\BusinessProject\Enums\RiskLikelihood::cases() as $likelihood)
-                            <option value="{{ $likelihood->value }}" @selected($likelihood->value === 'medium')>Likelihood: {{ $likelihood->label() }}</option>
+                            <option value="{{ $likelihood->value }}" @selected($likelihood->value === 'medium')>Khả năng xảy ra: {{ $likelihood->label() }}</option>
                             @endforeach
                         </select>
                         <select name="impact" class="select select-bordered select-sm flex-1">
                             @foreach(\Modules\BusinessProject\Enums\RiskImpact::cases() as $impact)
-                            <option value="{{ $impact->value }}" @selected($impact->value === 'medium')>Impact: {{ $impact->label() }}</option>
+                            <option value="{{ $impact->value }}" @selected($impact->value === 'medium')>Tác động: {{ $impact->label() }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -83,8 +83,8 @@
                     <div class="flex items-center justify-between mb-1">
                         <span class="font-medium">{{ $risk->title }}</span>
                         <div class="flex gap-1">
-                            <span class="badge badge-xs">L: {{ $risk->likelihood->label() }}</span>
-                            <span class="badge badge-xs">I: {{ $risk->impact->label() }}</span>
+                            <span class="badge badge-xs">KN: {{ $risk->likelihood->label() }}</span>
+                            <span class="badge badge-xs">TĐ: {{ $risk->impact->label() }}</span>
                             <span class="badge badge-xs {{ $risk->status->badgeClass() }}">{{ $risk->status->label() }}</span>
                         </div>
                     </div>
@@ -92,7 +92,7 @@
 
                     @if($risk->status->value === 'open')
                     <details>
-                        <summary class="link link-error text-xs cursor-pointer">Escalate thành Change Request</summary>
+                        <summary class="link link-error text-xs cursor-pointer">Chuyển thành Yêu cầu thay đổi</summary>
                         <form action="{{ route('backend.business-projects.delivery.risks.escalate', ['businessProject' => $businessProject, 'risk' => $risk->id]) }}" method="POST" class="space-y-1.5 mt-2">
                             @csrf
                             <input type="text" name="title" class="input input-bordered input-xs w-full" placeholder="Tiêu đề Change Request" required>
@@ -101,13 +101,13 @@
                                 <input type="checkbox" name="impacts_scope" value="1" class="checkbox checkbox-xs">
                                 Ảnh hưởng phạm vi hợp đồng (SOW)
                             </label>
-                            <button type="submit" class="btn btn-error btn-xs">Escalate</button>
+                            <button type="submit" class="btn btn-error btn-xs">Xác nhận chuyển</button>
                         </form>
                     </details>
                     @endif
                 </div>
                 @empty
-                <p class="text-xs text-base-content/40">Chưa có Risk nào.</p>
+                <p class="text-xs text-base-content/40">Chưa có rủi ro nào.</p>
                 @endforelse
             </div>
         </div>

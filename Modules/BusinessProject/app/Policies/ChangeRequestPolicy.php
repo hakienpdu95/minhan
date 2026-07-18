@@ -14,7 +14,7 @@ class ChangeRequestPolicy
             return false;
         }
 
-        if ($user->hasAnyRole(['ceo', 'system_admin', 'lead_consultant'])) {
+        if ($user->hasAnyRole(['super-admin', 'ceo', 'system_admin', 'lead_consultant'])) {
             return true;
         }
 
@@ -27,7 +27,7 @@ class ChangeRequestPolicy
             return false;
         }
 
-        if ($user->hasAnyRole(['ceo', 'system_admin'])) {
+        if ($user->hasAnyRole(['super-admin', 'ceo', 'system_admin'])) {
             return true;
         }
 
@@ -41,7 +41,7 @@ class ChangeRequestPolicy
      */
     public function approve(User $user, ChangeRequest $changeRequest): bool
     {
-        if ($user->hasRole('ceo') && $user->can(P::BUSINESS_CONTEXT_APPROVE->value)) {
+        if ($user->hasAnyRole(['super-admin', 'ceo']) && $user->can(P::BUSINESS_CONTEXT_APPROVE->value)) {
             return true;
         }
 

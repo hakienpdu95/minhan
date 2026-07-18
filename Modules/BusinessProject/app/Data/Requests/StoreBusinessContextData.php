@@ -24,9 +24,9 @@ class StoreBusinessContextData extends Data
     public static function messages(): array
     {
         return [
-            'company_profile.array' => 'Company Profile không đúng định dạng.',
-            'stakeholders.array' => 'Stakeholder Map không đúng định dạng.',
-            'strategic_goals.array' => 'Strategic Goals không đúng định dạng.',
+            'company_profile.array' => 'Hồ sơ Doanh nghiệp không đúng định dạng.',
+            'stakeholders.array' => 'Bản đồ các bên liên quan không đúng định dạng.',
+            'strategic_goals.array' => 'Mục tiêu Chiến lược không đúng định dạng.',
         ];
     }
 }

@@ -11,7 +11,7 @@
 <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body">
         <div class="flex items-center justify-between mb-3">
-            <h2 class="font-semibold">Business Context Canvas</h2>
+            <h2 class="font-semibold">Sơ đồ Bối cảnh Doanh nghiệp (Business Context Canvas)</h2>
             @if($deliverable)
             <span class="badge {{ $deliverable->status->badgeClass() }}">
                 {{ $deliverable->status->label() }} &middot; v{{ $deliverable->current_version }}
@@ -29,25 +29,25 @@
             @endif
 
             <div>
-                <label class="label label-text text-sm font-medium">Company Profile</label>
+                <label class="label label-text text-sm font-medium">Hồ sơ Doanh nghiệp (Company Profile)</label>
                 <textarea name="company_profile[notes]" rows="3" class="textarea textarea-bordered w-full"
                           placeholder="Ngành nghề, quy mô, mô hình kinh doanh...">{{ $context?->company_profile['notes'] ?? '' }}</textarea>
             </div>
 
             <div>
-                <label class="label label-text text-sm font-medium">Stakeholder Map</label>
+                <label class="label label-text text-sm font-medium">Bản đồ các bên liên quan (Stakeholder Map)</label>
                 <textarea name="stakeholders[notes]" rows="3" class="textarea textarea-bordered w-full"
                           placeholder="Founder, Ban điều hành, người liên hệ chính...">{{ $context?->stakeholders['notes'] ?? '' }}</textarea>
             </div>
 
             <div>
-                <label class="label label-text text-sm font-medium">Strategic Goals</label>
+                <label class="label label-text text-sm font-medium">Mục tiêu Chiến lược (Strategic Goals)</label>
                 <textarea name="strategic_goals[notes]" rows="3" class="textarea textarea-bordered w-full"
                           placeholder="Mục tiêu chiến lược 1-3 năm...">{{ $context?->strategic_goals['notes'] ?? '' }}</textarea>
             </div>
 
             <button type="submit" class="btn btn-primary btn-sm">
-                {{ $context ? 'Cập nhật Business Context' : 'Tạo Business Context' }}
+                {{ $context ? 'Cập nhật Bối cảnh Doanh nghiệp' : 'Tạo Bối cảnh Doanh nghiệp' }}
             </button>
         </form>
 

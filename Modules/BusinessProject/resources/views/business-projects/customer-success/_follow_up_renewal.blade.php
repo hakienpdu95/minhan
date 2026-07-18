@@ -5,7 +5,7 @@
 --}}
 <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body">
-        <h2 class="font-semibold mb-3">Follow-up &amp; Renewal</h2>
+        <h2 class="font-semibold mb-3">Theo dõi &amp; Gia hạn</h2>
 
         @if($errors->any())
         <div class="alert alert-error mb-3 text-xs">
@@ -24,7 +24,7 @@
                     <input type="date" name="follow_up_at" class="input input-bordered input-sm w-full">
                 </div>
                 <div class="form-control">
-                    <label class="label py-0 pb-1"><span class="label-text text-xs font-medium">Trạng thái Renewal</span></label>
+                    <label class="label py-0 pb-1"><span class="label-text text-xs font-medium">Trạng thái gia hạn</span></label>
                     <select name="renewal_status" class="select select-bordered select-sm w-full">
                         <option value="">— Không đổi —</option>
                         @foreach(\Modules\BusinessProject\Enums\RenewalStatus::cases() as $status)
@@ -40,7 +40,7 @@
             </div>
 
             <div class="form-control">
-                <label class="label py-0 pb-1"><span class="label-text text-xs font-medium">Ghi chú Renewal</span></label>
+                <label class="label py-0 pb-1"><span class="label-text text-xs font-medium">Ghi chú gia hạn</span></label>
                 <textarea name="renewal_note" rows="2" class="textarea textarea-bordered textarea-sm w-full"></textarea>
             </div>
 

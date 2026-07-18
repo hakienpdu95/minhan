@@ -16,14 +16,14 @@ enum BusinessProjectStage: string
     public function label(): string
     {
         return match ($this) {
-            self::Context => 'Business Context',
-            self::Discovery => 'Discovery',
-            self::Diagnosis => 'Diagnosis',
-            self::Transformation => 'Transformation',
-            self::Delivery => 'Delivery',
-            self::Closing => 'Closing',
-            self::Knowledge => 'Knowledge',
-            self::CustomerSuccess => 'Customer Success',
+            self::Context => 'Bối cảnh Doanh nghiệp',
+            self::Discovery => 'Khảo sát',
+            self::Diagnosis => 'Chẩn đoán',
+            self::Transformation => 'Chuyển đổi',
+            self::Delivery => 'Triển khai',
+            self::Closing => 'Đóng dự án',
+            self::Knowledge => 'Tri thức',
+            self::CustomerSuccess => 'Chăm sóc khách hàng',
         };
     }
 

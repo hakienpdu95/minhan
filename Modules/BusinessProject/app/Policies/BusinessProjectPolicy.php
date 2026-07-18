@@ -21,7 +21,7 @@ class BusinessProjectPolicy
 
         // Founder/Admin (permission quản lý toàn cục) xem mọi project; các role
         // project-scoped khác (consultant/ba/pm...) chỉ xem project mình tham gia.
-        if ($user->hasAnyRole(['ceo', 'system_admin', 'lead_consultant'])) {
+        if ($user->hasAnyRole(['super-admin', 'ceo', 'system_admin', 'lead_consultant'])) {
             return true;
         }
 
@@ -40,7 +40,7 @@ class BusinessProjectPolicy
      */
     public function viewBcosDashboard(User $user): bool
     {
-        return $user->hasAnyRole(['ceo', 'system_admin']);
+        return $user->hasAnyRole(['super-admin', 'ceo', 'system_admin']);
     }
 
     /**
@@ -103,7 +103,7 @@ class BusinessProjectPolicy
             return false;
         }
 
-        if ($user->hasAnyRole(['ceo', 'system_admin'])) {
+        if ($user->hasAnyRole(['super-admin', 'ceo', 'system_admin'])) {
             return true;
         }
 
@@ -126,7 +126,7 @@ class BusinessProjectPolicy
             return false;
         }
 
-        if ($user->hasAnyRole(['ceo', 'system_admin'])) {
+        if ($user->hasAnyRole(['super-admin', 'ceo', 'system_admin'])) {
             return true;
         }
 

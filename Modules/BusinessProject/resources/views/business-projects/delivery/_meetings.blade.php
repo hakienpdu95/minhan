@@ -7,7 +7,7 @@
 --}}
 <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body">
-        <h2 class="font-semibold mb-3">Meetings</h2>
+        <h2 class="font-semibold mb-3">Cuộc họp</h2>
 
         <form action="{{ route('backend.business-projects.delivery.meetings.store', $businessProject) }}" method="POST" class="space-y-3 mb-4">
             @csrf
@@ -29,7 +29,7 @@
                 <label class="label label-text text-sm font-medium">Thời gian</label>
                 <input type="datetime-local" name="held_at" class="input input-bordered input-sm w-full sm:w-64">
             </div>
-            <button type="submit" class="btn btn-outline btn-sm">Ghi nhận Meeting</button>
+            <button type="submit" class="btn btn-outline btn-sm">Ghi nhận cuộc họp</button>
         </form>
 
         @forelse($meetings as $meeting)
@@ -51,10 +51,10 @@
             <form action="{{ route('backend.business-projects.delivery.meetings.minutes.save', ['businessProject' => $businessProject, 'meeting' => $meeting->id]) }}" method="POST" class="space-y-2">
                 @csrf
                 <textarea name="minutes" rows="2" class="textarea textarea-bordered textarea-sm w-full"
-                          placeholder="Nội dung Minutes...">{{ $content['minutes'] ?? '' }}</textarea>
+                          placeholder="Nội dung biên bản...">{{ $content['minutes'] ?? '' }}</textarea>
                 <textarea name="action_items" rows="2" class="textarea textarea-bordered textarea-sm w-full"
-                          placeholder="Action items — mỗi dòng 1 việc">{{ implode("\n", $actionItems) }}</textarea>
-                <button type="submit" class="btn btn-ghost btn-xs">Lưu Minutes</button>
+                          placeholder="Việc cần làm (Action items) — mỗi dòng 1 việc">{{ implode("\n", $actionItems) }}</textarea>
+                <button type="submit" class="btn btn-ghost btn-xs">Lưu biên bản</button>
             </form>
 
             @if(!empty($actionItems))
@@ -70,7 +70,7 @@
             @endif
         </div>
         @empty
-        <p class="text-xs text-base-content/40">Chưa có Meeting nào.</p>
+        <p class="text-xs text-base-content/40">Chưa có cuộc họp nào.</p>
         @endforelse
     </div>
 </div>

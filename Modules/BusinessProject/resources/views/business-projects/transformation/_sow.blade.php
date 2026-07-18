@@ -10,7 +10,7 @@
 <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body">
         <div class="flex items-center justify-between mb-3">
-            <h2 class="font-semibold">Statement of Work (SOW)</h2>
+            <h2 class="font-semibold">Thỏa thuận Phạm vi Công việc (SOW)</h2>
             @if($sow && $sow->current_version > 0)
             <span class="badge {{ $sow->status->badgeClass() }}">
                 {{ $sow->status->label() }} &middot; v{{ $sow->current_version }}

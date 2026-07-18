@@ -8,7 +8,7 @@ use Modules\Organization\Models\Organization;
 /**
  * Authorization policy cho Organization resource.
  *
- * Chỉ System_Admin và super-admin mới được phép CRUD qua backend panel.
+ * Chỉ system_admin và super-admin mới được phép CRUD qua backend panel.
  * Owner của org có thể edit/view org của mình (dùng cho frontend settings).
  */
 class OrganizationPolicy
@@ -17,12 +17,12 @@ class OrganizationPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->hasRole(['super-admin', 'System_Admin']);
+        return $user->hasRole(['super-admin', 'system_admin']);
     }
 
     public function view(User $user, Organization $organization): bool
     {
-        if ($user->hasRole(['super-admin', 'System_Admin'])) {
+        if ($user->hasRole(['super-admin', 'system_admin'])) {
             return true;
         }
 
@@ -33,12 +33,12 @@ class OrganizationPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasRole(['super-admin', 'System_Admin']);
+        return $user->hasRole(['super-admin', 'system_admin']);
     }
 
     public function update(User $user, Organization $organization): bool
     {
-        if ($user->hasRole(['super-admin', 'System_Admin'])) {
+        if ($user->hasRole(['super-admin', 'system_admin'])) {
             return true;
         }
 
@@ -48,6 +48,6 @@ class OrganizationPolicy
 
     public function delete(User $user, Organization $organization): bool
     {
-        return $user->hasRole(['super-admin', 'System_Admin']);
+        return $user->hasRole(['super-admin', 'system_admin']);
     }
 }

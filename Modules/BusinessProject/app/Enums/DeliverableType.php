@@ -54,22 +54,22 @@ enum DeliverableType: string
     public function label(): string
     {
         return match ($this) {
-            self::BusinessContextReport => 'Business Context Report',
-            self::DiagnosisReport => 'Diagnosis Report',
-            self::Interview => 'Interview',
-            self::Observation => 'Observation',
-            self::DocumentReview => 'Document Review',
-            self::DataReview => 'Data Review',
-            self::ProcessMap => 'Process Map',
+            self::BusinessContextReport => 'Báo cáo Bối cảnh Doanh nghiệp (Business Context Report)',
+            self::DiagnosisReport => 'Báo cáo Chẩn đoán (Diagnosis Report)',
+            self::Interview => 'Phỏng vấn',
+            self::Observation => 'Quan sát thực địa',
+            self::DocumentReview => 'Rà soát tài liệu',
+            self::DataReview => 'Rà soát dữ liệu',
+            self::ProcessMap => 'Bản đồ quy trình',
             self::TpsCanvas => 'TPS Canvas',
-            self::BusinessDiscoveryReport => 'Business Discovery Report',
-            self::TransformationDesignCanvas => 'Transformation Design Canvas',
-            self::TransformationRoadmap => 'Transformation Roadmap',
-            self::Proposal => 'Proposal',
-            self::Sow => 'Statement of Work (SOW)',
-            self::WeeklyReport => 'Weekly Report',
-            self::MeetingMinutes => 'Meeting Minutes',
-            self::FinalReport => 'Final Project Report',
+            self::BusinessDiscoveryReport => 'Báo cáo Khảo sát Doanh nghiệp (Business Discovery Report)',
+            self::TransformationDesignCanvas => 'Sơ đồ Thiết kế Chuyển đổi (Transformation Design Canvas)',
+            self::TransformationRoadmap => 'Lộ trình Chuyển đổi (Transformation Roadmap)',
+            self::Proposal => 'Đề xuất (Proposal)',
+            self::Sow => 'Thỏa thuận Phạm vi Công việc (SOW)',
+            self::WeeklyReport => 'Báo cáo tuần',
+            self::MeetingMinutes => 'Biên bản họp',
+            self::FinalReport => 'Báo cáo Tổng kết Dự án',
         };
     }
 

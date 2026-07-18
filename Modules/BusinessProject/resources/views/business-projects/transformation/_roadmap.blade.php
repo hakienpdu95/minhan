@@ -11,7 +11,7 @@
 <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body">
         <div class="flex items-center justify-between mb-3">
-            <h2 class="font-semibold">Transformation Roadmap</h2>
+            <h2 class="font-semibold">Lộ trình Chuyển đổi (Transformation Roadmap)</h2>
             @if($roadmap && $roadmap->current_version > 0)
             <span class="badge {{ $roadmap->status->badgeClass() }}">
                 {{ $roadmap->status->label() }} &middot; v{{ $roadmap->current_version }}

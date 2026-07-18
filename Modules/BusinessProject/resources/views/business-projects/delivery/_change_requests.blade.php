@@ -6,7 +6,7 @@
 --}}
 <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body">
-        <h2 class="font-semibold mb-3">Change Requests ({{ $changeRequests->count() }})</h2>
+        <h2 class="font-semibold mb-3">Yêu cầu thay đổi ({{ $changeRequests->count() }})</h2>
 
         @forelse($changeRequests as $cr)
         <div class="border border-base-200 rounded-lg p-3 mb-2 last:mb-0 text-xs">
@@ -43,7 +43,7 @@
             </div>
         </div>
         @empty
-        <p class="text-xs text-base-content/40">Chưa có Change Request nào.</p>
+        <p class="text-xs text-base-content/40">Chưa có yêu cầu thay đổi nào.</p>
         @endforelse
     </div>
 </div>

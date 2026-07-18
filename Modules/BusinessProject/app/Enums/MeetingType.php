@@ -12,10 +12,10 @@ enum MeetingType: string
     public function label(): string
     {
         return match ($this) {
-            self::Interview => 'Interview',
-            self::Workshop => 'Workshop',
-            self::WeeklyReview => 'Weekly Review',
-            self::Retrospective => 'Retrospective',
+            self::Interview => 'Phỏng vấn',
+            self::Workshop => 'Hội thảo (Workshop)',
+            self::WeeklyReview => 'Đánh giá hàng tuần',
+            self::Retrospective => 'Họp tổng kết (Retrospective)',
         };
     }
 }

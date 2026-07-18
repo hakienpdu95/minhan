@@ -1,12 +1,12 @@
 @extends('layouts.backend')
 
-@section('title', 'Template Library')
+@section('title', 'Thư viện Mẫu')
 
 @section('content')
 <div>
     <div class="flex items-center justify-between mb-5">
         <div>
-            <h1 class="text-2xl font-bold text-base-content">Template Library</h1>
+            <h1 class="text-2xl font-bold text-base-content">Thư viện Mẫu (Template Library)</h1>
             <p class="text-sm text-base-content/50 mt-0.5">
                 BCOS — mẫu chuẩn cho từng loại Deliverable (Giai đoạn 7 "Template cải tiến quay lại chính công cụ tạo deliverable").
             </p>

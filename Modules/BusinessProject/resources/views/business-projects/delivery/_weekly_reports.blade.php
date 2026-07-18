@@ -6,7 +6,7 @@
 --}}
 <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body">
-        <h2 class="font-semibold mb-3">Weekly Report</h2>
+        <h2 class="font-semibold mb-3">Báo cáo tuần</h2>
 
         <form action="{{ route('backend.business-projects.delivery.weekly-reports.store', $businessProject) }}" method="POST" class="space-y-3 mb-4">
             @csrf
@@ -15,7 +15,7 @@
                 <textarea name="narrative" rows="2" class="textarea textarea-bordered w-full"
                           placeholder="Nhận định thêm ngoài số liệu tự động..."></textarea>
             </div>
-            <button type="submit" class="btn btn-primary btn-sm">Tạo Weekly Report (số liệu tự prefill)</button>
+            <button type="submit" class="btn btn-primary btn-sm">Tạo báo cáo tuần (số liệu tự prefill)</button>
         </form>
 
         @forelse($weeklyReports as $report)
@@ -23,8 +23,8 @@
         <div class="border border-base-200 rounded-lg p-3 mb-2 last:mb-0 text-xs">
             <p class="font-medium mb-1">{{ $report->title }}</p>
             <div class="flex flex-wrap gap-3 text-base-content/60 mb-1">
-                <span>Task done: {{ $prefill['tasks_done'] ?? 0 }}</span>
-                <span>Task pending: {{ $prefill['tasks_pending'] ?? 0 }}</span>
+                <span>Task hoàn thành: {{ $prefill['tasks_done'] ?? 0 }}</span>
+                <span>Task còn tồn: {{ $prefill['tasks_pending'] ?? 0 }}</span>
                 <span>Issue mới: {{ $prefill['new_issues'] ?? 0 }}</span>
                 <span>Issue đang mở: {{ $prefill['open_issues'] ?? 0 }}</span>
                 <span>Risk đang mở: {{ $prefill['open_risks'] ?? 0 }}</span>
@@ -34,7 +34,7 @@
             @endif
         </div>
         @empty
-        <p class="text-xs text-base-content/40">Chưa có Weekly Report nào.</p>
+        <p class="text-xs text-base-content/40">Chưa có báo cáo tuần nào.</p>
         @endforelse
     </div>
 </div>

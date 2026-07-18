@@ -19,13 +19,13 @@ class DeploymentTargetPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['ceo', 'ops', 'system_admin'])
+        return $user->hasAnyRole(['super-admin', 'ceo', 'ops', 'system_admin'])
             || $user->roles->contains(fn ($r) => str_ends_with($r->name, '_pm'));
     }
 
     public function update(User $user, DeploymentTarget $target): bool
     {
-        return $user->hasAnyRole(['ceo', 'ops', 'system_admin'])
+        return $user->hasAnyRole(['super-admin', 'ceo', 'ops', 'system_admin'])
             || $user->hasRole($target->vertical_code . '_pm');
     }
 
@@ -35,7 +35,7 @@ class DeploymentTargetPolicy
      */
     public function toggleChecklist(User $user, DeploymentTarget $target): bool
     {
-        if ($user->hasAnyRole(['ceo', 'ops', 'system_admin'])) {
+        if ($user->hasAnyRole(['super-admin', 'ceo', 'ops', 'system_admin'])) {
             return true;
         }
 
@@ -51,7 +51,7 @@ class DeploymentTargetPolicy
 
     public function advance(User $user, DeploymentTarget $target): bool
     {
-        return $user->hasAnyRole(['ceo', 'system_admin'])
+        return $user->hasAnyRole(['super-admin', 'ceo', 'system_admin'])
             || $user->hasRole($target->vertical_code . '_pm');
     }
 }

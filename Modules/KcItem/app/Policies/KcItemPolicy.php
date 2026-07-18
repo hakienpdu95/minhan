@@ -14,22 +14,22 @@ class KcItemPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['system_admin', 'ceo', 'ops', 'hr', 'ai_operator', 'sales', 'marketing', 'viewer', 'lead_consultant', 'consultant', 'pm']);
+        return $user->hasAnyRole(['super-admin', 'system_admin', 'ceo', 'ops', 'hr', 'ai_operator', 'sales', 'marketing', 'viewer', 'lead_consultant', 'consultant', 'pm']);
     }
 
     public function view(User $user, KcItem $kcItem): bool
     {
-        return $user->hasAnyRole(['system_admin', 'ceo', 'ops', 'hr', 'ai_operator', 'sales', 'marketing', 'viewer', 'lead_consultant', 'consultant', 'pm']);
+        return $user->hasAnyRole(['super-admin', 'system_admin', 'ceo', 'ops', 'hr', 'ai_operator', 'sales', 'marketing', 'viewer', 'lead_consultant', 'consultant', 'pm']);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['system_admin', 'ops', 'ai_operator', 'hr', 'marketing', 'ceo', 'lead_consultant', 'consultant', 'pm']);
+        return $user->hasAnyRole(['super-admin', 'system_admin', 'ops', 'ai_operator', 'hr', 'marketing', 'ceo', 'lead_consultant', 'consultant', 'pm']);
     }
 
     public function update(User $user, KcItem $kcItem): bool
     {
-        if ($user->hasRole('system_admin')) {
+        if ($user->hasAnyRole(['super-admin', 'system_admin'])) {
             return true;
         }
 
@@ -42,13 +42,13 @@ class KcItemPolicy
 
     public function delete(User $user, KcItem $kcItem): bool
     {
-        return $user->hasRole('system_admin');
+        return $user->hasAnyRole(['super-admin', 'system_admin']);
     }
 
     public function submit(User $user, KcItem $kcItem): bool
     {
         return $kcItem->canSubmit()
-            && $user->hasAnyRole(['system_admin', 'ops', 'ai_operator', 'hr', 'marketing']);
+            && $user->hasAnyRole(['super-admin', 'system_admin', 'ops', 'ai_operator', 'hr', 'marketing']);
     }
 
     public function approve(User $user, KcItem $kcItem): bool
@@ -57,12 +57,12 @@ class KcItemPolicy
             return false;
         }
 
-        if (! $user->hasAnyRole(['system_admin', 'ops', 'ai_operator'])) {
+        if (! $user->hasAnyRole(['super-admin', 'system_admin', 'ops', 'ai_operator'])) {
             return false;
         }
 
         // Tác giả không được tự duyệt (trừ admin)
-        if ($user->id === $kcItem->owner_id && ! $user->hasRole('system_admin')) {
+        if ($user->id === $kcItem->owner_id && ! $user->hasAnyRole(['super-admin', 'system_admin'])) {
             return false;
         }
 
@@ -76,12 +76,12 @@ class KcItemPolicy
 
     public function archive(User $user, KcItem $kcItem): bool
     {
-        return $user->hasAnyRole(['system_admin', 'ops', 'ai_operator']);
+        return $user->hasAnyRole(['super-admin', 'system_admin', 'ops', 'ai_operator']);
     }
 
     public function rollback(User $user, KcItem $kcItem): bool
     {
-        if ($user->hasRole('system_admin')) {
+        if ($user->hasAnyRole(['super-admin', 'system_admin'])) {
             return true;
         }
 

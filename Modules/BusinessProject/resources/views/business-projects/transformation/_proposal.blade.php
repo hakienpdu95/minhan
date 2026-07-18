@@ -12,7 +12,7 @@
 <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body">
         <div class="flex items-center justify-between mb-3">
-            <h2 class="font-semibold">Proposal</h2>
+            <h2 class="font-semibold">Đề xuất (Proposal)</h2>
             @if($proposal && $proposal->current_version > 0)
             <span class="badge {{ $proposal->status->badgeClass() }}">
                 {{ $proposal->status->label() }} &middot; v{{ $proposal->current_version }}

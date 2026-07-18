@@ -16,7 +16,7 @@ enum MilestoneCategory: string
     public function label(): string
     {
         return match ($this) {
-            self::QuickWin => 'Quick Wins',
+            self::QuickWin => 'Làm ngay (Quick Win)',
             self::Day30 => '30 ngày',
             self::Day90 => '90 ngày',
             self::Day365 => '365 ngày',

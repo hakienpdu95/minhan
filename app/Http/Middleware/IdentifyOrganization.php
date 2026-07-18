@@ -34,16 +34,20 @@ class IdentifyOrganization
         if ($organization?->isActive()) {
             TenantContext::set($organization);
             $request->session()->put('organization_id', $organization->id);
-
-            // Spatie Permission dùng Teams (team_foreign_key = organization_id) — nếu không
-            // set team id ở đây, MỌI check role()/permission() của user (model_has_roles,
-            // model_has_permissions — team-scoped) sẽ luôn resolve rỗng vì mặc định team id
-            // là null, dù TenantContext đã đúng. Đây là middleware DUY NHẤT được wire global
-            // vào 'web' group (bootstrap/app.php) nên set ở đây áp dụng cho toàn app.
-            setPermissionsTeamId($organization->id);
-        } else {
-            setPermissionsTeamId(null);
         }
+
+        // Spatie Permission dùng Teams (team_foreign_key = organization_id). Team id phải
+        // khớp CHÍNH XÁC với organization_id trên pivot model_has_roles/model_has_permissions
+        // của user — không phải với org đang được "xem" (TenantContext), vì 2 giá trị này lệch
+        // nhau với super-admin hệ thống (organization_id = null, roles gán ở team null) mỗi khi
+        // họ đang xem một org cụ thể (vd. org hệ thống, hoặc org khác qua X-Organization-ID).
+        // Dùng users.organization_id (nguồn sự thật duy nhất, cố định, không phụ thuộc session
+        // hay thứ tự resolve) để team id luôn nhất quán qua mọi request trong cùng session —
+        // tránh race giữa request đầu (đúng, do resolveDefaultForSuperAdmin check role lúc
+        // team id còn null) và các request sau (sai, do resolveFromSession set team id trước
+        // khi role được load, khiến hasRole('super-admin') cache false cho cả request).
+        $user = $request->user();
+        setPermissionsTeamId($user ? $user->organization_id : $organization?->id);
 
         return $next($request);
     }

@@ -10,7 +10,7 @@
 <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body">
         <div class="flex items-center justify-between mb-3">
-            <h2 class="font-semibold">Final Project Report</h2>
+            <h2 class="font-semibold">Báo cáo Tổng kết Dự án</h2>
             @if($finalReport && $finalReport->current_version > 0)
             <span class="badge {{ $finalReport->status->badgeClass() }}">
                 {{ $finalReport->status->label() }} &middot; v{{ $finalReport->current_version }}

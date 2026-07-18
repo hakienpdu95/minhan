@@ -16,26 +16,26 @@ class TaskPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['system_admin', 'ceo', 'hr', 'ops', 'sales', 'marketing', 'viewer', 'ai_operator', 'lead_consultant', 'consultant', 'pm']);
+        return $user->hasAnyRole(['super-admin', 'system_admin', 'ceo', 'hr', 'ops', 'sales', 'marketing', 'viewer', 'ai_operator', 'lead_consultant', 'consultant', 'pm']);
     }
 
     public function view(User $user, Task $task): bool
     {
-        return $user->hasAnyRole(['system_admin', 'ceo', 'hr', 'ops', 'sales', 'marketing', 'viewer', 'ai_operator', 'lead_consultant', 'consultant', 'pm']);
+        return $user->hasAnyRole(['super-admin', 'system_admin', 'ceo', 'hr', 'ops', 'sales', 'marketing', 'viewer', 'ai_operator', 'lead_consultant', 'consultant', 'pm']);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['system_admin', 'ceo', 'hr', 'ops', 'lead_consultant', 'consultant', 'pm']);
+        return $user->hasAnyRole(['super-admin', 'system_admin', 'ceo', 'hr', 'ops', 'lead_consultant', 'consultant', 'pm']);
     }
 
     public function update(User $user, Task $task): bool
     {
-        return $user->hasAnyRole(['system_admin', 'ceo', 'hr', 'ops', 'lead_consultant', 'consultant', 'pm']);
+        return $user->hasAnyRole(['super-admin', 'system_admin', 'ceo', 'hr', 'ops', 'lead_consultant', 'consultant', 'pm']);
     }
 
     public function delete(User $user, Task $task): bool
     {
-        return $user->hasAnyRole(['system_admin', 'ceo', 'ops']);
+        return $user->hasAnyRole(['super-admin', 'system_admin', 'ceo', 'ops']);
     }
 }

@@ -10,7 +10,7 @@
 <div class="card bg-base-100 shadow-sm border border-base-200">
     <div class="card-body">
         <div class="flex items-center justify-between mb-3">
-            <h2 class="font-semibold">Business Discovery Report</h2>
+            <h2 class="font-semibold">Báo cáo Khảo sát Doanh nghiệp (Business Discovery Report)</h2>
             @if($report && $report->current_version > 0)
             <span class="badge {{ $report->status->badgeClass() }}">
                 {{ $report->status->label() }} &middot; v{{ $report->current_version }}
